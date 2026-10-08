@@ -10,6 +10,21 @@ that correctness lives in a single place and can't drift.
 > **[`docs/SPEC.md`](docs/SPEC.md) is the source of truth** for design intent. This
 > README is the tour; read the relevant SPEC section before changing behavior.
 
+## What's New in v1.0.0-rc11
+
+- **`matchWidth: 'max'` — cap a floating element to the reference width.** Completes the
+  width-matching set in `/positioning`: `'min'` floors the panel to the reference width (grows for
+  wider content), `'exact'` pins it, and the new `'max'` caps it (shrinks for narrower content,
+  wraps when wider) — i.e. `min(reference, content)`, the mirror of `'min'`. Flows through
+  `createPopover` unchanged. Distinct from the `maxWidth` option, which caps to the available
+  *viewport* width rather than the reference.
+- **Fix: follow-cursor tooltips no longer mis-position on a stationary hover.** A pointer that
+  entered a trigger and stayed still fired no `mousemove` during the show delay, so the tooltip
+  pinned to the trigger's corner instead of the cursor. The cursor rect is now seeded from
+  `mouseenter`, so there's always a valid position before the tooltip shows.
+
+See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
+
 ## What's New in v1.0.0-rc10
 
 - **Cross-component overlay coordination — one popover open at a time, across frameworks.**
@@ -20,8 +35,6 @@ that correctness lives in a single place and can't drift.
   `{ source, group }`, so outside code can both trigger dismissal and be dismissed *without*
   importing core. An optional `group` scopes coordination, so two independent sets of controls stay
   separate; ungrouped overlays share one default group. SSR-safe (no-op without a `document`).
-
-See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
 
 ## What's New in v1.0.0-rc09
 

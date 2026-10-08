@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc11] - 2026-10-08
+
+### Added
+
+- **`matchWidth: 'max'`** (`src/positioning/anchor.ts`, `MatchWidth` in
+  `types.ts`). Completes the width-matching set: `'min'` floors the panel to the
+  reference width (grows for wider content), `'exact'` pins it, and the new
+  `'max'` caps it to the reference width (shrinks for narrower content) — i.e.
+  `min(reference, content)`, the mirror of `'min'`. Flows through `createPopover`
+  unchanged. Note it sets `max-width` to the *reference* width, distinct from the
+  existing `maxWidth` option which caps to the *available viewport* width.
+- **e2e test suite (`e2e/`) + fixture pages (`test/`), driven by Playwright over
+  a vite dev server.** Core is a library with no component to mount, so the
+  specs exercise the `/positioning` helpers against real layout and a real
+  `@floating-ui/dom` in a real browser — proving where a tooltip actually lands,
+  which the jsdom unit suite (mocked floating-ui, no layout) cannot. The first
+  spec (`e2e/tooltip.spec.ts`) is the regression guard for the follow-cursor fix
+  above (stationary-hover anchoring, pointer tracking, basic hover + focus).
+  New scripts: `dev` (vite on port 12400), `test:unit`, `test:e2e`,
+  `test:e2e:ui`, `test:e2e:headed`, `test:e2e:install`. `npm test` remains the
+  vitest unit suite. Added `createTooltip` unit coverage for the
+  seed-on-`mouseenter` behaviour in `src/positioning/positioning.test.ts`.
+- **Manual example site (`npm run dev`) + `<tooltip-card>` demo component**,
+  structured like the web-multiselect examples so the KM family reads
+  consistently: a cards landing (`index.html`) rendered from a page registry, a
+  shared `examples-shared.css`, and the two self-initializing helper scripts
+  (`examples-chapter-nav.js` — a floating "jump to chapter" nav; and
+  `examples-copy-link.js` — per-section deep-link buttons). Each example page
+  (`examples-tooltip.html`, `examples-popover.html`, `examples-anchor.html`) is
+  built from `.card` sections whose `<h2>` carries an **XXYY chapter code**
+  (`TT01`, `PO01`, `AN01`, …) for quick navigation, and drives the `/positioning`
+  helpers with live controls — including `<tooltip-card>`
+  (`examples-tooltip-card.ts`), a real `BlissElement` that wires `createTooltip`
+  through the `connect()`/`reinit()`/`disconnect()` lifecycle so the helpers can
+  be eyeballed without one of the five shipping components. Demo-only — not
+  published (`files` ships `dist/` only). `e2e/examples.spec.ts` smoke-tests the
+  pages so they can't silently rot.
+
+### Fixed
+
+- **Follow-cursor tooltips no longer mis-position on a stationary hover**
+  (`src/positioning/tooltip.ts`). The pointer-tracking `mousemove` listener was
+  attached only inside `show()` — which runs *after* the show delay. A pointer
+  that entered the trigger and then stayed still (the normal "hover to read"
+  case) fired no `mousemove` during the delay, so the cursor rect was still
+  undefined when `show()` ran and the follow-cursor `VirtualElement` fell back
+  to the trigger's full rect — pinning the tooltip to the trigger's corner
+  instead of the cursor. The cursor rect is now seeded from the `mouseenter`
+  event and tracking begins immediately, so there is always a valid cursor rect
+  before the first position. `hide()` now always detaches the listener (covers a
+  pointer that leaves before the delay elapses, which would otherwise leak the
+  listener), and `onMouseMove` only re-positions while visible.
+
 ## [1.0.0-rc10] - 2026-09-09
 
 ### Added
