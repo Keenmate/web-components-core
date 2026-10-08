@@ -452,8 +452,10 @@ Ships the proposed shape below: `anchor()` + `createTooltip()` +
   `data-theme` (via `closest('[data-theme]')`) from `inheritThemeFrom` onto the
   floating element; the presets default `inheritThemeFrom` to the trigger /
   reference, so portaled layers keep the theme automatically.
-- **Width-matching** → one `matchWidth: 'min' | 'exact' | false` (via `size()`),
-  replacing the three per-component hacks.
+- **Width-matching** → one `matchWidth: 'min' | 'exact' | 'max' | false` (via
+  `size()`), replacing the three per-component hacks. `'min'` floors the panel to
+  the reference width (grows for wider content), `'exact'` pins it, `'max'` caps
+  it (shrinks for narrower content).
 - **`lockPlacement`** → feeds `flip({ fallbackStrategy: 'initialPlacement' })`,
   so the initial placement is preferred over reordering.
 
@@ -508,7 +510,7 @@ anchor(floating: HTMLElement, reference: HTMLElement | VirtualElement, opts: {
   offset?: number;                    // default 4
   flip?: boolean;                     // default true (skipped when lockPlacement holds)
   shift?: number | false;             // padding; default 8
-  matchWidth?: 'min' | 'exact' | false;   // via size(); default false
+  matchWidth?: 'min' | 'exact' | 'max' | false;   // via size(); default false
   lockPlacement?: boolean;            // keep first placement unless it must flip
   autoUpdate?: boolean;               // default true
   inheritThemeFrom?: HTMLElement;     // copy data-theme onto `floating` (C-CS-10)

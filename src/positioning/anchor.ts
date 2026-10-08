@@ -59,7 +59,10 @@ function buildMiddleware(opts: AnchorOptions, flipEnabled: boolean): Middleware[
       sizeMiddleware({
         apply({ rects, elements }) {
           const width = `${rects.reference.width}px`;
+          // 'exact' pins the width; 'min' floors it (grow for wider content);
+          // 'max' caps it (shrink for narrower content).
           if (mode === 'exact') elements.floating.style.width = width;
+          else if (mode === 'max') elements.floating.style.maxWidth = width;
           else elements.floating.style.minWidth = width;
         },
       }),

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>web-components-core — Examples</title>
+    <link rel="stylesheet" href="examples-shared.css">
+    <style>
+        body {
+            background: #f0f2f5;
+            min-height: 100vh;
+            padding: 2rem;
+            max-width: none;
+        }
+
+        .page-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            padding: 2.5rem 3rem;
+            margin-bottom: 2rem;
+            color: white;
+        }
+
+        .header-card h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem 0;
+            color: white;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .header-card .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin: 0 0 1rem 0;
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.35rem 0.85rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card-link {
+            background: white;
+            border-radius: 12px;
+            padding: 1.75rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .card-link:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            text-decoration: none;
+        }
+
+        .card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        }
+
+        .card-link h2.card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0 0 0.5rem 0;
+            color: #1a202c;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .card-code {
+            display: inline-block;
+            font-family: ui-monospace, 'Courier New', monospace;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: #667eea;
+            background: #eef2ff;
+            border-radius: 6px;
+            padding: 0.1rem 0.45rem;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+
+        .card-description {
+            color: #64748b;
+            line-height: 1.6;
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #f56565;
+            color: white;
+            padding: 0.15rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+            text-transform: uppercase;
+        }
+
+        .note-strip {
+            margin: 0 0 2rem;
+            color: #475569;
+            font-size: 0.95rem;
+        }
+        .note-strip code { background: #e2e8f0; color: #4338ca; }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            color: #64748b;
+            font-size: 0.875rem;
+        }
+
+        footer a { color: #667eea; text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <header class="header-card">
+            <h1>web-components-core</h1>
+            <p class="subtitle">The reactive input model + <code style="color:#fff">BlissElement</code> base class
+               shared across the KeenMate web components. These pages are a manual visual harness for the parts
+               that render — the <code style="color:#fff">/positioning</code> helpers — served straight from
+               <code style="color:#fff">src/</code> with no build step.</p>
+            <span class="version-badge" id="version-badge"></span>
+        </header>
+
+        <p class="note-strip">
+            This is a <strong>library</strong>, not an app — there is no component to mount, so each example drives
+            the helpers directly (and one small <code>&lt;tooltip-card&gt;</code> demo component shows the full
+            <code>BlissElement</code> path). Nothing here ships in the published package.
+        </p>
+
+        <div class="cards" id="cards"></div>
+
+        <footer>
+            <p>Created by <a href="https://github.com/keenmate" target="_blank" rel="noopener">Keenmate s.r.o.</a>
+               · <a href="https://github.com/keenmate/web-components-core" target="_blank" rel="noopener">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        // =====================================================
+        // Example Page Registry
+        // Add new pages here - they'll appear automatically as a
+        // card AND in the floating "Examples" jump-nav.
+        // The `code` is the XXYY chapter prefix used by each page's
+        // section headings (e.g. TT01, TT02) for quick navigation.
+        // =====================================================
+        const pages = [
+            {
+                href: 'examples-tooltip.html',
+                code: 'TT',
+                icon: '💬',
+                title: 'Tooltips',
+                description: 'createTooltip() across placements, the follow-cursor-with-delay case (the stationary-hover bug we fixed), ShadowRoot containers, and the <tooltip-card> BlissElement demo component driven by live controls.'
+            },
+            {
+                href: 'examples-popover.html',
+                code: 'PO',
+                icon: '🗂️',
+                title: 'Popovers',
+                description: 'createPopover() — a portaled dropdown/panel: toggle + outside-click dismiss, width-matching (min / exact), and flip-then-freeze placement so the panel opens where it fits and then stops jumping.'
+            },
+            {
+                href: 'examples-anchor.html',
+                code: 'AN',
+                icon: '📐',
+                title: 'Anchor primitive',
+                description: 'The low-level anchor() under both presets — offset / flip / shift middleware, matchWidth, maxHeight & maxWidth size caps, placement locking, and drift detection when a transformed ancestor throws fixed positioning off.'
+            }
+        ]
+
+        // =====================================================
+        // Render cards from registry
+        // =====================================================
+        function renderCards() {
+            const container = document.getElementById('cards')
+            container.innerHTML = pages.map(page => `
+                <a href="${page.href}" class="card-link">
+                    <div class="card-icon">${page.icon}</div>
+                    <h2 class="card-title">
+                        ${page.code ? `<span class="card-code">${page.code}</span>` : ''}${page.title}${page.badge ? `<span class="badge">${page.badge}</span>` : ''}
+                    </h2>
+                    <p class="card-description">${page.description}</p>
+                </a>
+            `).join('')
+        }
+
+        renderCards()
+
+        // Feed the floating jump-nav (examples-chapter-nav.js) from the same registry,
+        // so the index gets a quick "hop to any example" list — no extra data needed.
+        window.CHAPTER_NAV_ITEMS = pages.map(function (p) { return { label: p.code + ' · ' + p.title, href: p.href } })
+    </script>
+
+    <!-- Version badge — sourced from package.json (vite provides named JSON exports),
+         so it never drifts from the real package version. -->
+    <script type="module">
+        import { version } from './package.json'
+        const badge = document.getElementById('version-badge')
+        if (badge) badge.textContent = `v${version}`
+    </script>
+
+    <script type="module" src="examples-chapter-nav.js"></script>
+</body>
+</html>

@@ -111,6 +111,22 @@ describe('anchor', () => {
     expect(mw().map((m) => m.name)).toEqual(['offset', 'size']);
   });
 
+  it.each([
+    ['min', 'minWidth'],
+    ['exact', 'width'],
+    ['max', 'maxWidth'],
+  ] as const)("matchWidth '%s' applies the reference width to %s", (matchWidth, prop) => {
+    const floating = document.createElement('div');
+    anchor(floating, document.createElement('button'), { matchWidth, flip: false, shift: false });
+    const sizeMw = mw().find((m) => m.name === 'size') as unknown as { options: { apply: (a: unknown) => void } };
+    sizeMw.options.apply({ rects: { reference: { width: 220 } }, elements: { floating } });
+    // The chosen dimension gets the reference width; the other two stay unset.
+    expect(floating.style[prop]).toBe('220px');
+    for (const other of ['minWidth', 'width', 'maxWidth'] as const) {
+      if (other !== prop) expect(floating.style[other]).toBe('');
+    }
+  });
+
   it('locks placement by feeding flip an initialPlacement fallback', () => {
     anchor(document.createElement('div'), document.createElement('button'), { lockPlacement: true });
     expect(vi.mocked(fui.flip)).toHaveBeenCalledWith({ fallbackStrategy: 'initialPlacement' });
@@ -272,6 +288,83 @@ describe('createTooltip', () => {
     expect(rect.x).toBe(5);
     expect(rect.y).toBe(7);
     tip.destroy();
+  });
+
+  // --- Regression: the follow-cursor stationary-hover mispositioning bug. ---
+  // The move listener used to attach only inside show() (after the show delay). If
+  // the pointer entered and stayed still through the delay, no mousemove fired, so
+  // cursorRect was still undefined at show time and the VirtualElement fell back to
+  // the trigger's full rect — pinning the tooltip to the trigger corner. The fix
+  // seeds cursorRect from the mouseenter event and tracks movement during the delay.
+
+  it('follow-cursor seeds the cursor rect on mouseenter so a stationary hover through the show delay anchors at the cursor, not the trigger rect', () => {
+    vi.useFakeTimers();
+    try {
+      const trigger = document.createElement('button');
+      // A wide/tall trigger so the fallback (full-rect) and the seeded point differ clearly.
+      trigger.getBoundingClientRect = () => new DOMRect(100, 200, 300, 40);
+      document.body.append(trigger);
+      const tip = createTooltip({ trigger, content: 'hi', followCursor: true, delay: { show: 400 } });
+
+      // Enter at a point away from the trigger's origin — then DON'T move again.
+      trigger.dispatchEvent(new MouseEvent('mouseenter', { clientX: 130, clientY: 260 }));
+      expect(tip.isVisible).toBe(false); // still waiting out the delay
+      vi.advanceTimersByTime(400); // show() runs now
+
+      const ref = vi.mocked(fui.computePosition).mock.calls[0]![0] as { getBoundingClientRect: () => DOMRect };
+      const rect = ref.getBoundingClientRect();
+      expect(rect.x).toBe(130); // the seeded cursor point…
+      expect(rect.y).toBe(260);
+      expect(rect.width).toBe(0); // …a zero-size point, NOT the 300px-wide trigger rect
+      tip.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('attaches the mousemove listener on mouseenter and detaches it on leave even before the show delay elapses (no leak)', () => {
+    vi.useFakeTimers();
+    try {
+      const trigger = document.createElement('button');
+      const add = vi.spyOn(trigger, 'addEventListener');
+      const remove = vi.spyOn(trigger, 'removeEventListener');
+      document.body.append(trigger);
+      const tip = createTooltip({ trigger, content: 'hi', followCursor: true, delay: { show: 400 } });
+
+      trigger.dispatchEvent(new MouseEvent('mouseenter', { clientX: 10, clientY: 10 }));
+      expect(add.mock.calls.filter((c) => c[0] === 'mousemove')).toHaveLength(1); // tracking started
+
+      trigger.dispatchEvent(new MouseEvent('mouseleave')); // leave before show() ever runs
+      expect(remove.mock.calls.filter((c) => c[0] === 'mousemove')).toHaveLength(1); // detached — no leak
+      vi.advanceTimersByTime(400);
+      expect(tip.isVisible).toBe(false); // the pending show was cancelled
+      tip.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps the cursor rect fresh during the show delay without positioning while hidden', () => {
+    vi.useFakeTimers();
+    try {
+      const trigger = document.createElement('button');
+      document.body.append(trigger);
+      const tip = createTooltip({ trigger, content: 'hi', followCursor: true, delay: { show: 400 } });
+
+      trigger.dispatchEvent(new MouseEvent('mouseenter', { clientX: 10, clientY: 10 }));
+      // Move during the delay: updates the rect but must NOT position (nothing is shown yet).
+      trigger.dispatchEvent(new MouseEvent('mousemove', { clientX: 42, clientY: 84 }));
+      expect(vi.mocked(fui.computePosition)).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(400); // show() uses the freshest rect
+      const ref = vi.mocked(fui.computePosition).mock.calls[0]![0] as { getBoundingClientRect: () => DOMRect };
+      const rect = ref.getBoundingClientRect();
+      expect(rect.x).toBe(42);
+      expect(rect.y).toBe(84);
+      tip.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('calls onBeforeShow right before showing', () => {

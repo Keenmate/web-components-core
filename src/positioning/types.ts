@@ -10,8 +10,22 @@ import type { DriftReport } from './containing-block.js';
 
 export type { Placement, Strategy, Platform, VirtualElement };
 
-/** How to size the floating element against its reference (via floating-ui `size()`). */
-export type MatchWidth = 'min' | 'exact' | false;
+/**
+ * How to size the floating element against its reference width (via floating-ui
+ * `size()`):
+ * - `'min'` — `min-width` = reference → panel is **at least** the reference width
+ *   but may grow for wider content (`max(reference, content)`).
+ * - `'exact'` — `width` = reference → panel is **always** the reference width
+ *   (wider content wraps).
+ * - `'max'` — `max-width` = reference → panel is **at most** the reference width
+ *   but may shrink for narrower content (`min(reference, content)`).
+ * - `false` — don't size against the reference (natural width).
+ *
+ * Note `'max'` sets `max-width` (to the *reference* width), as does the separate
+ * {@link AnchorOptions.maxWidth} viewport cap (to the *available* width); using
+ * both leaves the viewport cap in effect (it applies last). Combine with care.
+ */
+export type MatchWidth = 'min' | 'exact' | 'max' | false;
 
 /** Options for the low-level {@link anchor} primitive. */
 export interface AnchorOptions {
@@ -25,7 +39,7 @@ export interface AnchorOptions {
   flip?: boolean;
   /** Shift padding in px to stay in view, or `false` to disable. Default `8`. */
   shift?: number | false;
-  /** Match the reference's width: `'min'` (min-width), `'exact'` (width), or `false`. Default `false`. */
+  /** Match the reference's width: `'min'` (min-width), `'exact'` (width), `'max'` (max-width), or `false`. Default `false`. */
   matchWidth?: MatchWidth;
   /**
    * Keep the placement stable instead of re-flipping every frame. Requires `flip`.

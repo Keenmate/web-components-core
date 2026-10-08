@@ -1,4 +1,4 @@
-.PHONY: help setup build typecheck test verify package publish publish-rc publish-dry clean clean-dist check-version update-deps
+.PHONY: help setup dev kill-port build typecheck test test-e2e test-e2e-ui test-e2e-headed test-e2e-install verify package publish publish-rc publish-dry clean clean-dist check-version update-deps
 
 help: ## Show this help message
 	@echo "Available targets:"
@@ -8,6 +8,30 @@ setup: ## Install dependencies and prepare project
 	@echo "Installing dependencies..."
 	npm install
 	@echo "Setup complete"
+
+dev: ## Start the vite dev server (manual example site, port 12400)
+	@echo "Starting development server..."
+	@rm -rf node_modules/.vite
+	npm run dev
+
+# Free the vite dev-server ports. Vite starts at 12400 and hops to the next free
+# port when one is busy, so a stale run can hold any of 12400-12405. Kills whatever
+# is LISTENING on those ports, covering both IPv4 and IPv6 (vite binds [::1] too).
+# On Windows a one-line PowerShell call does the work: Get-NetTCPConnection lists both
+# IPv4 and IPv6 listeners, and Stop-Process kills each owning PID. Recipes here default
+# to Git Bash (sh), so the recipe stays in sh and shells out to powershell rather than
+# switching this target's SHELL to cmd.exe (a target-specific SHELL leaks and breaks the
+# grep/awk-based help target). `$$_` escapes make's `$`, and the command is single-quoted
+# so sh doesn't expand `$_` (its own last-arg variable) before PowerShell — PowerShell must
+# receive a literal `$_` pipeline variable.
+kill-port: ## Free the vite dev-server ports (12400-12405)
+	@echo "Freeing ports 12400-12405..."
+ifeq ($(OS),Windows_NT)
+	-@powershell -NoProfile -Command '12400..12405 | ForEach-Object { Get-NetTCPConnection -LocalPort $$_ -State Listen -ErrorAction SilentlyContinue } | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $$_ -Force -ErrorAction SilentlyContinue }'
+else
+	-@for p in 12400 12401 12402 12403 12404 12405; do lsof -ti tcp:$$p | xargs -r kill -9; done
+endif
+	@echo "Ports 12400-12405 are free"
 
 build: ## Build for production (tsc -> dist: ESM + .d.ts)
 	@echo "Building for production..."
@@ -19,6 +43,18 @@ typecheck: ## Type-check without emitting
 
 test: ## Run the unit test suite (vitest)
 	npm test
+
+test-e2e: ## Run Playwright e2e tests (headless)
+	npm run test:e2e
+
+test-e2e-ui: ## Run Playwright e2e tests in UI mode
+	npm run test:e2e:ui
+
+test-e2e-headed: ## Run Playwright e2e tests headed (watch the browser)
+	npm run test:e2e:headed
+
+test-e2e-install: ## Install chromium browser binary (one-time)
+	npm run test:e2e:install
 
 verify: ## Type-check + run the unit tests (the pre-publish gate)
 	@echo "Verifying: typecheck + tests..."

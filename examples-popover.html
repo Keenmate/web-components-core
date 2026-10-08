@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Popovers — web-components-core</title>
+    <link rel="stylesheet" href="examples-shared.css">
+    <style>
+        /* Give the playground some vertical room below the trigger so you can
+           scroll it near an edge and watch flip / lockPlacement:'freeze' behave. */
+        .po-stage { padding-bottom: 50vh; }
+        /* `auto auto` → the list is content-sized (narrow), so matchWidth:none is
+           visibly narrower than min/exact rather than stretching to ~reference width. */
+        .demo-panel dl { margin: 0; display: grid; grid-template-columns: auto auto; gap: 0.15rem 0.75rem; justify-content: start; }
+        .demo-panel dt { color: #6b7280; }
+        .demo-panel dd { margin: 0; font-family: ui-monospace, 'Courier New', monospace; color: #1a202c; }
+        /* The long line wraps normally, so its max-content width (wide) drives the
+           panel under none/min, while exact clamps the panel and wraps the line. */
+        .demo-panel .po-long { margin: 0.6rem 0 0; color: #4338ca; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="back-link">← Back to Examples</a>
+            <h1>Popovers</h1>
+            <p class="subtitle">The <code>createPopover()</code> preset — a portaled dropdown/panel anchored to a
+                reference, with width-matching and placement locking. The dropdown shape the five components used to
+                re-wrap ~15 different ways.</p>
+        </header>
+
+        <!-- ============================================================= -->
+        <!-- PO01 · Playground                                             -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>PO01 · Playground</h2>
+            <p>
+                One popover, every option live. <code>createPopover({ reference, panel })</code> returns
+                <code>{ open, close, isOpen, destroy }</code>; the panel is portaled to <code>&lt;body&gt;</code> and
+                positioned by <code>anchor()</code>. Change any control — the popover rebuilds with the new options
+                (and reopens if it was open). Open it, then <strong>scroll it near the bottom edge</strong> to watch
+                <code>flip</code> and <code>lockPlacement: 'freeze'</code> behave.
+            </p>
+            <div class="note">
+                <div class="note-title"><code>matchWidth</code>: what to look for</div>
+                With the 360px reference and the <strong>long content</strong> toggle, watch all four:
+                <code>none</code> = natural content width (ignores the reference); <code>min</code> =
+                <em>at least</em> 360px (grows for wider content); <code>max</code> = <em>at most</em> 360px (shrinks
+                for narrower content, wraps when wider); <code>exact</code> = always 360px. So with the content
+                <em>narrower</em> than 360px, <code>none</code>=<code>max</code> (both narrow) and
+                <code>min</code>=<code>exact</code> (both 360px); with the content <em>wider</em>, it flips:
+                <code>none</code>=<code>min</code> (both grow) and <code>max</code>=<code>exact</code> (both clamp to
+                360px). <code>min</code> = <code>max(reference, content)</code>, <code>max</code> =
+                <code>min(reference, content)</code>.
+            </div>
+
+            <div class="controls">
+                <label>placement
+                    <select id="po-placement">
+                        <option>bottom-start</option><option>bottom</option><option>bottom-end</option>
+                        <option>top-start</option><option>top</option><option>top-end</option>
+                        <option>right-start</option><option>left-start</option>
+                    </select>
+                </label>
+                <label>lockPlacement
+                    <select id="po-lock">
+                        <option value="false">false</option>
+                        <option value="true">true (return to initial)</option>
+                        <option value="freeze">freeze (flip once, then pin)</option>
+                    </select>
+                </label>
+            </div>
+            <div class="controls">
+                <span><code>matchWidth</code>:</span>
+                <label><input type="radio" name="po-mw" value="none"> none</label>
+                <label><input type="radio" name="po-mw" value="min" checked> min</label>
+                <label><input type="radio" name="po-mw" value="max"> max</label>
+                <label><input type="radio" name="po-mw" value="exact"> exact</label>
+                <label style="margin-inline-start:1rem"><input type="checkbox" id="po-long"> long content (wider than 360px)</label>
+            </div>
+            <div class="controls">
+                <label><input type="checkbox" id="po-flip" checked> <code>flip</code></label>
+                <label><code>offset</code>:
+                    <input type="range" id="po-offset" min="0" max="32" step="2" value="4" style="width:11rem">
+                    <output id="po-offset-out" style="min-width:3.5rem; font-variant-numeric:tabular-nums;">4&nbsp;px</output>
+                </label>
+                <label><code>shift</code> padding:
+                    <input type="range" id="po-shift" min="0" max="32" step="2" value="8" style="width:11rem">
+                    <output id="po-shift-out" style="min-width:3.5rem; font-variant-numeric:tabular-nums;">8&nbsp;px</output>
+                </label>
+            </div>
+
+            <div class="demo-area po-stage">
+                <button id="po-btn" style="width:360px">Toggle popover (360px-wide reference)</button>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- PO02 · Summary                                                 -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>PO02 · API summary</h2>
+            <div class="code-block"><pre>import { createPopover } from '@keenmate/web-components-core/positioning';
+
+const pop = createPopover({
+  reference,                 // element (or VirtualElement) to anchor to
+  panel,                     // the panel element to position + portal
+  placement: 'bottom-start', // default 'bottom-start'
+  offset: 4,                 // px gap (default 4)
+  matchWidth: 'min',         // 'min' | 'exact' — size to the reference width
+  lockPlacement: 'freeze',   // true = return to initial on overflow; 'freeze' = flip once then pin
+  container: document.body,  // mount target (default body)
+  flip: true, shift: 8,      // middleware toggles
+  onPlaced(placement) {},    // resolved placement callback
+});
+
+pop.open(); pop.close(); pop.isOpen; pop.destroy();</pre></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createPopover } from '/src/positioning/index.ts';
+
+        const btn = document.getElementById('po-btn');
+        const panel = document.createElement('div');
+        panel.className = 'demo-panel';
+
+        const $ = (id) => document.getElementById(id);
+        const mode = () => document.querySelector('input[name="po-mw"]:checked').value;
+        const lockValue = () => {
+            const v = $('po-lock').value;
+            return v === 'freeze' ? 'freeze' : v === 'true';
+        };
+
+        // Reflect the live options inside the panel so you can see what's applied.
+        // The optional long line is naturally wider than the 360px reference, so it
+        // reveals the min-vs-exact difference: `min` grows past 360px to fit it,
+        // `exact` clamps to 360px and the line wraps.
+        const LONG_LINE =
+            'description: a deliberately long single line of panel content that is naturally wider than the 360px reference button';
+        const renderPanel = (opts) => {
+            panel.innerHTML =
+                '<p><strong>Portaled panel</strong></p><dl>' +
+                `<dt>placement</dt><dd>${opts.placement}</dd>` +
+                `<dt>matchWidth</dt><dd>${opts.matchWidth ?? 'none'}</dd>` +
+                `<dt>lockPlacement</dt><dd>${String(opts.lockPlacement)}</dd>` +
+                `<dt>flip</dt><dd>${String(opts.flip)}</dd>` +
+                `<dt>offset</dt><dd>${opts.offset}</dd>` +
+                `<dt>shift</dt><dd>${opts.shift}</dd>` +
+                '</dl>' +
+                (document.getElementById('po-long').checked ? `<p class="po-long">${LONG_LINE}</p>` : '');
+        };
+
+        let pop;
+        const build = () => {
+            const wasOpen = pop?.isOpen;
+            pop?.destroy();
+            // Reset the inline sizing the previous matchWidth mode wrote — anchor()
+            // sets width / minWidth / maxWidth but never clears them, so without this
+            // a stale value from the prior mode would leak (e.g. 'max''s max-width
+            // capping 'none'/'min', making long content stop growing).
+            panel.style.width = '';
+            panel.style.minWidth = '';
+            panel.style.maxWidth = '';
+            const m = mode();
+            const opts = {
+                reference: btn,
+                panel,
+                placement: $('po-placement').value,
+                matchWidth: m === 'none' ? undefined : m,
+                lockPlacement: lockValue(),
+                flip: $('po-flip').checked,
+                offset: parseInt($('po-offset').value, 10) || 0,
+                shift: parseInt($('po-shift').value, 10) || 0,
+            };
+            renderPanel(opts);
+            pop = createPopover(opts);
+            if (wasOpen) pop.open();
+        };
+        build();
+
+        btn.addEventListener('click', () => (pop.isOpen ? pop.close() : pop.open()));
+        // Outside-click dismiss (reads the latest pop via closure). Ignore clicks on
+        // the control panel — otherwise tweaking a control (checkbox/radio/select)
+        // counts as "outside" and closes the popover, so you'd never see the live
+        // update (e.g. the long-content line) without reopening.
+        document.addEventListener('click', (e) => {
+            if (!pop.isOpen) return;
+            if (e.target === btn || panel.contains(e.target) || e.target.closest('.controls')) return;
+            pop.close();
+        });
+
+        // Rebuild on any control change; keep the slider readouts in sync.
+        ['po-placement', 'po-lock', 'po-flip', 'po-long'].forEach((id) => $(id).addEventListener('change', build));
+        document.querySelectorAll('input[name="po-mw"]').forEach((r) => r.addEventListener('change', build));
+        $('po-offset').addEventListener('input', () => { $('po-offset-out').innerHTML = `${$('po-offset').value}&nbsp;px`; build(); });
+        $('po-shift').addEventListener('input', () => { $('po-shift-out').innerHTML = `${$('po-shift').value}&nbsp;px`; build(); });
+    </script>
+
+    <script type="module" src="examples-copy-link.js"></script>
+    <script type="module" src="examples-chapter-nav.js"></script>
+</body>
+</html>

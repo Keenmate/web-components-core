@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tooltips — web-components-core</title>
+    <link rel="stylesheet" href="examples-shared.css">
+    <style>
+        /* TT02 — a pyramid of trigger cards, so you can watch a follow-cursor
+           tooltip hand off from one element to the next as the pointer crosses
+           between them (and confirm each neighbour seeds its own cursor rect). */
+        .pyramid {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+        .pyramid-row {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .pyramid .pos-trigger {
+            min-width: 6.5rem;
+            padding-block: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="back-link">← Back to Examples</a>
+            <h1>Tooltips</h1>
+            <p class="subtitle">The <code>createTooltip()</code> preset from
+                <code>@keenmate/web-components-core/positioning</code> — hover/focus, delays, placements,
+                follow-cursor, shadow-scoped containers — plus a small <code>&lt;tooltip-card&gt;</code>
+                <code>BlissElement</code> that drives it through the real component lifecycle.</p>
+        </header>
+
+        <!-- ============================================================= -->
+        <!-- TT01 · Placements                                             -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>TT01 · Placements</h2>
+            <p>
+                Each chip below is a plain element with <code>createTooltip({ trigger, content, placement })</code>
+                attached. Floating&nbsp;UI auto-flips to the opposite side when there's no room. Hover (or tab to)
+                any chip.
+            </p>
+            <div class="demo-area">
+                <div class="controls" id="tt-placements">
+                    <span class="pos-trigger" tabindex="0" data-tip="placement: top"    data-placement="top">top</span>
+                    <span class="pos-trigger" tabindex="0" data-tip="placement: bottom" data-placement="bottom">bottom</span>
+                    <span class="pos-trigger" tabindex="0" data-tip="placement: left"   data-placement="left">left</span>
+                    <span class="pos-trigger" tabindex="0" data-tip="placement: right"  data-placement="right">right</span>
+                    <span class="pos-trigger" tabindex="0" data-tip="placement: top-start" data-placement="top-start">top-start</span>
+                    <span class="pos-trigger" tabindex="0" data-tip="placement: bottom-end" data-placement="bottom-end">bottom-end</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TT02 · Follow-cursor (the fixed bug)                          -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>TT02 · Follow-cursor &amp; the fixed bug</h2>
+            <p>
+                With <code>followCursor: true</code> the tooltip anchors to a <code>VirtualElement</code> tracking
+                the pointer instead of the trigger. Each card in the <strong>pyramid</strong> below has its own
+                follow-cursor tooltip — sweep the pointer across them to watch the tooltip hand off from one element
+                to the next, and hover any single card and <strong>hold still</strong> through the show delay: it
+                must appear next to the cursor, not pinned to that card's corner.
+            </p>
+            <div class="note">
+                <div class="note-title">The bug this proves fixed</div>
+                The pointer-tracking <code>mousemove</code> listener used to attach only inside <code>show()</code>,
+                which runs <em>after</em> the delay. A stationary hover fired no <code>mousemove</code> during the
+                delay, so the cursor rect was still undefined at show time and the virtual element fell back to the
+                trigger's full rect — pinning the tooltip to the corner. The rect is now seeded on
+                <code>mouseenter</code> and tracked through the delay, so <em>every</em> card in the pyramid seeds its
+                own cursor rect the instant you enter it — even mid-sweep.
+            </div>
+
+            <div class="controls">
+                <label><input type="checkbox" id="fc-follow" checked> <code>followCursor</code></label>
+                <label><code>delay.show</code>:
+                    <input type="range" id="fc-delay" min="0" max="2000" step="50" value="400" style="width:14rem">
+                    <output id="fc-delay-out" style="min-width:4rem; font-variant-numeric:tabular-nums;">400&nbsp;ms</output>
+                </label>
+            </div>
+            <div class="demo-area">
+                <label class="demo-label">Sweep across the pyramid (each card is its own tooltip):</label>
+                <div class="pyramid" id="fc-pyramid">
+                    <div class="pyramid-row">
+                        <span class="pos-trigger" tabindex="0">1</span>
+                    </div>
+                    <div class="pyramid-row">
+                        <span class="pos-trigger" tabindex="0">2</span>
+                        <span class="pos-trigger" tabindex="0">3</span>
+                    </div>
+                    <div class="pyramid-row">
+                        <span class="pos-trigger" tabindex="0">4</span>
+                        <span class="pos-trigger" tabindex="0">5</span>
+                        <span class="pos-trigger" tabindex="0">6</span>
+                    </div>
+                    <div class="pyramid-row">
+                        <span class="pos-trigger" tabindex="0">7</span>
+                        <span class="pos-trigger" tabindex="0">8</span>
+                        <span class="pos-trigger" tabindex="0">9</span>
+                        <span class="pos-trigger" tabindex="0">10</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TT03 · The <tooltip-card> BlissElement demo component          -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>TT03 · The <code>&lt;tooltip-card&gt;</code> component</h2>
+            <p>
+                A real <code>BlissElement</code>: its knobs live in a <code>static inputs</code> table
+                (<code>tooltip-text</code>, <code>placement</code>, <code>follow-cursor</code>,
+                <code>show-delay</code> — all <code>on:'reinit'</code>), and it wires the tooltip through
+                <code>connect()</code> / <code>disconnect()</code> / <code>reinit()</code>. Change a control (or edit
+                the element's attributes in devtools) — the tooltip rebuilds live.
+            </p>
+
+            <div class="controls">
+                <label>placement
+                    <select id="card-placement">
+                        <option>top</option><option>top-start</option><option>top-end</option>
+                        <option>bottom</option><option>bottom-start</option><option>bottom-end</option>
+                        <option>left</option><option>right</option>
+                    </select>
+                </label>
+                <label><input type="checkbox" id="card-follow"> <code>follow-cursor</code></label>
+                <label><code>show-delay</code>:
+                    <input type="range" id="card-delay" min="0" max="2000" step="50" value="400" style="width:12rem">
+                    <output id="card-delay-out" style="min-width:4rem; font-variant-numeric:tabular-nums;">400&nbsp;ms</output>
+                </label>
+                <label><code>tooltip-text</code>:
+                    <input type="text" id="card-text" value="A core tooltip" style="width:14rem">
+                </label>
+            </div>
+            <div class="demo-area">
+                <label class="demo-label">The live <code>&lt;tooltip-card&gt;</code>:</label>
+                <tooltip-card id="live-card" tabindex="0"
+                    tooltip-text="A core tooltip" placement="top" show-delay="400">Hover me (live-controlled)</tooltip-card>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TT04 · Flip near the viewport edge                             -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>TT04 · Flip near the viewport edge</h2>
+            <p>
+                This trigger sits at the bottom of a tall box, so when it's near the viewport's bottom edge its
+                <code>bottom</code> preference has no room below and flips up to <code>top</code> — the
+                <code>flip()</code> middleware in action. (Scroll so the trigger is low in the window, then hover.)
+            </p>
+            <div class="demo-area">
+                <div class="edge-box">
+                    <span class="pos-trigger" id="edge-trigger" tabindex="0">Hover me (near the edge)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TT05 · Summary                                                 -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>TT05 · API summary</h2>
+            <div class="code-block"><pre>import { createTooltip } from '@keenmate/web-components-core/positioning';
+
+const tip = createTooltip({
+  trigger,                 // HTMLElement — hover/focus on it toggles the tooltip
+  content: 'Hello',        // string | HTMLElement
+  placement: 'top',        // Placement (default 'top')
+  offset: 8,               // px gap (default 8)
+  delay: { show: 400, hide: 0 },   // number | { show?, hide? }
+  followCursor: true,      // anchor to & track the pointer (default false)
+  container: shadowRoot,   // mount target (default document.body)
+  cssClass: 'demo-tt',     // class(es) on the tooltip element
+  visibleClass: 'is-visible',      // toggled while shown (default 'is-visible')
+  onBeforeShow() {},       // dismiss an overlapping tooltip, etc.
+});
+
+tip.show(); tip.hide(); tip.destroy();   // imperative control + teardown
+tip.element;  tip.isVisible;             // the tooltip node + state</pre></div>
+            <div class="note">
+                <div class="note-title">Focus has no cursor</div>
+                A keyboard-focus show has no pointer, so <code>followCursor</code> correctly falls back to the
+                trigger rect there.
+            </div>
+        </div>
+    </div>
+
+    <!-- The demo web component (registers <tooltip-card>). -->
+    <script type="module" src="examples-tooltip-card.ts"></script>
+
+    <script type="module">
+        import { createTooltip } from '/src/positioning/index.ts';
+
+        // ── TT01 · placements — one tooltip per chip ─────────────────────────
+        for (const el of document.querySelectorAll('#tt-placements .pos-trigger')) {
+            createTooltip({
+                trigger: el,
+                content: el.dataset.tip,
+                cssClass: 'demo-tt',
+                placement: el.dataset.placement,
+                delay: { show: 0, hide: 0 },
+            });
+        }
+
+        // ── TT02 · a pyramid of follow-cursor tooltips, one per card ─────────
+        // Every card gets its own tooltip, so sweeping the pointer across the
+        // pyramid shows the hand-off (one hides as the next shows) and each card
+        // seeds its own cursor rect on mouseenter. All are rebuilt together when
+        // the controls change.
+        const fcCards = Array.from(document.querySelectorAll('#fc-pyramid .pos-trigger'));
+        let fcTips = [];
+        const buildFc = () => {
+            fcTips.forEach((t) => t.destroy());
+            const follow = document.getElementById('fc-follow').checked;
+            const show = parseInt(document.getElementById('fc-delay').value, 10) || 0;
+            fcTips = fcCards.map((el) =>
+                createTooltip({
+                    trigger: el,
+                    content: `card ${el.textContent.trim()}`,
+                    cssClass: 'demo-tt',
+                    placement: 'top',
+                    followCursor: follow,
+                    delay: { show, hide: 0 },
+                }),
+            );
+        };
+        buildFc();
+        document.getElementById('fc-follow').addEventListener('change', buildFc);
+        const fcDelay = document.getElementById('fc-delay');
+        const fcDelayOut = document.getElementById('fc-delay-out');
+        fcDelay.addEventListener('input', () => {
+            fcDelayOut.innerHTML = `${fcDelay.value}&nbsp;ms`;
+            buildFc();
+        });
+
+        // ── TT03 · drive the <tooltip-card> attributes from the controls ─────
+        const card = document.getElementById('live-card');
+        const bind = (id, attr) => {
+            const el = document.getElementById(id);
+            const apply = () => card.setAttribute(attr, el.type === 'checkbox' ? String(el.checked) : el.value);
+            el.addEventListener('input', apply);
+            el.addEventListener('change', apply);
+        };
+        bind('card-placement', 'placement');
+        bind('card-follow', 'follow-cursor');
+        bind('card-delay', 'show-delay');
+        bind('card-text', 'tooltip-text');
+        // Keep the show-delay slider's readout in sync.
+        const cardDelay = document.getElementById('card-delay');
+        const cardDelayOut = document.getElementById('card-delay-out');
+        cardDelay.addEventListener('input', () => { cardDelayOut.innerHTML = `${cardDelay.value}&nbsp;ms`; });
+
+        // ── TT04 · edge flip ─────────────────────────────────────────────────
+        createTooltip({
+            trigger: document.getElementById('edge-trigger'),
+            content: 'I prefer bottom, but flip to top when I hit the edge',
+            cssClass: 'demo-tt',
+            placement: 'bottom',
+            delay: { show: 0, hide: 0 },
+        });
+    </script>
+
+    <script type="module" src="examples-copy-link.js"></script>
+    <script type="module" src="examples-chapter-nav.js"></script>
+</body>
+</html>

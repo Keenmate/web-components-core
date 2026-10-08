@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anchor primitive — web-components-core</title>
+    <link rel="stylesheet" href="examples-shared.css">
+    <style>
+        /* A persistent floating box used by the anchor demos (createTooltip/Popover
+           own their own elements; here we position a bare box ourselves). */
+        .demo-float {
+            position: fixed;
+            top: 0; left: 0;
+            background: #1a202c;
+            color: #fff;
+            padding: 0.6rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            box-shadow: 0 10px 28px rgba(0,0,0,.3);
+            z-index: 1000;
+            max-width: 90vw;
+        }
+        /* Sticky header with a close button, so the panel is always dismissable
+           even when it flips up over its toggle button (AN02). Stays put while the
+           capped list scrolls underneath. */
+        .demo-float__head {
+            position: sticky;
+            top: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin: -0.6rem -0.9rem 0.5rem;
+            padding: 0.4rem 0.9rem;
+            background: #0f1530;
+            border-radius: 8px 8px 0 0;
+            font-weight: 600;
+        }
+        .demo-float__close {
+            background: transparent;
+            color: #fff;
+            border: 1px solid rgba(255,255,255,.3);
+            border-radius: 6px;
+            width: 1.5rem;
+            height: 1.5rem;
+            line-height: 1;
+            padding: 0;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .demo-float__close:hover { background: rgba(255,255,255,.15); }
+        /* Room below the AN02 reference so the panel opens downward by default
+           (instead of flipping up over the controls). */
+        .an-size-stage { padding-bottom: 36vh; }
+        /* A transformed ancestor — establishes a fixed-positioning containing block,
+           the classic reason a `position: fixed` panel drifts off its anchor. */
+        .transformed {
+            transform: translateZ(0) scale(1);
+            will-change: transform;
+            border: 1px dashed #f59e0b;
+            border-radius: 8px;
+            padding: 1.25rem;
+            background: #fffbeb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="back-link">← Back to Examples</a>
+            <h1>Anchor primitive</h1>
+            <p class="subtitle">The low-level <code>anchor(floating, reference, opts)</code> that
+                <code>createTooltip</code> and <code>createPopover</code> are built on — offset / flip / shift
+                middleware, width matching, size caps, placement locking, and drift detection.</p>
+        </header>
+
+        <!-- ============================================================= -->
+        <!-- AN01 · The primitive                                          -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>AN01 · Positioning a bare element</h2>
+            <p>
+                <code>anchor()</code> positions any floating element against a reference and keeps it there across
+                scroll/resize (<code>autoUpdate</code>). Change the placement or offset — the box repositions live.
+            </p>
+            <div class="controls">
+                <label>placement
+                    <select id="an-placement">
+                        <option>top</option><option selected>bottom</option>
+                        <option>left</option><option>right</option>
+                        <option>bottom-start</option><option>bottom-end</option>
+                    </select>
+                </label>
+                <label><code>offset</code> (px):
+                    <input type="number" id="an-offset" min="0" max="40" step="2" value="8" style="width:5rem">
+                </label>
+            </div>
+            <div class="demo-area">
+                <span class="pos-trigger" id="an-ref">reference element</span>
+                <p class="muted mt-1">A floating box is anchored to it (it follows on scroll).</p>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- AN02 · Size caps                                              -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>AN02 · Size caps (<code>maxHeight</code> / <code>maxWidth</code>)</h2>
+            <p>
+                The <code>size()</code> middleware caps the floating element to the space available between the
+                reference and the viewport edge, so an over-tall or over-wide panel scrolls instead of overflowing.
+                Toggle the caps and reopen.
+            </p>
+            <div class="controls">
+                <label><input type="checkbox" id="an-maxh" checked> <code>maxHeight</code></label>
+                <label><input type="checkbox" id="an-maxw"> <code>maxWidth</code></label>
+                <button id="an-size-btn" class="btn-outline">Toggle tall panel</button>
+            </div>
+            <div class="demo-area an-size-stage">
+                <span class="pos-trigger" id="an-size-ref">reference</span>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- AN03 · Drift detection                                        -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>AN03 · Drift detection (<code>onDrift</code>)</h2>
+            <p>
+                A <code>position: fixed</code> element is positioned relative to the viewport — <em>unless</em> an
+                ancestor establishes a containing block (a CSS <code>transform</code>, <code>filter</code>,
+                <code>will-change</code>, …). Then it silently drifts off its anchor. <code>anchor()</code> can detect
+                that: the reference below lives inside a <strong>transformed</strong> box, so after positioning the
+                <code>onDrift</code> callback reports how far the panel actually landed from where it was placed.
+            </p>
+            <div class="demo-area transformed">
+                <span class="pos-trigger" id="an-drift-ref">reference inside a transformed box</span>
+                <div class="output mt-1">
+                    <div class="output-label">onDrift report:</div>
+                    <pre id="an-drift-out">(open the panel — a drift &gt; 1px is reported here)</pre>
+                </div>
+                <button id="an-drift-btn" class="mt-1">Anchor a panel to it</button>
+            </div>
+            <div class="note warning">
+                <div class="note-title">The fix</div>
+                Pass <code>fixedContainingBlock: true</code> (or a custom <code>platform</code>) so <code>anchor()</code>
+                resolves the offset parent from the floating element's own transformed ancestor — this is the
+                escape hatch components like web-multiselect use.
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- AN04 · Summary                                                 -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>AN04 · API summary</h2>
+            <div class="code-block"><pre>import { anchor } from '@keenmate/web-components-core/positioning';
+
+const handle = anchor(floating, reference, {
+  placement: 'bottom-start',
+  strategy: 'fixed',               // default 'fixed'
+  offset: 4,
+  flip: true, shift: 8,            // middleware (offset → size → flip → shift)
+  matchWidth: 'min',              // 'min' | 'exact'
+  maxHeight: { padding: 8 },      // size() cap to available height
+  maxWidth: { padding: 8 },       // size() cap to available width
+  lockPlacement: 'freeze',        // true | 'freeze'
+  fixedContainingBlock: true,     // resolve offset parent from a transformed ancestor
+  beforeCompute() {},             // per-frame hook (publish a CSS var, clamp, …)
+  onPlaced(p) {}, onComputed(c) {}, onDrift(report) {},
+});
+
+handle.update();   // reposition now
+handle.destroy();  // stop autoUpdate + clean up</pre></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { anchor } from '/src/positioning/index.ts';
+
+        // ── AN01 · the primitive, rebuilt on control change ──────────────────
+        {
+            const ref = document.getElementById('an-ref');
+            const floating = document.createElement('div');
+            floating.className = 'demo-float';
+            floating.textContent = 'anchored floating box';
+            document.body.appendChild(floating);
+
+            let handle;
+            const build = () => {
+                handle?.destroy();
+                handle = anchor(floating, ref, {
+                    placement: document.getElementById('an-placement').value,
+                    offset: parseInt(document.getElementById('an-offset').value, 10) || 0,
+                });
+            };
+            build();
+            document.getElementById('an-placement').addEventListener('change', build);
+            document.getElementById('an-offset').addEventListener('input', build);
+        }
+
+        // ── AN02 · size caps on a toggleable tall/wide panel ─────────────────
+        {
+            const ref = document.getElementById('an-size-ref');
+            const btn = document.getElementById('an-size-btn');
+            let floating, handle;
+            const close = () => { handle?.destroy(); handle = undefined; floating?.remove(); floating = undefined; };
+            const open = () => {
+                close();
+                floating = document.createElement('div');
+                floating.className = 'demo-float';
+                floating.style.overflow = 'auto';
+                // Sticky header with a close button so the panel is ALWAYS dismissable —
+                // even if it flips up and covers its own toggle button.
+                const head = document.createElement('div');
+                head.className = 'demo-float__head';
+                head.innerHTML = '<span>Size-capped panel</span>';
+                const x = document.createElement('button');
+                x.type = 'button';
+                x.className = 'demo-float__close';
+                x.textContent = '×';
+                x.setAttribute('aria-label', 'Close');
+                x.addEventListener('click', close);
+                head.appendChild(x);
+                const list = document.createElement('div');
+                list.innerHTML = Array.from({ length: 30 }, (_, i) => `<div>Row ${i + 1} — some wide-ish content that would overflow</div>`).join('');
+                floating.append(head, list);
+                document.body.appendChild(floating);
+                handle = anchor(floating, ref, {
+                    placement: 'bottom-start',
+                    maxHeight: document.getElementById('an-maxh').checked ? { padding: 8 } : undefined,
+                    maxWidth: document.getElementById('an-maxw').checked ? { padding: 8 } : undefined,
+                });
+            };
+            btn.addEventListener('click', () => (floating ? close() : open()));
+            document.getElementById('an-maxh').addEventListener('change', () => { if (floating) open(); });
+            document.getElementById('an-maxw').addEventListener('change', () => { if (floating) open(); });
+            // Backups: Escape, and a click outside the panel / toggle / controls.
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && floating) close(); });
+            document.addEventListener('click', (e) => {
+                if (!floating) return;
+                if (floating.contains(e.target) || e.target === btn || e.target.closest('.controls')) return;
+                close();
+            });
+        }
+
+        // ── AN03 · drift detection inside a transformed ancestor ─────────────
+        {
+            const ref = document.getElementById('an-drift-ref');
+            const out = document.getElementById('an-drift-out');
+            let floating, handle;
+            document.getElementById('an-drift-btn').addEventListener('click', () => {
+                if (floating) { handle?.destroy(); floating.remove(); floating = undefined; out.textContent = '(closed)'; return; }
+                floating = document.createElement('div');
+                floating.className = 'demo-float';
+                floating.textContent = 'panel anchored across a transformed boundary';
+                document.body.appendChild(floating);
+                handle = anchor(floating, ref, {
+                    placement: 'bottom-start',
+                    onDrift: (report) => {
+                        out.textContent = `driftX: ${report.driftX.toFixed(1)}px  driftY: ${report.driftY.toFixed(1)}px`;
+                    },
+                });
+            });
+        }
+    </script>
+
+    <script type="module" src="examples-copy-link.js"></script>
+    <script type="module" src="examples-chapter-nav.js"></script>
+</body>
+</html>

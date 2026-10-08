@@ -92,7 +92,22 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
 
   const onMouseMove = (event: MouseEvent): void => {
     cursorRect = new DOMRect(event.clientX, event.clientY, 0, 0);
-    handle?.update();
+    if (visible) handle?.update();
+  };
+
+  // Begin following the pointer the moment it ENTERS the trigger — seed the rect
+  // from the enter event and attach the move listener NOW, not in show(). When a
+  // show delay is set, show() runs after it; if the pointer is stationary during
+  // that window (the normal "hover to read" case) no mousemove fires, so cursorRect
+  // would still be undefined at show time and the VirtualElement falls back to the
+  // trigger's full rect → the tooltip pins to the trigger's corner instead of the
+  // cursor. Seeding here guarantees a cursor rect before the first anchor().
+  const startTrackingCursor = (event: MouseEvent): void => {
+    cursorRect = new DOMRect(event.clientX, event.clientY, 0, 0);
+    opts.trigger.addEventListener('mousemove', onMouseMove);
+  };
+  const stopTrackingCursor = (): void => {
+    opts.trigger.removeEventListener('mousemove', onMouseMove);
   };
 
   const clearTimers = (): void => {
@@ -114,16 +129,22 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
       offset: opts.offset ?? 8,
       inheritThemeFrom: opts.inheritThemeFrom ?? opts.trigger,
     });
+    // Ensure cursor tracking is live. For a pointer show it was already attached on
+    // mouseenter (so cursorRect was seeded through the show delay); for an imperative
+    // show() / focus show it's attached here. addEventListener is idempotent on the
+    // same function ref, so the double-attach from mouseenter is a no-op.
     if (opts.followCursor) opts.trigger.addEventListener('mousemove', onMouseMove);
     element.classList.add(visibleClass);
   };
 
   const hide = (): void => {
     clearTimers();
+    // Always detach cursor tracking — the listener may have been attached on
+    // mouseenter while the show delay was still pending (never became visible).
+    stopTrackingCursor();
     if (!visible) return;
     visible = false;
     element.classList.remove(visibleClass);
-    if (opts.followCursor) opts.trigger.removeEventListener('mousemove', onMouseMove);
     handle?.destroy();
     handle = undefined;
     element.remove();
@@ -140,7 +161,12 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     else hide();
   };
 
-  opts.trigger.addEventListener('mouseenter', scheduleShow);
+  const onMouseEnter = (event: MouseEvent): void => {
+    if (opts.followCursor) startTrackingCursor(event);
+    scheduleShow();
+  };
+
+  opts.trigger.addEventListener('mouseenter', onMouseEnter);
   opts.trigger.addEventListener('mouseleave', scheduleHide);
   opts.trigger.addEventListener('focusin', scheduleShow);
   opts.trigger.addEventListener('focusout', scheduleHide);
@@ -153,7 +179,7 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     show,
     hide,
     destroy() {
-      opts.trigger.removeEventListener('mouseenter', scheduleShow);
+      opts.trigger.removeEventListener('mouseenter', onMouseEnter);
       opts.trigger.removeEventListener('mouseleave', scheduleHide);
       opts.trigger.removeEventListener('focusin', scheduleShow);
       opts.trigger.removeEventListener('focusout', scheduleHide);

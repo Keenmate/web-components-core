@@ -31,10 +31,16 @@
     "docs/reactivity-and-batching.md"
   ],
   "scripts": {
+    "dev": "vite --port 12400",
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:install": "playwright install chromium",
     "clean:dist": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "clean": "node -e \"const fs=require('fs');fs.rmSync('dist',{recursive:true,force:true});fs.readdirSync('.').filter(f=>f.endsWith('.tgz')).forEach(f=>fs.rmSync(f))\"",
     "prepublishOnly": "npm run clean:dist && npm run build"
@@ -43,8 +49,13 @@
     "@floating-ui/dom": "^1.8.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "jsdom": "^24.1.0",
     "typescript": "^5.5.0",
+    "vite": "^5.4.0",
     "vitest": "^2.0.0"
+  },
+  "allowScripts": {
+    "esbuild@0.21.5": true
   }
 }
