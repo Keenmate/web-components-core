@@ -12,17 +12,6 @@ and keep it in sync. §11 open questions resolved so far: config key field is
 is split into `reinit()` + `update(partial)` hooks (§11.3, see below). §11.4
 (store/satellite) stays dropzone-local for now.
 
-### Commands
-
-```
-npm test            # vitest run (jsdom) — the whole suite
-npm run test:watch  # vitest watch mode
-npx vitest run src/inputs/converters.test.ts   # a single test file
-npx vitest run -t "toEnum"                      # tests matching a name
-npm run typecheck   # tsc --noEmit
-npm run build       # tsc → dist/ (ESM + .d.ts), excludes *.test.ts
-```
-
 Note: `esbuild`'s postinstall may be blocked by the sandbox on `npm install`;
 if vitest can't start, run `npm approve-scripts esbuild` (or reinstall
 unsandboxed). Tests run in jsdom (`vitest.config.ts`); `*.test.ts` files live
@@ -117,50 +106,16 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
   with **no consumer-facing attribute/event changes**. Order: build core →
   treeview → multiselect + dropzone → daterangepicker → web-grid (§9).
 
-## Logging (`src/logging/`, SPEC §12.1 — implemented)
+## Module notes (lazy-loaded)
 
-`createLoggers(namespace, categories?)` returns categorized `NAMESPACE:CATEGORY`
-loggers over **`loglevel`** (core's one runtime dependency), each with a
-color-coded `%c` prefix done in a `methodFactory` (ordering-safe:
-`%c[label]` + CSS, then raw args — messages stay uncoloured). Categories default
-to `INIT/DATA/UI` and can be redefined or extended. `enableLogging()` defaults to
-`debug`; `disableLogging()` → silent. `createPerfLogger(namespace)` is the opt-in
-timing companion. `loglevel-plugin-prefix` was **dropped** (its browser `%c`
-handling is the ordering bug we avoid) — an amendment to §12.1's original text.
+Per-module design notes live next to the code and load when working there:
+`src/logging/`, `src/cem/`, `src/testing/`, `src/positioning/`, `src/dom/`
+(each has a `CLAUDE.md`).
 
-Note: `BlissElement`'s input-validation warnings deliberately bypass this logger
-and call `console.warn` directly, so they surface even when logging is disabled.
+Note: `BlissElement`'s input-validation warnings deliberately bypass the
+`/logging` loggers and call `console.warn` directly, so they surface even when logging is disabled.
 
-## CEM tooling (`src/cem/`, SPEC §12.6 — implemented)
-
-`@keenmate/web-components-core/cem` is a **build-time-only** subpath (no runtime
-dependency — the analyzer injects `typescript`). `blissInputsPlugin()` teaches
-`@custom-elements-manifest/analyzer` to read the `static inputs` / `static
-events` tables (invisible to the stock analyzer). All extraction is in the pure,
-unit-tested `extractBlissClass(ts, node, sourceFile)`; the plugin is a thin
-analyze-then-`moduleLinkPhase`-merge wrapper. `blissAnalyzerConfig()` is the
-shared config preset. The plugin also recognizes core's `registerComponent()`
-(via `parseRegisterComponentCall` / `extractRegistrations`) as a custom-element
-definition — the stock analyzer only knows `customElements.define()` — so it sets
-`customElement`/`tagName` and adds the `custom-element-definition` export.
-`toEnum` types resolve through `as const` and shared members-consts (e.g. a
-hoisted `const PLACEMENTS = […] as const`), not just inline array literals.
-**Source-of-truth split (SPEC §8 amendment):** the table +
-converter give the *structure* (attr↔prop, type, default, `reflect`, enum
-members); the optional `description`/`deprecated` fields on each `InputDef` /
-`EventDef` row (or a leading comment) give the *prose*. Those doc fields are
-ignored at runtime. Keep `static inputs`/`static events` as literals (or a
-hoisted `const … as const`) — the extractor reads AST literals, not runtime
-values. Rich prose goes in `description` as a **template literal** (multi-line
-markdown, bullet lists — preserved verbatim; the leading-comment fallback
-flattens to one line, so use the field for structured text, and no `${}`
-interpolation or the AST reader skips it). `InputDef.type` (a string) overrides
-the converter-derived manifest type — the escape hatch for precise callback
-signatures / generics that `toFunction()` (always `Function`) can't express. Note
-the type is inferred from the converter *call name*, so a local wrapper (e.g.
-`const cb = () => toFunction()`) defeats inference — use `type` there.
-
-## Testing utilities (`src/testing/` + `whenSettled()`, SPEC §12.7 — implemented)
+## `whenSettled()` / `flush()` (SPEC §12.7)
 
 `BlissElement.whenSettled(): Promise<void>` (in **core**, not just tests)
 resolves after the pending flush's `reinit()`/`update()` runs — immediately when
@@ -171,42 +126,6 @@ applies pending writes *now* (runs `reinit()`/`update()` before returning), the
 escape hatch for **imperative methods**: call `this.flush()` at the top of a
 method that reads/mutates live state so `el.prop = x; el.method()` keeps working
 when `prop` coalesced on a microtask (no `await` in between).
-`@keenmate/web-components-core/testing` is a separate subpath of runner-agnostic
-DOM fixtures (pure DOM, **zero deps**): `mount`/`cleanup`, `mountBeforeUpgrade`
-(pre-upgrade capture), `uniqueTag`/`defineOnce`, `nextTick`/`nextFrame`, and
-`listen()` → `EventSpy`. Playwright/a11y-contrast fixtures are **deferred** (out
-of the input-model core).
-
-## Positioning (`src/positioning/`, SPEC §12.2 — implemented)
-
-`@keenmate/web-components-core/positioning` is a subpath over one pinned
-`@floating-ui/dom`. `anchor(floating, reference, opts)` is the low-level
-primitive (`'fixed'` default; `offset→size→flip→shift` middleware;
-`matchWidth: 'min'|'exact'`; `lockPlacement` → `true` = `flip({ fallbackStrategy:
-'initialPlacement' })`, `'freeze'` = flip once then pin the resolved placement;
-`beforeCompute` per-frame hook (publish reference width to a CSS var / clamp
-before measuring); `data-theme` inheritance for portaled layers per C-CS-10;
-optional `platform` escape hatch) returning `{ update, destroy }`.
-`createTooltip()` (hover/focus + delay + `followCursor` via `VirtualElement`;
-`onBeforeShow` to dismiss an overlapping tooltip; `ShadowRoot` container for
-shadow-scoped tooltip CSS/vars) and `createPopover()` (portaled dropdown/panel,
-width-match, placement lock) are thin wrappers. Decisions: follow-cursor is a
-tooltip option not a preset; the bespoke shadow-DOM platform was NOT ported (1.8
-handles it + the `platform` hatch — a component with a genuinely custom platform,
-like web-multiselect's narrowed fixed-position containing-block heuristic, passes
-it via that hatch). Tests mock `@floating-ui/dom` (jsdom has no layout).
-
-## Style injection (`src/dom/adopt-styles.ts`, SPEC §12.8 — implemented)
-
-Two zero-dep free functions in the main index (core stays render-agnostic — no
-shadow-DOM assumptions in `BlissElement`, so these are NOT methods).
-`adoptStyles(root, ...cssStrings)` adopts static shared stylesheets (cached
-`CSSStyleSheet` per string, shared across instances, `<style>` fallback,
-SSR-safe, dedup per root) — the `main.css?inline` case. `createStyleSlot(root, {
-position?, className? })` → `{ set, clear, destroy }` is a per-instance
-replaceable `<style>` slot for the `customStylesCallback` case (consistent
-position so re-set replaces; `<style>`-based so user `@import` works). Authoring
-rules (`@layer` order, `?inline`) stay CSS-guideline, not code.
 
 ## Beyond v1
 

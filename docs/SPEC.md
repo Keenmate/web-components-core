@@ -259,6 +259,52 @@ The `static inputs` table is sanity-checked once per class at construction
 without an `attribute` / without `converter.toAttribute`. Removing an attribute
 is reactive — it resets that input to its `default` (absent == default).
 
+### 6.1 The null-clear contract (`BlissElement` ↔ engine)
+
+The `partial` handed to `update()`, and the config an engine receives, carry
+**two distinct absent-sentinels — do not conflate them:**
+
+- **`undefined` = "not in this batch, leave it alone."** A key the batch did not
+  change is simply absent from the partial, so it reads back as `undefined`.
+  This is what lets a partial resend omit untouched keys.
+- **`null` = "explicitly cleared — reset it."** A real value, produced when a
+  nullable input is emptied (`removeAttribute`, or `el.prop = null`). It is the
+  input's declared *unset* state and is seeded as the value at construction, so
+  a set→clear round-trip returns the field to how it was born.
+
+A value is only ever `null` in `config` when the input's descriptor admits
+`null` (nullable `toText`, tristate `toBool`, `toFunction`, a
+`shouldNullOnInvalid` enum, or a `default: null` row — see
+`clearableConfigKeys`). So **null is always intentional; never drop it.**
+
+**Component side.** Assemble the engine config with
+`this.engineConfig(excludeKeys)` (→ `collectEngineConfig`): a shallow copy of
+`config`, `exclude` keys removed, **every `null` preserved**. Never hand-roll a
+`if (value === null) delete cfg[key]` loop — dropping the clear is the bug this
+replaces (it made clearing a nullable input a silent no-op across every
+component).
+
+```ts
+protected override update(partial = {}) {
+  const cfg = this.engineConfig(NON_ENGINE_KEYS); // nulls intact
+  Object.assign(cfg, partial);                    // partial already carries null
+  this.#engine.update(cfg);
+}
+```
+
+**Engine side.** The merge must treat `null` as a real value, per field:
+
+- **Clearable field** (`focusedNodeClass`, …): `this._x = updates.x` — `null`
+  clears it.
+- **Defaulted field** (icon classes, `isSorted`, …): `this._x = updates.x ?? DEFAULT`
+  — `null` resolves to the default.
+- The `if (updates.x !== undefined)` guard **stays** — it is what skips untouched
+  keys. Because a cleared key arrives *present with `null`* (not absent), it
+  passes the guard and lands. A field that is neither clearable nor
+  `?? DEFAULT`-guarded (a raw `this._x = updates.x` later dereferenced) will now
+  receive `null` where it used to receive nothing — that is a latent bug the old
+  drop-the-null behavior hid; fix the merge, don't re-drop the null.
+
 ---
 
 ## 7. Fit check — all five components

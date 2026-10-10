@@ -12,6 +12,8 @@
  * `dispatch`/`define` (web-grid's use). See docs/SPEC.md §6.
  */
 import { resolveFromAttribute, resolveFromProperty, type Resolved } from '../inputs/apply.js';
+import { deriveClearableKeys } from '../inputs/clearable.js';
+import { collectEngineConfig } from '../inputs/engine-config.js';
 import type { AttrReader, InputDef } from '../inputs/types.js';
 import { createMicrotaskScheduler, type MicrotaskScheduler } from '../dom/microtask-scheduler.js';
 import { observeEnvironment, observeViewport, type EnvironmentSnapshot } from '../environment/environment.js';
@@ -31,6 +33,9 @@ const Base = (typeof HTMLElement !== 'undefined' ? HTMLElement : (class {} as un
 
 /** Constructors whose input table has already been sanity-checked (once per class). */
 const VALIDATED = new WeakSet<object>();
+
+/** Shared empty set for elements without an input table (opt-in). */
+const EMPTY_SET: ReadonlySet<string> = new Set();
 
 /** Monotonic per-element counter, purely for a readable `tag#n` log id. */
 let INSTANCE_SEQ = 0;
@@ -64,6 +69,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
   readonly #config: Record<string, unknown> = {};
   readonly #byConfigKey = new Map<string, InputDef>();
   readonly #byAttribute = new Map<string, InputDef>();
+  #clearableKeys: ReadonlySet<string> = EMPTY_SET;
   readonly #eventsByName = new Map<string, NormalizedEventDef>();
   /** Live handler currently bound via each managed `on<Name>` property, keyed by event name. */
   readonly #eventHandlers = new Map<string, EventListener>();
@@ -106,6 +112,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
       if (def.attribute) this.#byAttribute.set(def.attribute, def);
     }
     for (const ev of events) this.#eventsByName.set(ev.name, ev);
+    if (defs.length) this.#clearableKeys = deriveClearableKeys(defs);
     this.#seedDefaults(defs);
     this.#installAccessors(defs);
     this.#installEventAccessors(events);
@@ -245,6 +252,37 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
   /** The current validated config. */
   protected get config(): Readonly<Record<string, unknown>> {
     return this.#config;
+  }
+
+  /**
+   * The `configKey`s for which a `null` in {@link config} is a deliberate
+   * "clear/reset" signal (the input's converter admits `null` — nullable
+   * `toText`, tristate `toBool`, `toFunction`, `shouldNullOnInvalid` enums, or a
+   * row with `default: null`), NOT an accident to be dropped.
+   *
+   * Derived once from the input table, this lets an engine-config assembler keep
+   * the clear signal only where it's meaningful instead of a hand-maintained
+   * per-component exception list — see the null-clear contract (SPEC §11
+   * amendment). Empty for elements without an input table.
+   */
+  protected get clearableConfigKeys(): ReadonlySet<string> {
+    return this.#clearableKeys;
+  }
+
+  /**
+   * Assemble the config object to hand to an engine: a fresh shallow copy of
+   * {@link config} with `exclude` keys removed and **every `null` preserved**.
+   *
+   * A `null` here is a deliberate clear signal (the input admits `null` — see
+   * {@link clearableConfigKeys}); forwarding it is what resets a cleared field.
+   * Do NOT strip nulls — that is the bug this method exists to prevent. Pass the
+   * keys the engine must never see (component-only config, or keys the component
+   * applies itself) as `exclude`. Returns a new object each call, safe to
+   * `Object.assign` an `update(partial)` onto. See the null-clear contract
+   * (SPEC §6).
+   */
+  protected engineConfig(exclude?: Iterable<string>): Record<string, unknown> {
+    return collectEngineConfig(this.#config, { exclude });
   }
 
   /**

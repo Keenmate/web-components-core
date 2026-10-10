@@ -19,6 +19,8 @@ export {
 export type { EnumConverter } from './inputs/converters.js';
 export { resolveFromAttribute, resolveFromProperty } from './inputs/apply.js';
 export type { Resolved } from './inputs/apply.js';
+export { collectEngineConfig } from './inputs/engine-config.js';
+export { deriveClearableKeys, isClearableConverter, isClearableInput } from './inputs/clearable.js';
 
 // Reactive element base
 export { BlissElement } from './element/bliss-element.js';

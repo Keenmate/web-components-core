@@ -9,7 +9,7 @@ import { test, expect } from './fixtures';
 test.describe('examples index', () => {
   test('renders a card per registered page and a version badge', async ({ page }) => {
     await page.goto('/index.html');
-    await expect(page.locator('.card-link')).toHaveCount(3);
+    await expect(page.locator('.card-link')).toHaveCount(4);
     await expect(page.locator('#version-badge')).toHaveText(/^v\d/);
     // The XXYY chapter codes show on the cards.
     await expect(page.locator('.card-code', { hasText: 'TT' })).toBeVisible();
@@ -60,5 +60,32 @@ test.describe('examples-anchor.html', () => {
     const pos = await box.evaluate((el) => ({ position: getComputedStyle(el).position, left: el.style.left }));
     expect(pos.position).toBe('fixed');
     expect(pos.left).not.toBe('');
+  });
+});
+
+test.describe('examples-nullclear.html', () => {
+  test.beforeEach(async ({ page }) => page.goto('/examples-nullclear.html'));
+
+  const focusedClass = (page: import('@playwright/test').Page) =>
+    page.locator('#live').evaluate((el) => (el.shadowRoot?.getElementById('focused') as HTMLElement).className);
+
+  test('NC03 preserve: clearing a nullable input reverts to the built-in default', async ({ page }) => {
+    await page.locator('#c-set').click();
+    expect(await focusedClass(page)).toContain('ring-gold');
+
+    await page.locator('#c-clear').click(); // removeAttribute → focusedNodeClass = null
+    expect(await focusedClass(page)).toContain('nc-focus-default');
+    expect(await focusedClass(page)).not.toContain('ring-gold');
+    await expect(page.locator('#c-verdict')).toHaveClass(/ok/);
+  });
+
+  test('NC03 strip: the old delete-null loop makes the clear a silent no-op', async ({ page }) => {
+    await page.locator('input[name="mode"][value="strip"]').check();
+    await page.locator('#c-set').click();
+    expect(await focusedClass(page)).toContain('ring-gold');
+
+    await page.locator('#c-clear').click();
+    expect(await focusedClass(page)).toContain('ring-gold'); // stale class sticks — the bug
+    await expect(page.locator('#c-verdict')).toHaveClass(/bug/);
   });
 });

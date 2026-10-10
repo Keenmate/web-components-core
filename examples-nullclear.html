@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Null-clear contract — web-components-core</title>
+    <link rel="stylesheet" href="examples-shared.css">
+    <style>
+        .readout { font-family: ui-monospace, 'Courier New', monospace; font-size: .85rem;
+                   background: #0f172a; color: #e2e8f0; border-radius: 10px; padding: 1rem 1.1rem; margin-top: 1rem; overflow-x: auto; }
+        .readout .k { color: #7dd3fc; }
+        .readout .null { color: #f0abfc; font-weight: 700; }
+        .readout .absent { color: #fca5a5; }
+        .verdict { margin-top: .9rem; padding: .7rem 1rem; border-radius: 10px; font-weight: 600; font-size: .95rem; }
+        .verdict.ok { background: #dcfce7; color: #166534; }
+        .verdict.bug { background: #fee2e2; color: #991b1b; }
+        .mode-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+        nullclear-card { display: block; max-width: 20rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="back-link">← Back to Examples</a>
+            <h1>The null-clear contract</h1>
+            <p class="subtitle">How <code>BlissElement</code> hands a <em>cleared</em> input to an engine —
+                <code>null</code> means “reset”, <code>undefined</code> means “leave alone”. Assemble the engine
+                config with <code>this.engineConfig(exclude)</code> (→ <code>collectEngineConfig</code>) so the clear
+                signal survives. See <strong>SPEC §6.1</strong>.</p>
+        </header>
+
+        <!-- ============================================================= -->
+        <!-- NC01 · The two sentinels                                      -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>NC01 · Two absent-sentinels, never conflated</h2>
+            <p>
+                The <code>partial</code> an engine receives carries two distinct kinds of “absent”:
+            </p>
+            <div class="note">
+                <div class="note-title">The rule</div>
+                <code>undefined</code> = <strong>not in this batch</strong> — the key didn't change, leave the
+                engine's current value alone (this is what the <code>if (updates.x !== undefined)</code> guard skips).
+                <br>
+                <code>null</code> = <strong>explicitly cleared</strong> — a real value, produced when a nullable input
+                is emptied (<code>removeAttribute</code> or <code>el.prop = null</code>). It is the input's declared
+                unset state, so a set→clear round-trip returns the field to how it was born.
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- NC02 · collectEngineConfig at the data level                  -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>NC02 · <code>collectEngineConfig</code> preserves <code>null</code></h2>
+            <p>
+                The pure assembler, driven directly (no component). Set a value, then clear it, and watch the assembled
+                config: the key stays <span style="color:#a21caf;font-weight:700">present with <code>null</code></span>
+                — it is <em>not</em> dropped. Compare with the old hand-rolled “delete every null” loop.
+            </p>
+            <div class="controls">
+                <label><code>focused-node-class</code>:
+                    <input type="text" id="d-value" value="ring-gold" style="width:12rem">
+                </label>
+                <button id="d-set">Set</button>
+                <button id="d-clear">Clear (= null)</button>
+                <label style="margin-left:auto"><input type="checkbox" id="d-strip"> old “delete null” loop</label>
+            </div>
+            <div class="demo-area">
+                <label class="demo-label">Assembled engine config (<code>exclude: ['theme']</code>):</label>
+                <div class="readout" id="d-out"></div>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- NC03 · The live <nullclear-card> component                     -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>NC03 · The bug &amp; the fix, live</h2>
+            <p>
+                A real <code>BlissElement</code> (<code>&lt;nullclear-card&gt;</code>) driving a stub engine with the
+                genuine <code>!== undefined</code> merge. Row&nbsp;2 is focused; its highlight class comes from the
+                <code>focused-node-class</code> input, falling back to a built-in default
+                (<code>nc-focus-default</code>, the blue bar). <strong>Set</strong> a custom class, then
+                <strong>Clear</strong> it:
+            </p>
+            <ul style="color:#475569; line-height:1.7; margin-top:0">
+                <li><strong>preserve</strong> (<code>engineConfig</code>): clearing reverts to the blue default. ✅</li>
+                <li><strong>strip</strong> (old loop): clearing is a silent no-op — the custom class sticks. 🐛</li>
+            </ul>
+            <div class="controls mode-row">
+                <label><input type="radio" name="mode" value="preserve" checked> <code>preserve</code> (engineConfig)</label>
+                <label><input type="radio" name="mode" value="strip"> <code>strip</code> (old loop)</label>
+            </div>
+            <div class="controls">
+                <label><code>focused-node-class</code>:
+                    <select id="c-value">
+                        <option value="ring-gold">ring-gold</option>
+                        <option value="ring-red">ring-red</option>
+                    </select>
+                </label>
+                <button id="c-set">Set</button>
+                <button id="c-clear">Clear (removeAttribute)</button>
+            </div>
+            <div class="demo-area">
+                <nullclear-card id="live" tabindex="0"></nullclear-card>
+                <label class="demo-label" style="margin-top:1rem">What the engine's <code>updateProps</code> last received:</label>
+                <div class="readout" id="c-out"></div>
+                <div class="verdict" id="c-verdict"></div>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- NC04 · API summary                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>NC04 · API summary</h2>
+            <div class="code-block"><pre>import { collectEngineConfig } from '@keenmate/web-components-core';
+
+// Component side — assemble the config to hand your engine:
+protected override update(partial = {}) {
+  const cfg = this.engineConfig(NON_ENGINE_KEYS); // shallow copy, nulls PRESERVED
+  Object.assign(cfg, partial);                    // partial already carries null
+  this.#engine.update(cfg);
+}
+
+// Engine side — treat null as a real value, per field:
+if (updates.x !== undefined) this._x = updates.x;          // clearable: null clears
+if (updates.y !== undefined) this._y = updates.y ?? DEFAULT;// defaulted: null → default</pre></div>
+            <div class="note">
+                <div class="note-title">Never re-drop the null</div>
+                A field that is neither clearable nor <code>?? DEFAULT</code>-guarded will now receive <code>null</code>
+                where it used to receive nothing — a latent bug the old drop-the-null behavior hid. Fix the engine
+                merge; don't strip the null back out.
+            </div>
+        </div>
+    </div>
+
+    <!-- The demo web component (registers <nullclear-card>). -->
+    <script type="module" src="examples-nullclear-card.ts"></script>
+
+    <script type="module">
+        import { collectEngineConfig } from '/src/index.ts';
+
+        const fmt = (obj) => {
+            const keys = Object.keys(obj);
+            if (!keys.length) return '{}';
+            const body = keys.map((k) => {
+                const v = obj[k];
+                const val = v === null ? `<span class="null">null</span>`
+                          : typeof v === 'string' ? `"${v}"` : String(v);
+                return `  <span class="k">${k}</span>: ${val}`;
+            }).join(',\n');
+            return `{\n${body}\n}`;
+        };
+
+        // ── NC02 · pure collectEngineConfig ──────────────────────────────────
+        // The "config bag" as BlissElement would hold it: a nullable field plus a
+        // non-engine key (theme) that is always excluded.
+        let bag = { focusedNodeClass: null, theme: 'dark' };
+        const dOut = document.getElementById('d-out');
+        const dStrip = document.getElementById('d-strip');
+        const renderD = () => {
+            let cfg = collectEngineConfig(bag, { exclude: ['theme'] });
+            if (dStrip.checked) for (const k of Object.keys(cfg)) if (cfg[k] === null) delete cfg[k];
+            const cleared = !('focusedNodeClass' in cfg);
+            dOut.innerHTML = fmt(cfg) + (cleared
+                ? `\n\n<span class="absent">// focusedNodeClass is ABSENT — the engine's guard will skip it → stale value sticks</span>`
+                : (cfg.focusedNodeClass === null ? `\n\n<span class="null">// focusedNodeClass present as null — the clear reaches the engine</span>` : ''));
+        };
+        document.getElementById('d-set').addEventListener('click', () => {
+            bag = { ...bag, focusedNodeClass: document.getElementById('d-value').value }; renderD();
+        });
+        document.getElementById('d-clear').addEventListener('click', () => {
+            bag = { ...bag, focusedNodeClass: null }; renderD();
+        });
+        dStrip.addEventListener('change', renderD);
+        renderD();
+
+        // ── NC03 · the live <nullclear-card> ─────────────────────────────────
+        const card = document.getElementById('live');
+        const cOut = document.getElementById('c-out');
+        const cVerdict = document.getElementById('c-verdict');
+        // The component reports each engine update through an onEngineUpdate callback
+        // input (property-only, on:'none') — itself a demo of toFunction + clearable.
+        card.onEngineUpdate = (info) => {
+            cOut.innerHTML = fmt(info.received)
+                + `\n\n<span class="k">// applied class</span>: "${info.appliedClass}"`;
+            const isDefault = info.appliedClass === 'nc-focus-default';
+            const custom = card.getAttribute('focused-node-class');
+            if (custom === null && isDefault) { cVerdict.className = 'verdict ok'; cVerdict.textContent = '✅ cleared → reverted to the built-in default'; }
+            else if (custom === null && !isDefault) { cVerdict.className = 'verdict bug'; cVerdict.textContent = '🐛 cleared, but the stale custom class is still applied (strip mode)'; }
+            else { cVerdict.className = 'verdict ok'; cVerdict.textContent = `✅ custom class "${info.appliedClass}" applied`; }
+        };
+        for (const r of document.querySelectorAll('input[name="mode"]')) {
+            r.addEventListener('change', () => { card.assembleMode = document.querySelector('input[name="mode"]:checked').value; });
+        }
+        document.getElementById('c-set').addEventListener('click', () => {
+            card.setAttribute('focused-node-class', document.getElementById('c-value').value);
+        });
+        document.getElementById('c-clear').addEventListener('click', () => {
+            card.removeAttribute('focused-node-class');
+        });
+    </script>
+
+    <script type="module" src="examples-copy-link.js"></script>
+    <script type="module" src="examples-chapter-nav.js"></script>
+</body>
+</html>
