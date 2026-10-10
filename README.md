@@ -10,6 +10,27 @@ that correctness lives in a single place and can't drift.
 > **[`docs/SPEC.md`](docs/SPEC.md) is the source of truth** for design intent. This
 > README is the tour; read the relevant SPEC section before changing behavior.
 
+## What's New in v1.0.0-rc12
+
+- **Null-clear contract — a cleared input now actually reaches your engine.** Core assembles the
+  engine config through the new `BlissElement.engineConfig(exclude)` (and the exported
+  `collectEngineConfig`), which **preserves `null`**. A nullable input cleared via
+  `removeAttribute` / `el.prop = null` now travels to the engine as `{ key: null }` — the deliberate
+  "reset" signal — instead of being silently dropped. This fixes the latent bug where clearing a
+  nullable field (e.g. `focused-node-class`) was a no-op and the stale value stuck. The two
+  sentinels are now contractual: `null` = *cleared/reset*, `undefined` = *not in this batch, leave
+  alone*. See the new **SPEC §6.1** and the live `examples-nullclear.html` demo.
+- **`collectEngineConfig` + `clearableConfigKeys` exported.** Core can derive, from the input table,
+  which keys legitimately carry `null` (`isClearableConverter` / `deriveClearableKeys`) — retiring
+  the hand-maintained per-component null-exception lists.
+- **⚠️ Breaking for engine authors.** An engine's merge must now treat a present `null` as a real
+  value: `this._x = updates.x` for a clearable field (null clears), or `this._x = updates.x ?? DEFAULT`
+  for a defaulted one. A field that is neither — a raw assign later dereferenced — will now receive
+  `null` where it previously received nothing; fix the merge, don't re-drop the null. Migration
+  snippets in [`CHANGELOG.md`](CHANGELOG.md).
+
+See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
+
 ## What's New in v1.0.0-rc11
 
 - **`matchWidth: 'max'` — cap a floating element to the reference width.** Completes the
@@ -22,39 +43,6 @@ that correctness lives in a single place and can't drift.
   entered a trigger and stayed still fired no `mousemove` during the show delay, so the tooltip
   pinned to the trigger's corner instead of the cursor. The cursor rect is now seeded from
   `mouseenter`, so there's always a valid position before the tooltip shows.
-
-See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
-
-## What's New in v1.0.0-rc10
-
-- **Cross-component overlay coordination — one popover open at a time, across frameworks.**
-  New `registerOverlay` / `notifyOverlayActivated` / `dismissAllOverlays` / `onOverlayActivated`
-  (and the `ALL_GROUPS` wildcard) let floating overlays dismiss each other when one opens — every
-  KM component *and* any external popover (a Svelte component, a plain-DOM widget, another
-  framework). Everything routes through one `document` CustomEvent `km-overlay-activated` carrying
-  `{ source, group }`, so outside code can both trigger dismissal and be dismissed *without*
-  importing core. An optional `group` scopes coordination, so two independent sets of controls stay
-  separate; ungrouped overlays share one default group. SSR-safe (no-op without a `document`).
-
-## What's New in v1.0.0-rc09
-
-- **`viewportChanged(env)` — a throttled, continuous viewport-size hook.** The
-  environment observable now splits by cadence: `environmentChanged` fires only on
-  *discrete* flips (breakpoint, orientation, pointer/hover), while the new
-  `viewportChanged` streams live `viewportWidth`/`viewportHeight` changes throttled
-  to ~30 ms (leading + trailing) — for a layout that reflows *within* a device
-  class, e.g. a desktop window shrinking narrow. Opt-in and zero-cost unless you
-  override it.
-- **`resized(size)` + `observeElementSize(el, cb)` — per-element size reactivity.**
-  Reflow to the component's *own box*, not the window (a picker in a narrow sidebar
-  on a wide monitor). One shared page-wide `ResizeObserver` fans out to every
-  subscriber; fires the real border box after connect, then on changes, throttled
-  and deduped. Prefer CSS container queries for *presentational* reflow — reach for
-  `resized()` when the reflow is *structural* (a different number of rendered
-  children, a `reinit()` input).
-- **`environmentChanged` no longer wakes on raw window resizes.** Viewport width/
-  height left its equality gate, so a desktop drag-resize that crosses no
-  breakpoint stops firing it ~60×/s. Move live-width logic to `viewportChanged`.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
 

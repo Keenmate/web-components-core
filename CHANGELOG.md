@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc12] - 2026-10-10
+
+### Added
+
+- **Canonical engine-config assembly (`collectEngineConfig`, `BlissElement.engineConfig`).**
+  `src/inputs/engine-config.ts` exports `collectEngineConfig(config, { exclude })` — a shallow copy
+  of the merged config with `exclude` keys removed and **every `null` preserved** — and
+  `BlissElement` exposes the protected `engineConfig(exclude?)` wrapper. This is the one correct way
+  to turn the input bag into the object a component hands its engine, replacing the per-component
+  null-handling loops that had drifted into three copies of the same latent bug.
+- **Clearability derivation from the input table (`clearableConfigKeys`, `deriveClearableKeys`,
+  `isClearableConverter`, `isClearableInput`).** `src/inputs/clearable.ts` derives — from the
+  existing converter contract, with no new converter metadata — which `configKey`s legitimately
+  carry `null` (a nullable `toText`, tristate `toBool`, `toFunction`, a `shouldNullOnInvalid` enum,
+  or a `default: null` row). Exposed on `BlissElement` as the protected `clearableConfigKeys` getter;
+  retires hand-maintained per-component null-exception lists.
+- **SPEC §6.1 — the `BlissElement` ↔ engine null-clear contract.** Documents the two absent-
+  sentinels (`null` = cleared/reset, `undefined` = not-in-batch/leave-alone), the component-side
+  `engineConfig()` assembly pattern, and the three engine-merge field categories.
+- **`examples-nullclear.html` + `<nullclear-card>` demo component** (`examples-nullclear-card.ts`,
+  chapter code `NC`): shows `collectEngineConfig` preserving `null` at the data level, then a live
+  `BlissElement` driving a stub engine with the real `!== undefined` merge — bug (old delete-null
+  loop) vs fix (`engineConfig`) side by side. `e2e/examples.spec.ts` smoke-tests both paths.
+
+### Changed
+
+- **BREAKING (engine authors): a cleared nullable input now reaches the engine as a present `null`,
+  not an absent key.** Previously every KM component stripped `null` while assembling its engine
+  config (`if (value === null) delete cfg[key]`), so clearing a nullable input — e.g.
+  `removeAttribute('focused-node-class')` or `el.focusedNodeClass = null` — was silently a no-op and
+  the stale value stuck. Core now preserves the `null`, so the clear travels through and the field
+  resets. Engine merges must treat a present `null` as a real value:
+
+  ```ts
+  // BEFORE — per component, dropping the clear (the bug):
+  const cfg = { ...this.getConfig() };
+  for (const k of Object.keys(cfg)) if (cfg[k] === null && k !== 'theme') delete cfg[k];
+  this.#engine.update(cfg);
+
+  // AFTER — core preserves null; the engine resolves it:
+  const cfg = this.engineConfig(NON_ENGINE_KEYS); // nulls intact
+  Object.assign(cfg, partial);
+  this.#engine.update(cfg);
+  ```
+
+  ```ts
+  // Engine merge — treat null as a real value, per field:
+  if (updates.focusedNodeClass !== undefined) this._focusedNodeClass = updates.focusedNodeClass;        // clearable: null clears
+  if (updates.iconClass        !== undefined) this._iconClass        = updates.iconClass ?? DEFAULT_ICON; // defaulted: null → default
+  ```
+
+  Keep the `!== undefined` guard — it is what skips untouched keys, and a cleared key now arrives
+  *present with `null`*, so it passes the guard and lands. A field that is neither clearable nor
+  `?? DEFAULT`-guarded (a raw `this._x = updates.x` later dereferenced) will now receive `null` where
+  it used to receive nothing — a latent bug the old drop-the-null behavior hid; fix the merge, do
+  **not** re-drop the null. Migrate each component by deleting its null-strip loop and calling
+  `engineConfig(...)`; verify every nullable field's set→clear transition in that repo's e2e.
+
 ## [1.0.0-rc11] - 2026-10-08
 
 ### Added
