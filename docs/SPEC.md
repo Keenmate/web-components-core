@@ -910,3 +910,88 @@ width-aware (or any snapshot field) → `classifyDevice(env)` + your own branch.
 Overlay runtime helpers for the fullscreen tier: `lockBodyScroll()` (ref-counted
 body-scroll lock) and `observeKeyboardInset(panel)` (pin a fixed sheet above the
 soft keyboard via `visualViewport`).
+
+### 12.10 Theme context (dark / light) — IMPLEMENTED (`src/environment/theme.ts`)
+
+**The gap.** Components followed a framework's dark/light signal with
+`:host-context([data-theme="dark"])`, `:host-context([data-bs-theme="dark"])` and
+`:host-context(.dark)`. Firefox doesn't support `:host-context()` and Safari only
+partly, so on a Tailwind `<html class="dark">` page those browsers rendered the
+component light. Every BlissFramework component carried the same rules, so the fix
+belongs here, once.
+
+**Detect once, reuse.** Detection moves to JS and runs once per *watched element*,
+not per component:
+
+- The **page** (the default): `<html>`, then `<body>`. On each element the signal
+  is read in a fixed order and the first match wins: `data-theme`, then
+  `data-bs-theme`, then a `.dark` / `.light` class. Only `dark` / `light` count; a
+  named theme (`data-theme="corporate"`) falls through.
+- One cached value per watched element, computed when its first subscriber arrives.
+  One shared `MutationObserver` per watched element (`attributeFilter` = `class`,
+  `data-theme`, `data-bs-theme`) re-detects only when a signal attribute changes,
+  and subscribers are notified only when their *result* changes. 50 components on
+  one page = one detection + one observer. The page observer also watches `<html>`'s
+  direct children, so a swapped `<body>` (Turbo / htmx) is re-attached.
+- Ref-counted: an observer starts with the first subscriber of its element and stops
+  with the last.
+
+**Forcing and sources (resolution order, highest first).**
+
+1. **Per-instance `data-theme="dark|light"` on the component** — pure component CSS
+   (`:host([data-theme])` rules come after the context rules), above everything here.
+2. **`setThemeMode('dark' | 'light')`** — forced globally. Observers pause while
+   forced (nothing to detect); `setThemeMode('auto')` re-detects once and resumes.
+3. **`theme-source`** — a per-component source instead of the page: a CSS selector
+   (nearest matching ancestor, crossing shadow roots; else the first match in the
+   document), `closest` (the nearest ancestor carrying a signal *at connect* — the
+   old `:host-context` reach, opt-in), or an `Element` (property). Components sharing
+   a source share its cache and observer. `<html>` / `<body>` as a source collapse
+   to the page watch. A source without a signal falls back to the page.
+4. **The page.**
+5. **`null`** — nothing to mirror; the inherited `color-scheme` (and the OS
+   preference through `light-dark()`) applies, exactly as before.
+
+Forcing beats detection at every level, so a global `setThemeMode()` also beats a
+`theme-source`; a section that must differ from a global force uses per-instance
+`data-theme`.
+
+**Trade-off, on purpose.** The default is page-level. A `data-bs-theme="dark"` on a
+wrapper `<div>` is no longer picked up automatically (`:host-context` did that in
+Chromium only); use `theme-source="closest"` or a selector there. A source resolved
+by `closest` / selector is fixed for the subscription — changing `theme-source`
+re-resolves, a signal added later to some *other* ancestor does not.
+
+**Cross-copy safety.** The state (mode, page watch, source watches) lives on
+`globalThis[Symbol.for('@keenmate/web-components-core/theme@1')]`, so two components
+that each bundle their own copy of core still share one mode and one observer per
+element. The `@1` suffix versions the state shape.
+
+**`BlissElement` integration.** On by default for every component:
+
+- Every element observes the global `theme-source` attribute (like `dir`) and has a
+  `themeSource` property (string reflects to the attribute; an `Element` doesn't).
+- On connect it subscribes with its source and mirrors the effective scheme onto the
+  host as **`data-context-theme="dark|light"`** (removed when `null`), then calls the
+  opt-in **`themeChanged(scheme)`** hook (for JS-side theming: canvas, chart palette).
+  Unsubscribes on disconnect; a source change while connected re-subscribes.
+- `static themeContext = false` opts a component out entirely (no subscription).
+
+Component CSS replaces the `:host-context` rules with plain host selectors, which
+work in every browser:
+
+```css
+:host([data-context-theme="dark"])  { color-scheme: dark; }
+:host([data-context-theme="light"]) { color-scheme: light; }
+/* per-instance forcing stays after these, so it wins */
+:host([data-theme="dark"])  { color-scheme: dark; }
+:host([data-theme="light"]) { color-scheme: light; }
+```
+
+**API** (main index): `setThemeMode(mode)`, `getThemeMode()`,
+`getThemeContext(host?, source?)` (sync read; cached while observed),
+`observeThemeContext(host, source, listener, { immediate? }) => unsubscribe`,
+`readThemeSignal(el)`, `resolveThemeSource(host, source)`, the constants
+`THEME_CONTEXT_ATTRIBUTE` / `THEME_SOURCE_ATTRIBUTE`, and the types `ColorScheme`,
+`ThemeMode`, `ThemeSource`, `ThemeListener`. SSR-safe: no DOM → `null` (or the forced
+mode) once, no-op unsubscribe.

@@ -73,6 +73,20 @@ export type {
 // the reflow is presentational; use this for structural (JS) reflow.
 export { observeElementSize } from './environment/element-size.js';
 export type { ElementSize, ElementSizeListener, ObserveElementSizeOptions } from './environment/element-size.js';
+// Theme context (SPEC §12.10): dark/light detected once per page (or per
+// `theme-source` element) and mirrored onto every BlissElement host as
+// `data-context-theme`; `setThemeMode()` forces it globally.
+export {
+  setThemeMode,
+  getThemeMode,
+  getThemeContext,
+  observeThemeContext,
+  readThemeSignal,
+  resolveThemeSource,
+  THEME_CONTEXT_ATTRIBUTE,
+  THEME_SOURCE_ATTRIBUTE,
+} from './environment/theme.js';
+export type { ColorScheme, ThemeMode, ThemeSource, ThemeListener } from './environment/theme.js';
 
 // Overlay / fullscreen presentation primitives (SPEC §12.9) — shared by any
 // component that swaps a floating panel for a full-viewport sheet on phones.

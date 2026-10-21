@@ -18,6 +18,13 @@ import type { AttrReader, InputDef } from '../inputs/types.js';
 import { createMicrotaskScheduler, type MicrotaskScheduler } from '../dom/microtask-scheduler.js';
 import { observeEnvironment, observeViewport, type EnvironmentSnapshot } from '../environment/environment.js';
 import { observeElementSize, type ElementSize } from '../environment/element-size.js';
+import {
+  observeThemeContext,
+  THEME_CONTEXT_ATTRIBUTE,
+  THEME_SOURCE_ATTRIBUTE,
+  type ColorScheme,
+  type ThemeSource,
+} from '../environment/theme.js';
 import { trackInstance, untrackInstance } from '../global/instances.js';
 import { getLoggerBundle } from '../logging/logger-registry.js';
 import type { InstanceLogger, LogLevelDesc } from '../logging/create-loggers.js';
@@ -58,12 +65,23 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
    */
   protected static events?: readonly (string | EventDef)[];
 
+  /**
+   * Mirror the shared theme context onto the host as `data-context-theme`
+   * (SPEC §12.10). On by default; a subclass that doesn't theme by color scheme
+   * sets `static themeContext = false` to skip the subscription entirely.
+   */
+  protected static themeContext = true;
+
   static get observedAttributes(): string[] {
     const attrs = (this.inputs ?? []).filter((d) => d.attribute).map((d) => d.attribute!);
     // Always observe the global `dir` attribute (never an input) so a runtime
-    // writing-direction switch reaches the directionChanged() hook. Deduped in case
-    // a subclass ever declares a `dir` input attribute.
-    return attrs.includes('dir') ? attrs : [...attrs, 'dir'];
+    // writing-direction switch reaches the directionChanged() hook, and
+    // `theme-source` (SPEC §12.10) so a component can read its theme from a chosen
+    // element. Deduped in case a subclass declares either as an input attribute.
+    for (const global of ['dir', THEME_SOURCE_ATTRIBUTE]) {
+      if (!attrs.includes(global)) attrs.push(global);
+    }
+    return attrs;
   }
 
   readonly #config: Record<string, unknown> = {};
@@ -96,6 +114,10 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
   #viewportUnsub?: () => void;
   /** Unsubscribe from the per-element ResizeObserver; set only while connected AND `resized` is overridden. */
   #sizeUnsub?: () => void;
+  /** Where this element reads its theme from (SPEC §12.10); `null` = the page. */
+  #themeSource: ThemeSource = null;
+  /** Unsubscribe from the theme context; set only while connected AND `themeContext` is on. */
+  #themeUnsub?: () => void;
   #internals?: ElementInternals;
   #logId?: string;
   #logLevel?: LogLevelDesc;
@@ -130,6 +152,12 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
     // path below, matching the dedup in observedAttributes.
     if (name === 'dir' && !this.#byAttribute.has('dir')) {
       if (this.#connectedOnce) this.directionChanged(this.isRTL);
+      return;
+    }
+    // Global `theme-source` (SPEC §12.10): re-resolve the source when connected.
+    if (name === THEME_SOURCE_ATTRIBUTE && !this.#byAttribute.has(THEME_SOURCE_ATTRIBUTE)) {
+      this.#themeSource = raw || null;
+      this.#resubscribeTheme();
       return;
     }
     const def = this.#byAttribute.get(name);
@@ -180,6 +208,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
     if (this.resized !== BlissElement.prototype.resized) {
       this.#sizeUnsub = observeElementSize(this, (size) => this.resized(size), { immediate: false });
     }
+    this.#subscribeTheme();
   }
 
   disconnectedCallback(): void {
@@ -190,6 +219,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
     this.#viewportUnsub = undefined;
     this.#sizeUnsub?.();
     this.#sizeUnsub = undefined;
+    this.#themeUnsub?.();
+    this.#themeUnsub = undefined;
     this.disconnect();
   }
 
@@ -443,6 +474,45 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
     /* opt-in */
   }
 
+  /**
+   * React to a theme-context change (SPEC §12.10) — for JS-side theming (a
+   * canvas, a chart palette). Fires on connect with the current scheme, then
+   * whenever it changes. CSS needs nothing: the base already mirrors the scheme
+   * onto the host as `data-context-theme`. `null` means nothing is detected or
+   * forced (the inherited `color-scheme` applies). No-op by default.
+   */
+  protected themeChanged(_scheme: ColorScheme | null): void {
+    /* opt-in */
+  }
+
+  /**
+   * Where this element reads its theme from instead of the page (SPEC §12.10):
+   * a CSS selector (nearest matching ancestor, else the first match in the
+   * document), `'closest'` (the nearest ancestor carrying a theme signal), or an
+   * `Element`. `null` = the page. Strings reflect to the `theme-source` attribute.
+   */
+  get themeSource(): ThemeSource {
+    return this.#themeSource;
+  }
+
+  set themeSource(value: ThemeSource | undefined) {
+    const next = value ?? null;
+    if (typeof next === 'string' || next === null) {
+      // Route through the attribute so both entry points share one path.
+      if (next) this.setAttribute(THEME_SOURCE_ATTRIBUTE, next);
+      else this.removeAttribute(THEME_SOURCE_ATTRIBUTE);
+      return;
+    }
+    this.#themeSource = next;
+    this.#reflecting = true;
+    try {
+      this.removeAttribute(THEME_SOURCE_ATTRIBUTE);
+    } finally {
+      this.#reflecting = false;
+    }
+    this.#resubscribeTheme();
+  }
+
   // ── form association ──────────────────────────────────────────────────────
 
   /**
@@ -544,6 +614,22 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
   }
 
   // ── internals ─────────────────────────────────────────────────────────────
+
+  #subscribeTheme(): void {
+    if ((this.constructor as typeof BlissElement).themeContext === false) return;
+    this.#themeUnsub = observeThemeContext(this, this.#themeSource, (scheme) => {
+      if (scheme) this.setAttribute(THEME_CONTEXT_ATTRIBUTE, scheme);
+      else this.removeAttribute(THEME_CONTEXT_ATTRIBUTE);
+      this.themeChanged(scheme);
+    });
+  }
+
+  /** Re-resolve the theme source while connected (the source is fixed per subscription). */
+  #resubscribeTheme(): void {
+    if (!this.isConnected || !this.#themeUnsub) return;
+    this.#themeUnsub();
+    this.#subscribeTheme();
+  }
 
   #seedDefaults(defs: readonly InputDef[]): void {
     for (const def of defs) {

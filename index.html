@@ -202,6 +202,13 @@
                 icon: '🧹',
                 title: 'Null-clear contract',
                 description: 'How a cleared input reaches an engine: null = reset, undefined = leave alone. collectEngineConfig / engineConfig() preserve the clear signal — shown live against a stub engine, bug (old delete-null loop) vs fix, via a <nullclear-card> BlissElement.'
+            },
+            {
+                href: 'examples-theme.html',
+                code: 'TH',
+                icon: '🌓',
+                title: 'Theme context',
+                description: 'Dark / light detected once per page and mirrored onto every component as data-context-theme — no :host-context(), so it works in Firefox and Safari. setThemeMode() global force, per-instance data-theme, and theme-source for a section, with a live observer counter proving one detection serves every card.'
             }
         ]
 

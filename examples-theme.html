@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theme context — web-components-core</title>
+    <link rel="stylesheet" href="examples-shared.css">
+    <style>
+        .card-row { display: flex; gap: .8rem; flex-wrap: wrap; align-items: flex-start; }
+        .stat { display: inline-block; font: 600 .85rem ui-monospace, 'Courier New', monospace; background: #0f172a;
+                color: #e2e8f0; border-radius: 8px; padding: .35rem .7rem; margin: .2rem .4rem .2rem 0; }
+        .stat b { color: #7dd3fc; }
+        .signal-panel { border: 2px dashed #94a3b8; border-radius: 12px; padding: 1rem; margin-top: .6rem; }
+        .signal-panel-title { font: 600 .8rem ui-monospace, 'Courier New', monospace; color: #475569; margin-bottom: .6rem; }
+        .mode-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+    </style>
+    <!-- Count the theme context's MutationObservers (classic script → runs before the
+         modules load core). Only observers watching the theme signal attributes count,
+         so other page scripts don't inflate the number. -->
+    <script>
+        (function () {
+            const Original = window.MutationObserver;
+            const live = new Set();
+            let created = 0;
+            const listeners = new Set();
+            const notify = () => listeners.forEach((fn) => fn());
+            window.MutationObserver = class extends Original {
+                observe(target, opts) {
+                    if (opts && opts.attributeFilter && opts.attributeFilter.includes('data-bs-theme')) {
+                        if (!this.__theme) { this.__theme = true; created += 1; }
+                        live.add(this);
+                        notify();
+                    }
+                    return super.observe(target, opts);
+                }
+                disconnect() {
+                    if (live.delete(this)) notify();
+                    return super.disconnect();
+                }
+            };
+            window.__themeObservers = {
+                get created() { return created; },
+                get live() { return live.size; },
+                onChange(fn) { listeners.add(fn); },
+            };
+        })();
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="back-link">← Back to Examples</a>
+            <h1>Theme context</h1>
+            <p class="subtitle">Dark / light detected <strong>once per page</strong> and mirrored onto every
+                <code>BlissElement</code> host as <code>data-context-theme</code> — so component CSS uses plain
+                <code>:host([data-context-theme="dark"])</code> instead of <code>:host-context(.dark)</code>, which
+                Firefox doesn't support and Safari only partly. Force it globally with <code>setThemeMode()</code>,
+                per component with <code>data-theme</code>, or point a component at a section with
+                <code>theme-source</code>. See <strong>SPEC §12.10</strong>.</p>
+        </header>
+
+        <!-- ============================================================= -->
+        <!-- TH01 · Page detection                                         -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>TH01 · Page detection — detect once, reuse</h2>
+            <p>
+                Each card below has no signal of its own, so it follows the page. Put a signal on
+                <code>&lt;html&gt;</code>: core reads it once (<code>data-theme</code>, then <code>data-bs-theme</code>,
+                then <code>.dark</code> / <code>.light</code>; <code>&lt;html&gt;</code> before <code>&lt;body&gt;</code>),
+                caches it, and one shared observer re-detects only when a signal attribute changes. Add more cards — the
+                observer count doesn't move.
+            </p>
+            <div class="controls">
+                <label>Signal on <code>&lt;html&gt;</code>:
+                    <select id="page-signal">
+                        <option value="">none (OS / inherited color-scheme)</option>
+                        <option value="class:dark">class="dark" (Tailwind)</option>
+                        <option value="class:light">class="light"</option>
+                        <option value="data-bs-theme:dark">data-bs-theme="dark" (Bootstrap 5.3)</option>
+                        <option value="data-theme:dark">data-theme="dark"</option>
+                        <option value="data-theme:corporate">data-theme="corporate" (not a scheme → ignored)</option>
+                    </select>
+                </label>
+                <button id="add-cards">Add 20 cards</button>
+                <button id="unrelated">Toggle an unrelated class on &lt;html&gt;</button>
+            </div>
+            <div class="demo-area">
+                <div>
+                    <span class="stat">theme observers created: <b id="obs-created">0</b></span>
+                    <span class="stat">observing now: <b id="obs-live">0</b></span>
+                    <span class="stat">cards: <b id="card-count">0</b></span>
+                    <span class="stat">getThemeContext(): <b id="page-context">null</b></span>
+                </div>
+                <div class="card-row" id="page-cards" style="margin-top:.8rem">
+                    <theme-card label="Card A"></theme-card>
+                    <theme-card label="Card B"></theme-card>
+                    <theme-card label="Card C"></theme-card>
+                </div>
+            </div>
+            <div class="note">
+                <div class="note-title">Only real changes notify</div>
+                "Toggle an unrelated class" changes <code>&lt;html&gt;</code>'s <code>class</code> — the observer fires
+                and re-detects once, but the result is unchanged, so no card's <code>themeChanged × N</code> counter moves.
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TH02 · Global force                                           -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>TH02 · <code>setThemeMode()</code> — force every component</h2>
+            <p>
+                A forced mode wins over detection everywhere (page and <code>theme-source</code>). While forced, the
+                observers <strong>pause</strong> — there is nothing to detect, so "observing now" drops to 0 and the
+                TH01 signal picker has no effect. <code>auto</code> re-detects once and resumes.
+            </p>
+            <div class="controls mode-row">
+                <label><input type="radio" name="mode" value="auto" checked> <code>auto</code></label>
+                <label><input type="radio" name="mode" value="dark"> <code>dark</code></label>
+                <label><input type="radio" name="mode" value="light"> <code>light</code></label>
+                <span class="stat">getThemeMode(): <b id="mode-out">auto</b></span>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TH03 · Per-instance data-theme                                -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>TH03 · Per-instance <code>data-theme</code> — highest priority</h2>
+            <p>
+                <code>data-theme</code> on the component itself is pure component CSS, declared after the
+                <code>data-context-theme</code> rules, so it beats the page <em>and</em> a global force. Try
+                <code>setThemeMode('dark')</code> above: the first card stays light.
+            </p>
+            <div class="demo-area">
+                <div class="card-row">
+                    <theme-card label='data-theme="light"' data-theme="light"></theme-card>
+                    <theme-card label='data-theme="dark"' data-theme="dark"></theme-card>
+                    <theme-card label="no data-theme (follows context)"></theme-card>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TH04 · theme-source                                           -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>TH04 · <code>theme-source</code> — read a section instead of the page</h2>
+            <p>
+                Page-level detection doesn't see a signal on a wrapper <code>&lt;div&gt;</code> (Bootstrap allows
+                <code>data-bs-theme</code> per section). <code>theme-source</code> points a component at one:
+                a <strong>selector</strong> (nearest matching ancestor, else first match in the document),
+                <code>closest</code> (nearest ancestor carrying a signal at connect), or an <code>Element</code>
+                (property). Components sharing a source share one cache and one observer; a source without a signal
+                falls back to the page.
+            </p>
+            <div class="controls">
+                <label><code>data-bs-theme</code> on the panel:
+                    <select id="panel-signal">
+                        <option value="dark" selected>dark</option>
+                        <option value="light">light</option>
+                        <option value="">none (→ page)</option>
+                    </select>
+                </label>
+            </div>
+            <div class="demo-area">
+                <div class="signal-panel" id="panel" data-bs-theme="dark">
+                    <div class="signal-panel-title">&lt;div id="panel" data-bs-theme="…"&gt;</div>
+                    <div class="card-row">
+                        <theme-card label='theme-source="closest"' theme-source="closest"></theme-card>
+                        <theme-card label='theme-source="#panel"' theme-source="#panel"></theme-card>
+                        <theme-card label="no theme-source (page)"></theme-card>
+                    </div>
+                </div>
+                <label class="demo-label" style="margin-top:1rem">Outside the panel, pointed at it by selector:</label>
+                <div class="card-row">
+                    <theme-card label='theme-source="#panel" (outside)' theme-source="#panel"></theme-card>
+                </div>
+            </div>
+            <div class="note">
+                <div class="note-title">Why not walk every ancestor by default?</div>
+                That is what <code>:host-context()</code> did (in Chromium only). Watching arbitrary ancestors would mean
+                observing the whole page; page-level detection plus an explicit <code>theme-source</code> for the rare
+                section case keeps it to one observer per watched element.
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TH05 · API summary                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>TH05 · API &amp; component CSS</h2>
+            <div class="code-block"><pre>import { setThemeMode, getThemeMode, getThemeContext } from '@keenmate/web-components-core';
+
+setThemeMode('dark');   // force every component; 'light' | 'auto' (detect)
+getThemeMode();         // 'auto' | 'dark' | 'light'
+getThemeContext();      // the detected page scheme: 'dark' | 'light' | null
+
+// Per component (every BlissElement):
+//   &lt;my-el data-theme="dark"&gt;           force this one (component CSS, wins)
+//   &lt;my-el theme-source="closest"&gt;      read the nearest signalled ancestor
+//   &lt;my-el theme-source=".admin-panel"&gt; read a chosen element
+//   el.themeSource = someElement;        property form
+//
+// In a component: override themeChanged(scheme) for JS-side theming;
+// static themeContext = false opts out.</pre></div>
+            <div class="code-block"><pre>/* Component dark-mode.css — works in every browser */
+:host([data-context-theme="dark"])  { color-scheme: dark; }
+:host([data-context-theme="light"]) { color-scheme: light; }
+/* per-instance forcing, declared last so it wins */
+:host([data-theme="dark"])  { color-scheme: dark; }
+:host([data-theme="light"]) { color-scheme: light; }</pre></div>
+        </div>
+    </div>
+
+    <!-- The demo web component (registers <theme-card>). -->
+    <script type="module" src="examples-theme-card.ts"></script>
+
+    <script type="module">
+        import { setThemeMode, getThemeMode, getThemeContext } from '/src/index.ts';
+
+        const $ = (id) => document.getElementById(id);
+        const html = document.documentElement;
+
+        function refreshStats() {
+            $('obs-created').textContent = window.__themeObservers.created;
+            $('obs-live').textContent = window.__themeObservers.live;
+            $('card-count').textContent = document.querySelectorAll('theme-card').length;
+            $('page-context').textContent = String(getThemeContext());
+            $('mode-out').textContent = getThemeMode();
+        }
+        window.__themeObservers.onChange(refreshStats);
+
+        // TH01 — page signal
+        $('page-signal').addEventListener('change', (e) => {
+            html.classList.remove('dark', 'light');
+            html.removeAttribute('data-theme');
+            html.removeAttribute('data-bs-theme');
+            const [attr, value] = e.target.value.split(':');
+            if (attr === 'class') html.classList.add(value);
+            else if (attr) html.setAttribute(attr, value);
+            setTimeout(refreshStats); // after the observer's microtask
+        });
+        $('add-cards').addEventListener('click', () => {
+            const row = $('page-cards');
+            const n = row.children.length;
+            for (let i = 0; i < 20; i++) {
+                const card = document.createElement('theme-card');
+                card.setAttribute('label', `Card ${n + i + 1}`);
+                row.appendChild(card);
+            }
+            refreshStats();
+        });
+        $('unrelated').addEventListener('click', () => {
+            html.classList.toggle('some-unrelated-class');
+            setTimeout(refreshStats);
+        });
+
+        // TH02 — global mode
+        document.querySelectorAll('input[name="mode"]').forEach((radio) =>
+            radio.addEventListener('change', (e) => {
+                setThemeMode(e.target.value);
+                refreshStats();
+            }));
+
+        // TH04 — panel signal
+        $('panel-signal').addEventListener('change', (e) => {
+            const panel = $('panel');
+            if (e.target.value) panel.setAttribute('data-bs-theme', e.target.value);
+            else panel.removeAttribute('data-bs-theme');
+            panel.querySelector('.signal-panel-title').textContent =
+                e.target.value ? `<div id="panel" data-bs-theme="${e.target.value}">` : '<div id="panel">';
+        });
+
+        customElements.whenDefined('theme-card').then(refreshStats);
+    </script>
+
+    <script type="module" src="examples-chapter-nav.js"></script>
+</body>
+</html>

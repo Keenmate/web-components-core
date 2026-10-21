@@ -135,7 +135,7 @@ afterEach(() => {
 });
 
 describe('BlissElement', () => {
-  it('derives observedAttributes from the table (property-only inputs excluded), plus the always-observed dir', () => {
+  it('derives observedAttributes from the table (property-only inputs excluded), plus the always-observed dir and theme-source', () => {
     expect(TestElement.observedAttributes).toEqual([
       'selection-mode',
       'option-height',
@@ -144,6 +144,7 @@ describe('BlissElement', () => {
       'internal-id',
       'note',
       'dir',
+      'theme-source',
     ]);
   });
 
@@ -165,7 +166,7 @@ describe('BlissElement', () => {
 
   it('routes dir through the input pipeline (not directionChanged) when declared as an input attribute', async () => {
     // `dir` listed once (deduped), not appended a second time.
-    expect(DirInputElement.observedAttributes).toEqual(['dir']);
+    expect(DirInputElement.observedAttributes).toEqual(['dir', 'theme-source']);
 
     const el = document.createElement('dir-input-element') as DirInputElement;
     document.body.appendChild(el);
