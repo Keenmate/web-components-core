@@ -10,6 +10,27 @@ that correctness lives in a single place and can't drift.
 > **[`docs/SPEC.md`](docs/SPEC.md) is the source of truth** for design intent. This
 > README is the tour; read the relevant SPEC section before changing behavior.
 
+## What's New in v1.0.0-rc13
+
+- **Theme context — dark mode that works in Firefox and Safari.** Components followed a page's
+  dark/light signal with `:host-context(.dark)`, which Firefox doesn't support and Safari only
+  partly, so a Tailwind `<html class="dark">` page got a light component there. Core now detects the
+  signal **once per page** (`data-theme`, then `data-bs-theme`, then `.dark` / `.light`, on `<html>`
+  then `<body>`) and mirrors it onto every `BlissElement` host as `data-context-theme="dark|light"`,
+  which plain `:host([data-context-theme="dark"])` CSS matches in every browser. One cached value and
+  one shared observer serve every component; a component is notified only when its result changes.
+- **Force it globally or per component.** `setThemeMode('dark' | 'light' | 'auto')` forces every
+  component (detection pauses while forced); `data-theme` on one component still wins.
+- **`theme-source` for sections.** Every `BlissElement` accepts a `theme-source` attribute /
+  `themeSource` property — a selector, `closest`, or an `Element` — to follow a section (e.g. a
+  Bootstrap `data-bs-theme` wrapper) instead of the page. Components that need JS-side theming override
+  the new `themeChanged(scheme)` hook. See **SPEC §12.10** and the live `examples-theme.html` demo.
+- **⚠️ Note for component authors.** A dark wrapper `<div>` is no longer picked up implicitly (only
+  Chromium ever did); use `theme-source="closest"` there. `observedAttributes` now always includes
+  `theme-source`.
+
+See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
+
 ## What's New in v1.0.0-rc12
 
 - **Null-clear contract — a cleared input now actually reaches your engine.** Core assembles the
@@ -205,6 +226,42 @@ width-aware → `classifyDevice(env)` + your own branch.** For the fullscreen ti
 and keeping the sheet above the soft keyboard. See [SPEC §12.9](docs/SPEC.md) for
 the full rationale (why 600px, capability over width, the deprecated
 `resolveMobilePresentation`).
+
+## Theme context (dark / light)
+
+Every `BlissElement` host carries `data-context-theme="dark|light"` when the page
+asks for a scheme, so component CSS needs no `:host-context()` (unsupported in
+Firefox, partial in Safari):
+
+```css
+:host([data-context-theme="dark"])  { color-scheme: dark; }
+:host([data-context-theme="light"]) { color-scheme: light; }
+/* per-instance forcing, declared last so it wins */
+:host([data-theme="dark"])  { color-scheme: dark; }
+:host([data-theme="light"]) { color-scheme: light; }
+```
+
+Resolution, highest first: `data-theme` on the component (its CSS) →
+`setThemeMode('dark' | 'light')` → the component's `theme-source` → the page
+(`<html>`, then `<body>`: `data-theme`, `data-bs-theme`, `.dark` / `.light`) →
+nothing (the inherited `color-scheme` applies). Detection runs **once** per
+watched element and is cached; one shared `MutationObserver` per element
+re-detects on a signal change, and components hear only real changes.
+
+```ts
+import { setThemeMode, getThemeContext } from '@keenmate/web-components-core';
+
+setThemeMode('dark');  // force every component ('auto' = detect again)
+getThemeContext();     // the detected page scheme: 'dark' | 'light' | null
+```
+
+```html
+<my-el theme-source="closest"></my-el>      <!-- nearest ancestor with a signal -->
+<my-el theme-source=".admin-panel"></my-el> <!-- a chosen element -->
+```
+
+Override `themeChanged(scheme)` for JS-side theming; `static themeContext = false`
+opts a component out. See [SPEC §12.10](docs/SPEC.md) and `examples-theme.html`.
 
 ## Global registration (`window.components`)
 

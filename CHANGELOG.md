@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc13] - 2026-10-21
+
+### Added
+
+- **Theme context — dark / light detected once and mirrored onto every component
+  (`src/environment/theme.ts`, SPEC §12.10).** Replaces the components'
+  `:host-context(.dark)`-style rules, which Firefox doesn't support and Safari only
+  partly (so a Tailwind `<html class="dark">` page got a light component there).
+  - **Detect once, reuse:** the page (`<html>`, then `<body>`; `data-theme`, then
+    `data-bs-theme`, then `.dark` / `.light`) is detected once and cached; one shared
+    `MutationObserver` re-detects only on a signal-attribute change, and subscribers
+    hear only real changes. A swapped `<body>` (Turbo / htmx) is re-attached.
+  - **Forcing:** `setThemeMode('dark' | 'light' | 'auto')` forces every component
+    (observers pause while forced); per-instance `data-theme` on a component still wins.
+  - **`theme-source`:** a global attribute / `themeSource` property on every
+    `BlissElement` — a selector, `closest`, or an `Element` — to read the theme from
+    a section instead of the page. Components sharing a source share its cache and
+    observer.
+  - **`BlissElement`:** mirrors the effective scheme onto the host as
+    `data-context-theme="dark|light"` and calls the new opt-in `themeChanged(scheme)`
+    hook; `static themeContext = false` opts out.
+  - State lives on `globalThis` (`Symbol.for`), so multiple bundled copies of core
+    share one mode and one observer per element.
+  - Exports: `setThemeMode`, `getThemeMode`, `getThemeContext`,
+    `observeThemeContext`, `readThemeSignal`, `resolveThemeSource`,
+    `THEME_CONTEXT_ATTRIBUTE`, `THEME_SOURCE_ATTRIBUTE`, and the types `ColorScheme`,
+    `ThemeMode`, `ThemeSource`, `ThemeListener`.
+- **`examples-theme.html` + `<theme-card>` demo component** (chapter code `TH`): page
+  detection with a live observer counter, `setThemeMode()`, per-instance `data-theme`,
+  and `theme-source` on a section.
+
+### Changed
+
+- **`observedAttributes` always includes `theme-source`** (alongside `dir`). Tests
+  that assert the exact list need the extra entry.
+
 ## [1.0.0-rc12] - 2026-10-10
 
 ### Added
