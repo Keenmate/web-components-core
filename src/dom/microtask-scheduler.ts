@@ -33,11 +33,7 @@ export function createMicrotaskScheduler(): MicrotaskScheduler {
       }
     },
     flush() {
-      if (tasks.size === 0) return;
-      scheduled = false;
-      const batch = [...tasks];
-      tasks.clear();
-      for (const task of batch) task();
+      if (tasks.size > 0) drain();
     },
     cancel() {
       tasks.clear();

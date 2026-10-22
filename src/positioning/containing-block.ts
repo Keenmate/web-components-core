@@ -3,7 +3,8 @@
  *
  * A `position: fixed` element is normally positioned relative to the viewport, so
  * Floating UI's computed coordinates land it exactly there. But an ancestor with
- * `transform` / `perspective` / `filter` / `backdrop-filter` / a qualifying
+ * `transform` (or `translate` / `scale` / `rotate`) / `perspective` / `filter` /
+ * `backdrop-filter` (not in WebKit) / a qualifying
  * `will-change` (and, per spec but NOT reliably honoured by browsers, `contain` /
  * `container-type`) establishes a *containing block* for fixed descendants: the
  * browser then measures those coordinates from that ancestor's padding box and
@@ -18,21 +19,37 @@
  * import graph.
  */
 
-/** Ascend to `node`'s parent, hopping a ShadowRoot boundary to its host. */
-function ascend(node: Node): Node | null {
-  const parent = (node as { parentNode?: Node | null }).parentNode ?? null;
-  return parent instanceof ShadowRoot ? parent.host : parent;
+import { composedParent } from '../dom/composed-tree.js';
+
+const notNone = (v: string | undefined): v is string => !!v && v !== 'none';
+
+let isWebKitValue: boolean | undefined;
+/** WebKit doesn't make `filter` / `backdrop-filter` a fixed containing block (same probe as Floating UI). */
+function isWebKit(): boolean {
+  isWebKitValue ??= typeof CSS !== 'undefined' && !!CSS.supports && CSS.supports('-webkit-backdrop-filter', 'none');
+  return isWebKitValue;
 }
 
-/** Does `cs` set a property that reliably establishes a fixed-positioning containing block? */
-function establishesFixedContainingBlock(cs: CSSStyleDeclaration): boolean {
-  if (cs.transform !== 'none') return true;
-  if (cs.perspective !== 'none') return true;
-  if (cs.filter !== 'none') return true;
-  const bdf = (cs as { backdropFilter?: string }).backdropFilter;
-  if (bdf && bdf !== 'none') return true;
-  if (cs.willChange && /\b(transform|filter|perspective)\b/.test(cs.willChange)) return true;
-  return false;
+/**
+ * The properties in `cs` that reliably establish a fixed-positioning containing
+ * block, as `name: value` strings. Mirrors Floating UI's `isContainingBlock` —
+ * including the individual `translate` / `scale` / `rotate` transforms and the
+ * WebKit `filter` exception — minus `contain` / `container-type`.
+ */
+function fixedContainingBlockProps(cs: CSSStyleDeclaration): string[] {
+  const css = cs as CSSStyleDeclaration & { translate?: string; scale?: string; rotate?: string; backdropFilter?: string };
+  const props: string[] = [];
+  for (const name of ['transform', 'translate', 'scale', 'rotate', 'perspective'] as const) {
+    if (notNone(css[name])) props.push(`${name}: ${css[name]}`);
+  }
+  if (!isWebKit()) {
+    if (notNone(css.filter)) props.push(`filter: ${css.filter}`);
+    if (notNone(css.backdropFilter)) props.push(`backdrop-filter: ${css.backdropFilter}`);
+  }
+  if (css.willChange && /transform|translate|scale|rotate|perspective|filter/.test(css.willChange)) {
+    props.push(`will-change: ${css.willChange}`);
+  }
+  return props;
 }
 
 /**
@@ -49,11 +66,11 @@ export function getFixedPositionOffsetParent(el: Element): Element | Window {
   // cell with `transform: scale(...)` on hover) would be returned as its own
   // offset parent, and Floating UI would compute element-relative coordinates
   // that render off-screen once applied as `position: fixed`.
-  let node: Node | null = ascend(el);
+  let node: Element | null = composedParent(el);
   while (node) {
     if (node === document.body || node === document.documentElement) break;
-    if (node instanceof Element && establishesFixedContainingBlock(getComputedStyle(node))) return node;
-    node = ascend(node);
+    if (fixedContainingBlockProps(getComputedStyle(node)).length > 0) return node;
+    node = composedParent(node);
   }
   return window;
 }
@@ -65,14 +82,10 @@ export function getFixedPositionOffsetParent(el: Element): Element | Window {
  * iframe, scrollbar gutter, …).
  */
 export function findContainingBlockCulprit(el: Element, driftX: number, driftY: number): Element | null {
-  let node: Node | null = el;
-  while (node) {
+  for (let node: Element | null = el; node; node = composedParent(node)) {
     if (node === document.body || node === document.documentElement) break;
-    if (node instanceof Element) {
-      const rect = node.getBoundingClientRect();
-      if (Math.abs(rect.x - driftX) < 2 && Math.abs(rect.y - driftY) < 2) return node;
-    }
-    node = ascend(node);
+    const rect = node.getBoundingClientRect();
+    if (Math.abs(rect.x - driftX) < 2 && Math.abs(rect.y - driftY) < 2) return node;
   }
   return null;
 }
@@ -80,13 +93,7 @@ export function findContainingBlockCulprit(el: Element, driftX: number, driftY: 
 /** The containing-block-establishing CSS set on `el`, for a "likely culprit: has …" hint. */
 export function describeContainingBlockProps(el: Element): string {
   const cs = getComputedStyle(el);
-  const props: string[] = [];
-  if (cs.transform !== 'none') props.push(`transform: ${cs.transform}`);
-  if (cs.perspective !== 'none') props.push(`perspective: ${cs.perspective}`);
-  if (cs.filter !== 'none') props.push(`filter: ${cs.filter}`);
-  const bdf = (cs as { backdropFilter?: string }).backdropFilter;
-  if (bdf && bdf !== 'none') props.push(`backdrop-filter: ${bdf}`);
-  if (cs.willChange && /\b(transform|filter|perspective)\b/.test(cs.willChange)) props.push(`will-change: ${cs.willChange}`);
+  const props = fixedContainingBlockProps(cs);
   if (cs.contain && /\b(paint|layout|strict|content)\b/.test(cs.contain)) props.push(`contain: ${cs.contain}`);
   const ct = (cs as { containerType?: string }).containerType;
   if (ct && ct !== 'normal') props.push(`container-type: ${ct}`);

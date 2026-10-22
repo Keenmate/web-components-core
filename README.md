@@ -282,7 +282,7 @@ The returned elements **are** the per-instance handles — enumerate tags with
 ## Logging
 
 `createLoggers(namespace, categories?)` returns categorized
-`NAMESPACE:CATEGORY` loggers over `loglevel`, each with a color-coded prefix.
+`NAMESPACE:CATEGORY` loggers (a vendored `loglevel` port), each with a color-coded prefix.
 Categories default to `INIT / DATA / UI` (redefinable / extendable).
 `enableLogging()` / `disableLogging()` / `setLogLevel()` / `setCategoryLevel()`
 control the whole bundle (i.e. all instances of that component type).

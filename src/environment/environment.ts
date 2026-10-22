@@ -28,6 +28,8 @@
  * subscribing directly.
  */
 
+import { createFrameScheduler } from '../dom/frame-scheduler.js';
+
 /** The primary pointing device: `coarse` = touch/stylus, `fine` = mouse/trackpad. */
 export type PointerType = 'coarse' | 'fine' | 'none';
 
@@ -118,7 +120,6 @@ const viewportSubscribers = new Set<EnvironmentListener>();
 let current: EnvironmentSnapshot | null = null;
 /** The live `MediaQueryList`s, held so we can detach on the last unsubscribe. */
 let mqls: MediaQueryList[] = [];
-let rafScheduled = false;
 
 /** Throttle window (ms) for the continuous viewport channel — one notify per window, leading + trailing. */
 const VIEWPORT_THROTTLE_MS = 30;
@@ -294,19 +295,9 @@ function scheduleViewportNotify(): void {
 
 const onMediaChange = (): void => recompute();
 
-const onResize = (): void => {
-  // Coalesce resize bursts to one recompute per frame where rAF exists.
-  if (typeof requestAnimationFrame === 'function') {
-    if (rafScheduled) return;
-    rafScheduled = true;
-    requestAnimationFrame(() => {
-      rafScheduled = false;
-      recompute();
-    });
-  } else {
-    recompute();
-  }
-};
+// Coalesce resize bursts to one recompute per frame where rAF exists.
+const resizeFrame = createFrameScheduler(() => recompute());
+const onResize = (): void => resizeFrame.schedule();
 
 function addMqlListener(mql: MediaQueryList): void {
   if (typeof mql.addEventListener === 'function') mql.addEventListener('change', onMediaChange);
@@ -343,7 +334,7 @@ function stop(): void {
   if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
     window.removeEventListener('resize', onResize);
   }
-  rafScheduled = false;
+  resizeFrame.cancel(); // a queued frame would re-cache a snapshot nobody observes
   if (viewportTimer !== undefined) {
     clearTimeout(viewportTimer);
     viewportTimer = undefined;
@@ -427,7 +418,7 @@ export function observeViewport(listener: EnvironmentListener, opts: ObserveOpti
  */
 export function configureBreakpoints(map: BreakpointMap): void {
   breakpoints = sortBreakpoints(map);
-  if (subscribers.size > 0) recompute();
+  if (subscriberCount() > 0) recompute();
 }
 
 // ── device classification (capability, not width) ──────────────────────────

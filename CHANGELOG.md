@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A throwing `reinit()` / `update()` no longer wedges the element.** The error still reaches
+  whoever flushed, but `whenSettled()` waiters now resolve (they used to hang), a failed
+  `reinit()` is retried on the next flush or reconnect (it used to be skipped for good, leaving
+  later changes to `update()` a structure that was never built), and `connect()` runs only once
+  a build succeeded — `disconnect()` only if `connect()` ran.
+- **A row's `default` applies when the converter has no default of its own.**
+  `{ converter: toInt(), default: 5 }` used to resolve to `undefined` (at construction, on
+  attribute removal, and for an unparsable value) while the CEM manifest documented `5`.
+- **`mount(html, { container })`** (`/testing`) returns the newly mounted element; it returned
+  the container's first child, which is wrong when the container already has children.
+- **`findHighlightRanges`** no longer returns overlapping ranges when several matches fall in
+  one multi-character fold (`s` in `Straße` gave `[4,5]` twice — once per `s` of `ß`).
+- **`anchor()`** (`/positioning`) ignores a `computePosition` result that resolves after
+  `destroy()` — it used to still move the panel and fire `onPlaced` / `onComputed` /
+  `onDrift`. `update()` is a no-op once destroyed.
+- **`data-theme` inheritance for portaled layers crosses shadow roots.** A popover or tooltip
+  anchored inside a component's shadow DOM now picks up `data-theme` from the page around the
+  host.
+- **`fixedContainingBlock`** now detects the individual transforms (`translate`, `scale`,
+  `rotate`, and those in `will-change`), and no longer treats `filter` / `backdrop-filter` as a
+  containing block on WebKit, where it isn't — matching Floating UI.
+- **`observeKeyboardInset` cleanup** cancels a queued frame, so closing an overlay right after
+  opening it no longer re-applies the inline `height` / `top` afterwards.
+- **Environment:** a resize frame queued before the last unsubscribe no longer re-caches a
+  stale snapshot for `getEnvironment()`, and `configureBreakpoints()` re-resolves the
+  breakpoint when only `observeViewport` subscribers are live.
+
+### Internal
+
+- Shared internal helpers: `dom/frame-scheduler.ts` (per-frame coalescing with `cancel()`,
+  now used by environment and keyboard-inset) and `dom/composed-tree.ts` (`composedParent`
+  / `composedClosest`, now used by theme, anchor and containing-block).
+- Docs: `loglevel` is vendored (`src/logging/log-core.ts`), not a dependency — CLAUDE.md,
+  the logging notes, SPEC §12.1 and the README said otherwise.
+
 ## [1.0.0-rc14] - 2026-10-22
 
 ### Added

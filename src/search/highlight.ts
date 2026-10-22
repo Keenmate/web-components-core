@@ -38,11 +38,17 @@ export function findHighlightRanges(
   }
 
   const match = opts.match === 'regex' ? 'contains' : opts.match;
-  const ranges = findTextMatches(folded, term.text, match).map(([a, b]): SearchRange => {
+  const ranges: SearchRange[] = [];
+  for (const [a, b] of findTextMatches(folded, term.text, match)) {
     // Extend over any following characters that folded to nothing (combining marks).
     const next = b < folded.length ? start[b]! : nfc.length;
-    return [start[a]!, Math.max(end[b - 1]!, next)];
-  });
+    const range: SearchRange = [start[a]!, Math.max(end[b - 1]!, next)];
+    // Two matches inside one multi-char fold (`s` + `s` of `ß`) map onto the same
+    // source character — merge, so the ranges stay non-overlapping.
+    const prev = ranges[ranges.length - 1];
+    if (prev && range[0] < prev[1]) prev[1] = Math.max(prev[1], range[1]);
+    else ranges.push(range);
+  }
   return { text: nfc, ranges };
 }
 

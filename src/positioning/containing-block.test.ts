@@ -65,6 +65,39 @@ describe('getFixedPositionOffsetParent', () => {
     stubStyles(new Map([[outer, { contain: 'layout paint', containerType: 'inline-size' } as Partial<CSSStyleDeclaration>]]));
     expect(getFixedPositionOffsetParent(el)).toBe(window);
   });
+
+  it.each([
+    ['scale', { scale: '1.05' }],
+    ['translate', { translate: '10px' }],
+    ['rotate', { rotate: '5deg' }],
+    ['will-change: scale', { willChange: 'scale' }],
+  ])('returns the ancestor that has an individual transform (%s)', (_name, css) => {
+    const outer = document.createElement('div');
+    const el = document.createElement('span');
+    outer.append(el);
+    document.body.append(outer);
+    stubStyles(new Map([[outer, css as Partial<CSSStyleDeclaration>]]));
+    expect(getFixedPositionOffsetParent(el)).toBe(outer);
+  });
+
+  it('treats filter as a containing block except on WebKit', async () => {
+    const outer = document.createElement('div');
+    const el = document.createElement('span');
+    outer.append(el);
+    document.body.append(outer);
+    stubStyles(new Map([[outer, { filter: 'blur(1px)' }]]));
+    expect(getFixedPositionOffsetParent(el)).toBe(outer);
+
+    // The WebKit probe is cached per module load — re-import with CSS.supports faking WebKit.
+    vi.resetModules();
+    vi.stubGlobal('CSS', { supports: (prop: string) => prop === '-webkit-backdrop-filter' });
+    try {
+      const fresh = await import('./containing-block.js');
+      expect(fresh.getFixedPositionOffsetParent(el)).toBe(window);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
 
 describe('detectFixedDrift', () => {

@@ -59,6 +59,20 @@ describe('observeKeyboardInset', () => {
     expect(panel.style.height).toBe('');
   });
 
+  it('cleanup cancels a frame queued before it (fast open → close)', () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => frames.push(cb));
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+      frames[id - 1] = () => {};
+    });
+    const panel = document.createElement('div');
+    const cleanup = observeKeyboardInset(panel); // queues the first write
+    cleanup();
+    frames.forEach((cb) => cb(0));
+    expect(panel.style.height).toBe('');
+    expect(panel.style.top).toBe('');
+  });
+
   it('is a no-op returning a no-op cleanup when visualViewport is unavailable', () => {
     Object.defineProperty(window, 'visualViewport', { value: undefined, configurable: true });
     const panel = document.createElement('div');

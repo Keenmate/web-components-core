@@ -54,8 +54,9 @@ export function mount<T extends Element = Element>(source: string | Element, opt
   if (typeof source === 'string') {
     const tpl = document.createElement('template');
     tpl.innerHTML = source;
+    // Take it from the fragment, not the host — a passed `container` may already have children.
+    el = tpl.content.firstElementChild;
     host.append(tpl.content);
-    el = host.firstElementChild;
   } else {
     host.append(source);
     el = source;

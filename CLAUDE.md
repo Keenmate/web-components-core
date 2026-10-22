@@ -19,10 +19,10 @@ next to the code they cover. Source uses explicit `.js` extensions on relative
 imports (moduleResolution `Bundler`) and `verbatimModuleSyntax` (type-only
 imports must use `import type`).
 
-Runtime dependencies: **`loglevel`** (logging) and **`@floating-ui/dom`** (the
-`/positioning` module, §12.2). `@floating-ui/dom` is imported only under
-`src/positioning/`, so it stays out of the base import graph — components that
-don't position pull only `loglevel`.
+One runtime dependency: **`@floating-ui/dom`** (the `/positioning` module,
+§12.2), imported only under `src/positioning/`, so it stays out of the base
+import graph. The logging engine is a vendored port of `loglevel`
+(`src/logging/log-core.ts`) — no `loglevel` package dependency.
 
 ## Why this package exists
 
@@ -59,8 +59,9 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    reactive by construction. It is SSR-safe via the
    `typeof HTMLElement !== 'undefined'` stub, computes `observedAttributes`
    from the input table, coalesces bursts (`setAttributes()` / `batch()` /
-   microtask), and provides typed event `dispatch()`. The input table is
-   **opt-in**: `web-grid` extends `BlissElement` for the SSR base + `dispatch`
+   microtask), and provides typed events via `this.emit()` (the free
+   `dispatch()` function underneath). The input table is
+   **opt-in**: `web-grid` extends `BlissElement` for the SSR base + `emit`
    only and keeps its config-object API.
 
    A coalesced batch drives one of two subclass hooks (both no-op by default):
@@ -85,6 +86,11 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    an `on:'reinit'` change) — so transient UI state survives. `connect()`/
    `disconnect()` can run many times; keep them balanced. Config changed while
    detached is held and applied on reconnect, before `connect()`.
+
+   A hook that throws is rethrown to whoever flushed, but never wedges the
+   element: `whenSettled()` waiters still resolve, a failed `reinit()` is
+   retried on the next flush (or reconnect), and `connect()` runs only once a
+   build has succeeded — `disconnect()` only if `connect()` ran.
 
 ## Key invariants (enforce these in review and when migrating components)
 

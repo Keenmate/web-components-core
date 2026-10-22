@@ -54,6 +54,17 @@ describe('mount', () => {
     expect((el as unknown as Record<string, unknown>).height).toBe(20);
   });
 
+  it('returns the new element when mounting into a non-empty container', () => {
+    const tag = defineOnce(uniqueTag(), freshWidget());
+    const container = document.createElement('section');
+    container.innerHTML = '<p id="old"></p>';
+    document.body.append(container);
+    const el = mount<Widget>(`<${tag} id="new"></${tag}>`, { container });
+    expect(el.id).toBe('new');
+    expect(el.connects).toBe(1);
+    container.remove();
+  });
+
   it('cleanup removes mounted elements', () => {
     const tag = defineOnce(uniqueTag(), freshWidget());
     mount(`<${tag}></${tag}>`);

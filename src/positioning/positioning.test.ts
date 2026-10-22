@@ -177,6 +177,39 @@ describe('anchor', () => {
     expect(floating.getAttribute('data-theme')).toBe('dark');
   });
 
+  it('inherits data-theme across a shadow root (reference inside a component)', () => {
+    const page = document.createElement('div');
+    page.setAttribute('data-theme', 'dark');
+    const host = document.createElement('div');
+    page.append(host);
+    document.body.append(page);
+    const reference = document.createElement('button');
+    host.attachShadow({ mode: 'open' }).append(reference);
+    const floating = document.createElement('div');
+
+    anchor(floating, reference, { inheritThemeFrom: reference });
+    expect(floating.getAttribute('data-theme')).toBe('dark');
+  });
+
+  it('ignores a position that resolves after destroy()', async () => {
+    const floating = document.createElement('div');
+    const reference = document.createElement('button');
+    document.body.append(floating, reference);
+    const onPlaced = vi.fn();
+    const onComputed = vi.fn();
+
+    const handle = anchor(floating, reference, { onPlaced, onComputed });
+    handle.destroy(); // before computePosition's promise settles
+    await Promise.resolve();
+
+    expect(floating.style.left).toBe('0px');
+    expect(onPlaced).not.toHaveBeenCalled();
+    expect(onComputed).not.toHaveBeenCalled();
+
+    handle.update(); // a no-op once destroyed
+    expect(vi.mocked(fui.computePosition)).toHaveBeenCalledOnce();
+  });
+
   it('fixedContainingBlock resolves the offset parent from the FLOATING element', () => {
     const floatingCB = document.createElement('div'); // a transformed ancestor of the floating panel
     const floating = document.createElement('div');

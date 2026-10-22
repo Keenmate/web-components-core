@@ -20,14 +20,15 @@ import {
   type Middleware,
   type Platform,
 } from '@floating-ui/dom';
+import { composedClosest } from '../dom/composed-tree.js';
 import { detectFixedDrift, getFixedPositionOffsetParent } from './containing-block.js';
 import type { AnchorHandle, AnchorOptions, Placement } from './types.js';
 
 type Reference = Parameters<typeof computePosition>[0];
 
-/** Copy the nearest `data-theme` from `source` onto `target` (self or ancestor). */
+/** Copy the nearest `data-theme` from `source` onto `target` (self or ancestor, across shadow roots). */
 function inheritTheme(source: HTMLElement, target: HTMLElement): void {
-  const themed = source.closest?.('[data-theme]');
+  const themed = composedClosest(source, '[data-theme]');
   const theme = themed?.getAttribute('data-theme');
   if (theme != null) target.setAttribute('data-theme', theme);
 }
@@ -154,7 +155,11 @@ export function anchor(
       ? { ...floatingUiPlatform, getOffsetParent: () => getFixedPositionOffsetParent(floating) }
       : undefined);
 
+  // `computePosition` resolves async — a result landing after destroy() must not
+  // move the panel or fire callbacks (it may already be reused for another anchor).
+  let isDestroyed = false;
   const run = (): void => {
+    if (isDestroyed) return;
     opts.beforeCompute?.();
     void computePosition(reference, floating, {
       placement,
@@ -162,6 +167,7 @@ export function anchor(
       middleware,
       ...(effectivePlatform ? { platform: effectivePlatform } : {}),
     }).then(({ x, y, placement: resolved, middlewareData }) => {
+      if (isDestroyed) return;
       floating.style.left = `${x}px`;
       floating.style.top = `${y}px`;
       if (opts.arrow) positionArrow(opts.arrow.element, resolved, middlewareData.arrow);
@@ -191,6 +197,7 @@ export function anchor(
   return {
     update: run,
     destroy() {
+      isDestroyed = true;
       cleanup?.();
       cleanup = undefined;
     },

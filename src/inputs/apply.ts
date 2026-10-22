@@ -14,12 +14,18 @@ export interface Resolved {
   on: Reactivity;
 }
 
-/** Attribute path: `converter.fromAttribute(raw)` → resolved value (converter supplies its own fallback). */
+/**
+ * Attribute path: `converter.fromAttribute(raw)` → resolved value. The converter
+ * supplies its own fallback; when it has none (returns `undefined`), the row's
+ * `default` applies — so `{ converter: toInt(), default: 5 }` resolves to 5 for
+ * an absent, removed or unparsable attribute.
+ */
 export function resolveFromAttribute(def: InputDef, raw: string | null, reader: AttrReader): Resolved {
   const conv = def.converter;
-  const value = conv?.fromAttribute
+  let value: unknown = conv?.fromAttribute
     ? conv.fromAttribute(raw, reader, def.attribute ?? def.configKey)
     : raw ?? def.default;
+  if (value === undefined) value = def.default;
   return { configKey: def.configKey, field: def.field, value, on: def.on ?? 'update' };
 }
 

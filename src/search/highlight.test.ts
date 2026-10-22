@@ -41,6 +41,14 @@ describe('findHighlightRanges', () => {
     expect(mark('Straße', 'stras')).toBe('<mark>Straß</mark>e');
   });
 
+  it('merges matches that fall inside one multi-char fold (non-overlapping ranges)', () => {
+    const term = { kind: 'text', text: 's' } as const;
+    const opts = { behavior: 'normalized', match: 'contains' } as const;
+    // folded "strasse": three 's' matches, the last two both inside ß
+    expect(findHighlightRanges('Straße', term, opts).ranges).toEqual([[0, 1], [4, 5]]);
+    expect(findHighlightRanges('ß', term, opts).ranges).toEqual([[0, 1]]);
+  });
+
   it('word modes mark only word starts / ends', () => {
     expect(mark('Old Town Townsend downtown', 'town', 'normalized', 'word-starts-with')).toBe(
       'Old <mark>Town</mark> <mark>Town</mark>send downtown',

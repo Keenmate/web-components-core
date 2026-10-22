@@ -202,6 +202,33 @@ describe('observeEnvironment', () => {
     expect(seen).toEqual(['tablet', 'mobile']);
     unsub();
   });
+
+  it('re-resolves the cached breakpoint when only viewport subscribers are live', () => {
+    installMatchMedia({ ...DESKTOP });
+    setWidth(700);
+    const unsub = observeViewport(() => {});
+    expect(getEnvironment().breakpoint).toBe('tablet');
+    configureBreakpoints({ mobile: 900, desktop: Infinity });
+    expect(getEnvironment().breakpoint).toBe('mobile');
+    unsub();
+  });
+
+  it('drops a resize frame queued before the last unsubscribe', () => {
+    installMatchMedia({ ...DESKTOP });
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => frames.push(cb));
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+      frames[id - 1] = () => {};
+    });
+    const unsub = observeEnvironment(() => {});
+    setWidth(500);
+    window.dispatchEvent(new Event('resize')); // queues a recompute frame
+    unsub(); // last subscriber — listeners and cache released
+    frames.forEach((cb) => cb(0));
+    setWidth(1200);
+    // A stale frame would have re-cached the 500px snapshot nobody observes.
+    expect(getEnvironment().viewportWidth).toBe(1200);
+  });
 });
 
 describe('observeViewport (continuous, throttled)', () => {

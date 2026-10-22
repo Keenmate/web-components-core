@@ -327,6 +327,27 @@ describe('BlissElement', () => {
   });
 });
 
+describe('row-level default', () => {
+  class RowDefaultElement extends BlissElement {
+    protected static override inputs: readonly InputDef[] = [
+      // toInt() has no default of its own — the row's applies.
+      { configKey: 'size', attribute: 'size', converter: toInt(), default: 5 },
+    ];
+  }
+  define('row-default-element', RowDefaultElement as unknown as CustomElementConstructor);
+
+  it('applies when the converter has no default: absent, removed, unparsable', async () => {
+    const el = document.createElement('row-default-element') as unknown as RowDefaultElement & { size: unknown };
+    expect(el.size).toBe(5);
+    (el as unknown as HTMLElement).setAttribute('size', '7');
+    expect(el.size).toBe(7);
+    (el as unknown as HTMLElement).removeAttribute('size');
+    expect(el.size).toBe(5);
+    (el as unknown as HTMLElement).setAttribute('size', 'abc');
+    expect(el.size).toBe(5);
+  });
+});
+
 describe('BlissElement batching', () => {
   it('batch() coalesces all changes into one update', () => {
     const el = new TestElement();

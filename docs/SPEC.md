@@ -248,7 +248,11 @@ properties/callbacks — so everything is reactive by construction:
   pending config) then `connect()`. A DOM move (reorder, re-parent) fires
   `disconnect()`→`connect()` and re-activates **without** rebuilding, so
   transient UI state (scroll, focus, open panels) survives. Config changed while
-  detached is held and applied on reconnect, before `connect()`.
+  detached is held and applied on reconnect, before `connect()`. A throwing
+  `reinit()`/`update()` is rethrown but doesn't wedge the element: settle
+  waiters resolve, a failed `reinit()` is retried on the next flush, and
+  `connect()` waits for a successful build (`disconnect()` runs only after
+  `connect()` did).
 
 Plus a typed `dispatch(el, name, detail, {bubbles=true, composed=true})`
 and generic DOM utils (`resolveEnumAttribute`, `createMicrotaskScheduler`)
@@ -429,7 +433,10 @@ handling is precisely the "ordering bug" noted below, so core does the colored
 (ordering-safe by construction: `%c[label]`, the CSS string, then the raw
 message args — messages stay uncoloured and structured-loggable). `createLoggers`
 is idempotent per logger name (won't double-wrap), assigns each category a stable
-palette colour by index, and `enableLogging()` defaults to `debug`. Original
+palette colour by index, and `enableLogging()` defaults to `debug`. *(Amended
+again in rc04: the `loglevel` npm dependency was replaced by a vendored native-ESM
+port, `src/logging/log-core.ts` — the CJS package broke `log.levels` under Node's
+ESM loader in consumers' vitest runs. Core has no logging dependency.)* Original
 context and decision retained below.
 
 Context: all five components already use **loglevel +

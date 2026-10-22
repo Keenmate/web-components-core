@@ -1,7 +1,7 @@
 ## Logging (`src/logging/`, SPEC §12.1 — implemented)
 
 `createLoggers(namespace, categories?)` returns categorized `NAMESPACE:CATEGORY`
-loggers over **`loglevel`** (core's one runtime dependency), each with a
+loggers over a vendored `loglevel` port (`log-core.ts` — no npm dependency), each with a
 color-coded `%c` prefix done in a `methodFactory` (ordering-safe:
 `%c[label]` + CSS, then raw args — messages stay uncoloured). Categories default
 to `INIT/DATA/UI` and can be redefined or extended. `enableLogging()` defaults to

@@ -108,6 +108,15 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
    */
   #preUpgradeKeys: Set<string> | null = null;
   #reflecting = false;
+  /** `connect()` ran and `disconnect()` hasn't yet — keeps the two balanced when a build throws. */
+  #isActive = false;
+  /**
+   * The last `reinit()` threw, so the structure may be missing or half-built.
+   * The next flush rebuilds instead of patching. Separate from `#pendingReinit`
+   * so a failed build doesn't leave {@link whenSettled} waiting on a flush that
+   * nothing schedules.
+   */
+  #hasFailedReinit = false;
   /** Unsubscribe from the environment observable; set only while connected AND `environmentChanged` is overridden. */
   #envUnsub?: () => void;
   /** Unsubscribe from the throttled viewport observable; set only while connected AND `viewportChanged` is overridden. */
@@ -188,6 +197,17 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
       this.#pendingReinit = true;
     }
     this.#flushNow(); // reinit()/update() for any pending config, THEN activate
+    this.#activate();
+  }
+
+  /**
+   * Start the live side: `connect()` plus the opt-in subscriptions. Runs after a
+   * successful flush only — if `reinit()` threw, the element stays inactive until
+   * a later flush rebuilds it.
+   */
+  #activate(): void {
+    if (this.#isActive || !this.isConnected) return;
+    this.#isActive = true;
     this.connect();
     // Subscribe to device/viewport/orientation ONLY when the subclass opts in by
     // overriding environmentChanged — no global listeners for elements that don't
@@ -221,6 +241,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
     this.#sizeUnsub = undefined;
     this.#themeUnsub?.();
     this.#themeUnsub = undefined;
+    if (!this.#isActive) return; // connect() never ran (its build threw)
+    this.#isActive = false;
     this.disconnect();
   }
 
@@ -633,14 +655,13 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
 
   #seedDefaults(defs: readonly InputDef[]): void {
     for (const def of defs) {
-      let value: unknown = def.default;
-      if (def.converter?.fromAttribute) {
-        try {
-          value = def.converter.fromAttribute(null, this as unknown as AttrReader, def.attribute ?? def.configKey);
-        } catch (err) {
-          this.#warn(`converter for "${def.configKey}" threw computing its default; using \`default\``, err);
-          value = def.default;
-        }
+      let value: unknown;
+      try {
+        // Same resolution as removing the attribute (absent == default).
+        value = resolveFromAttribute(def, null, this as unknown as AttrReader).value;
+      } catch (err) {
+        this.#warn(`converter for "${def.configKey}" threw computing its default; using \`default\``, err);
+        value = def.default;
       }
       this.#config[def.configKey] = value;
       if (def.field) (this as Record<string, unknown>)[def.field] = value;
@@ -792,14 +813,26 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
 
   #flush(): void {
     if (!this.isConnected) return; // hold until connected
-    const reinit = this.#pendingReinit;
+    const isRetry = this.#hasFailedReinit;
+    const reinit = this.#pendingReinit || isRetry;
     const partial = this.#pending;
     this.#pendingReinit = false;
     this.#pending = null;
-    // A reinit rebuilds from full config, so it absorbs any update keys in the batch.
-    if (reinit) this.reinit();
-    else if (partial && Object.keys(partial).length > 0) this.update(partial);
-    this.#resolveSettled();
+    try {
+      // A reinit rebuilds from full config, so it absorbs any update keys in the batch.
+      if (reinit) this.reinit();
+      else if (partial && Object.keys(partial).length > 0) this.update(partial);
+    } catch (err) {
+      // Rethrow (no silent swallow), but don't wedge: rebuild on the next flush,
+      // and still release whenSettled() waiters in `finally`.
+      if (reinit) this.#hasFailedReinit = true;
+      throw err;
+    } finally {
+      this.#resolveSettled();
+    }
+    this.#hasFailedReinit = false;
+    // A rebuild that finally succeeded while connected activates what the failed one skipped.
+    if (isRetry) this.#activate();
   }
 
   /** Resolve everyone awaiting {@link whenSettled} for the flush that just ran. */
