@@ -10,6 +10,24 @@ that correctness lives in a single place and can't drift.
 > **[`docs/SPEC.md`](docs/SPEC.md) is the source of truth** for design intent. This
 > README is the tour; read the relevant SPEC section before changing behavior.
 
+## What's New in v1.0.0-rc14
+
+- **Shared search — `@keenmate/web-components-core/search`.** The search rules web-multiselect
+  2.6.0-rc02 shipped now live in core, so every component with a search box matches and highlights
+  the same way. Pure, DOM-free functions, no dependencies, on a new subpath (not re-exported from the
+  root).
+- **Normalization and match modes.** `normalizeSearchText` handles `normalized` (default: ignores
+  case and diacritics, folds `ł ø đ ß æ œ` …), `case-insensitive`, and `exact`. Match modes are
+  `contains`, `equals`, `starts-with`, `ends-with`, `word-starts-with`, `word-ends-with`, and `regex`.
+  `prepareSearchTerm` and `createRegexCompiler` (which keeps the last valid typed pattern) build the
+  term; `matchesSearchTerm` tests it.
+- **Highlight mapping you can render safely.** `findHighlightRanges` returns `{ text, ranges }`, with
+  ranges indexing into the returned NFC text, and `wrapRanges` wraps them with your markup and
+  escaping. Also exports the shared `searchCallback(term, signal, context)` types. See **SPEC §12.11**
+  and the live `examples-search.html` demo.
+
+See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
+
 ## What's New in v1.0.0-rc13
 
 - **Theme context — dark mode that works in Firefox and Safari.** Components followed a page's
@@ -28,42 +46,6 @@ that correctness lives in a single place and can't drift.
 - **⚠️ Note for component authors.** A dark wrapper `<div>` is no longer picked up implicitly (only
   Chromium ever did); use `theme-source="closest"` there. `observedAttributes` now always includes
   `theme-source`.
-
-See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
-
-## What's New in v1.0.0-rc12
-
-- **Null-clear contract — a cleared input now actually reaches your engine.** Core assembles the
-  engine config through the new `BlissElement.engineConfig(exclude)` (and the exported
-  `collectEngineConfig`), which **preserves `null`**. A nullable input cleared via
-  `removeAttribute` / `el.prop = null` now travels to the engine as `{ key: null }` — the deliberate
-  "reset" signal — instead of being silently dropped. This fixes the latent bug where clearing a
-  nullable field (e.g. `focused-node-class`) was a no-op and the stale value stuck. The two
-  sentinels are now contractual: `null` = *cleared/reset*, `undefined` = *not in this batch, leave
-  alone*. See the new **SPEC §6.1** and the live `examples-nullclear.html` demo.
-- **`collectEngineConfig` + `clearableConfigKeys` exported.** Core can derive, from the input table,
-  which keys legitimately carry `null` (`isClearableConverter` / `deriveClearableKeys`) — retiring
-  the hand-maintained per-component null-exception lists.
-- **⚠️ Breaking for engine authors.** An engine's merge must now treat a present `null` as a real
-  value: `this._x = updates.x` for a clearable field (null clears), or `this._x = updates.x ?? DEFAULT`
-  for a defaulted one. A field that is neither — a raw assign later dereferenced — will now receive
-  `null` where it previously received nothing; fix the merge, don't re-drop the null. Migration
-  snippets in [`CHANGELOG.md`](CHANGELOG.md).
-
-See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
-
-## What's New in v1.0.0-rc11
-
-- **`matchWidth: 'max'` — cap a floating element to the reference width.** Completes the
-  width-matching set in `/positioning`: `'min'` floors the panel to the reference width (grows for
-  wider content), `'exact'` pins it, and the new `'max'` caps it (shrinks for narrower content,
-  wraps when wider) — i.e. `min(reference, content)`, the mirror of `'min'`. Flows through
-  `createPopover` unchanged. Distinct from the `maxWidth` option, which caps to the available
-  *viewport* width rather than the reference.
-- **Fix: follow-cursor tooltips no longer mis-position on a stationary hover.** A pointer that
-  entered a trigger and stayed still fired no `mousemove` during the show delay, so the tooltip
-  pinned to the trigger's corner instead of the cursor. The cursor rect is now seeded from
-  `mouseenter`, so there's always a valid position before the tooltip shows.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
 

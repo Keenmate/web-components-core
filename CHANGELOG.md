@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc14] - 2026-10-22
+
+### Added
+
+- **Search primitives — `@keenmate/web-components-core/search` (`src/search/`, SPEC §12.11).**
+  The built-in search rules web-multiselect 2.6.0-rc02 shipped, moved here so every component
+  with a search box matches (and highlights) the same way. Pure, DOM-free, no dependencies;
+  a separate subpath, not re-exported from the root.
+  - `normalizeSearchText(text, behavior?)` — `normalized` (default: case and diacritics
+    ignored, `ł ø đ ð ħ ı ß æ œ ς` folded), `case-insensitive`, `exact`; NFC in every mode.
+  - `findTextMatches` / `matchesText` for `contains`, `equals`, `starts-with`, `ends-with`,
+    `word-starts-with`, `word-ends-with`; `findRegexMatches`, `statelessRegex`.
+  - `prepareSearchTerm(term, { behavior, match, regex, prepare?, onObjectTerm? })` →
+    `ActiveSearchTerm`, with `createRegexCompiler()` keeping the last valid typed pattern;
+    `matchesSearchTerm(term, match, prepared, raw)` (values may be lazy).
+  - `findHighlightRanges(label, term, opts)` → `{ text, ranges }` (ranges index into the
+    returned NFC text) and `wrapRanges(text, ranges, { open, close, escape })`.
+  - Types: `SearchBehavior`, `SearchMatch`, `SearchTermContext`, `PreparedSearchTerm`,
+    `SearchEntry`, `SearchCallbackContext` (the shared `searchCallback(term, signal, context)`
+    convention), `ActiveSearchTerm`, `SearchRange`, `HighlightResult`.
+- **`examples-search.html`** (chapter code `SE`): behavior × match playground, `normalizeSearchText`
+  side by side, every match mode on one term, why highlight returns `{ text, ranges }`, a
+  part-number `prepare` callback, and the `searchCallback` context with identity-stable `entries`.
+- `docs/search-migration-plan.md` — the multiselect → core → treeview plan.
+
 ## [1.0.0-rc13] - 2026-10-21
 
 ### Added
