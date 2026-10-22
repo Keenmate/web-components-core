@@ -32,7 +32,8 @@
   },
   "files": [
     "dist",
-    "docs/reactivity-and-batching.md"
+    "docs/reactivity-and-batching.md",
+    "release-notes"
   ],
   "scripts": {
     "dev": "vite --port 12400",

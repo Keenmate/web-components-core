@@ -12,6 +12,9 @@ that correctness lives in a single place and can't drift.
 
 ## What's New in v1.0.0-rc14
 
+New `/search` module, no changes to existing APIs. **[Release notes](release-notes/1.0.0-rc14.md)**
+cover the API and how a component adopts it.
+
 - **Shared search — `@keenmate/web-components-core/search`.** The search rules web-multiselect
   2.6.0-rc02 shipped now live in core, so every component with a search box matches and highlights
   the same way. Pure, DOM-free functions, no dependencies, on a new subpath (not re-exported from the
