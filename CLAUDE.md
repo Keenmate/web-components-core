@@ -109,8 +109,8 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
 ## Module notes (lazy-loaded)
 
 Per-module design notes live next to the code and load when working there:
-`src/logging/`, `src/cem/`, `src/testing/`, `src/positioning/`, `src/dom/`
-(each has a `CLAUDE.md`).
+`src/logging/`, `src/cem/`, `src/testing/`, `src/positioning/`, `src/dom/`,
+`src/search/` (each has a `CLAUDE.md`).
 
 Note: `BlissElement`'s input-validation warnings deliberately bypass the
 `/logging` loggers and call `console.warn` directly, so they surface even when logging is disabled.

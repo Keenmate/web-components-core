@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures';
 
-// Smoke-tests the human-facing example pages (index + the three /positioning
-// chapters). It doubles as an integration check of the <tooltip-card> demo
+// Smoke-tests the human-facing example pages (index, the /positioning chapters,
+// null-clear and search). It doubles as an integration check of the <tooltip-card> demo
 // component (a real BlissElement driving createTooltip) and of createPopover.
 // The pageErrors fixture fails the test on any uncaught error, so a broken
 // import or a throwing helper can't sail through green.
@@ -9,7 +9,7 @@ import { test, expect } from './fixtures';
 test.describe('examples index', () => {
   test('renders a card per registered page and a version badge', async ({ page }) => {
     await page.goto('/index.html');
-    await expect(page.locator('.card-link')).toHaveCount(4);
+    await expect(page.locator('.card-link')).toHaveCount(6);
     await expect(page.locator('#version-badge')).toHaveText(/^v\d/);
     // The XXYY chapter codes show on the cards.
     await expect(page.locator('.card-code', { hasText: 'TT' })).toBeVisible();
@@ -87,5 +87,57 @@ test.describe('examples-nullclear.html', () => {
     await page.locator('#c-clear').click();
     expect(await focusedClass(page)).toContain('ring-gold'); // stale class sticks — the bug
     await expect(page.locator('#c-verdict')).toHaveClass(/bug/);
+  });
+});
+
+test.describe('examples-search.html', () => {
+  test.beforeEach(async ({ page }) => page.goto('/examples-search.html'));
+
+  test('SE01: accent-insensitive filter + highlight; values normalized once', async ({ page }) => {
+    const term = page.locator('#pg-term');
+    await term.fill('ces');
+    await expect(page.locator('#pg-results mark')).toHaveText(['Čes', 'Čes']);
+    await term.fill('cesk');
+    await term.fill('lodz');
+    await expect(page.locator('#pg-results li')).toHaveCount(1);
+    await expect(page.locator('#pg-normalized')).toHaveText('27'); // once, not per keystroke
+
+    await page.locator('input[name="pg-behavior"][value="case-insensitive"]').check();
+    await expect(page.locator('#pg-results li')).toHaveCount(0);
+  });
+
+  test('SE01: regex keeps the last valid pattern while typing', async ({ page }) => {
+    await page.locator('#pg-match').selectOption('regex');
+    await page.locator('#pg-term').fill('^(Ústí|Nové)');
+    await expect(page.locator('#pg-results li')).toHaveCount(3);
+    await page.locator('#pg-term').fill('^(Ústí|Nové');
+    await expect(page.locator('#pg-results li')).toHaveCount(3);
+  });
+
+  test('SE04: highlight renders the returned NFC text', async ({ page }) => {
+    await expect(page.locator('#hl-right mark')).toHaveText('Zl\u00ED');
+    await expect(page.locator('#hl-ranges')).toHaveText('[[0,3]]');
+    await expect(page.locator('#hl-escaped mark')).toHaveText('Brno');
+    await expect(page.locator('#hl-escaped-src')).toContainText('&lt;b&gt;');
+  });
+
+  test('SE05: prepare turns ha-324/56 into a separator-insensitive regex', async ({ page }) => {
+    await expect(page.locator('#pn-results li:not(.is-miss)')).toHaveCount(5); // incl. XHA-324/56-B (contains)
+    await page.locator('#pn-prepare').uncheck();
+    await expect(page.locator('#pn-results li:not(.is-miss)')).toHaveCount(2);
+  });
+
+  test('SE06: entries built once per item set, searched by postal code', async ({ page }) => {
+    const term = page.locator('#cb-term');
+    await term.fill('3');
+    await term.fill('35');
+    await term.fill('350 02');
+    await expect(page.locator('#cb-results li')).toHaveCount(1);
+    await expect(page.locator('#cb-built')).toHaveText('1');
+    await expect(page.locator('#cb-indexed')).toHaveText('1');
+    await page.locator('#cb-replace').click();
+    await term.fill('lodz');
+    await expect(page.locator('#cb-results li')).toHaveText(['Łódź90-001']);
+    await expect(page.locator('#cb-built')).toHaveText('2');
   });
 });

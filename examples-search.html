@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search — web-components-core</title>
+    <link rel="stylesheet" href="examples-shared.css">
+    <style>
+        .search-input { width: 100%; max-width: 420px; padding: .55rem .75rem; font-size: 1rem;
+                        border: 1px solid #cbd5e0; border-radius: 8px; }
+        .results { list-style: none; margin: .8rem 0 0; padding: 0; display: grid;
+                   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .35rem .8rem; }
+        .results li { padding: .3rem .5rem; border-radius: 6px; background: #fff; border: 1px solid #e2e8f0; }
+        .results li.is-miss { opacity: .35; }
+        .results li small { color: #94a3b8; margin-inline-start: .4rem; }
+        mark { background: #fde68a; color: inherit; border-radius: 2px; padding: 0; }
+        .stat { display: inline-block; font: 600 .85rem ui-monospace, 'Courier New', monospace; background: #0f172a;
+                color: #e2e8f0; border-radius: 8px; padding: .35rem .7rem; margin: .2rem .4rem .2rem 0; }
+        .stat b { color: #7dd3fc; }
+        .stat.is-warn b { color: #fbbf24; }
+        .mono { font-family: ui-monospace, 'Courier New', monospace; }
+        .reference-table td.is-hit { background: #ecfdf5; }
+        .reference-table td.is-none { color: #cbd5e0; }
+        .units { font: .8rem ui-monospace, 'Courier New', monospace; color: #64748b; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="back-link">← Back to Examples</a>
+            <h1>Search</h1>
+            <p class="subtitle">The built-in search rules every component with a search box shares, from
+                <code>@keenmate/web-components-core/search</code>: <strong>normalization</strong>
+                (<code>search-behavior</code>), <strong>where the term matches</strong> (<code>search-match</code>),
+                term preparation, and highlighting that follows the same rules. Pure functions; a component adds the
+                per-item cache and the UI. See <strong>SPEC §12.11</strong>.</p>
+        </header>
+
+        <!-- ============================================================= -->
+        <!-- SE01 · Playground                                             -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>SE01 · Playground — behavior × match</h2>
+            <p>
+                The list is filtered and highlighted the way web-multiselect does it: every item's search value is
+                normalized <strong>once</strong> per behavior (watch the counter — typing doesn't move it), the term
+                goes through <code>prepareSearchTerm</code>, each item through <code>matchesSearchTerm</code>, and the
+                label through <code>findHighlightRanges</code> + <code>wrapRanges</code>.
+                Try <code>ces</code>, <code>ČES</code>, <code>lodz</code>, <code>strasse</code>, <code>nad</code>,
+                <code>town</code>, <code>haxkl324</code>, or with <code>regex</code>: <code>^(Ústí|Nové)</code>.
+            </p>
+            <div class="controls">
+                <input id="pg-term" class="search-input" type="search" placeholder="Type to search…" autocomplete="off">
+            </div>
+            <div class="controls">
+                <span><code>behavior</code>:</span>
+                <label><input type="radio" name="pg-behavior" value="normalized" checked> normalized</label>
+                <label><input type="radio" name="pg-behavior" value="case-insensitive"> case-insensitive</label>
+                <label><input type="radio" name="pg-behavior" value="exact"> exact</label>
+                <label><code>match</code>:
+                    <select id="pg-match">
+                        <option>contains</option>
+                        <option>equals</option>
+                        <option>starts-with</option>
+                        <option>word-starts-with</option>
+                        <option>ends-with</option>
+                        <option>word-ends-with</option>
+                        <option>regex</option>
+                    </select>
+                </label>
+                <label><input type="checkbox" id="pg-show-misses"> show misses</label>
+            </div>
+            <div class="demo-area">
+                <div>
+                    <span class="stat">matched: <b id="pg-count">0</b></span>
+                    <span class="stat">values normalized so far: <b id="pg-normalized">0</b></span>
+                    <span class="stat" id="pg-term-stat">ActiveSearchTerm: <b id="pg-active">none</b></span>
+                </div>
+                <ul class="results" id="pg-results"></ul>
+            </div>
+            <div class="note">
+                <div class="note-title">regex is raw</div>
+                With <code>match: 'regex'</code> the pattern runs against the <em>un-normalized</em> value with no flags,
+                so <code>behavior</code> stops mattering: <code>^ústí</code> finds nothing, <code>^Ústí</code> does. Type
+                an unfinished pattern (<code>^(Ústí|</code>) — <code>createRegexCompiler()</code> keeps the last valid one,
+                so the list doesn't flash empty.
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- SE02 · normalizeSearchText                                    -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>SE02 · <code>normalizeSearchText</code> — the three behaviors</h2>
+            <p>
+                <code>normalized</code> strips combining marks after NFD and hand-folds the letters Unicode can't
+                decompose (<code>ł ø đ ð ħ ı ß→ss æ→ae œ→oe</code>, final <code>ς→σ</code>). Every behavior applies NFC
+                first, so the decomposed <code>Zlín</code> row (5 code units) equals the composed one (4).
+                Export it to normalize a custom index exactly like built-in search.
+            </p>
+            <div class="controls">
+                <input id="nz-input" class="search-input" type="text" placeholder="Add your own text…">
+            </div>
+            <table class="reference-table">
+                <thead><tr><th>input</th><th><code>normalized</code></th><th><code>case-insensitive</code></th><th><code>exact</code></th></tr></thead>
+                <tbody id="nz-rows"></tbody>
+            </table>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- SE03 · Match modes                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>SE03 · <code>search-match</code> — where the term must sit</h2>
+            <p>
+                One term against a few values, every mode at once. A word is a run of letters and digits
+                (<code>[\p{L}\p{N}]</code>), so <code>-</code> and <code>/</code> separate words and <code>324</code>
+                starts a word in <code>HA-324/56</code> but not in <code>HA324</code> — try <code>324</code>, <code>ha</code>, <code>56</code>.
+            </p>
+            <div class="controls">
+                <label>term <input id="mm-term" class="search-input" type="text" value="town" style="max-width:200px"></label>
+            </div>
+            <table class="reference-table">
+                <thead id="mm-head"></thead>
+                <tbody id="mm-rows"></tbody>
+            </table>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- SE04 · Highlight { text, ranges }                             -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>SE04 · Highlight — why it returns <code>{ text, ranges }</code></h2>
+            <p>
+                To mark <code>Čes</code> for the term <code>ces</code>, the label is folded one code point at a time with
+                a map back to where each folded character came from. That works on the label's <strong>NFC</strong> form,
+                so the ranges index into the NFC text — which <code>findHighlightRanges</code> returns alongside them.
+                Below, the label is stored decomposed (<code>Zlín</code>) and the term is <code>zli</code>.
+            </p>
+            <div class="demo-area">
+                <table class="reference-table" style="margin:0">
+                    <tbody>
+                        <tr><th>input label</th><td class="mono" id="hl-input"></td></tr>
+                        <tr><th>returned <code>text</code></th><td class="mono" id="hl-text"></td></tr>
+                        <tr><th><code>ranges</code></th><td class="mono" id="hl-ranges"></td></tr>
+                        <tr class="is-highlight"><th>✅ <code>wrapRanges(r.text, r.ranges)</code></th><td id="hl-right"></td></tr>
+                        <tr><th>❌ ranges applied to the input</th><td id="hl-wrong"></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p>
+                Markup is the caller's decision: <code>wrapRanges</code> takes <code>open</code> / <code>close</code> and
+                an <code>escape</code> applied to every slice of the text (never to the markers). Pass an HTML escaper when
+                labels are plain text; omit it when they are trusted HTML (web-multiselect's display values).
+            </p>
+            <div class="controls">
+                <label><input type="checkbox" id="hl-escape" checked> escape (label is plain text: <code>R&amp;D &lt;b&gt;Brno&lt;/b&gt;</code>, term <code>brno</code>)</label>
+            </div>
+            <div class="demo-area">
+                <div id="hl-escaped"></div>
+                <pre id="hl-escaped-src" style="margin:.6rem 0 0"></pre>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- SE05 · prepare (getSearchTermCallback)                         -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>SE05 · Preparing the term — <code>getSearchTermCallback</code></h2>
+            <p>
+                Users type part numbers however they like: <code>ha-324/56</code>, <code>ha 32456</code>,
+                <code>HA32456</code>. A component's <code>getSearchTermCallback</code> reaches core as
+                <code>prepare</code>: return a <code>RegExp</code> and it is matched against the raw value (made
+                stateless, so a <code>g</code> flag is harmless); return a string and it is used as-is, not normalized
+                again; return an object and built-in search can't use it (<code>onObjectTerm</code> — the component
+                warns; objects are for a custom <code>searchCallback</code>).
+            </p>
+            <div class="controls">
+                <input id="pn-term" class="search-input" type="search" value="ha-324/56" autocomplete="off" style="max-width:240px">
+                <label><input type="checkbox" id="pn-prepare" checked> use <code>prepare</code> (separator-insensitive regex)</label>
+            </div>
+            <div class="demo-area">
+                <span class="stat">ActiveSearchTerm: <b id="pn-active"></b></span>
+                <ul class="results" id="pn-results"></ul>
+            </div>
+            <div class="code-block"><pre>const prepare = (term) => {
+  const parts = term.split(/[^a-z0-9]+/i).filter(Boolean);
+  return parts.length ? new RegExp(parts.join('[^a-z0-9]*'), 'i') : null;
+};
+prepareSearchTerm(typed, { behavior, match, regex, prepare });</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- SE06 · searchCallback context                                 -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>SE06 · Your own search — the <code>searchCallback</code> context</h2>
+            <p>
+                Built-in search is strings only. Anything richer goes to the consumer's
+                <code>searchCallback(term, signal, { searchTerm, entries })</code> — the shape core's
+                <code>SearchCallbackContext</code> fixes for every component. <code>entries</code> pairs each item with
+                its search value (here an object, <code>{ title, zip }</code>), is built on first access, and stays the
+                <strong>same array</strong> until the items change, so an engine (FlexSearch, …) can key its index on
+                it. Type a city or a postal code (<code>335</code>, <code>602 00</code>).
+            </p>
+            <div class="controls">
+                <input id="cb-term" class="search-input" type="search" placeholder="City or postal code…" autocomplete="off" style="max-width:240px">
+                <button id="cb-replace">Replace items</button>
+            </div>
+            <div class="demo-area">
+                <span class="stat">entries built: <b id="cb-built">0</b></span>
+                <span class="stat">index (re)built: <b id="cb-indexed">0</b></span>
+                <span class="stat">context.searchTerm: <b id="cb-searchterm">—</b></span>
+                <ul class="results" id="cb-results"></ul>
+            </div>
+            <div class="code-block"><pre>// component side — what web-multiselect does
+const context = { searchTerm, get entries() { return cachedEntries ??= Object.freeze(items.map(
+  (item) => ({ item, searchValue: getSearchValueCallback(item) }))); } };
+await searchCallback(term, signal, context);
+
+// consumer side
+getSearchValueCallback = (c) => ({ title: normalizeSearchText(c.city), zip: c.zip.replace(/[\s-]/g, '') });
+getSearchTermCallback  = (t) => ({ text: normalizeSearchText(t.trim()), zip: t.replace(/[\s-]/g, '') });
+searchCallback = (t, signal, { searchTerm, entries }) => {
+  if (entries !== indexedFor) { index = buildIndex(entries); indexedFor = entries; } // once per item set
+  return index.search(searchTerm);
+};</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- SE07 · API                                                    -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>SE07 · API</h2>
+            <div class="code-block"><pre>import {
+  normalizeSearchText,                    // (text, behavior = 'normalized') → string
+  findTextMatches, matchesText,           // (text, term, match) → ranges / boolean (prepared strings)
+  findRegexMatches, statelessRegex,       // regex helpers
+  NO_SEARCH_TERM, createRegexCompiler,    // { compile(pattern) → RegExp | null (last valid), reset() }
+  prepareSearchTerm,                      // (term, { behavior, match, regex, prepare?, onObjectTerm? }) → ActiveSearchTerm
+  matchesSearchTerm,                      // (term, match, prepared | () => prepared, raw | () => raw) → boolean
+  findHighlightRanges,                    // (label, term, { behavior, match }) → { text, ranges }
+  wrapRanges,                             // (text, ranges, { open?, close?, escape? }) → string
+} from '@keenmate/web-components-core/search';
+
+// types: SearchBehavior, SearchMatch, SearchTermContext, PreparedSearchTerm,
+//        SearchEntry, SearchCallbackContext, ActiveSearchTerm, SearchRange, HighlightResult</pre></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import {
+            createRegexCompiler, findHighlightRanges, matchesSearchTerm, normalizeSearchText,
+            prepareSearchTerm, wrapRanges,
+        } from '/src/search/index.ts';
+
+        const $ = (id) => document.getElementById(id);
+        const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const describe = (t) => t.kind === 'none' ? 'none'
+            : t.kind === 'text' ? `text "${t.text}"` : `regex ${t.re}`;
+        const NFD_ZLIN = 'Zli\u0301n'; // decomposed: i + combining acute
+
+        // ---------------------------------------------------------------
+        // SE01 · Playground
+        // ---------------------------------------------------------------
+        const PLACES = [
+            'Praha', 'Brno', 'Ostrava', 'Plzeň', 'Liberec', 'Olomouc', 'České Budějovice', 'Český Krumlov',
+            'Hradec Králové', 'Ústí nad Labem', 'Ústí nad Orlicí', 'Nové Město nad Metují', 'Nový Jičín',
+            NFD_ZLIN + ' (NFD)', 'Kraków', 'Łódź', 'Gdańsk', 'Wrocław', 'Straße des 17. Juni', 'Müllerstraße',
+            'Ærøskøbing', 'Old Town', 'Townsend', 'Downtown', 'HAxKL324', 'HAxKL3245', 'ΟΔΟΣ Αθηνάς',
+        ];
+        const pg = {
+            regex: createRegexCompiler(),          // one per "instance"
+            prepared: new Map(),                   // behavior → string[] (normalized once per behavior)
+            normalizedCount: 0,
+        };
+        const pgBehavior = () => document.querySelector('input[name="pg-behavior"]:checked').value;
+        function preparedValues(behavior) {
+            if (!pg.prepared.has(behavior)) {
+                pg.prepared.set(behavior, PLACES.map((p) => normalizeSearchText(p, behavior)));
+                pg.normalizedCount += PLACES.length;
+            }
+            return pg.prepared.get(behavior);
+        }
+        function renderPlayground() {
+            const behavior = pgBehavior();
+            const match = $('pg-match').value;
+            const term = prepareSearchTerm($('pg-term').value, { behavior, match, regex: pg.regex });
+            const prepared = preparedValues(behavior);
+            const showMisses = $('pg-show-misses').checked;
+            let count = 0;
+            $('pg-results').innerHTML = PLACES.map((label, i) => {
+                const hit = matchesSearchTerm(term, match, prepared[i], label);
+                if (hit) count++;
+                if (!hit && !showMisses) return '';
+                const r = findHighlightRanges(label, term, { behavior, match });
+                const html = hit ? wrapRanges(r.text, r.ranges, { escape: escapeHtml }) : escapeHtml(label);
+                return `<li class="${hit ? '' : 'is-miss'}">${html}<small>${escapeHtml(prepared[i])}</small></li>`;
+            }).join('');
+            $('pg-count').textContent = `${count} / ${PLACES.length}`;
+            $('pg-normalized').textContent = pg.normalizedCount;
+            $('pg-active').textContent = describe(term);
+        }
+        $('pg-term').addEventListener('input', renderPlayground);
+        $('pg-match').addEventListener('change', () => { pg.regex.reset(); renderPlayground(); });
+        $('pg-show-misses').addEventListener('change', renderPlayground);
+        document.querySelectorAll('input[name="pg-behavior"]').forEach((r) => r.addEventListener('change', renderPlayground));
+        renderPlayground();
+
+        // ---------------------------------------------------------------
+        // SE02 · normalizeSearchText
+        // ---------------------------------------------------------------
+        const NZ_SAMPLES = ['Český Krumlov', 'Łódź', 'Straße', 'Ærøskøbing', 'ΟΔΟΣ', NFD_ZLIN, 'Zlín', 'İstanbul'];
+        function renderNormalize() {
+            const extra = $('nz-input').value;
+            const rows = extra ? [extra, ...NZ_SAMPLES] : NZ_SAMPLES;
+            $('nz-rows').innerHTML = rows.map((s) => {
+                const cells = ['normalized', 'case-insensitive', 'exact']
+                    .map((b) => `<td class="mono">${escapeHtml(normalizeSearchText(s, b))}</td>`).join('');
+                return `<tr><td>${escapeHtml(s)} <span class="units">(${s.length} units)</span></td>${cells}</tr>`;
+            }).join('');
+        }
+        $('nz-input').addEventListener('input', renderNormalize);
+        renderNormalize();
+
+        // ---------------------------------------------------------------
+        // SE03 · Match modes
+        // ---------------------------------------------------------------
+        const MM_VALUES = ['Old Town', 'Townsend', 'Downtown', 'Town', 'HA-324/56', 'HA324'];
+        const MM_MODES = ['contains', 'equals', 'starts-with', 'word-starts-with', 'ends-with', 'word-ends-with'];
+        $('mm-head').innerHTML = `<tr><th>value</th>${MM_MODES.map((m) => `<th><code>${m}</code></th>`).join('')}</tr>`;
+        function renderMatchModes() {
+            const behavior = 'normalized';
+            const regex = createRegexCompiler();
+            $('mm-rows').innerHTML = MM_VALUES.map((value) => {
+                const prepared = normalizeSearchText(value, behavior);
+                const cells = MM_MODES.map((match) => {
+                    const term = prepareSearchTerm($('mm-term').value, { behavior, match, regex });
+                    if (term.kind === 'none') return '<td class="is-none">—</td>';
+                    if (!matchesSearchTerm(term, match, prepared, value)) return '<td class="is-none">✗</td>';
+                    const r = findHighlightRanges(value, term, { behavior, match });
+                    return `<td class="is-hit">${wrapRanges(r.text, r.ranges, { escape: escapeHtml })}</td>`;
+                }).join('');
+                return `<tr><td class="mono">${escapeHtml(value)}</td>${cells}</tr>`;
+            }).join('');
+        }
+        $('mm-term').addEventListener('input', renderMatchModes);
+        renderMatchModes();
+
+        // ---------------------------------------------------------------
+        // SE04 · Highlight { text, ranges } + escape
+        // ---------------------------------------------------------------
+        {
+            const opts = { behavior: 'normalized', match: 'contains' };
+            const term = prepareSearchTerm('zli', { ...opts, regex: createRegexCompiler() });
+            const r = findHighlightRanges(NFD_ZLIN, term, opts);
+            // Spell out combining marks so the decomposition is visible.
+            const units = (s) => s.replace(/\p{M}/gu, (ch) => `[U+${ch.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}]`);
+            const spaced = (s) => [...units(s).matchAll(/\[U\+[0-9A-F]+\]|./g)].map((m) => m[0]).join(' · ');
+            $('hl-input').textContent = `${spaced(NFD_ZLIN)}  (${NFD_ZLIN.length} units)`;
+            $('hl-text').textContent = `${spaced(r.text)}  (${r.text.length} units, NFC)`;
+            $('hl-ranges').textContent = JSON.stringify(r.ranges);
+            const right = wrapRanges(r.text, r.ranges);
+            const wrong = wrapRanges(NFD_ZLIN, r.ranges);
+            // Show the markup too — the browser re-attaches the stray accent visually, so the
+            // rendered output alone hides the bug.
+            $('hl-right').innerHTML = `${right} <span class="units">${escapeHtml(units(right))}</span>`;
+            $('hl-wrong').innerHTML = `${wrong} <span class="units">${escapeHtml(units(wrong))}</span>`
+                + ' <span class="units">— <code>í</code> is split: the accent lands after <code>&lt;/mark&gt;</code></span>';
+        }
+        function renderEscape() {
+            const label = 'R&D <b>Brno</b>';
+            const opts = { behavior: 'normalized', match: 'contains' };
+            const term = prepareSearchTerm('brno', { ...opts, regex: createRegexCompiler() });
+            const r = findHighlightRanges(label, term, opts);
+            const html = wrapRanges(r.text, r.ranges, $('hl-escape').checked ? { escape: escapeHtml } : {});
+            $('hl-escaped').innerHTML = html;
+            $('hl-escaped-src').textContent = html;
+        }
+        $('hl-escape').addEventListener('change', renderEscape);
+        renderEscape();
+
+        // ---------------------------------------------------------------
+        // SE05 · prepare
+        // ---------------------------------------------------------------
+        const PARTS = ['HA-324/56', 'HA 324-56', 'HA32456', 'ha.324.56', 'HA-324/57', 'HB-324/56', 'XHA-324/56-B'];
+        const pnRegex = createRegexCompiler();
+        const partPrepare = (t) => {
+            const parts = t.split(/[^a-z0-9]+/i).filter(Boolean);
+            return parts.length ? new RegExp(parts.join('[^a-z0-9]*'), 'i') : null;
+        };
+        function renderParts() {
+            const behavior = 'normalized', match = 'contains';
+            const term = prepareSearchTerm($('pn-term').value, {
+                behavior, match, regex: pnRegex,
+                prepare: $('pn-prepare').checked ? partPrepare : undefined,
+            });
+            $('pn-active').textContent = describe(term);
+            $('pn-results').innerHTML = PARTS.map((p) => {
+                const hit = matchesSearchTerm(term, match, () => normalizeSearchText(p, behavior), p);
+                const r = findHighlightRanges(p, term, { behavior, match });
+                return `<li class="${hit ? '' : 'is-miss'}">${hit ? wrapRanges(r.text, r.ranges, { escape: escapeHtml }) : escapeHtml(p)}</li>`;
+            }).join('');
+        }
+        $('pn-term').addEventListener('input', renderParts);
+        $('pn-prepare').addEventListener('change', renderParts);
+        renderParts();
+
+        // ---------------------------------------------------------------
+        // SE06 · searchCallback context — a minimal "component" + consumer
+        // ---------------------------------------------------------------
+        const CITY_SETS = [
+            [
+                { city: 'Praha', zip: '110 00' }, { city: 'Brno', zip: '602 00' }, { city: 'Český Krumlov', zip: '381 01' },
+                { city: 'Plzeň', zip: '301 00' }, { city: 'Karlovy Vary', zip: '360 01' }, { city: 'Cheb', zip: '350 02' },
+                { city: 'Sokolov', zip: '356 01' }, { city: 'Mariánské Lázně', zip: '353 01' }, { city: 'Ostrov', zip: '363 01' },
+            ],
+            [
+                { city: 'Kraków', zip: '30-001' }, { city: 'Łódź', zip: '90-001' }, { city: 'Gdańsk', zip: '80-001' },
+                { city: 'Wrocław', zip: '50-001' }, { city: 'Poznań', zip: '60-001' }, { city: 'Szczecin', zip: '70-001' },
+            ],
+        ];
+        // "component" state
+        const comp = { items: CITY_SETS[0], set: 0, entries: null, builtCount: 0, controller: null };
+        const getSearchValueCallback = (c) => ({ title: normalizeSearchText(c.city), zip: c.zip.replace(/[\s-]/g, '') });
+        const getSearchTermCallback = (t) => ({ text: normalizeSearchText(t.trim()), zip: t.replace(/[\s-]/g, '') });
+        function makeContext(searchTerm) {
+            return {
+                searchTerm,
+                get entries() {
+                    if (!comp.entries) {
+                        comp.entries = Object.freeze(comp.items.map((item) => Object.freeze({ item, searchValue: getSearchValueCallback(item) })));
+                        comp.builtCount++;
+                    }
+                    return comp.entries;
+                },
+            };
+        }
+        // consumer state — a toy "engine" indexed per entries identity
+        const consumer = { indexedFor: null, index: null, indexCount: 0 };
+        async function searchCallback(term, signal, { searchTerm, entries }) {
+            if (entries !== consumer.indexedFor) {
+                consumer.index = entries.map((e) => ({ item: e.item, ...e.searchValue }));
+                consumer.indexedFor = entries;
+                consumer.indexCount++;
+            }
+            return consumer.index
+                .filter((r) => (searchTerm.zip && /\d/.test(searchTerm.zip) && r.zip.startsWith(searchTerm.zip))
+                    || (searchTerm.text && r.title.includes(searchTerm.text)))
+                .map((r) => r.item);
+        }
+        async function runCallback() {
+            comp.controller?.abort();
+            comp.controller = new AbortController();
+            const term = $('cb-term').value;
+            let results = comp.items;
+            if (term.trim()) {
+                const searchTerm = getSearchTermCallback(term);
+                $('cb-searchterm').textContent = JSON.stringify(searchTerm);
+                results = await searchCallback(term, comp.controller.signal, makeContext(searchTerm));
+            } else {
+                $('cb-searchterm').textContent = '—';
+            }
+            $('cb-built').textContent = comp.builtCount;
+            $('cb-indexed').textContent = consumer.indexCount;
+            $('cb-results').innerHTML = results.map((c) =>
+                `<li>${escapeHtml(c.city)}<small>${escapeHtml(c.zip)}</small></li>`).join('');
+        }
+        $('cb-term').addEventListener('input', runCallback);
+        $('cb-replace').addEventListener('click', () => {
+            comp.set = (comp.set + 1) % CITY_SETS.length;
+            comp.items = CITY_SETS[comp.set];
+            comp.entries = null; // items changed → entries invalidated (new identity on next access)
+            runCallback();
+        });
+        runCallback();
+
+    </script>
+
+    <script type="module" src="examples-chapter-nav.js"></script>
+</body>
+</html>

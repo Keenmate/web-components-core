@@ -24,6 +24,10 @@
     "./positioning": {
       "types": "./dist/positioning/index.d.ts",
       "import": "./dist/positioning/index.js"
+    },
+    "./search": {
+      "types": "./dist/search/index.d.ts",
+      "import": "./dist/search/index.js"
     }
   },
   "files": [

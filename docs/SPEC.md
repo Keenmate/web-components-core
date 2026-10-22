@@ -995,3 +995,62 @@ work in every browser:
 `THEME_CONTEXT_ATTRIBUTE` / `THEME_SOURCE_ATTRIBUTE`, and the types `ColorScheme`,
 `ThemeMode`, `ThemeSource`, `ThemeListener`. SSR-safe: no DOM → `null` (or the forced
 mode) once, no-op unsubscribe.
+
+### 12.11 Search (normalization, matching, highlight) — IMPLEMENTED (`src/search/`)
+
+**The gap.** web-multiselect 2.6.0-rc02 shipped a search model (accent-insensitive by
+default, match modes, a custom term hook, highlight that follows the matching rules) as a
+component-local module. web-treeview searches through a bundled FlexSearch index and would
+have to re-implement the same rules to agree with it. The rules move here once, so
+`search-behavior` / `search-match` mean the same thing in every component.
+
+**Two independent axes** for built-in search, which works on strings only:
+
+- `SearchBehavior` — how text is normalized, for the item values *and* the term:
+  `normalized` (default; NFD, strip `\p{M}`, lowercase, hand-fold `ł ø đ ð ħ ı ß→ss æ→ae
+  œ→oe ς→σ`), `case-insensitive` (NFC + lowercase + `ς→σ`), `exact` (NFC only). Every mode
+  applies NFC, so composed and decomposed accents compare equal. `normalizeSearchText` is
+  public so a custom search can normalize identically.
+- `SearchMatch` — where the term must sit: `contains` (default), `equals`, `starts-with`,
+  `ends-with` (whole value), `word-starts-with`, `word-ends-with` (a word = a run of
+  `[\p{L}\p{N}]`), `regex`. A regex is tested against the **raw** value with no flags:
+  normalization does not apply, case and accents are up to the pattern. A typed pattern
+  that doesn't compile (mid-typing) reuses the instance's last valid one
+  (`createRegexCompiler`).
+
+**Internal vs own search.** A component with search offers:
+
+- `getSearchTermCallback(term, { target, behavior, match })` → `PreparedSearchTerm`. For
+  built-in search (`target: 'internal'`) a string is used as-is (not normalized again) and a
+  RegExp is matched raw (made stateless); an object is unusable there (`onObjectTerm`, the
+  component warns). For `target: 'callback'` anything goes.
+- `searchCallback(term, signal, context)` — the consumer's engine (FlexSearch, a server).
+  `SearchCallbackContext` = `{ searchTerm, entries }`: the prepared term, and every item
+  paired with its search value (`SearchEntry`, which may be an object from
+  `getSearchValueCallback`). `entries` is built lazily on first access and is the **same
+  array** until the items change, so an engine can key its index on it.
+
+Built-in search state is an `ActiveSearchTerm` (`none` / `text` / `regex`) from
+`prepareSearchTerm`; `matchesSearchTerm(term, match, prepared, raw)` tests one item, with
+`prepared` / `raw` optionally lazy. **The component owns the per-item cache** (each value
+read and normalized once, not per keystroke; invalidated when items or the
+member/callback change) and the search flow — the module is pure and DOM-free. The cache
+moves here when a second component needs it (web-treeview,
+`docs/search-migration-plan.md` Phase 3).
+
+**Highlight returns ranges, not HTML.** `findHighlightRanges(label, term, opts)` →
+`{ text, ranges }`: for a text term the label is NFC'd and folded per code point with an
+index map back, so `ces` marks `Čes` in `Český`, `ss` marks a whole `ß`, and combining marks
+after a match stay inside it. The ranges index into the **returned** `text` — an NFD
+`Zli\u0301n` comes back as NFC `Zlín`; ranges applied to the original would cut before the
+accent. `wrapRanges(text, ranges, { open, close, escape })` builds the markup; escaping is
+the caller's decision (web-multiselect renders trusted display HTML unescaped, a component
+rendering plain text passes an escaper).
+
+**API** (`@keenmate/web-components-core/search`, not re-exported from the root):
+`normalizeSearchText`, `findTextMatches`, `matchesText`, `findRegexMatches`,
+`statelessRegex`, `NO_SEARCH_TERM`, `createRegexCompiler`, `prepareSearchTerm`,
+`matchesSearchTerm`, `findHighlightRanges`, `wrapRanges`; types `SearchBehavior`,
+`SearchMatch`, `SearchTermContext`, `PreparedSearchTerm`, `SearchEntry`,
+`SearchCallbackContext`, `ActiveSearchTerm`, `SearchRange`, `HighlightResult`,
+`RegexCompiler`, `PrepareSearchTermOptions`, `WrapRangesOptions`. No dependencies.

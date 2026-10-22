@@ -386,6 +386,36 @@ const tip = createTooltip({ trigger, content: 'Help text', delay: { show: 200 } 
 `inheritThemeFrom` (copies `data-theme` onto portaled layers — C-CS-10), and a
 `platform` escape hatch.
 
+## Search (`@keenmate/web-components-core/search`)
+
+Built-in search rules shared by every component with a search box: normalization
+(`search-behavior`), where the term matches (`search-match`), term preparation, and highlight
+mapping. Pure functions, no dependencies; the component keeps its per-item cache.
+
+```ts
+import {
+  createRegexCompiler, findHighlightRanges, matchesSearchTerm, normalizeSearchText,
+  prepareSearchTerm, wrapRanges,
+} from '@keenmate/web-components-core/search';
+
+const behavior = 'normalized', match = 'word-starts-with';
+const prepared = items.map((i) => normalizeSearchText(i.label, behavior)); // once, not per keystroke
+const regex = createRegexCompiler();                                        // one per instance
+
+const term = prepareSearchTerm(typed, { behavior, match, regex });          // 'kru' → { kind: 'text', text: 'kru' }
+const hits = items.filter((i, n) => matchesSearchTerm(term, match, prepared[n], i.label));
+
+const { text, ranges } = findHighlightRanges('Český Krumlov', term, { behavior, match });
+wrapRanges(text, ranges, { escape });                                       // 'Český <mark>Kru</mark>mlov'
+```
+
+`normalized` (default) ignores case and diacritics (`ces` → `Český`, `strasse` → `Straße`),
+`case-insensitive` ignores case only, `exact` nothing. Match modes: `contains`, `equals`,
+`starts-with`, `ends-with`, `word-starts-with`, `word-ends-with`, `regex` (raw value, no
+normalization). Always render the `text` `findHighlightRanges` returns — it is the NFC form the
+ranges index into. Also exports the `searchCallback` context convention types
+(`SearchCallbackContext`, `SearchEntry`). See SPEC §12.11.
+
 ## Testing (`@keenmate/web-components-core/testing`)
 
 Runner-agnostic DOM fixtures (pure DOM, zero deps — vitest+jsdom or a real
