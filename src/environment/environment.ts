@@ -29,6 +29,8 @@
  */
 
 import { createFrameScheduler } from '../dom/frame-scheduler.js';
+import { once } from '../dom/once.js';
+import { createThrottle } from '../dom/throttle.js';
 
 /** The primary pointing device: `coarse` = touch/stylus, `fine` = mouse/trackpad. */
 export type PointerType = 'coarse' | 'fine' | 'none';
@@ -123,10 +125,6 @@ let mqls: MediaQueryList[] = [];
 
 /** Throttle window (ms) for the continuous viewport channel — one notify per window, leading + trailing. */
 const VIEWPORT_THROTTLE_MS = 30;
-/** Pending trailing-edge timer for the viewport channel; `undefined` when none is scheduled. */
-let viewportTimer: ReturnType<typeof setTimeout> | undefined;
-/** Timestamp of the last viewport notify, for the leading-edge gate. */
-let lastViewportNotify = 0;
 
 function sortBreakpoints(map: BreakpointMap): Array<[string, number]> {
   return Object.entries(map).sort((a, b) => a[1] - b[1]);
@@ -262,7 +260,7 @@ function recompute(): void {
     for (const listener of [...subscribers]) listener(next);
   }
   if (viewportSubscribers.size > 0 && (!prev || !viewportEqual(prev, next))) {
-    scheduleViewportNotify();
+    viewportThrottle.schedule();
   }
 }
 
@@ -274,24 +272,10 @@ function fireViewport(): void {
 }
 
 /**
- * Throttle the viewport channel to one notify per {@link VIEWPORT_THROTTLE_MS}
- * (leading + trailing): fire straight away if the window has elapsed, otherwise
- * schedule a single trailing notify carrying the latest (settled) size.
+ * The viewport channel's throttle — one notify per {@link VIEWPORT_THROTTLE_MS},
+ * leading + trailing; the trailing notify carries the latest (settled) size.
  */
-function scheduleViewportNotify(): void {
-  if (viewportTimer !== undefined) return; // trailing edge already pending
-  const elapsed = Date.now() - lastViewportNotify;
-  if (elapsed >= VIEWPORT_THROTTLE_MS) {
-    lastViewportNotify = Date.now();
-    fireViewport();
-  } else {
-    viewportTimer = setTimeout(() => {
-      viewportTimer = undefined;
-      lastViewportNotify = Date.now();
-      fireViewport();
-    }, VIEWPORT_THROTTLE_MS - elapsed);
-  }
-}
+const viewportThrottle = createThrottle(fireViewport, VIEWPORT_THROTTLE_MS);
 
 const onMediaChange = (): void => recompute();
 
@@ -335,11 +319,7 @@ function stop(): void {
     window.removeEventListener('resize', onResize);
   }
   resizeFrame.cancel(); // a queued frame would re-cache a snapshot nobody observes
-  if (viewportTimer !== undefined) {
-    clearTimeout(viewportTimer);
-    viewportTimer = undefined;
-  }
-  lastViewportNotify = 0;
+  viewportThrottle.cancel();
   current = null;
 }
 
@@ -367,18 +347,7 @@ export function getEnvironment(): EnvironmentSnapshot {
  * SSR (fires once with the desktop default, returns a no-op unsubscribe).
  */
 export function observeEnvironment(listener: EnvironmentListener, opts: ObserveOptions = {}): () => void {
-  const first = subscriberCount() === 0;
-  subscribers.add(listener);
-  if (first) start();
-  if (opts.immediate !== false) listener(getEnvironment());
-
-  let live = true;
-  return () => {
-    if (!live) return;
-    live = false;
-    subscribers.delete(listener);
-    if (subscriberCount() === 0) stop();
-  };
+  return subscribe(subscribers, listener, opts);
 }
 
 /**
@@ -395,18 +364,19 @@ export function observeEnvironment(listener: EnvironmentListener, opts: ObserveO
  * unsubscribe. No-op-safe during SSR.
  */
 export function observeViewport(listener: EnvironmentListener, opts: ObserveOptions = {}): () => void {
+  return subscribe(viewportSubscribers, listener, opts);
+}
+
+/** Join one channel; the shared listeners start with the first subscriber of either and stop with the last. */
+function subscribe(channel: Set<EnvironmentListener>, listener: EnvironmentListener, opts: ObserveOptions): () => void {
   const first = subscriberCount() === 0;
-  viewportSubscribers.add(listener);
+  channel.add(listener);
   if (first) start();
   if (opts.immediate !== false) listener(getEnvironment());
-
-  let live = true;
-  return () => {
-    if (!live) return;
-    live = false;
-    viewportSubscribers.delete(listener);
+  return once(() => {
+    channel.delete(listener);
     if (subscriberCount() === 0) stop();
-  };
+  });
 }
 
 /**

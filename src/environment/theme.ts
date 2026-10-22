@@ -30,6 +30,7 @@
  */
 
 import { composedParent } from '../dom/composed-tree.js';
+import { once } from '../dom/once.js';
 
 /** A concrete color scheme. */
 export type ColorScheme = 'dark' | 'light';
@@ -330,17 +331,14 @@ export function observeThemeContext(
   if (opts.immediate !== false) deliver(sub);
   else sub.last = effective(sub);
 
-  let live = true;
-  return () => {
-    if (!live) return;
-    live = false;
+  return once(() => {
     (watch ?? s.page).subscribers.delete(sub);
     if (watch) {
       syncWatch(watch);
       if (watch.subscribers.size === 0) s.sources.delete(watch.element!);
     }
     syncWatch(s.page);
-  };
+  });
 }
 
 /** Test-only: drop all subscribers, observers and the forced mode. */

@@ -54,12 +54,20 @@ function pascal(name: string): string {
     .join('');
 }
 
-/** The default managed-property name for an event: `on` + PascalCase(name). */
+/**
+ * The default managed-property name for an event: `on` + PascalCase(name).
+ *
+ * @internal BlissElement plumbing — exported, but not part of the stable API.
+ */
 export function defaultEventProperty(name: string): string {
   return `on${pascal(name)}`;
 }
 
-/** Expand the `static events` shorthand into resolved defs (property names filled in). */
+/**
+ * Expand the `static events` shorthand into resolved defs (property names filled in).
+ *
+ * @internal BlissElement plumbing — exported, but not part of the stable API.
+ */
 export function normalizeEventDefs(
   events: readonly (string | EventDef)[] | undefined,
 ): NormalizedEventDef[] {

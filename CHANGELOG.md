@@ -35,9 +35,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Environment:** a resize frame queued before the last unsubscribe no longer re-caches a
   stale snapshot for `getEnvironment()`, and `configureBreakpoints()` re-resolves the
   breakpoint when only `observeViewport` subscribers are live.
+- **A rejected pre-upgrade property no longer blocks the initial attribute.** `<x mode="b">`
+  with `el.mode = 'bogus'` set before upgrade resolved to the default; it now takes `b`.
+- **`toList` / `toObjectArray` defaults are no longer shared between instances** — each resolve
+  gets its own array, so mutating one element's array can't change another's.
+- **`toValue` reflection** removes the attribute for a value JSON can't represent (a function)
+  instead of writing the string `"undefined"`.
+- **`lockBodyScroll()`** is a no-op instead of throwing when called before `<body>` exists.
 
 ### Internal
 
+- More shared internal helpers: `dom/throttle.ts` (leading + trailing, replaces the copies in
+  environment and element-size) and `dom/once.ts` (the run-once unsubscribe guard, five copies).
+  `observeEnvironment` / `observeViewport` share one subscribe path. Converters share
+  `scalarToAttribute` / `parseJson`, and `toInt` / `toFloat` one numeric core. `BlissElement`'s
+  pre-upgrade lift and reflection guard are single private helpers; the logger's three
+  localStorage accesses go through one.
+- Removed the unused `getRootLogger` and the internal `TABLET_MIN_SHORT_SIDE` re-export from
+  `overlay/presentation.ts` (the public export from the root index is unchanged). Marked
+  `resolveFromAttribute`, `resolveFromProperty`, `normalizeEventDefs` and `defaultEventProperty`
+  `@internal` in their docs (still exported).
 - Shared internal helpers: `dom/frame-scheduler.ts` (per-frame coalescing with `cancel()`,
   now used by environment and keyboard-inset) and `dom/composed-tree.ts` (`composedParent`
   / `composedClosest`, now used by theme, anchor and containing-block).

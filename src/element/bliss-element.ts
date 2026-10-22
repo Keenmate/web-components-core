@@ -526,12 +526,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
       return;
     }
     this.#themeSource = next;
-    this.#reflecting = true;
-    try {
-      this.removeAttribute(THEME_SOURCE_ATTRIBUTE);
-    } finally {
-      this.#reflecting = false;
-    }
+    this.#withoutReflect(() => this.removeAttribute(THEME_SOURCE_ATTRIBUTE));
     this.#resubscribeTheme();
   }
 
@@ -722,24 +717,32 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
     console.warn(`[BlissElement] <${this.localName ?? 'unknown'}> ${message}`, ...detail);
   }
 
+  /**
+   * Take a value assigned before upgrade (an own data property shadowing the
+   * accessor about to be installed) off the instance, so it can be re-applied
+   * through that accessor.
+   */
+  #liftPreUpgrade(key: string): { had: false } | { had: true; value: unknown } {
+    if (!Object.prototype.hasOwnProperty.call(this, key)) return { had: false };
+    const value = (this as Record<string, unknown>)[key];
+    delete (this as Record<string, unknown>)[key];
+    return { had: true, value };
+  }
+
   #installAccessors(defs: readonly InputDef[]): void {
     for (const def of defs) {
       const key = def.configKey;
-      // Preserve a value assigned before upgrade, then route it through the setter.
-      const had = Object.prototype.hasOwnProperty.call(this, key);
-      const pre = had ? (this as Record<string, unknown>)[key] : undefined;
-      if (had) delete (this as Record<string, unknown>)[key];
+      const pre = this.#liftPreUpgrade(key);
       Object.defineProperty(this, key, {
         configurable: true,
         enumerable: true,
         get: () => this.#config[key],
         set: (value: unknown) => this.#setFromProperty(def, value),
       });
-      if (had) {
-        // Remember it so the initial attribute can't clobber it (see attributeChangedCallback).
-        (this.#preUpgradeKeys ??= new Set()).add(key);
-        (this as Record<string, unknown>)[key] = pre;
-      }
+      // Re-apply through the setter. Only an ACCEPTED value is remembered so the
+      // initial attribute can't clobber it (see attributeChangedCallback) — a
+      // rejected one must not block a valid initial attribute.
+      if (pre.had && this.#setFromProperty(def, pre.value)) (this.#preUpgradeKeys ??= new Set()).add(key);
     }
   }
 
@@ -754,9 +757,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
       if (!prop) continue;
       const eventName = ev.name;
       // Preserve a handler assigned before upgrade, then route it through the setter.
-      const had = Object.prototype.hasOwnProperty.call(this, prop);
-      const pre = had ? (this as Record<string, unknown>)[prop] : undefined;
-      if (had) delete (this as Record<string, unknown>)[prop];
+      const pre = this.#liftPreUpgrade(prop);
       Object.defineProperty(this, prop, {
         configurable: true,
         enumerable: true,
@@ -773,26 +774,36 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
           }
         },
       });
-      if (had) (this as Record<string, unknown>)[prop] = pre;
+      if (pre.had) (this as Record<string, unknown>)[prop] = pre.value;
     }
   }
 
-  #setFromProperty(def: InputDef, value: unknown): void {
+  /** Stage a JS-assigned value; `false` when the converter rejected it (warned, previous value kept). */
+  #setFromProperty(def: InputDef, value: unknown): boolean {
     const resolved = resolveFromProperty(def, value);
     if (!resolved) {
       this.#warn(`rejected invalid value for property "${def.configKey}"; keeping previous value`, value);
-      return;
+      return false;
     }
     this.#stage(resolved);
-    if (def.reflect && def.attribute && def.converter?.toAttribute) {
-      const attrVal = def.converter.toAttribute(resolved.value as never);
-      this.#reflecting = true;
-      try {
-        if (attrVal === null) this.removeAttribute(def.attribute);
-        else this.setAttribute(def.attribute, attrVal);
-      } finally {
-        this.#reflecting = false;
-      }
+    const { attribute, converter } = def;
+    if (def.reflect && attribute && converter?.toAttribute) {
+      const attrVal = converter.toAttribute(resolved.value as never);
+      this.#withoutReflect(() => {
+        if (attrVal === null) this.removeAttribute(attribute);
+        else this.setAttribute(attribute, attrVal);
+      });
+    }
+    return true;
+  }
+
+  /** Write our own attribute without `attributeChangedCallback` feeding it back in. */
+  #withoutReflect(write: () => void): void {
+    this.#reflecting = true;
+    try {
+      write();
+    } finally {
+      this.#reflecting = false;
     }
   }
 

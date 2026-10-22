@@ -19,6 +19,8 @@ export interface Resolved {
  * supplies its own fallback; when it has none (returns `undefined`), the row's
  * `default` applies — so `{ converter: toInt(), default: 5 }` resolves to 5 for
  * an absent, removed or unparsable attribute.
+ *
+ * @internal BlissElement plumbing — exported, but not part of the stable API.
  */
 export function resolveFromAttribute(def: InputDef, raw: string | null, reader: AttrReader): Resolved {
   const conv = def.converter;
@@ -32,6 +34,8 @@ export function resolveFromAttribute(def: InputDef, raw: string | null, reader: 
 /**
  * Property path: `converter.validate(value)` → resolved value, or `null` when
  * the value is rejected. A converter without `validate` accepts any value.
+ *
+ * @internal BlissElement plumbing — exported, but not part of the stable API.
  */
 export function resolveFromProperty(def: InputDef, value: unknown): Resolved | null {
   const conv = def.converter;

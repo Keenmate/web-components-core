@@ -441,6 +441,23 @@ describe('BlissElement reflection', () => {
     expect((el as PreUpgradeElement).read()).toMatchObject({ mode: 'b' });
   });
 
+  it('does not let a REJECTED pre-upgrade property block the initial attribute', () => {
+    class RejectedPreUpgradeElement extends BlissElement {
+      protected static override inputs: readonly InputDef[] = [
+        { configKey: 'mode', attribute: 'mode', converter: toEnum(['a', 'b'] as const, { default: 'a' }) },
+      ];
+    }
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const el = document.createElement('rejected-pre-upgrade-element');
+    el.setAttribute('mode', 'b'); // valid initial attribute
+    (el as unknown as { mode: string }).mode = 'bogus'; // invalid pre-upgrade property
+    define('rejected-pre-upgrade-element', RejectedPreUpgradeElement as unknown as CustomElementConstructor);
+    customElements.upgrade(el);
+    warn.mockRestore();
+
+    expect((el as unknown as { mode: string }).mode).toBe('b');
+  });
+
   it('lets a pre-upgrade property win over the initial attribute, then reacts to later attribute changes', async () => {
     class DualPathElement extends BlissElement {
       protected static override inputs: readonly InputDef[] = [

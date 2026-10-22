@@ -6,8 +6,10 @@
  * — page scroll stays locked until the *last* one closes, and the original
  * `overflow` is never clobbered by a nested lock.
  *
- * SSR-safe: with no `document` it's a no-op returning a no-op release.
+ * SSR-safe: with no `document` (or no `<body>` yet) it's a no-op returning a no-op release.
  */
+
+import { once } from '../dom/once.js';
 
 /** How many active locks are holding page scroll shut. */
 let lockCount = 0;
@@ -20,7 +22,7 @@ let stashedOverflow: string | null = null;
  * ref count. Restores the original `overflow` only when the final lock releases.
  */
 export function lockBodyScroll(): () => void {
-  if (typeof document === 'undefined') return () => {};
+  if (typeof document === 'undefined' || !document.body) return () => {};
 
   if (lockCount === 0) {
     stashedOverflow = document.body.style.overflow;
@@ -28,16 +30,13 @@ export function lockBodyScroll(): () => void {
   }
   lockCount++;
 
-  let released = false;
-  return () => {
-    if (released) return;
-    released = true;
+  return once(() => {
     lockCount = Math.max(0, lockCount - 1);
     if (lockCount === 0 && stashedOverflow !== null) {
       document.body.style.overflow = stashedOverflow;
       stashedOverflow = null;
     }
-  };
+  });
 }
 
 /** Test-only: force-release all locks and restore the body immediately. */

@@ -13,6 +13,24 @@ export interface EnumConverter<V extends string> extends Converter<V> {
   readonly values: readonly V[];
 }
 
+/** `toAttribute` for scalars: `null`/`undefined` remove the attribute, anything else is stringified. */
+const scalarToAttribute = (value: unknown): string | null => (value == null ? null : String(value));
+
+/**
+ * The JSON attribute path shared by {@link toValue}, {@link toObjectArray} and
+ * {@link toObject}: absent / blank / malformed / failing `isValid` → `fallback()`.
+ */
+function parseJson<V>(raw: string | null, isValid: ((value: unknown) => boolean) | undefined, fallback: () => V): V {
+  if (raw === null || raw.trim() === '') return fallback();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return fallback();
+  }
+  return !isValid || isValid(parsed) ? (parsed as V) : fallback();
+}
+
 /**
  * Exact-match against a fixed set of strings.
  *
@@ -34,49 +52,39 @@ export function toEnum<const T extends readonly string[]>(
     validate(value): value is T[number] {
       return typeof value === 'string' && set.has(value);
     },
-    toAttribute(value) {
-      return value == null ? null : String(value);
-    },
+    toAttribute: scalarToAttribute,
   };
 }
 
 /** Parse a base-10 integer with optional range check; `NaN` / out-of-range → `default`. */
 export function toInt(opts: { min?: number; max?: number; default?: number } = {}): Converter<number> {
-  const inRange = (n: number): boolean =>
-    (opts.min == null || n >= opts.min) && (opts.max == null || n <= opts.max);
-  const fallback = opts.default as number;
-  return {
-    fromAttribute(raw) {
-      if (raw === null) return fallback;
-      const n = Number.parseInt(raw, 10);
-      return Number.isNaN(n) || !inRange(n) ? fallback : n;
-    },
-    validate(value): value is number {
-      return typeof value === 'number' && Number.isInteger(value) && inRange(value);
-    },
-    toAttribute(value) {
-      return value == null ? null : String(value);
-    },
-  };
+  return toNumber((raw) => Number.parseInt(raw, 10), Number.isInteger, opts);
 }
 
 /** Parse a floating-point number with optional range check; `NaN` / out-of-range → `default`. */
 export function toFloat(opts: { min?: number; max?: number; default?: number } = {}): Converter<number> {
+  return toNumber(Number.parseFloat, Number.isFinite, opts);
+}
+
+/** {@link toInt} / {@link toFloat}: the same range + fallback rules over a different parser and type check. */
+function toNumber(
+  parse: (raw: string) => number,
+  isNumber: (n: number) => boolean,
+  opts: { min?: number; max?: number; default?: number },
+): Converter<number> {
   const inRange = (n: number): boolean =>
     (opts.min == null || n >= opts.min) && (opts.max == null || n <= opts.max);
   const fallback = opts.default as number;
   return {
     fromAttribute(raw) {
       if (raw === null) return fallback;
-      const n = Number.parseFloat(raw);
+      const n = parse(raw);
       return Number.isNaN(n) || !inRange(n) ? fallback : n;
     },
     validate(value): value is number {
-      return typeof value === 'number' && Number.isFinite(value) && inRange(value);
+      return typeof value === 'number' && isNumber(value) && inRange(value);
     },
-    toAttribute(value) {
-      return value == null ? null : String(value);
-    },
+    toAttribute: scalarToAttribute,
   };
 }
 
@@ -111,9 +119,7 @@ export function toText(
       if (value === null) return isNullable;
       return typeof value === 'string' && (opts.isEmptyAllowed === true || value !== '');
     },
-    toAttribute(value) {
-      return value == null ? null : String(value);
-    },
+    toAttribute: scalarToAttribute,
   };
 }
 
@@ -154,7 +160,7 @@ export function toBool(mode: 'presence' | 'default-true' | 'default-false' | 'tr
     },
     toAttribute(value) {
       if (mode === 'presence') return value ? '' : null;
-      return value == null ? null : String(value);
+      return scalarToAttribute(value);
     },
   };
 }
@@ -185,9 +191,7 @@ export function toBytes(opts: { default?: number } = {}): Converter<number> {
     validate(value): value is number {
       return typeof value === 'number' && Number.isFinite(value) && value >= 0;
     },
-    toAttribute(value) {
-      return value == null ? null : String(value);
-    },
+    toAttribute: scalarToAttribute,
   };
 }
 
@@ -205,7 +209,8 @@ export function toList<E extends string | number = string>(opts: {
 } = {}): Converter<E[]> {
   const separator = opts.separator ?? ',';
   const itemType = opts.itemType ?? 'string';
-  const fallback = opts.default ?? [];
+  // A fresh copy per resolve — instances must not share (and mutate) one default array.
+  const fallback = (): E[] => (opts.default ? [...opts.default] : []);
   const parse = (raw: string): E[] | null => {
     const parts = raw.split(separator).map((p) => (opts.shouldTrim === false ? p : p.trim()));
     let items: (string | number)[] = parts;
@@ -218,8 +223,8 @@ export function toList<E extends string | number = string>(opts: {
   };
   return {
     fromAttribute(raw) {
-      if (raw === null || raw === '') return fallback;
-      return parse(raw) ?? fallback;
+      if (raw === null || raw === '') return fallback();
+      return parse(raw) ?? fallback();
     },
     validate(value): value is E[] {
       if (!Array.isArray(value)) return false;
@@ -245,22 +250,14 @@ export function toList<E extends string | number = string>(opts: {
 export function toValue<V = unknown>(
   opts: { validate?: (value: unknown) => value is V; default?: V } = {},
 ): Converter<V> {
-  const fallback = opts.default as V;
   return {
     fromAttribute(raw) {
-      if (raw === null || raw.trim() === '') return fallback;
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        return fallback;
-      }
-      if (opts.validate && !opts.validate(parsed)) return fallback;
-      return parsed as V;
+      return parseJson(raw, opts.validate, () => opts.default as V);
     },
     validate: opts.validate,
     toAttribute(value) {
-      return value == null ? null : JSON.stringify(value);
+      // JSON.stringify gives `undefined` for a function / symbol — remove rather than reflect "undefined".
+      return value == null ? null : JSON.stringify(value) ?? null;
     },
   };
 }
@@ -275,19 +272,13 @@ export function toValue<V = unknown>(
 export function toObjectArray<E = unknown>(
   opts: { validateItem?: (item: unknown) => item is E; default?: E[] } = {},
 ): Converter<E[]> {
-  const fallback = opts.default ?? [];
+  // A fresh copy per resolve — instances must not share (and mutate) one default array.
+  const fallback = (): E[] => (opts.default ? [...opts.default] : []);
   const isValid = (value: unknown): value is E[] =>
     Array.isArray(value) && (!opts.validateItem || value.every(opts.validateItem));
   return {
     fromAttribute(raw) {
-      if (raw === null || raw.trim() === '') return fallback;
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        return fallback;
-      }
-      return isValid(parsed) ? parsed : fallback;
+      return parseJson(raw, isValid, fallback);
     },
     validate: isValid,
     toAttribute(value) {
@@ -301,24 +292,17 @@ export function toObjectArray<E = unknown>(
  * NON-array object (optionally checked by `validate`); the attribute path parses
  * JSON. Absent / blank / malformed / wrong-shape → `default` (default
  * `undefined` — objects rarely have a natural empty sentinel; pass `{}` if you
- * want one). Reflects as JSON.
+ * want one). Reflects as JSON. A `default` object is shared by every instance
+ * — treat `config` values as read-only, never mutate them in place.
  */
 export function toObject<V extends object = Record<string, unknown>>(
   opts: { validate?: (value: unknown) => value is V; default?: V } = {},
 ): Converter<V> {
-  const fallback = opts.default as V;
   const isValid = (value: unknown): value is V =>
     typeof value === 'object' && value !== null && !Array.isArray(value) && (!opts.validate || opts.validate(value));
   return {
     fromAttribute(raw) {
-      if (raw === null || raw.trim() === '') return fallback;
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        return fallback;
-      }
-      return isValid(parsed) ? parsed : fallback;
+      return parseJson(raw, isValid, () => opts.default as V);
     },
     validate: isValid,
     toAttribute(value) {

@@ -173,26 +173,24 @@ class LoggerImpl implements CoreLogger {
         return typeof this.name === 'string' ? `${persistKeyPrefix}:${this.name}` : undefined;
     }
 
-    private persist(levelNum: number): void {
+    /** Run `fn` against localStorage under this logger's key — best-effort: skipped without a window/name, errors swallowed. */
+    private withStorage<T>(fn: (storage: Storage, key: string) => T): T | undefined {
         const key = this.storageKey();
-        if (typeof window === 'undefined' || !key) return;
-        const levelName = (LOG_METHODS[levelNum] ?? 'silent').toUpperCase();
+        if (typeof window === 'undefined' || !key) return undefined;
         try {
-            window.localStorage[key] = levelName;
+            return fn(window.localStorage, key);
         } catch {
-            /* storage unavailable / quota — persistence is best-effort */
+            return undefined; // storage unavailable / quota
         }
     }
 
+    private persist(levelNum: number): void {
+        const levelName = (LOG_METHODS[levelNum] ?? 'silent').toUpperCase();
+        this.withStorage((storage, key) => storage.setItem(key, levelName));
+    }
+
     private getPersistedLevel(): string | undefined {
-        const key = this.storageKey();
-        if (typeof window === 'undefined' || !key) return undefined;
-        let stored: string | undefined;
-        try {
-            stored = window.localStorage[key];
-        } catch {
-            /* storage unavailable */
-        }
+        const stored = this.withStorage((storage, key) => storage.getItem(key)) ?? undefined;
         // Ignore anything that isn't a known level name.
         if (stored === undefined || (levels as Record<string, number>)[stored] === undefined) {
             return undefined;
@@ -201,13 +199,7 @@ class LoggerImpl implements CoreLogger {
     }
 
     private clearPersisted(): void {
-        const key = this.storageKey();
-        if (typeof window === 'undefined' || !key) return;
-        try {
-            window.localStorage.removeItem(key);
-        } catch {
-            /* storage unavailable */
-        }
+        this.withStorage((storage, key) => storage.removeItem(key));
     }
 
     private replaceLoggingMethods(): void {
@@ -261,11 +253,6 @@ class LoggerImpl implements CoreLogger {
 }
 
 root = new LoggerImpl(undefined, defaultMethodFactory);
-
-/** The shared root logger (level inherited by named loggers). */
-export function getRootLogger(): CoreLogger {
-    return root!;
-}
 
 /**
  * Get (or lazily create) the shared named logger for `name`. Named loggers are

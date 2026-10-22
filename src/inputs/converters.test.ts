@@ -138,6 +138,13 @@ describe('toBytes', () => {
 });
 
 describe('toList', () => {
+  it('hands each resolve its own copy of the default array', () => {
+    const c = toList<string>({ default: ['a'] });
+    const first = c.fromAttribute!(null, reader(), 'x');
+    first.push('mutated');
+    expect(c.fromAttribute!(null, reader(), 'x')).toEqual(['a']);
+  });
+
   it('parses pipe-delimited fixed-count string lists', () => {
     const c = toList({ itemType: 'string', separator: '|', requiredCount: 3 });
     expect(c.fromAttribute!('a|b|c', reader(), 'x')).toEqual(['a', 'b', 'c']);
@@ -191,6 +198,10 @@ describe('toFunction', () => {
 });
 
 describe('toValue', () => {
+  it('removes the attribute for a value JSON cannot represent', () => {
+    expect(toValue().toAttribute!(() => 1)).toBeNull();
+  });
+
   it('property path accepts anything without a validate', () => {
     const c = toValue();
     expect(c.validate).toBeUndefined();
@@ -219,6 +230,11 @@ describe('toValue', () => {
 });
 
 describe('toObjectArray', () => {
+  it('hands each resolve its own copy of the default array', () => {
+    const c = toObjectArray();
+    expect(c.fromAttribute!(null, reader(), 'x')).not.toBe(c.fromAttribute!(null, reader(), 'x'));
+  });
+
   it('property path requires an array; default is []', () => {
     const c = toObjectArray();
     expect(c.fromAttribute!(null, reader(), 'x')).toEqual([]);

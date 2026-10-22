@@ -21,6 +21,9 @@
  * returns a no-op unsubscribe. Zero runtime deps.
  */
 
+import { once } from '../dom/once.js';
+import { createThrottle, type Throttle } from '../dom/throttle.js';
+
 /** An element's border-box size in CSS px (matches `getBoundingClientRect()`). */
 export interface ElementSize {
   /** Border-box width in CSS px. */
@@ -47,9 +50,7 @@ const DEFAULT_ELEMENT_THROTTLE_MS = 30;
 interface Subscription {
   readonly el: Element;
   readonly cb: ElementSizeListener;
-  readonly throttleMs: number;
-  timer?: ReturnType<typeof setTimeout>;
-  lastNotify: number;
+  readonly throttle: Throttle;
   pendingSize?: ElementSize;
   lastFired?: ElementSize;
 }
@@ -57,7 +58,7 @@ interface Subscription {
 /** The single shared observer, created on the first subscribe and dropped when the last leaves. */
 let ro: ResizeObserver | null = null;
 /** Live subscriptions per target element. */
-const targets = new WeakMap<Element, Set<Subscription>>();
+let targets = new WeakMap<Element, Set<Subscription>>();
 /** Count of distinct observed elements (WeakMap isn't countable) — the ref-count for `ro`. */
 let observedCount = 0;
 
@@ -79,19 +80,8 @@ function sizesEqual(a: ElementSize | undefined, b: ElementSize): boolean {
 /** Deliver `size` to one subscription, applying its leading + trailing throttle and dedup. */
 function dispatch(sub: Subscription, size: ElementSize): void {
   if (sizesEqual(sub.lastFired, size)) return; // no change since last fire — skip
-  sub.pendingSize = size;
-  if (sub.timer !== undefined) return; // trailing edge already pending; it'll read pendingSize
-  const elapsed = Date.now() - sub.lastNotify;
-  if (elapsed >= sub.throttleMs) {
-    sub.lastNotify = Date.now();
-    fire(sub);
-  } else {
-    sub.timer = setTimeout(() => {
-      sub.timer = undefined;
-      sub.lastNotify = Date.now();
-      fire(sub);
-    }, sub.throttleMs - elapsed);
-  }
+  sub.pendingSize = size; // a queued trailing fire reads the latest
+  sub.throttle.schedule();
 }
 
 function fire(sub: Subscription): void {
@@ -137,14 +127,13 @@ export function observeElementSize(
   const sub: Subscription = {
     el,
     cb,
-    throttleMs: opts.throttleMs ?? DEFAULT_ELEMENT_THROTTLE_MS,
-    lastNotify: 0,
+    throttle: createThrottle(() => fire(sub), opts.throttleMs ?? DEFAULT_ELEMENT_THROTTLE_MS),
   };
 
   if (opts.immediate !== false) {
     const size = measure(el);
     sub.lastFired = size;
-    sub.lastNotify = Date.now();
+    sub.throttle.markRun();
     cb(size, el);
   }
 
@@ -159,14 +148,8 @@ export function observeElementSize(
     subs.add(sub);
   }
 
-  let live = true;
-  return () => {
-    if (!live) return;
-    live = false;
-    if (sub.timer !== undefined) {
-      clearTimeout(sub.timer);
-      sub.timer = undefined;
-    }
+  return once(() => {
+    sub.throttle.cancel();
     const subs = targets.get(el);
     if (!subs) return;
     subs.delete(sub);
@@ -179,7 +162,7 @@ export function observeElementSize(
         ro = null;
       }
     }
-  };
+  });
 }
 
 /** Test-only: disconnect the shared observer and drop all subscriptions. */
@@ -188,5 +171,6 @@ export function __resetElementSizeObservers(): void {
     ro.disconnect();
     ro = null;
   }
+  targets = new WeakMap(); // else a re-subscribed element finds its old entry and is never observed
   observedCount = 0;
 }

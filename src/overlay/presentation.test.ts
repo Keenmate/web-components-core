@@ -1,11 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import type { EnvironmentSnapshot } from '../environment/environment.js';
+import { TABLET_MIN_SHORT_SIDE, type EnvironmentSnapshot } from '../environment/environment.js';
 import {
   resolveMobilePresentation,
   resolvePresentation,
   presentationContext,
   DEFAULT_PRESENTATION_MAP,
-  TABLET_MIN_SHORT_SIDE,
 } from './presentation.js';
 
 /**

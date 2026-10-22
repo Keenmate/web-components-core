@@ -15,9 +15,6 @@
  */
 import { classifyDevice, type DeviceClass, type EnvironmentSnapshot } from '../environment/environment.js';
 
-// Re-exported so the 600px boundary constant keeps its historical import path.
-export { TABLET_MIN_SHORT_SIDE } from '../environment/environment.js';
-
 /** The author-facing `mobile-presentation` attribute values (`auto` = decide from the device). */
 export type MobilePresentation = 'auto' | 'floating' | 'modal' | 'fullscreen';
 
