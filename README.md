@@ -245,7 +245,7 @@ getThemeContext();     // the detected page scheme: 'dark' | 'light' | null
 <my-el theme-source=".admin-panel"></my-el> <!-- a chosen element -->
 ```
 
-Override `themeChanged(scheme)` for JS-side theming; `static themeContext = false`
+Override `themeChanged(scheme)` for JS-side theming; `static hasThemeContext = false`
 opts a component out. See [SPEC §12.10](docs/SPEC.md) and `examples-theme.html`.
 
 ## Global registration (`window.components`)
@@ -361,13 +361,13 @@ const dropdown = createPopover({ reference: input, panel, matchWidth: 'min' });
 dropdown.open();   // mount + position + autoUpdate
 dropdown.close();  // unmount + stop
 
-// tooltip — hover/focus with a delay; followCursor: true to track the pointer
+// tooltip — hover/focus with a delay; shouldFollowCursor: true to track the pointer
 const tip = createTooltip({ trigger, content: 'Help text', delay: { show: 200 } });
 ```
 
 `anchor(floating, reference, opts)` returns `{ update, destroy }`; options:
 `placement` (default `'bottom-start'`), `strategy` (default `'fixed'`), `offset`,
-`flip`, `shift`, `matchWidth: 'min' | 'exact'`, `lockPlacement`, `autoUpdate`,
+`shouldFlip`, `shift`, `matchWidth: 'min' | 'exact'`, `lockPlacement`, `shouldAutoUpdate`,
 `inheritThemeFrom` (copies `data-theme` onto portaled layers — C-CS-10), and a
 `platform` escape hatch.
 
@@ -431,7 +431,7 @@ A [Custom Elements Manifest](https://github.com/webcomponents/custom-elements-ma
 analyzer plugin that reads the `static inputs` / `static events` tables, so the
 manifest — and the HTML autocomplete/hover editors build from it — is generated
 from the single source of truth: **structure** from each row + its converter
-(attribute↔property, type, default, `reflect`, enum members), **prose** from
+(attribute↔property, type, default, `shouldReflect`, enum members), **prose** from
 optional `description` / `deprecated` fields on the row. Build-time only.
 
 ```js

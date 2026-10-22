@@ -3,7 +3,7 @@ import { TABLET_MIN_SHORT_SIDE, type EnvironmentSnapshot } from '../environment/
 import {
   resolveMobilePresentation,
   resolvePresentation,
-  presentationContext,
+  createPresentationContext,
   DEFAULT_PRESENTATION_MAP,
 } from './presentation.js';
 
@@ -127,21 +127,21 @@ describe('resolvePresentation', () => {
   });
 });
 
-describe('presentationContext', () => {
+describe('createPresentationContext', () => {
   it('builds the render-context flags from each resolved presentation', () => {
-    expect(presentationContext('floating')).toEqual({
+    expect(createPresentationContext('floating')).toEqual({
       presentation: 'floating', isFullscreen: false, isModal: false,
     });
-    expect(presentationContext('fullscreen')).toEqual({
+    expect(createPresentationContext('fullscreen')).toEqual({
       presentation: 'fullscreen', isFullscreen: true, isModal: false,
     });
-    expect(presentationContext('modal')).toEqual({
+    expect(createPresentationContext('modal')).toEqual({
       presentation: 'modal', isFullscreen: false, isModal: true,
     });
   });
 
   it('composes with resolvePresentation for the env → context path', () => {
     const phone = env({ isTouchPrimary: true, viewportWidth: 390, viewportHeight: 844 });
-    expect(presentationContext(resolvePresentation('auto', phone)).isFullscreen).toBe(true);
+    expect(createPresentationContext(resolvePresentation('auto', phone)).isFullscreen).toBe(true);
   });
 });

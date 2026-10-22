@@ -28,7 +28,7 @@ export type LogLevelName = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'sile
 export type LogLevelDesc = LogLevelName | Uppercase<LogLevelName> | number;
 
 /** Numeric ranks — identical to loglevel, ordered by console verbosity. */
-export const levels = {
+export const LOG_LEVELS = {
     TRACE: 0,
     DEBUG: 1,
     INFO: 2,
@@ -57,7 +57,7 @@ export type MethodFactory = (
 /** The engine's full logger surface (superset of the public {@link Logger}). */
 export interface CoreLogger {
     readonly name: string | undefined;
-    readonly levels: typeof levels;
+    readonly levels: typeof LOG_LEVELS;
     methodFactory: MethodFactory;
     trace: LogFn;
     debug: LogFn;
@@ -123,11 +123,11 @@ const defaultMethodFactory: MethodFactory = (methodName) => realMethod(methodNam
 /** Coerce a name/number level descriptor to its numeric rank, or throw. */
 function normalizeLevel(input: LogLevelDesc): number {
     let level: LogLevelDesc = input;
-    const table = levels as Record<string, number>;
+    const table = LOG_LEVELS as Record<string, number>;
     if (typeof level === 'string' && table[level.toUpperCase()] !== undefined) {
         level = table[level.toUpperCase()]!;
     }
-    if (typeof level === 'number' && level >= 0 && level <= levels.SILENT) {
+    if (typeof level === 'number' && level >= 0 && level <= LOG_LEVELS.SILENT) {
         return level;
     }
     throw new TypeError(`setLevel() called with an invalid level: ${String(input)}`);
@@ -141,7 +141,7 @@ const byName: Record<string, CoreLogger> = {};
 
 class LoggerImpl implements CoreLogger {
     readonly name: string | undefined;
-    readonly levels = levels;
+    readonly levels = LOG_LEVELS;
     methodFactory: MethodFactory;
 
     // Installed by replaceLoggingMethods(); definite-assignment via `!`.
@@ -192,7 +192,7 @@ class LoggerImpl implements CoreLogger {
     private getPersistedLevel(): string | undefined {
         const stored = this.withStorage((storage, key) => storage.getItem(key)) ?? undefined;
         // Ignore anything that isn't a known level name.
-        if (stored === undefined || (levels as Record<string, number>)[stored] === undefined) {
+        if (stored === undefined || (LOG_LEVELS as Record<string, number>)[stored] === undefined) {
             return undefined;
         }
         return stored;
@@ -234,11 +234,11 @@ class LoggerImpl implements CoreLogger {
     }
 
     enableAll(persist?: boolean): void {
-        this.setLevel(levels.TRACE, persist);
+        this.setLevel(LOG_LEVELS.TRACE, persist);
     }
 
     disableAll(persist?: boolean): void {
-        this.setLevel(levels.SILENT, persist);
+        this.setLevel(LOG_LEVELS.SILENT, persist);
     }
 
     rebuild(): void {

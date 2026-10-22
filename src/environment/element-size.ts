@@ -14,7 +14,7 @@
  * *structural* (a different DOM / a JS decision, not just restyling).
  *
  * Semantics mirror the environment observable: fires once immediately with the
- * current box (unless `immediate: false`), then on box changes, throttled to
+ * current box (unless `shouldFireImmediately: false`), then on box changes, throttled to
  * ~30 ms (leading + trailing) so a drag-resize reflows a bounded number of times
  * and never re-enters the `ResizeObserver` loop. Identical consecutive sizes are
  * deduped. SSR-safe: with no `ResizeObserver` it fires once (a `0×0` measure) and
@@ -38,7 +38,7 @@ export type ElementSizeListener = (size: ElementSize, el: Element) => void;
 /** Options for {@link observeElementSize}. */
 export interface ObserveElementSizeOptions {
   /** Fire the listener synchronously with the current box on subscribe. Default `true`. */
-  immediate?: boolean;
+  shouldFireImmediately?: boolean;
   /** Throttle window in ms (leading + trailing). Default `30`; `0` disables throttling. */
   throttleMs?: number;
 }
@@ -49,7 +49,7 @@ const DEFAULT_ELEMENT_THROTTLE_MS = 30;
 /** One live subscription; each carries its own throttle state so listeners are independent. */
 interface Subscription {
   readonly el: Element;
-  readonly cb: ElementSizeListener;
+  readonly listener: ElementSizeListener;
   readonly throttle: Throttle;
   pendingSize?: ElementSize;
   lastFired?: ElementSize;
@@ -88,7 +88,7 @@ function fire(sub: Subscription): void {
   const size = sub.pendingSize;
   if (!size) return;
   sub.lastFired = size;
-  sub.cb(size, sub.el);
+  sub.listener(size, sub.el);
 }
 
 /** The shared observer's callback — fan out each entry to its target's subscriptions. */
@@ -111,30 +111,30 @@ function ensureObserver(): ResizeObserver | null {
 
 /**
  * Observe one element's border-box size. The listener fires immediately with the
- * current box (unless `immediate: false`), then on size changes, throttled to
+ * current box (unless `shouldFireImmediately: false`), then on size changes, throttled to
  * {@link ObserveElementSizeOptions.throttleMs} (default 30 ms, leading + trailing);
  * identical consecutive sizes are deduped. All subscriptions share one page-wide
  * `ResizeObserver`. Returns an unsubscribe; the shared observer is torn down when
  * its last target leaves. No-op-safe during SSR (fires once, returns a working
- * unsubscribe). Components normally consume this via `BlissElement`'s `resized()`
+ * unsubscribe). Components normally consume this via `BlissElement`'s `sizeChanged()`
  * hook rather than subscribing directly.
  */
 export function observeElementSize(
   el: Element,
-  cb: ElementSizeListener,
+  listener: ElementSizeListener,
   opts: ObserveElementSizeOptions = {},
 ): () => void {
   const sub: Subscription = {
     el,
-    cb,
+    listener,
     throttle: createThrottle(() => fire(sub), opts.throttleMs ?? DEFAULT_ELEMENT_THROTTLE_MS),
   };
 
-  if (opts.immediate !== false) {
+  if (opts.shouldFireImmediately !== false) {
     const size = measure(el);
     sub.lastFired = size;
     sub.throttle.markRun();
-    cb(size, el);
+    listener(size, el);
   }
 
   const observer = ensureObserver();

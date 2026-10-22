@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getLogger, levels } from './log-core.js';
+import { getLogger, LOG_LEVELS } from './log-core.js';
 import { DEFAULT_CATEGORIES, createLoggers, type LogLevelDesc } from './create-loggers.js';
 
 afterEach(() => {
@@ -42,20 +42,20 @@ describe('createLoggers', () => {
   it('enableLogging() defaults to debug; disableLogging() silences', () => {
     const bundle = createLoggers('NSLEVELS');
     bundle.enableLogging();
-    expect(bundle.loggers.INIT.getLevel()).toBe(levels.DEBUG);
+    expect(bundle.loggers.INIT.getLevel()).toBe(LOG_LEVELS.DEBUG);
     bundle.disableLogging();
-    expect(bundle.loggers.INIT.getLevel()).toBe(levels.SILENT);
+    expect(bundle.loggers.INIT.getLevel()).toBe(LOG_LEVELS.SILENT);
   });
 
   it('setLogLevel sets all categories; setCategoryLevel sets one', () => {
     const bundle = createLoggers('NSSETLEVEL');
     bundle.setLogLevel('warn');
-    expect(bundle.loggers.INIT.getLevel()).toBe(levels.WARN);
-    expect(bundle.loggers.UI.getLevel()).toBe(levels.WARN);
+    expect(bundle.loggers.INIT.getLevel()).toBe(LOG_LEVELS.WARN);
+    expect(bundle.loggers.UI.getLevel()).toBe(LOG_LEVELS.WARN);
 
     bundle.setCategoryLevel('UI', 'trace');
-    expect(bundle.loggers.UI.getLevel()).toBe(levels.TRACE);
-    expect(bundle.loggers.INIT.getLevel()).toBe(levels.WARN); // unchanged
+    expect(bundle.loggers.UI.getLevel()).toBe(LOG_LEVELS.TRACE);
+    expect(bundle.loggers.INIT.getLevel()).toBe(LOG_LEVELS.WARN); // unchanged
   });
 
   it('forInstance: instance override logs while the type stays silent', () => {

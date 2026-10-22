@@ -119,7 +119,7 @@ export interface InputDef<V = unknown> {
   /** what a change triggers. Default 'update'. */
   on?: Reactivity;
   /** reflect property → attribute? */
-  reflect?: boolean;
+  shouldReflect?: boolean;
 }
 ```
 
@@ -220,9 +220,9 @@ export abstract class BlissElement extends Base {
 
   // DIRECTION: `dir` is always observed (a global attribute, never an input).
   /** Effective writing direction is RTL (resolves CSS `direction`: element, ancestor, <html>, or a rule). */
-  protected get isRTL(): boolean { /* … */ }
+  protected get isRtl(): boolean { /* … */ }
   /** Runtime `dir` change on the element (post-connect only). Re-mirror live DOM without a rebuild. */
-  protected directionChanged(isRTL: boolean): void { /* opt-in, no-op by default */ }
+  protected directionChanged(isRtl: boolean): void { /* opt-in, no-op by default */ }
 }
 ```
 
@@ -259,7 +259,7 @@ and generic DOM utils (`resolveEnumAttribute`, `createMicrotaskScheduler`)
 lifted from dropzone. The store/satellite topology stays dropzone-local.
 
 The `static inputs` table is sanity-checked once per class at construction
-(warn-only, never throws): duplicate `configKey`/`attribute`, or `reflect:true`
+(warn-only, never throws): duplicate `configKey`/`attribute`, or `shouldReflect:true`
 without an `attribute` / without `converter.toAttribute`. Removing an attribute
 is reactive — it resets that input to its `default` (absent == default).
 
@@ -342,7 +342,7 @@ autodetect — but nothing depends on it.
 
 **Amendment (source-of-truth split, §12.4 CEM tooling).** With the CEM
 plugin built, this splits cleanly: the input/event **table owns the
-STRUCTURE** (attribute↔property mapping, type, default, `reflect`, enum
+STRUCTURE** (attribute↔property mapping, type, default, `shouldReflect`, enum
 members — all derivable from the row + its converter), and **prose stays
 authored by a human** — now as an optional `description` / `deprecated`
 field *on the row itself* (`InputDef.description`, `EventDef.description`),
@@ -495,7 +495,7 @@ kept out of the base import graph so components that don't position pay nothing.
 Ships the proposed shape below: `anchor()` + `createTooltip()` +
 `createPopover()`. Resolutions of the survey's open points:
 
-- **follow-cursor** → a `followCursor?: boolean` option on `createTooltip` (it
+- **follow-cursor** → a `shouldFollowCursor?: boolean` option on `createTooltip` (it
   anchors to a `VirtualElement` tracking the pointer), NOT a third preset.
 - **Custom shadow-DOM platform** → NOT ported. floating-ui 1.8's built-in shadow
   handling covers it; `anchor` exposes an optional `platform` escape hatch for
@@ -561,11 +561,11 @@ anchor(floating: HTMLElement, reference: HTMLElement | VirtualElement, opts: {
   placement?: Placement;              // default 'bottom-start'
   strategy?: 'fixed' | 'absolute';    // default 'fixed'
   offset?: number;                    // default 4
-  flip?: boolean;                     // default true (skipped when lockPlacement holds)
+  shouldFlip?: boolean;               // default true (skipped when lockPlacement holds)
   shift?: number | false;             // padding; default 8
   matchWidth?: 'min' | 'exact' | 'max' | false;   // via size(); default false
   lockPlacement?: boolean;            // keep first placement unless it must flip
-  autoUpdate?: boolean;               // default true
+  shouldAutoUpdate?: boolean;         // default true
   inheritThemeFrom?: HTMLElement;     // copy data-theme onto `floating` (C-CS-10)
   onPlaced?(placement: Placement): void;
 }): { update(): void; destroy(): void };
@@ -649,7 +649,7 @@ recognizes — so without help the manifest would be empty.
   `fieldName` back-link) and a `field` member: **type** from the converter
   (`toEnum([...])` → union, `toInt` → `number`, `toText({isNullable})` →
   `string | null`, `toBool('tristate')` → `boolean | null`, …), **default** from
-  the row's `default` or the converter's, **reflects** from `reflect`, and
+  the row's `default` or the converter's, **reflects** from `shouldReflect`, and
   **description/deprecated** from the row (or a leading comment). It follows an
   identifier to a `const TABLE = [...] as const` and unwraps `as const` /
   parentheses, so both inline and hoisted tables work. Events come from bare
@@ -746,11 +746,11 @@ The old per-component pattern — `onSelect: (o) => { this._onSelect?.(o);
 this.dispatchEvent(new CustomEvent('select', …)) }` — collapses to
 `this.emit('select', { option })`.
 
-**`*Callback` — `runHook(key, ctx, { whenUnset, onError? })`.** Core owns only
+**`*Callback` — `runHook(key, ctx, { whenUnset, errorCallback? })`.** Core owns only
 the drift-prone plumbing: unset → `whenUnset`; the callback is invoked with a
 single `ctx` argument and its result is normalized through `Promise.resolve` (so
-sync OR async both work); a throw routes to `onError` if given, else **re-throws**
-(no silent swallow — a component that forgets `onError` fails loudly). The
+sync OR async both work); a throw routes to `errorCallback` if given, else **re-throws**
+(no silent swallow — a component that forgets `errorCallback` fails loudly). The
 **result contract stays the component's** — core cannot own the discriminant,
 because the two daterangepicker hooks already disagree on it
 (`BeforeSelectResult.action: accept|adjust|restore|clear` vs
@@ -778,7 +778,7 @@ dismisses. The fix is a fullscreen calendar on touch devices, but width alone
 can't decide that: a **landscape phone is wide** (width says "desktop") yet still
 wants fullscreen. The deciding fact is capability, not size.
 
-**One shared observable.** `observeEnvironment(cb, { immediate? }) => unsubscribe`
+**One shared observable.** `observeEnvironment(cb, { shouldFireImmediately? }) => unsubscribe`
 is a lazily-started, ref-counted singleton over `matchMedia` + a rAF-throttled
 `resize`; the shared listeners attach on the first subscriber and detach on the
 last. `getEnvironment()` is the synchronous companion read (for `reinit()` /
@@ -845,15 +845,15 @@ rather than the viewport splits into two tiers, and the first is not core's job:
   component's CSS. It's native, element-box, cheaper than any JS, and fires before
   paint. Core adds nothing here but the rule of thumb (a CSS authoring guideline,
   not code) — push as much as possible into this tier.
-- **Tier 2 — the `resized(size)` hook (structural only).** Container queries can't
+- **Tier 2 — the `sizeChanged(size)` hook (structural only).** Container queries can't
   make a JS decision — instantiate *one* calendar component instead of two, render
   a different button set, feed a width into `reinit()`. For that, overriding the
-  (no-op-default) `BlissElement.resized(size)` hook opts the element into
+  (no-op-default) `BlissElement.sizeChanged(size)` hook opts the element into
   `observeElementSize(this, …)`: a **single, shared, page-wide `ResizeObserver`**
   (one observer watches every subscribed element, fanned out per target via a
   `WeakMap`, so N pickers pay for one observer) in `src/environment/element-size.ts`.
   It fires with the element's real laid-out **border box** shortly after connect
-  (`immediate: false` so the first fire isn't a pre-layout `0×0`), then on box
+  (`shouldFireImmediately: false` so the first fire isn't a pre-layout `0×0`), then on box
   changes, **throttled to ~30 ms (leading + trailing)** with identical-size dedup —
   the same cadence as `viewportChanged`, which also sidesteps the `ResizeObserver`
   loop error by deferring reflow out of the callback. `size` is `{ width, height }`
@@ -862,8 +862,8 @@ rather than the viewport splits into two tiers, and the first is not core's job:
   (no `ResizeObserver` → one `0×0` fire + no-op unsubscribe).
 
 Rule of thumb: **presentational reflow → container queries; structural reflow →
-`resized()`.** The DRP dropping two months to one (a different number of rendered
-calendars) is structural, so it's a `resized()` consumer.
+`sizeChanged()`.** The DRP dropping two months to one (a different number of rendered
+calendars) is structural, so it's a `sizeChanged()` consumer.
 
 **Classification vs presentation — two functions, split on purpose (rc07).** The
 "what should this component show" decision is split into a shared *fact* and a
@@ -982,7 +982,7 @@ element. The `@1` suffix versions the state shape.
   host as **`data-context-theme="dark|light"`** (removed when `null`), then calls the
   opt-in **`themeChanged(scheme)`** hook (for JS-side theming: canvas, chart palette).
   Unsubscribes on disconnect; a source change while connected re-subscribes.
-- `static themeContext = false` opts a component out entirely (no subscription).
+- `static hasThemeContext = false` opts a component out entirely (no subscription).
 
 Component CSS replaces the `:host-context` rules with plain host selectors, which
 work in every browser:
@@ -997,7 +997,7 @@ work in every browser:
 
 **API** (main index): `setThemeMode(mode)`, `getThemeMode()`,
 `getThemeContext(host?, source?)` (sync read; cached while observed),
-`observeThemeContext(host, source, listener, { immediate? }) => unsubscribe`,
+`observeThemeContext(host, source, listener, { shouldFireImmediately? }) => unsubscribe`,
 `readThemeSignal(el)`, `resolveThemeSource(host, source)`, the constants
 `THEME_CONTEXT_ATTRIBUTE` / `THEME_SOURCE_ATTRIBUTE`, and the types `ColorScheme`,
 `ThemeMode`, `ThemeSource`, `ThemeListener`. SSR-safe: no DOM → `null` (or the forced

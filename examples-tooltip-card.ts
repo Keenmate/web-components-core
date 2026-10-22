@@ -36,7 +36,7 @@ export class TooltipCard extends BlissElement {
   protected static override inputs: readonly InputDef[] = [
     { configKey: 'tooltipText', attribute: 'tooltip-text', converter: toText({ default: 'A core tooltip' }), on: 'reinit' },
     { configKey: 'placement', attribute: 'placement', converter: toEnum(PLACEMENTS, { default: 'top' }), on: 'reinit' },
-    { configKey: 'followCursor', attribute: 'follow-cursor', converter: toBool('default-false'), on: 'reinit' },
+    { configKey: 'shouldFollowCursor', attribute: 'follow-cursor', converter: toBool('default-false'), on: 'reinit' },
     { configKey: 'showDelay', attribute: 'show-delay', converter: toInt({ min: 0, default: 400 }), on: 'reinit' },
   ];
 
@@ -47,7 +47,7 @@ export class TooltipCard extends BlissElement {
     const config = this.config as {
       tooltipText: string;
       placement: Placement;
-      followCursor: boolean;
+      shouldFollowCursor: boolean;
       showDelay: number;
     };
     this.tip = createTooltip({
@@ -55,7 +55,7 @@ export class TooltipCard extends BlissElement {
       content: config.tooltipText,
       cssClass: 'demo-tt',
       placement: config.placement,
-      followCursor: config.followCursor,
+      shouldFollowCursor: config.shouldFollowCursor,
       delay: { show: config.showDelay, hide: 0 },
     });
   }

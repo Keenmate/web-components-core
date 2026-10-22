@@ -39,7 +39,7 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
 
 1. **One reactive input table.** Every public input — attribute, complex
    property, or callback — is a single `InputDef` row (`configKey`, optional
-   kebab `attribute`, `converter`, `default`, `on` reactivity, `reflect`).
+   kebab `attribute`, `converter`, `default`, `on` reactivity, `shouldReflect`).
    There is **no central switch statement**: dispatch is
    `def.converter.fromAttribute(raw)`. A new input type is a new converter
    created anywhere (core or a component) — never a core edit or a closed union.
@@ -101,7 +101,7 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
   react.
 - The `static inputs` table is sanity-checked once per class at construction
   (`console.warn`, never throws): duplicate `configKey`/`attribute`, or
-  `reflect: true` without an `attribute` / without `converter.toAttribute`. Watch
+  `shouldReflect: true` without an `attribute` / without `converter.toAttribute`. Watch
   the console when authoring a table.
 - Removing an attribute is reactive: it resets that input to its `default`
   (absent == default), consistent with construction.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractConsumedCssVars, declaredCssVars, suggestCssVars, lintCssVars } from './css-var-lint.js';
+import { extractConsumedCssVars, extractDeclaredCssVars, suggestCssVars, lintCssVars } from './css-var-lint.js';
 
 const P = '--ms-';
 
@@ -21,14 +21,14 @@ describe('extractConsumedCssVars', () => {
   });
 });
 
-describe('declaredCssVars', () => {
+describe('extractDeclaredCssVars', () => {
   it('finds every --prefix-* declaration, de-duped', () => {
     const css = '.a{--ms-badge-text-bg:red;--ms-badge-text-color:#000} .b{--ms-badge-text-bg:blue}';
-    expect(declaredCssVars(css, P).sort()).toEqual(['--ms-badge-text-bg', '--ms-badge-text-color']);
+    expect(extractDeclaredCssVars(css, P).sort()).toEqual(['--ms-badge-text-bg', '--ms-badge-text-color']);
   });
 
   it('ignores custom properties outside the prefix', () => {
-    expect(declaredCssVars('.a{--my-own:4px;color:red}', P)).toEqual([]);
+    expect(extractDeclaredCssVars('.a{--my-own:4px;color:red}', P)).toEqual([]);
   });
 });
 

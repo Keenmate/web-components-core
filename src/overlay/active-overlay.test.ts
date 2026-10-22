@@ -81,7 +81,7 @@ describe('active-overlay coordination', () => {
     const ha = registerOverlay(a);
     registerOverlay(b);
 
-    ha.dispose();
+    ha.destroy();
     notifyOverlayActivated();
 
     expect(a).not.toHaveBeenCalled();
@@ -172,7 +172,7 @@ describe('active-overlay coordination', () => {
     // b disposes itself when dismissed — must not throw or skip c.
     const hb = registerOverlay(() => {
       order.push('b');
-      hb.dispose();
+      hb.destroy();
     });
     registerOverlay(() => order.push('c'));
 

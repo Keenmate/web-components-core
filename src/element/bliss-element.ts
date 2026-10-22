@@ -68,9 +68,9 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
   /**
    * Mirror the shared theme context onto the host as `data-context-theme`
    * (SPEC §12.10). On by default; a subclass that doesn't theme by color scheme
-   * sets `static themeContext = false` to skip the subscription entirely.
+   * sets `static hasThemeContext = false` to skip the subscription entirely.
    */
-  protected static themeContext = true;
+  protected static hasThemeContext = true;
 
   static get observedAttributes(): string[] {
     const attrs = (this.inputs ?? []).filter((d) => d.attribute).map((d) => d.attribute!);
@@ -121,11 +121,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
   #envUnsub?: () => void;
   /** Unsubscribe from the throttled viewport observable; set only while connected AND `viewportChanged` is overridden. */
   #viewportUnsub?: () => void;
-  /** Unsubscribe from the per-element ResizeObserver; set only while connected AND `resized` is overridden. */
+  /** Unsubscribe from the per-element ResizeObserver; set only while connected AND `sizeChanged` is overridden. */
   #sizeUnsub?: () => void;
   /** Where this element reads its theme from (SPEC §12.10); `null` = the page. */
   #themeSource: ThemeSource = null;
-  /** Unsubscribe from the theme context; set only while connected AND `themeContext` is on. */
+  /** Unsubscribe from the theme context; set only while connected AND `hasThemeContext` is on. */
   #themeUnsub?: () => void;
   #internals?: ElementInternals;
   #logId?: string;
@@ -160,7 +160,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
     // declared `dir` as its own input attribute — then it takes the normal input
     // path below, matching the dedup in observedAttributes.
     if (name === 'dir' && !this.#byAttribute.has('dir')) {
-      if (this.#connectedOnce) this.directionChanged(this.isRTL);
+      if (this.#connectedOnce) this.directionChanged(this.isRtl);
       return;
     }
     // Global `theme-source` (SPEC §12.10): re-resolve the source when connected.
@@ -223,10 +223,10 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
       this.#viewportUnsub = observeViewport((env) => this.viewportChanged(env));
     }
     // Per-element size (own box, via a shared ResizeObserver) — same opt-in gate.
-    // immediate: false so the first fire carries the real laid-out box (RO's initial
+    // shouldFireImmediately: false so the first fire carries the real laid-out box (RO's initial
     // delivery), not a 0×0 read taken before layout during connect.
-    if (this.resized !== BlissElement.prototype.resized) {
-      this.#sizeUnsub = observeElementSize(this, (size) => this.resized(size), { immediate: false });
+    if (this.sizeChanged !== BlissElement.prototype.sizeChanged) {
+      this.#sizeUnsub = observeElementSize(this, (size) => this.sizeChanged(size), { shouldFireImmediately: false });
     }
     this.#subscribeTheme();
   }
@@ -466,7 +466,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
    * (leading + trailing)**; identical consecutive sizes are deduped. For a one-off
    * synchronous read, call `this.getBoundingClientRect()`.
    */
-  protected resized(_size: ElementSize): void {
+  protected sizeChanged(_size: ElementSize): void {
     /* opt-in */
   }
 
@@ -476,7 +476,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
    * or a CSS `direction` rule — not just this element's own `dir` attribute.
    * Meaningful only while connected (falls back to `false` under SSR / detached).
    */
-  protected get isRTL(): boolean {
+  protected get isRtl(): boolean {
     return typeof getComputedStyle === 'function' && getComputedStyle(this).direction === 'rtl';
   }
 
@@ -485,14 +485,14 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
    * `dir` attribute on every component; override this hook to re-mirror live DOM
    * when direction flips (an app-wide RTL/LTR switch) WITHOUT a rebuild — the
    * cheaper counterpart to reading direction once during {@link reinit}. Called
-   * with the freshly-resolved {@link isRTL}, only for post-connect changes (the
+   * with the freshly-resolved {@link isRtl}, only for post-connect changes (the
    * initial direction is read by the first build). No-op by default.
    *
    * Note: this fires for `dir` changes on the element itself. A direction change
    * made only on an ancestor (e.g. `<html dir>`) does not trigger it — set/update
    * `dir` on the element, or rebuild, for that case.
    */
-  protected directionChanged(_isRTL: boolean): void {
+  protected directionChanged(_isRtl: boolean): void {
     /* opt-in */
   }
 
@@ -609,7 +609,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
    * Invoke a `*Callback` input through the one unified protocol (SPEC §12.5):
    * unset → `opts.whenUnset`; the callback is called with a single `ctx`
    * argument and its result is normalized through `Promise.resolve` (so sync OR
-   * async callbacks both work); a throw routes to `opts.onError` if given, else
+   * async callbacks both work); a throw routes to `opts.errorCallback` if given, else
    * re-throws (no silent swallow). The RESULT contract — the discriminated
    * `action`, adjustments, etc. — is the component's; core owns only the
    * plumbing. Correctness that used to drift across per-component hook wrappers
@@ -618,14 +618,14 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
   protected async runHook<Ctx, R>(
     callbackKey: string,
     ctx: Ctx,
-    opts: { whenUnset: R; onError?: (error: unknown) => R },
+    opts: { whenUnset: R; errorCallback?: (error: unknown) => R },
   ): Promise<R> {
     const fn = this.#config[callbackKey] as ((ctx: Ctx) => R | Promise<R>) | undefined;
     if (typeof fn !== 'function') return opts.whenUnset;
     try {
       return await Promise.resolve(fn(ctx));
     } catch (error) {
-      if (opts.onError) return opts.onError(error);
+      if (opts.errorCallback) return opts.errorCallback(error);
       throw error;
     }
   }
@@ -633,7 +633,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
   // ── internals ─────────────────────────────────────────────────────────────
 
   #subscribeTheme(): void {
-    if ((this.constructor as typeof BlissElement).themeContext === false) return;
+    if ((this.constructor as typeof BlissElement).hasThemeContext === false) return;
     this.#themeUnsub = observeThemeContext(this, this.#themeSource, (scheme) => {
       if (scheme) this.setAttribute(THEME_CONTEXT_ATTRIBUTE, scheme);
       else this.removeAttribute(THEME_CONTEXT_ATTRIBUTE);
@@ -684,11 +684,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
         seenAttrs.add(def.attribute);
       }
 
-      if (def.reflect && !def.attribute) {
-        this.#warn(`invalid input table: "${def.configKey}" has reflect:true but no attribute to reflect to`);
+      if (def.shouldReflect && !def.attribute) {
+        this.#warn(`invalid input table: "${def.configKey}" has shouldReflect:true but no attribute to reflect to`);
       }
-      if (def.reflect && !def.converter?.toAttribute) {
-        this.#warn(`invalid input table: "${def.configKey}" has reflect:true but its converter has no toAttribute`);
+      if (def.shouldReflect && !def.converter?.toAttribute) {
+        this.#warn(`invalid input table: "${def.configKey}" has shouldReflect:true but its converter has no toAttribute`);
       }
     }
 
@@ -787,7 +787,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
     }
     this.#stage(resolved);
     const { attribute, converter } = def;
-    if (def.reflect && attribute && converter?.toAttribute) {
+    if (def.shouldReflect && attribute && converter?.toAttribute) {
       const attrVal = converter.toAttribute(resolved.value as never);
       this.#withoutReflect(() => {
         if (attrVal === null) this.removeAttribute(attribute);

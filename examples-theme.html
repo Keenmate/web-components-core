@@ -204,7 +204,7 @@ getThemeContext();      // the detected page scheme: 'dark' | 'light' | null
 //   el.themeSource = someElement;        property form
 //
 // In a component: override themeChanged(scheme) for JS-side theming;
-// static themeContext = false opts out.</pre></div>
+// static hasThemeContext = false opts out.</pre></div>
             <div class="code-block"><pre>/* Component dark-mode.css — works in every browser */
 :host([data-context-theme="dark"])  { color-scheme: dark; }
 :host([data-context-theme="light"]) { color-scheme: light; }

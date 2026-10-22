@@ -301,7 +301,7 @@ class ThemedElement extends BlissElement {
 define('themed-element', ThemedElement as unknown as CustomElementConstructor);
 
 class UnthemedElement extends BlissElement {
-  protected static override themeContext = false;
+  protected static override hasThemeContext = false;
 }
 define('unthemed-element', UnthemedElement as unknown as CustomElementConstructor);
 
@@ -364,7 +364,7 @@ describe('BlissElement theme context', () => {
     expect(el.schemes).toEqual([null]);
   });
 
-  it('static themeContext = false opts out entirely', () => {
+  it('static hasThemeContext = false opts out entirely', () => {
     html().classList.add('dark');
     const el = document.createElement('unthemed-element');
     document.body.appendChild(el);

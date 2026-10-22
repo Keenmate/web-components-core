@@ -79,7 +79,7 @@
                 <label style="margin-inline-start:1rem"><input type="checkbox" id="po-long"> long content (wider than 360px)</label>
             </div>
             <div class="controls">
-                <label><input type="checkbox" id="po-flip" checked> <code>flip</code></label>
+                <label><input type="checkbox" id="po-flip" checked> <code>shouldFlip</code></label>
                 <label><code>offset</code>:
                     <input type="range" id="po-offset" min="0" max="32" step="2" value="4" style="width:11rem">
                     <output id="po-offset-out" style="min-width:3.5rem; font-variant-numeric:tabular-nums;">4&nbsp;px</output>
@@ -110,7 +110,7 @@ const pop = createPopover({
   matchWidth: 'min',         // 'min' | 'exact' — size to the reference width
   lockPlacement: 'freeze',   // true = return to initial on overflow; 'freeze' = flip once then pin
   container: document.body,  // mount target (default body)
-  flip: true, shift: 8,      // middleware toggles
+  shouldFlip: true, shift: 8, // middleware toggles
   onPlaced(placement) {},    // resolved placement callback
 });
 
@@ -144,7 +144,7 @@ pop.open(); pop.close(); pop.isOpen; pop.destroy();</pre></div>
                 `<dt>placement</dt><dd>${opts.placement}</dd>` +
                 `<dt>matchWidth</dt><dd>${opts.matchWidth ?? 'none'}</dd>` +
                 `<dt>lockPlacement</dt><dd>${String(opts.lockPlacement)}</dd>` +
-                `<dt>flip</dt><dd>${String(opts.flip)}</dd>` +
+                `<dt>shouldFlip</dt><dd>${String(opts.shouldFlip)}</dd>` +
                 `<dt>offset</dt><dd>${opts.offset}</dd>` +
                 `<dt>shift</dt><dd>${opts.shift}</dd>` +
                 '</dl>' +
@@ -169,7 +169,7 @@ pop.open(); pop.close(); pop.isOpen; pop.destroy();</pre></div>
                 placement: $('po-placement').value,
                 matchWidth: m === 'none' ? undefined : m,
                 lockPlacement: lockValue(),
-                flip: $('po-flip').checked,
+                shouldFlip: $('po-flip').checked,
                 offset: parseInt($('po-offset').value, 10) || 0,
                 shift: parseInt($('po-shift').value, 10) || 0,
             };

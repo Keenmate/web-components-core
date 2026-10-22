@@ -66,7 +66,7 @@
         <div class="card">
             <h2>TT02 · Follow-cursor &amp; the fixed bug</h2>
             <p>
-                With <code>followCursor: true</code> the tooltip anchors to a <code>VirtualElement</code> tracking
+                With <code>shouldFollowCursor: true</code> the tooltip anchors to a <code>VirtualElement</code> tracking
                 the pointer instead of the trigger. Each card in the <strong>pyramid</strong> below has its own
                 follow-cursor tooltip — sweep the pointer across them to watch the tooltip hand off from one element
                 to the next, and hover any single card and <strong>hold still</strong> through the show delay: it
@@ -83,7 +83,7 @@
             </div>
 
             <div class="controls">
-                <label><input type="checkbox" id="fc-follow" checked> <code>followCursor</code></label>
+                <label><input type="checkbox" id="fc-follow" checked> <code>shouldFollowCursor</code></label>
                 <label><code>delay.show</code>:
                     <input type="range" id="fc-delay" min="0" max="2000" step="50" value="400" style="width:14rem">
                     <output id="fc-delay-out" style="min-width:4rem; font-variant-numeric:tabular-nums;">400&nbsp;ms</output>
@@ -181,7 +181,7 @@ const tip = createTooltip({
   placement: 'top',        // Placement (default 'top')
   offset: 8,               // px gap (default 8)
   delay: { show: 400, hide: 0 },   // number | { show?, hide? }
-  followCursor: true,      // anchor to & track the pointer (default false)
+  shouldFollowCursor: true, // anchor to & track the pointer (default false)
   container: shadowRoot,   // mount target (default document.body)
   cssClass: 'demo-tt',     // class(es) on the tooltip element
   visibleClass: 'is-visible',      // toggled while shown (default 'is-visible')
@@ -192,7 +192,7 @@ tip.show(); tip.hide(); tip.destroy();   // imperative control + teardown
 tip.element;  tip.isVisible;             // the tooltip node + state</pre></div>
             <div class="note">
                 <div class="note-title">Focus has no cursor</div>
-                A keyboard-focus show has no pointer, so <code>followCursor</code> correctly falls back to the
+                A keyboard-focus show has no pointer, so <code>shouldFollowCursor</code> correctly falls back to the
                 trigger rect there.
             </div>
         </div>
@@ -232,7 +232,7 @@ tip.element;  tip.isVisible;             // the tooltip node + state</pre></div>
                     content: `card ${el.textContent.trim()}`,
                     cssClass: 'demo-tt',
                     placement: 'top',
-                    followCursor: follow,
+                    shouldFollowCursor: follow,
                     delay: { show, hide: 0 },
                 }),
             );

@@ -68,7 +68,7 @@ describe('observeElementSize', () => {
   it('can opt out of the immediate fire', () => {
     const el = sized(800);
     const cb = vi.fn();
-    const unsub = observeElementSize(el, cb, { immediate: false });
+    const unsub = observeElementSize(el, cb, { shouldFireImmediately: false });
     expect(cb).not.toHaveBeenCalled();
     unsub();
   });
@@ -76,7 +76,7 @@ describe('observeElementSize', () => {
   it('fires on a box change (leading edge)', () => {
     const el = sized(800);
     const seen: number[] = [];
-    const unsub = observeElementSize(el, (size) => seen.push(size.width), { immediate: false });
+    const unsub = observeElementSize(el, (size) => seen.push(size.width), { shouldFireImmediately: false });
     setSize(el, 420);
     observer().emit(el);
     expect(seen).toEqual([420]);
@@ -87,7 +87,7 @@ describe('observeElementSize', () => {
     vi.useFakeTimers();
     const el = sized(800);
     const seen: number[] = [];
-    const unsub = observeElementSize(el, (size) => seen.push(size.width), { immediate: false });
+    const unsub = observeElementSize(el, (size) => seen.push(size.width), { shouldFireImmediately: false });
     setSize(el, 600);
     observer().emit(el); // leading — fires now
     setSize(el, 500);
@@ -113,7 +113,7 @@ describe('observeElementSize', () => {
   it('throttleMs: 0 disables throttling (every change fires)', () => {
     const el = sized(800);
     const seen: number[] = [];
-    const unsub = observeElementSize(el, (size) => seen.push(size.width), { immediate: false, throttleMs: 0 });
+    const unsub = observeElementSize(el, (size) => seen.push(size.width), { shouldFireImmediately: false, throttleMs: 0 });
     setSize(el, 600);
     observer().emit(el);
     setSize(el, 500);
@@ -127,7 +127,7 @@ describe('observeElementSize', () => {
     const b = sized(300);
     const seenA: number[] = [];
     const seenB: number[] = [];
-    const ua = observeElementSize(a, (s) => seenA.push(s.width), { immediate: false });
+    const ua = observeElementSize(a, (s) => seenA.push(s.width), { shouldFireImmediately: false });
     const ub = observeElementSize(b, (s) => seenB.push(s.width)); // immediate → baseline 300
     expect(seenB).toEqual([300]);
     expect(MockResizeObserver.instances).toHaveLength(1); // one shared observer
@@ -142,8 +142,8 @@ describe('observeElementSize', () => {
   it('unobserves on unsubscribe and disconnects when the last target leaves', () => {
     const a = sized(800);
     const b = sized(300);
-    const ua = observeElementSize(a, () => {}, { immediate: false });
-    const ub = observeElementSize(b, () => {}, { immediate: false });
+    const ua = observeElementSize(a, () => {}, { shouldFireImmediately: false });
+    const ub = observeElementSize(b, () => {}, { shouldFireImmediately: false });
     const ro = observer();
     ua();
     expect(ro.observed.has(a)).toBe(false);
@@ -155,7 +155,7 @@ describe('observeElementSize', () => {
   it('stops firing after unsubscribe', () => {
     const el = sized(800);
     const cb = vi.fn();
-    const unsub = observeElementSize(el, cb, { immediate: false });
+    const unsub = observeElementSize(el, cb, { shouldFireImmediately: false });
     unsub();
     setSize(el, 420);
     // The shared observer was disconnected; a stray emit reaches nobody.

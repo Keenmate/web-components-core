@@ -10,7 +10,7 @@
  * for why. Consumers depend only on the {@link Logger} / {@link LogLevelDesc}
  * surface below, never on the engine internals.
  */
-import { levels, getLogger, type LogLevelDesc, type CoreLogger } from './log-core.js';
+import { LOG_LEVELS, getLogger, type LogLevelDesc, type CoreLogger } from './log-core.js';
 
 /**
  * The public logger surface: the five level methods plus level control.
@@ -90,16 +90,16 @@ interface CategoryMeta {
 /** Resolve a level descriptor (name or number) to its numeric value. */
 function toLevelNum(desc: LogLevelDesc): number {
   if (typeof desc === 'number') return desc;
-  return levels[desc.toUpperCase() as keyof typeof levels] ?? levels.SILENT;
+  return LOG_LEVELS[desc.toUpperCase() as keyof typeof LOG_LEVELS] ?? LOG_LEVELS.SILENT;
 }
 
 /** [method, its level, the `console` method to emit through]. `trace` uses `debug` to avoid stack spam. */
 const INSTANCE_METHODS: readonly [keyof InstanceLogger, number, 'debug' | 'info' | 'warn' | 'error'][] = [
-  ['trace', levels.TRACE, 'debug'],
-  ['debug', levels.DEBUG, 'debug'],
-  ['info', levels.INFO, 'info'],
-  ['warn', levels.WARN, 'warn'],
-  ['error', levels.ERROR, 'error'],
+  ['trace', LOG_LEVELS.TRACE, 'debug'],
+  ['debug', LOG_LEVELS.DEBUG, 'debug'],
+  ['info', LOG_LEVELS.INFO, 'info'],
+  ['warn', LOG_LEVELS.WARN, 'warn'],
+  ['error', LOG_LEVELS.ERROR, 'error'],
 ];
 
 function makeInstanceLogger(meta: CategoryMeta, instanceId: string, getOverride: () => LogLevelDesc | undefined): InstanceLogger {
@@ -110,7 +110,7 @@ function makeInstanceLogger(meta: CategoryMeta, instanceId: string, getOverride:
     out[name] = (...args: unknown[]): void => {
       const override = getOverride();
       // Effective threshold = the more verbose (lower) of type level and override.
-      const effective = Math.min(meta.logger.getLevel(), override == null ? levels.SILENT : toLevelNum(override));
+      const effective = Math.min(meta.logger.getLevel(), override == null ? LOG_LEVELS.SILENT : toLevelNum(override));
       if (methodLevel < effective) return;
       const emit = (console[consoleMethod] ?? console.log).bind(console);
       emit(`%c[${meta.label}]%c ${instanceId}`, css, idCss, ...args);

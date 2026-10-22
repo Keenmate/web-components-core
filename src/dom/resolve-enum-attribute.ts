@@ -8,10 +8,10 @@ export function resolveEnumAttribute<T extends string>(
   raw: string | null,
   values: readonly T[],
   fallback: T,
-  opts: { caseInsensitive?: boolean } = {},
+  opts: { isCaseInsensitive?: boolean } = {},
 ): T {
   if (raw === null) return fallback;
-  if (opts.caseInsensitive) {
+  if (opts.isCaseInsensitive) {
     const lower = raw.toLowerCase();
     return values.find((v) => v.toLowerCase() === lower) ?? fallback;
   }

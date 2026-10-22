@@ -143,7 +143,7 @@
             </div>
             <div class="note warning">
                 <div class="note-title">The fix</div>
-                Pass <code>fixedContainingBlock: true</code> (or a custom <code>platform</code>) so <code>anchor()</code>
+                Pass <code>shouldUseFixedContainingBlock: true</code> (or a custom <code>platform</code>) so <code>anchor()</code>
                 resolves the offset parent from the floating element's own transformed ancestor — this is the
                 escape hatch components like web-multiselect use.
             </div>
@@ -160,13 +160,13 @@ const handle = anchor(floating, reference, {
   placement: 'bottom-start',
   strategy: 'fixed',               // default 'fixed'
   offset: 4,
-  flip: true, shift: 8,            // middleware (offset → size → flip → shift)
+  shouldFlip: true, shift: 8,      // middleware (offset → size → flip → shift)
   matchWidth: 'min',              // 'min' | 'exact'
   maxHeight: { padding: 8 },      // size() cap to available height
   maxWidth: { padding: 8 },       // size() cap to available width
   lockPlacement: 'freeze',        // true | 'freeze'
-  fixedContainingBlock: true,     // resolve offset parent from a transformed ancestor
-  beforeCompute() {},             // per-frame hook (publish a CSS var, clamp, …)
+  shouldUseFixedContainingBlock: true, // resolve offset parent from a transformed ancestor
+  onBeforeCompute() {},           // per-frame hook (publish a CSS var, clamp, …)
   onPlaced(p) {}, onComputed(c) {}, onDrift(report) {},
 });
 

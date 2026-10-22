@@ -45,21 +45,21 @@ export interface PrepareSearchTermOptions {
    * result is used as-is: a RegExp is matched raw, a string is NOT normalized again (with
    * `match: 'regex'` it is compiled as a pattern).
    */
-  prepare?: (term: string) => PreparedSearchTerm;
-  /** Called when `prepare` returns an object — unusable for built-in search; the component warns. */
+  getSearchTermCallback?: (term: string) => PreparedSearchTerm;
+  /** Called when `getSearchTermCallback` returns an object — unusable for built-in search; the component warns. */
   onObjectTerm?: (term: Record<string, unknown>) => void;
 }
 
 /**
  * Turn a typed term into an {@link ActiveSearchTerm} for built-in search.
  *
- * Without `prepare`: trim; empty → none; `match: 'regex'` → compile; otherwise
+ * Without `getSearchTermCallback`: trim; empty → none; `match: 'regex'` → compile; otherwise
  * `normalizeSearchText(trimmed, behavior)`. Normalize the item values with the same
  * behavior (once per item, not per keystroke) and test them with {@link matchesSearchTerm}.
  */
 export function prepareSearchTerm(term: string, opts: PrepareSearchTermOptions): ActiveSearchTerm {
-  if (opts.prepare) {
-    const prepared = opts.prepare(term);
+  if (opts.getSearchTermCallback) {
+    const prepared = opts.getSearchTermCallback(term);
     if (prepared instanceof RegExp) return { kind: 'regex', re: statelessRegex(prepared) };
     if (prepared == null || prepared === '') return NO_SEARCH_TERM;
     if (typeof prepared !== 'string') {

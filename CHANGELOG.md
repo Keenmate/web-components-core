@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — BREAKING (naming review, no aliases)
+
+Public names brought in line with the house conventions: boolean options take an
+`is` / `should` / `has` / `can` prefix, `*Callback` marks a function whose return value is
+used, `on*` marks a notification, teardown is `destroy()`, hooks are `*Changed`.
+
+| Where | Old | New |
+|---|---|---|
+| `InputDef` (every input table) | `reflect` | `shouldReflect` |
+| `BlissElement` | `static themeContext` | `static hasThemeContext` |
+| `BlissElement` | `resized(size)` hook | `sizeChanged(size)` |
+| `BlissElement` | `isRTL` getter, `directionChanged(isRTL)` | `isRtl` |
+| `BlissElement.runHook` options | `onError` | `errorCallback` |
+| `anchor()` / `createPopover()` | `flip` | `shouldFlip` |
+| `anchor()` / `createPopover()` | `autoUpdate` | `shouldAutoUpdate` (`autoUpdateOptions` unchanged) |
+| `anchor()` / `createPopover()` | `beforeCompute` | `onBeforeCompute` |
+| `anchor()` | `fixedContainingBlock` | `shouldUseFixedContainingBlock` |
+| `createTooltip()` | `followCursor` | `shouldFollowCursor` |
+| `observeEnvironment` / `observeViewport` / `observeElementSize` / `observeThemeContext` | `immediate` | `shouldFireImmediately` |
+| environment types | `ObserveOptions` | `ObserveEnvironmentOptions`; new `ObserveThemeContextOptions` |
+| `OverlayHandle` | `dispose()` | `destroy()` |
+| overlay | `presentationContext()` | `createPresentationContext()` |
+| css-var lint | `declaredCssVars()` | `extractDeclaredCssVars()` |
+| `resolveEnumAttribute` options | `caseInsensitive` | `isCaseInsensitive` |
+| `/search` `prepareSearchTerm` options | `prepare` | `getSearchTermCallback` |
+
+Attributes, events and CSS are unchanged — only the JS API of components built on core.
+
 ### Fixed
 
 - **A throwing `reinit()` / `update()` no longer wedges the element.** The error still reaches

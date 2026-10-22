@@ -48,7 +48,7 @@ export interface InputDef<V = unknown> {
   /** What a change triggers. Default `'update'`. */
   on?: Reactivity;
   /** Reflect property → attribute on assignment? Requires `attribute` + `converter.toAttribute`. */
-  reflect?: boolean;
+  shouldReflect?: boolean;
   /**
    * Human description for docs / editor IntelliSense (the CEM tooling reads it —
    * SPEC §12.4). The table already carries the STRUCTURE (name, type, default);

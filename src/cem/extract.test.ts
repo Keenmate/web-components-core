@@ -47,7 +47,7 @@ describe('extractBlissClasses', () => {
     });
   });
 
-  it('maps each converter to a type and captures defaults + reflect', () => {
+  it('maps each converter to a type and captures defaults + shouldReflect', () => {
     const [cls] = parse(`
       class W extends BlissElement {
         static inputs = [
@@ -55,7 +55,7 @@ describe('extractBlissClasses', () => {
           { configKey: 'ratio', attribute: 'ratio', converter: toFloat() },
           { configKey: 'label', attribute: 'label', converter: toText({ default: 'hi' }) },
           { configKey: 'hint', attribute: 'hint', converter: toText({ isNullable: true }) },
-          { configKey: 'disabled', attribute: 'disabled', converter: toBool('presence'), reflect: true },
+          { configKey: 'disabled', attribute: 'disabled', converter: toBool('presence'), shouldReflect: true },
           { configKey: 'state', attribute: 'state', converter: toBool('tristate') },
           { configKey: 'tags', attribute: 'tags', converter: toList() },
           { configKey: 'options', converter: toObjectArray() },

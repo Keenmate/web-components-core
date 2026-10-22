@@ -164,7 +164,7 @@ describe('observeEnvironment', () => {
   it('can opt out of the immediate fire', () => {
     installMatchMedia({ ...DESKTOP });
     const seen: unknown[] = [];
-    const unsub = observeEnvironment((env) => seen.push(env), { immediate: false });
+    const unsub = observeEnvironment((env) => seen.push(env), { shouldFireImmediately: false });
     expect(seen).toHaveLength(0);
     unsub();
   });
@@ -263,7 +263,7 @@ describe('observeViewport (continuous, throttled)', () => {
   it('throttles a resize burst to one leading + one trailing notify', () => {
     installMatchMedia({ ...DESKTOP });
     const seen: number[] = [];
-    const unsub = observeViewport((env) => seen.push(env.viewportWidth), { immediate: false });
+    const unsub = observeViewport((env) => seen.push(env.viewportWidth), { shouldFireImmediately: false });
     fireResize(1100); // leading — fires now
     fireResize(1050); // within 30ms — schedules a trailing notify
     fireResize(1000); // within 30ms — coalesced into that same trailing
@@ -277,8 +277,8 @@ describe('observeViewport (continuous, throttled)', () => {
     installMatchMedia({ ...DESKTOP });
     const envSeen = vi.fn();
     const vpSeen = vi.fn();
-    const dropEnv = observeEnvironment(envSeen, { immediate: false });
-    const dropVp = observeViewport(vpSeen, { immediate: false });
+    const dropEnv = observeEnvironment(envSeen, { shouldFireImmediately: false });
+    const dropVp = observeViewport(vpSeen, { shouldFireImmediately: false });
     fireResize(1100); // width changed, breakpoint still 'desktop'
     expect(envSeen).not.toHaveBeenCalled();
     expect(vpSeen).toHaveBeenCalledTimes(1);
@@ -289,7 +289,7 @@ describe('observeViewport (continuous, throttled)', () => {
   it('still wakes environmentChanged when a width change crosses a breakpoint', () => {
     installMatchMedia({ ...DESKTOP });
     const seen: string[] = [];
-    const unsub = observeEnvironment((env) => seen.push(env.breakpoint), { immediate: false });
+    const unsub = observeEnvironment((env) => seen.push(env.breakpoint), { shouldFireImmediately: false });
     fireResize(500); // desktop → mobile bucket
     expect(seen).toEqual(['mobile']);
     unsub();
@@ -298,8 +298,8 @@ describe('observeViewport (continuous, throttled)', () => {
   it('keeps the shared resize listener alive while either channel has a subscriber', () => {
     installMatchMedia({ ...DESKTOP });
     const vpSeen = vi.fn();
-    const dropEnv = observeEnvironment(() => {}, { immediate: false });
-    const dropVp = observeViewport(vpSeen, { immediate: false });
+    const dropEnv = observeEnvironment(() => {}, { shouldFireImmediately: false });
+    const dropVp = observeViewport(vpSeen, { shouldFireImmediately: false });
     dropEnv(); // discrete channel gone; viewport channel still live
     fireResize(1100);
     expect(vpSeen).toHaveBeenCalledTimes(1); // resize still observed

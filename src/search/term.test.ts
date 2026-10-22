@@ -47,38 +47,38 @@ describe('prepareSearchTerm (default)', () => {
   });
 });
 
-describe('prepareSearchTerm (prepare callback)', () => {
+describe('prepareSearchTerm (getSearchTermCallback)', () => {
   it('a string is used as-is, not normalized again', () => {
-    expect(prepareSearchTerm('x', opts({ prepare: () => 'ČES' }))).toEqual({ kind: 'text', text: 'ČES' });
+    expect(prepareSearchTerm('x', opts({ getSearchTermCallback: () => 'ČES' }))).toEqual({ kind: 'text', text: 'ČES' });
   });
 
   it('a string with match regex is compiled', () => {
-    const t = prepareSearchTerm('x', opts({ match: 'regex', prepare: () => 'a+' }));
+    const t = prepareSearchTerm('x', opts({ match: 'regex', getSearchTermCallback: () => 'a+' }));
     expect(t.kind === 'regex' && t.re.source).toBe('a+');
   });
 
   it('a RegExp is made stateless', () => {
-    const t = prepareSearchTerm('ha-324/56', opts({ prepare: () => /ha[^a-z0-9]*324/gi }));
+    const t = prepareSearchTerm('ha-324/56', opts({ getSearchTermCallback: () => /ha[^a-z0-9]*324/gi }));
     expect(t.kind === 'regex' && t.re.flags).toBe('i');
   });
 
   it('null / undefined / empty → none', () => {
     for (const r of [null, undefined, '']) {
-      expect(prepareSearchTerm('x', opts({ prepare: () => r }))).toBe(NO_SEARCH_TERM);
+      expect(prepareSearchTerm('x', opts({ getSearchTermCallback: () => r }))).toBe(NO_SEARCH_TERM);
     }
   });
 
   it('an object → none, reported via onObjectTerm', () => {
     const onObjectTerm = vi.fn();
     const obj = { zip: '33500' };
-    expect(prepareSearchTerm('x', opts({ prepare: () => obj, onObjectTerm }))).toBe(NO_SEARCH_TERM);
+    expect(prepareSearchTerm('x', opts({ getSearchTermCallback: () => obj, onObjectTerm }))).toBe(NO_SEARCH_TERM);
     expect(onObjectTerm).toHaveBeenCalledWith(obj);
   });
 
   it('receives the untrimmed term', () => {
-    const prepare = vi.fn(() => 'a');
-    prepareSearchTerm(' a ', opts({ prepare }));
-    expect(prepare).toHaveBeenCalledWith(' a ');
+    const getSearchTermCallback = vi.fn(() => 'a');
+    prepareSearchTerm(' a ', opts({ getSearchTermCallback }));
+    expect(getSearchTermCallback).toHaveBeenCalledWith(' a ');
   });
 });
 

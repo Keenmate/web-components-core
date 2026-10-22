@@ -12,7 +12,7 @@ describe('resolveEnumAttribute', () => {
   });
 
   it('supports case-insensitive matching', () => {
-    expect(resolveEnumAttribute('TOP', MODES, 'bottom', { caseInsensitive: true })).toBe('top');
+    expect(resolveEnumAttribute('TOP', MODES, 'bottom', { isCaseInsensitive: true })).toBe('top');
     expect(resolveEnumAttribute('TOP', MODES, 'bottom')).toBe('bottom');
   });
 });

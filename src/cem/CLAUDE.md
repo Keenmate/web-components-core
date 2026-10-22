@@ -13,7 +13,7 @@ definition — the stock analyzer only knows `customElements.define()` — so it
 `toEnum` types resolve through `as const` and shared members-consts (e.g. a
 hoisted `const PLACEMENTS = […] as const`), not just inline array literals.
 **Source-of-truth split (SPEC §8 amendment):** the table +
-converter give the *structure* (attr↔prop, type, default, `reflect`, enum
+converter give the *structure* (attr↔prop, type, default, `shouldReflect`, enum
 members); the optional `description`/`deprecated` fields on each `InputDef` /
 `EventDef` row (or a leading comment) give the *prose*. Those doc fields are
 ignored at runtime. Keep `static inputs`/`static events` as literals (or a

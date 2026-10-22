@@ -2,7 +2,7 @@
  * Read a BlissElement's `static inputs` / `static events` tables from the
  * TypeScript AST and turn them into Custom Elements Manifest data (SPEC §12.4).
  * This is the source-of-truth split in action: the tables give the STRUCTURE
- * (attribute↔property mapping, type, default, reflect), while `description` /
+ * (attribute↔property mapping, type, default, shouldReflect), while `description` /
  * `deprecated` on each row give the PROSE. Pure — it takes the `ts` API and a
  * `SourceFile`, so it is unit-testable with the `typescript` package alone; the
  * analyzer plugin ({@link ./plugin}) is a thin wrapper that feeds these results
@@ -240,7 +240,7 @@ function extractInput(
   const typeOverride = stringOf(ts, propOf(ts, row, 'type'));
   const type = typeOverride ? { text: typeOverride } : typeFromConverter(ts, converter, sf);
   const def = defaultText(ts, row, converter, sf);
-  const reflects = boolOf(ts, propOf(ts, row, 'reflect')) === true;
+  const reflects = boolOf(ts, propOf(ts, row, 'shouldReflect')) === true;
   const description = descriptionOf(ts, row, row, sf);
   const deprecated = deprecatedOf(ts, row);
 

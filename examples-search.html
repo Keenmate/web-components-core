@@ -163,31 +163,31 @@
         </div>
 
         <!-- ============================================================= -->
-        <!-- SE05 · prepare (getSearchTermCallback)                         -->
+        <!-- SE05 · getSearchTermCallback                                    -->
         <!-- ============================================================= -->
         <div class="card">
             <h2>SE05 · Preparing the term — <code>getSearchTermCallback</code></h2>
             <p>
                 Users type part numbers however they like: <code>ha-324/56</code>, <code>ha 32456</code>,
-                <code>HA32456</code>. A component's <code>getSearchTermCallback</code> reaches core as
-                <code>prepare</code>: return a <code>RegExp</code> and it is matched against the raw value (made
+                <code>HA32456</code>. A component passes its <code>getSearchTermCallback</code> straight to
+                <code>prepareSearchTerm</code>: return a <code>RegExp</code> and it is matched against the raw value (made
                 stateless, so a <code>g</code> flag is harmless); return a string and it is used as-is, not normalized
                 again; return an object and built-in search can't use it (<code>onObjectTerm</code> — the component
                 warns; objects are for a custom <code>searchCallback</code>).
             </p>
             <div class="controls">
                 <input id="pn-term" class="search-input" type="search" value="ha-324/56" autocomplete="off" style="max-width:240px">
-                <label><input type="checkbox" id="pn-prepare" checked> use <code>prepare</code> (separator-insensitive regex)</label>
+                <label><input type="checkbox" id="pn-prepare" checked> use <code>getSearchTermCallback</code> (separator-insensitive regex)</label>
             </div>
             <div class="demo-area">
                 <span class="stat">ActiveSearchTerm: <b id="pn-active"></b></span>
                 <ul class="results" id="pn-results"></ul>
             </div>
-            <div class="code-block"><pre>const prepare = (term) => {
+            <div class="code-block"><pre>const getSearchTermCallback = (term) => {
   const parts = term.split(/[^a-z0-9]+/i).filter(Boolean);
   return parts.length ? new RegExp(parts.join('[^a-z0-9]*'), 'i') : null;
 };
-prepareSearchTerm(typed, { behavior, match, regex, prepare });</pre></div>
+prepareSearchTerm(typed, { behavior, match, regex, getSearchTermCallback });</pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -237,7 +237,7 @@ searchCallback = (t, signal, { searchTerm, entries }) => {
   findTextMatches, matchesText,           // (text, term, match) → ranges / boolean (prepared strings)
   findRegexMatches, statelessRegex,       // regex helpers
   NO_SEARCH_TERM, createRegexCompiler,    // { compile(pattern) → RegExp | null (last valid), reset() }
-  prepareSearchTerm,                      // (term, { behavior, match, regex, prepare?, onObjectTerm? }) → ActiveSearchTerm
+  prepareSearchTerm,                      // (term, { behavior, match, regex, getSearchTermCallback?, onObjectTerm? }) → ActiveSearchTerm
   matchesSearchTerm,                      // (term, match, prepared | () => prepared, raw | () => raw) → boolean
   findHighlightRanges,                    // (label, term, { behavior, match }) → { text, ranges }
   wrapRanges,                             // (text, ranges, { open?, close?, escape? }) → string
@@ -381,7 +381,7 @@ searchCallback = (t, signal, { searchTerm, entries }) => {
         renderEscape();
 
         // ---------------------------------------------------------------
-        // SE05 · prepare
+        // SE05 · getSearchTermCallback
         // ---------------------------------------------------------------
         const PARTS = ['HA-324/56', 'HA 324-56', 'HA32456', 'ha.324.56', 'HA-324/57', 'HB-324/56', 'XHA-324/56-B'];
         const pnRegex = createRegexCompiler();
@@ -393,7 +393,7 @@ searchCallback = (t, signal, { searchTerm, entries }) => {
             const behavior = 'normalized', match = 'contains';
             const term = prepareSearchTerm($('pn-term').value, {
                 behavior, match, regex: pnRegex,
-                prepare: $('pn-prepare').checked ? partPrepare : undefined,
+                getSearchTermCallback: $('pn-prepare').checked ? partPrepare : undefined,
             });
             $('pn-active').textContent = describe(term);
             $('pn-results').innerHTML = PARTS.map((p) => {

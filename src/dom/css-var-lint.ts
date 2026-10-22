@@ -26,7 +26,7 @@ export function extractConsumedCssVars(css: string, prefix: string): Set<string>
 }
 
 /** Every `--prefix-*` custom property a CSS string *declares* (`--prefix-foo: …`), de-duped. */
-export function declaredCssVars(css: string, prefix: string): string[] {
+export function extractDeclaredCssVars(css: string, prefix: string): string[] {
   const found = new Set<string>();
   const re = new RegExp(`(${escapeRegExp(prefix)}[a-z0-9-]+)\\s*:`, 'gi');
   let m: RegExpExecArray | null;
@@ -76,7 +76,7 @@ export function lintCssVars(
 ): CssVarFinding[] {
   if (opts.consumed.size === 0) return [];
   const findings: CssVarFinding[] = [];
-  for (const name of declaredCssVars(css, opts.prefix)) {
+  for (const name of extractDeclaredCssVars(css, opts.prefix)) {
     if (opts.consumed.has(name)) continue;
     findings.push({ name, suggestions: suggestCssVars(name, opts.consumed, { minScore: opts.minScore }) });
   }

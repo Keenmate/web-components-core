@@ -46,7 +46,7 @@ export { createMicrotaskScheduler } from './dom/microtask-scheduler.js';
 export type { MicrotaskScheduler } from './dom/microtask-scheduler.js';
 export { adoptStyles, createStyleSlot } from './dom/adopt-styles.js';
 export type { StyleSlot, StyleSlotOptions } from './dom/adopt-styles.js';
-export { extractConsumedCssVars, declaredCssVars, suggestCssVars, lintCssVars } from './dom/css-var-lint.js';
+export { extractConsumedCssVars, extractDeclaredCssVars, suggestCssVars, lintCssVars } from './dom/css-var-lint.js';
 export type { CssVarFinding } from './dom/css-var-lint.js';
 
 // Device / viewport / orientation detection (SPEC §12.9)
@@ -61,7 +61,7 @@ export {
 export type {
   EnvironmentSnapshot,
   EnvironmentListener,
-  ObserveOptions,
+  ObserveEnvironmentOptions,
   PointerType,
   Orientation,
   OS,
@@ -86,13 +86,13 @@ export {
   THEME_CONTEXT_ATTRIBUTE,
   THEME_SOURCE_ATTRIBUTE,
 } from './environment/theme.js';
-export type { ColorScheme, ThemeMode, ThemeSource, ThemeListener } from './environment/theme.js';
+export type { ColorScheme, ThemeMode, ThemeSource, ThemeListener, ObserveThemeContextOptions } from './environment/theme.js';
 
 // Overlay / fullscreen presentation primitives (SPEC §12.9) — shared by any
 // component that swaps a floating panel for a full-viewport sheet on phones.
 // classifyDevice() owns the shared device classification; resolvePresentation()
 // owns the (per-component overridable) class→presentation policy.
-export { resolvePresentation, resolveMobilePresentation, DEFAULT_PRESENTATION_MAP, presentationContext } from './overlay/presentation.js';
+export { resolvePresentation, resolveMobilePresentation, DEFAULT_PRESENTATION_MAP, createPresentationContext } from './overlay/presentation.js';
 export type { MobilePresentation, ResolvedPresentation, PresentationMap, PresentationContext } from './overlay/presentation.js';
 export { lockBodyScroll } from './overlay/scroll-lock.js';
 export { observeKeyboardInset } from './overlay/keyboard-inset.js';
@@ -111,7 +111,7 @@ export type { OverlayHandle, OverlayActivatedDetail } from './overlay/active-ove
 // Logging (SPEC §12.1) — engine is vendored (no `loglevel` dependency); see log-core.ts.
 export { createLoggers, DEFAULT_CATEGORIES, DEFAULT_ENABLED_LEVEL } from './logging/create-loggers.js';
 export type { LoggerBundle, Logger, LogLevelDesc, InstanceLogger } from './logging/create-loggers.js';
-export { setLogPersistKeyPrefix, getLogPersistKeyPrefix, levels as LOG_LEVELS } from './logging/log-core.js';
+export { setLogPersistKeyPrefix, getLogPersistKeyPrefix, LOG_LEVELS } from './logging/log-core.js';
 export type { LogLevelName } from './logging/log-core.js';
 export { createPerfLogger } from './logging/perf-logger.js';
 export type { PerfLogger } from './logging/perf-logger.js';

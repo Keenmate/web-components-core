@@ -139,16 +139,16 @@ export function anchor(
   // `placement`/`middleware` are mutable so `lockPlacement: 'freeze'` can pin the
   // first resolved placement and drop `flip` for every subsequent frame.
   let placement = opts.placement ?? 'bottom-start';
-  let flipEnabled = opts.flip ?? true;
+  let flipEnabled = opts.shouldFlip ?? true;
   let middleware = buildMiddleware(opts, flipEnabled);
   const freeze = opts.lockPlacement === 'freeze';
   let frozen = false;
 
-  // `fixedContainingBlock` sugar: narrow floating-ui's offset-parent search to the
+  // `shouldUseFixedContainingBlock` sugar: narrow floating-ui's offset-parent search to the
   // CB properties browsers reliably honour for `position: fixed`, resolved from the
   // FLOATING element (not the reference — see the option doc). An explicit `platform`
   // wins over the sugar.
-  const useFixedCB = !!opts.fixedContainingBlock && !opts.platform;
+  const useFixedCB = !!opts.shouldUseFixedContainingBlock && !opts.platform;
   const effectivePlatform: Platform | undefined =
     opts.platform ??
     (useFixedCB
@@ -160,7 +160,7 @@ export function anchor(
   let isDestroyed = false;
   const run = (): void => {
     if (isDestroyed) return;
-    opts.beforeCompute?.();
+    opts.onBeforeCompute?.();
     void computePosition(reference, floating, {
       placement,
       strategy,
@@ -191,7 +191,7 @@ export function anchor(
   };
 
   let cleanup: (() => void) | undefined;
-  if (opts.autoUpdate ?? true) cleanup = autoUpdate(reference, floating, run, opts.autoUpdateOptions);
+  if (opts.shouldAutoUpdate ?? true) cleanup = autoUpdate(reference, floating, run, opts.autoUpdateOptions);
   else run();
 
   return {

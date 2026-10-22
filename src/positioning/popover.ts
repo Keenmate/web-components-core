@@ -33,21 +33,21 @@ export interface PopoverOptions {
    */
   lockPlacement?: boolean | 'freeze';
   /** Allow flipping to the opposite side on overflow. Default `true`. */
-  flip?: boolean;
+  shouldFlip?: boolean;
   /** Shift padding in px to stay in view, or `false` to disable. Default `8`. */
   shift?: number | false;
   /** Positioning strategy. Default `'fixed'`. */
   strategy?: Strategy;
   /** Keep the position updated on scroll/resize via floating-ui `autoUpdate`. Default `true`. */
-  autoUpdate?: boolean;
+  shouldAutoUpdate?: boolean;
   /** Element to inherit `data-theme` from (C-CS-10). Default: the reference if it is an element. */
   inheritThemeFrom?: HTMLElement;
   /**
    * Per-frame hook run immediately before positioning — publish the reference's
    * measured width to a CSS var, clamp min/max width, etc. (see
-   * {@link AnchorOptions.beforeCompute}).
+   * {@link AnchorOptions.onBeforeCompute}).
    */
-  beforeCompute?(): void;
+  onBeforeCompute?(): void;
   /** Escape hatch: a custom floating-ui platform (e.g. a narrowed shadow-DOM containing-block heuristic). */
   platform?: Platform;
   /** Called after each placement with the resolved placement. */
@@ -89,10 +89,10 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
         offset: opts.offset,
         matchWidth: opts.matchWidth,
         lockPlacement: opts.lockPlacement,
-        ...(opts.flip !== undefined ? { flip: opts.flip } : {}),
+        ...(opts.shouldFlip !== undefined ? { shouldFlip: opts.shouldFlip } : {}),
         ...(opts.shift !== undefined ? { shift: opts.shift } : {}),
-        ...(opts.autoUpdate !== undefined ? { autoUpdate: opts.autoUpdate } : {}),
-        ...(opts.beforeCompute ? { beforeCompute: opts.beforeCompute } : {}),
+        ...(opts.shouldAutoUpdate !== undefined ? { shouldAutoUpdate: opts.shouldAutoUpdate } : {}),
+        ...(opts.onBeforeCompute ? { onBeforeCompute: opts.onBeforeCompute } : {}),
         ...(opts.platform ? { platform: opts.platform } : {}),
         ...(defaultTheme ? { inheritThemeFrom: defaultTheme } : {}),
         ...(opts.onPlaced ? { onPlaced: opts.onPlaced } : {}),

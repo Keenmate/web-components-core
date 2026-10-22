@@ -2,7 +2,7 @@
  * `createTooltip()` — the hover/focus tooltip preset (SPEC §12.2), lifting the
  * `tooltip.ts` shape shared by multiselect / daterangepicker / grid: a portaled
  * tooltip element, show/hide on pointer + keyboard focus with a delay, and
- * `autoUpdate` while visible. `followCursor` (multiselect's
+ * `autoUpdate` while visible. `shouldFollowCursor` (multiselect's
  * `option-tooltip-follow-cursor`) anchors to a `VirtualElement` tracking the
  * pointer rather than the trigger — one preset, moving reference.
  */
@@ -31,7 +31,7 @@ export interface TooltipOptions {
   /** Show/hide delay(s), in ms. Default `0`. */
   delay?: TooltipDelay;
   /** Anchor to the pointer via a `VirtualElement` instead of the trigger. Default `false`. */
-  followCursor?: boolean;
+  shouldFollowCursor?: boolean;
   /** Class(es) applied to the tooltip element. */
   cssClass?: string;
   /** Class toggled on the tooltip while it is visible. Default `'is-visible'`. */
@@ -122,7 +122,7 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     opts.onBeforeShow?.();
     visible = true;
     container.append(element);
-    const reference = opts.followCursor ? cursorReference : opts.trigger;
+    const reference = opts.shouldFollowCursor ? cursorReference : opts.trigger;
     handle = anchor(element, reference, {
       placement,
       strategy: opts.strategy,
@@ -133,7 +133,7 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     // mouseenter (so cursorRect was seeded through the show delay); for an imperative
     // show() / focus show it's attached here. addEventListener is idempotent on the
     // same function ref, so the double-attach from mouseenter is a no-op.
-    if (opts.followCursor) opts.trigger.addEventListener('mousemove', onMouseMove);
+    if (opts.shouldFollowCursor) opts.trigger.addEventListener('mousemove', onMouseMove);
     element.classList.add(visibleClass);
   };
 
@@ -162,7 +162,7 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
   };
 
   const onMouseEnter = (event: MouseEvent): void => {
-    if (opts.followCursor) startTrackingCursor(event);
+    if (opts.shouldFollowCursor) startTrackingCursor(event);
     scheduleShow();
   };
 

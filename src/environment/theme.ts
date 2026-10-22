@@ -95,7 +95,7 @@ interface Watch {
   value: ColorScheme | null;
   observer: MutationObserver | null;
   /** Whether the observer is attached (false while paused or unsubscribed). */
-  observing: boolean;
+  isObserving: boolean;
   /** The <body> the page observer is attached to (to notice a swapped body). */
   body: HTMLElement | null;
   subscribers: Set<Subscriber>;
@@ -119,7 +119,7 @@ function state(): ThemeState {
 }
 
 function newWatch(kind: Watch['kind'], element: Element | null): Watch {
-  return { kind, element, value: null, observer: null, observing: false, body: null, subscribers: new Set() };
+  return { kind, element, value: null, observer: null, isObserving: false, body: null, subscribers: new Set() };
 }
 
 const hasDom = (): boolean => typeof document !== 'undefined' && typeof MutationObserver !== 'undefined';
@@ -162,7 +162,7 @@ function redetect(watch: Watch): void {
   for (const sub of dependents(watch)) deliver(sub);
 }
 
-// ── observing ──────────────────────────────────────────────────────────────
+// ── observing ────────────────────────────────────────────────────────────────
 
 /** A watch observes only while it has subscribers AND the mode is 'auto'. */
 function shouldObserve(watch: Watch): boolean {
@@ -174,8 +174,8 @@ function shouldObserve(watch: Watch): boolean {
 }
 
 function startWatch(watch: Watch): void {
-  if (watch.observing) return;
-  watch.observing = true;
+  if (watch.isObserving) return;
+  watch.isObserving = true;
   watch.value = detect(watch);
   // One observer per watched element for its whole life: a pause (forced mode)
   // only disconnects it, and resuming re-attaches the same instance.
@@ -205,8 +205,8 @@ function attachBody(watch: Watch): void {
 }
 
 function stopWatch(watch: Watch): void {
-  if (!watch.observing) return;
-  watch.observing = false;
+  if (!watch.isObserving) return;
+  watch.isObserving = false;
   watch.observer?.disconnect();
   watch.body = null;
 }
@@ -292,15 +292,21 @@ export function getThemeContext(host?: Element, source?: ThemeSource): ColorSche
   if (!hasDom()) return null;
   const el = host ? resolveThemeSource(host, source) : null;
   const cached = el ? s.sources.get(el) : undefined;
-  const sourceValue = cached?.observing ? cached.value : el ? readThemeSignal(el) : null;
-  const pageValue = s.page.observing ? s.page.value : detect(s.page);
+  const sourceValue = cached?.isObserving ? cached.value : el ? readThemeSignal(el) : null;
+  const pageValue = s.page.isObserving ? s.page.value : detect(s.page);
   return sourceValue ?? pageValue;
+}
+
+/** Options for {@link observeThemeContext}. */
+export interface ObserveThemeContextOptions {
+  /** Fire the listener synchronously with the current scheme on subscribe. Default `true`. */
+  shouldFireImmediately?: boolean;
 }
 
 /**
  * Subscribe `host` to its theme context. The listener fires immediately with
- * the current scheme (unless `immediate: false`), then only when the effective
- * scheme changes. The source is resolved once, now; to change it, unsubscribe
+ * the current scheme (unless `shouldFireImmediately: false`), then only when
+ * the effective scheme changes. The source is resolved once, now; to change it, unsubscribe
  * and subscribe again. Shared observers start with the first subscriber of a
  * watched element and stop with the last. SSR-safe: fires `null` once (or the
  * forced mode) and returns a no-op.
@@ -309,11 +315,11 @@ export function observeThemeContext(
   host: Element,
   source: ThemeSource | undefined,
   listener: ThemeListener,
-  opts: { immediate?: boolean } = {},
+  opts: ObserveThemeContextOptions = {},
 ): () => void {
   const s = state();
   if (!hasDom()) {
-    if (opts.immediate !== false) listener(s.mode === 'auto' ? null : s.mode);
+    if (opts.shouldFireImmediately !== false) listener(s.mode === 'auto' ? null : s.mode);
     return () => {};
   }
 
@@ -328,7 +334,7 @@ export function observeThemeContext(
   if (watch) syncWatch(watch);
   syncWatch(s.page);
 
-  if (opts.immediate !== false) deliver(sub);
+  if (opts.shouldFireImmediately !== false) deliver(sub);
   else sub.last = effective(sub);
 
   return once(() => {

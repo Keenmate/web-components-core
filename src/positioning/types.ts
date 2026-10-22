@@ -36,13 +36,13 @@ export interface AnchorOptions {
   /** Gap between reference and floating, in px. Default `4`. */
   offset?: number;
   /** Allow flipping to the opposite side on overflow. Default `true`. */
-  flip?: boolean;
+  shouldFlip?: boolean;
   /** Shift padding in px to stay in view, or `false` to disable. Default `8`. */
   shift?: number | false;
   /** Match the reference's width: `'min'` (min-width), `'exact'` (width), `'max'` (max-width), or `false`. Default `false`. */
   matchWidth?: MatchWidth;
   /**
-   * Keep the placement stable instead of re-flipping every frame. Requires `flip`.
+   * Keep the placement stable instead of re-flipping every frame. Requires `shouldFlip`.
    * - `true` — flip returns to the initial placement rather than reordering
    *   (floating-ui `fallbackStrategy: 'initialPlacement'`).
    * - `'freeze'` — flip once on the FIRST computation, then pin the resolved
@@ -53,12 +53,12 @@ export interface AnchorOptions {
    */
   lockPlacement?: boolean | 'freeze';
   /** Keep the position updated on scroll/resize via floating-ui `autoUpdate`. Default `true`. */
-  autoUpdate?: boolean;
+  shouldAutoUpdate?: boolean;
   /**
    * Options forwarded to floating-ui `autoUpdate` (e.g. `{ elementResize: false }`
    * to stop the floating element's OWN size changes from re-triggering a
    * reposition — the fix for a resize→reposition→re-hover loop). Ignored when
-   * `autoUpdate` is `false`.
+   * `shouldAutoUpdate` is `false`.
    */
   autoUpdateOptions?: Parameters<typeof import('@floating-ui/dom').autoUpdate>[3];
   /**
@@ -67,7 +67,7 @@ export interface AnchorOptions {
    * measured width to a CSS variable so `shift`/`size` measure the final width,
    * or clamp min/max width. Runs inside the `autoUpdate` loop.
    */
-  beforeCompute?(): void;
+  onBeforeCompute?(): void;
   /**
    * Copy the nearest `data-theme` from this element onto the floating element at
    * placement time — so a layer portaled out of the component subtree keeps the
@@ -91,8 +91,8 @@ export interface AnchorOptions {
    * {@link platform}. Ignored when an explicit `platform` is given (yours wins).
    * Pairs with {@link onDrift}. Default `false`.
    */
-  fixedContainingBlock?: boolean;
-  /** Extra viewport-edge padding (px) before `flip` switches sides. Default `0`. */
+  shouldUseFixedContainingBlock?: boolean;
+  /** Extra viewport-edge padding (px) before flipping switches sides. Default `0`. */
   flipPadding?: number;
   /**
    * Cap the floating element's height to the space available on the resolved side
@@ -129,7 +129,7 @@ export interface AnchorOptions {
    * measurement each frame against the floating element's fixed-CB offset parent,
    * so it fires whenever drift persists — guard against repeated warnings on your
    * side (e.g. a once-per-instance flag). Intended to pair with
-   * {@link fixedContainingBlock}; needs a real-element reference (skipped for a
+   * {@link shouldUseFixedContainingBlock}; needs a real-element reference (skipped for a
    * virtual/cursor reference). The report carries the drift + likely CSS culprit.
    */
   onDrift?(report: DriftReport): void;

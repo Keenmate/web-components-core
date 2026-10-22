@@ -56,7 +56,7 @@ export interface OverlayHandle {
   /** This overlay closed: clears the active marker for its group if it was this one. */
   deactivate(): void;
   /** Stop participating (call on disconnect/destroy). */
-  dispose(): void;
+  destroy(): void;
 }
 
 interface Participant {
@@ -88,7 +88,7 @@ function onActivated(e: Event): void {
   const detail = (e as CustomEvent<OverlayActivatedDetail>).detail;
   const source = detail?.source;
   const group = detail?.group;
-  // Snapshot: a dismiss handler may dispose (mutating the set) mid-iteration.
+  // Snapshot: a dismiss handler may destroy (mutating the set) mid-iteration.
   for (const p of Array.from(participants)) {
     if (p.id !== source && groupMatches(p.group, group)) p.dismiss();
   }
@@ -136,7 +136,7 @@ export function registerOverlay(onDismiss: () => void, group?: unknown): Overlay
     deactivate(): void {
       if (active.get(participant.group) === participant) active.delete(participant.group);
     },
-    dispose(): void {
+    destroy(): void {
       participants.delete(participant);
       if (active.get(participant.group) === participant) active.delete(participant.group);
       stopListeningIfIdle();

@@ -28,7 +28,7 @@ property assign  ─┘
 - An **attribute** change runs `converter.fromAttribute(raw)`.
 - A **property** assignment runs `converter.validate(value)` (rejected values
   warn and keep the previous value), and reflects to an attribute if the input
-  declares `reflect: true`.
+  declares `shouldReflect: true`.
 - Either way the resolved value is **staged**: written into `this.config`, and —
   unless it's `on: 'none'` — added to a pending set with a **microtask** flush
   scheduled. Multiple stages in the same tick schedule the *same* microtask, so

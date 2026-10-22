@@ -12,7 +12,7 @@ class TestElement extends BlissElement {
     { configKey: 'selectionMode', attribute: 'selection-mode', converter: toEnum(SELECTION, { default: 'single' }) },
     { configKey: 'optionHeight', attribute: 'option-height', converter: toInt({ min: 1, default: 50 }), on: 'reinit' },
     { configKey: 'placeholder', attribute: 'placeholder', converter: toText({ default: 'Search...' }) },
-    { configKey: 'disabled', attribute: 'disabled', converter: toBool('presence'), reflect: true },
+    { configKey: 'disabled', attribute: 'disabled', converter: toBool('presence'), shouldReflect: true },
     { configKey: 'internalId', attribute: 'internal-id', converter: toText({ default: '' }), field: '_id' },
     { configKey: 'onPick', converter: toFunction(), on: 'update' },
     { configKey: 'note', attribute: 'note', converter: toText({ default: '' }), on: 'none' },
@@ -24,8 +24,8 @@ class TestElement extends BlissElement {
   readonly updates: Record<string, unknown>[] = [];
   readonly events: string[] = [];
   readonly dirChanges: boolean[] = [];
-  protected override directionChanged(isRTL: boolean): void {
-    this.dirChanges.push(isRTL);
+  protected override directionChanged(isRtl: boolean): void {
+    this.dirChanges.push(isRtl);
   }
   protected override reinit(): void {
     this.reinits += 1;
@@ -78,18 +78,18 @@ class DupAttrElement extends BlissElement {
 }
 class ReflectNoAttrElement extends BlissElement {
   protected static override inputs: readonly InputDef[] = [
-    { configKey: 'a', converter: toText(), reflect: true },
+    { configKey: 'a', converter: toText(), shouldReflect: true },
   ];
 }
 class ReflectNoToAttrElement extends BlissElement {
   protected static override inputs: readonly InputDef[] = [
-    { configKey: 'a', attribute: 'a', converter: toCustom((raw) => raw), reflect: true },
+    { configKey: 'a', attribute: 'a', converter: toCustom((raw) => raw), shouldReflect: true },
   ];
 }
 class ValidTableElement extends BlissElement {
   protected static override inputs: readonly InputDef[] = [
     { configKey: 'a', attribute: 'a', converter: toText() },
-    { configKey: 'b', attribute: 'b', converter: toBool('presence'), reflect: true },
+    { configKey: 'b', attribute: 'b', converter: toBool('presence'), shouldReflect: true },
   ];
 }
 [DupKeyElement, DupAttrElement, ReflectNoAttrElement, ReflectNoToAttrElement, ValidTableElement].forEach(
@@ -98,8 +98,8 @@ class ValidTableElement extends BlissElement {
 
 class ReflectElement extends BlissElement {
   protected static override inputs: readonly InputDef[] = [
-    { configKey: 'count', attribute: 'count', converter: toInt({ default: 0 }), reflect: true },
-    { configKey: 'mode', attribute: 'mode', converter: toEnum(['a', 'b'] as const, { default: 'a' }), reflect: true },
+    { configKey: 'count', attribute: 'count', converter: toInt({ default: 0 }), shouldReflect: true },
+    { configKey: 'mode', attribute: 'mode', converter: toEnum(['a', 'b'] as const, { default: 'a' }), shouldReflect: true },
   ];
   updates = 0;
   protected override update(): void {
@@ -119,8 +119,8 @@ class DirInputElement extends BlissElement {
   protected override update(partial: Record<string, unknown>): void {
     this.updates.push(partial);
   }
-  protected override directionChanged(isRTL: boolean): void {
-    this.dirChanges.push(isRTL);
+  protected override directionChanged(isRtl: boolean): void {
+    this.dirChanges.push(isRtl);
   }
   peek(): Readonly<Record<string, unknown>> {
     return this.config;
@@ -564,14 +564,14 @@ describe('BlissElement table validation (warn-only, once per class)', () => {
     warn.mockRestore();
   });
 
-  it('warns on reflect:true without an attribute', () => {
+  it('warns on shouldReflect:true without an attribute', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     new ReflectNoAttrElement();
     expect(tableWarnings(warn).some((m) => m.includes('no attribute to reflect to'))).toBe(true);
     warn.mockRestore();
   });
 
-  it('warns on reflect:true without converter.toAttribute', () => {
+  it('warns on shouldReflect:true without converter.toAttribute', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     new ReflectNoToAttrElement();
     expect(tableWarnings(warn).some((m) => m.includes('has no toAttribute'))).toBe(true);
@@ -751,13 +751,13 @@ class MockRO {
 
 class SizedElement extends BlissElement {
   readonly widths: number[] = [];
-  protected override resized(size: { width: number; height: number }): void {
+  protected override sizeChanged(size: { width: number; height: number }): void {
     this.widths.push(size.width);
   }
 }
 define('sized-element', SizedElement as unknown as CustomElementConstructor);
 
-describe('resized hook', () => {
+describe('sizeChanged hook', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -768,7 +768,7 @@ describe('resized hook', () => {
     const el = document.createElement('sized-element') as SizedElement;
     el.getBoundingClientRect = () => ({ width: 300, height: 100 }) as DOMRect;
     document.body.appendChild(el);
-    // immediate:false → no pre-layout fire; the observer is watching this element.
+    // shouldFireImmediately:false → no pre-layout fire; the observer is watching this element.
     expect(el.widths).toEqual([]);
     const ro = MockRO.instances[MockRO.instances.length - 1]!;
     expect(ro.observed.has(el)).toBe(true);
@@ -793,9 +793,9 @@ describe('resized hook', () => {
     vi.stubGlobal('ResizeObserver', MockRO);
     const el = document.createElement('plain-element') as PlainElement;
     document.body.appendChild(el);
-    // No observer is created at all when nothing overrides resized.
+    // No observer is created at all when nothing overrides sizeChanged.
     expect(MockRO.instances).toHaveLength(0);
-    expect((el as unknown as { resized: unknown }).resized).toBe(BlissElement.prototype['resized' as keyof BlissElement]);
+    expect((el as unknown as { sizeChanged: unknown }).sizeChanged).toBe(BlissElement.prototype['sizeChanged' as keyof BlissElement]);
     el.remove();
   });
 });

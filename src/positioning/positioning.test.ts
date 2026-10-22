@@ -105,7 +105,7 @@ describe('anchor', () => {
   it('adds size() for matchWidth and omits flip/shift when disabled', () => {
     anchor(document.createElement('div'), document.createElement('button'), {
       matchWidth: 'min',
-      flip: false,
+      shouldFlip: false,
       shift: false,
     });
     expect(mw().map((m) => m.name)).toEqual(['offset', 'size']);
@@ -117,7 +117,7 @@ describe('anchor', () => {
     ['max', 'maxWidth'],
   ] as const)("matchWidth '%s' applies the reference width to %s", (matchWidth, prop) => {
     const floating = document.createElement('div');
-    anchor(floating, document.createElement('button'), { matchWidth, flip: false, shift: false });
+    anchor(floating, document.createElement('button'), { matchWidth, shouldFlip: false, shift: false });
     const sizeMw = mw().find((m) => m.name === 'size') as unknown as { options: { apply: (a: unknown) => void } };
     sizeMw.options.apply({ rects: { reference: { width: 220 } }, elements: { floating } });
     // The chosen dimension gets the reference width; the other two stay unset.
@@ -132,23 +132,23 @@ describe('anchor', () => {
     expect(vi.mocked(fui.flip)).toHaveBeenCalledWith({ fallbackStrategy: 'initialPlacement' });
   });
 
-  it('skips autoUpdate but still positions when autoUpdate:false', async () => {
-    anchor(document.createElement('div'), document.createElement('button'), { autoUpdate: false });
+  it('skips autoUpdate but still positions when shouldAutoUpdate:false', async () => {
+    anchor(document.createElement('div'), document.createElement('button'), { shouldAutoUpdate: false });
     await Promise.resolve();
     expect(vi.mocked(fui.autoUpdate)).not.toHaveBeenCalled();
     expect(vi.mocked(fui.computePosition)).toHaveBeenCalledOnce();
   });
 
-  it('runs beforeCompute before each computePosition', async () => {
+  it('runs onBeforeCompute before each computePosition', async () => {
     const order: string[] = [];
     vi.mocked(fui.computePosition).mockImplementationOnce(() => {
       order.push('compute');
       return Promise.resolve({ x: 1, y: 2, placement: 'bottom-start', strategy: 'fixed', middlewareData: {} }) as never;
     });
-    const beforeCompute = vi.fn(() => order.push('before'));
-    anchor(document.createElement('div'), document.createElement('button'), { beforeCompute });
+    const onBeforeCompute = vi.fn(() => order.push('before'));
+    anchor(document.createElement('div'), document.createElement('button'), { onBeforeCompute });
     await Promise.resolve();
-    expect(beforeCompute).toHaveBeenCalled();
+    expect(onBeforeCompute).toHaveBeenCalled();
     expect(order).toEqual(['before', 'compute']);
   });
 
@@ -210,7 +210,7 @@ describe('anchor', () => {
     expect(vi.mocked(fui.computePosition)).toHaveBeenCalledOnce();
   });
 
-  it('fixedContainingBlock resolves the offset parent from the FLOATING element', () => {
+  it('shouldUseFixedContainingBlock resolves the offset parent from the FLOATING element', () => {
     const floatingCB = document.createElement('div'); // a transformed ancestor of the floating panel
     const floating = document.createElement('div');
     floatingCB.append(floating);
@@ -222,16 +222,16 @@ describe('anchor', () => {
         ({ transform: el === floatingCB ? 'scale(1.05)' : 'none', perspective: 'none', filter: 'none', willChange: '' }) as unknown as CSSStyleDeclaration,
     );
 
-    anchor(floating, reference, { fixedContainingBlock: true });
+    anchor(floating, reference, { shouldUseFixedContainingBlock: true });
     const plat = vi.mocked(fui.computePosition).mock.calls[0]![2]!.platform as unknown as { getOffsetParent: () => unknown };
     // Resolves from `floating` (→ floatingCB), NOT from `reference` (which would give window).
     expect(plat.getOffsetParent()).toBe(floatingCB);
     spy.mockRestore();
   });
 
-  it('an explicit platform wins over fixedContainingBlock', () => {
+  it('an explicit platform wins over shouldUseFixedContainingBlock', () => {
     const platform = { getOffsetParent: vi.fn() } as unknown as import('./types.js').Platform;
-    anchor(document.createElement('div'), document.createElement('button'), { platform, fixedContainingBlock: true });
+    anchor(document.createElement('div'), document.createElement('button'), { platform, shouldUseFixedContainingBlock: true });
     expect(vi.mocked(fui.computePosition).mock.calls[0]![2]!.platform).toBe(platform);
   });
 
@@ -305,10 +305,10 @@ describe('createTooltip', () => {
     }
   });
 
-  it('followCursor anchors to a moving virtual element', async () => {
+  it('shouldFollowCursor anchors to a moving virtual element', async () => {
     const trigger = document.createElement('button');
     document.body.append(trigger);
-    const tip = createTooltip({ trigger, content: 'hi', followCursor: true });
+    const tip = createTooltip({ trigger, content: 'hi', shouldFollowCursor: true });
 
     tip.show();
     await Promise.resolve();
@@ -337,7 +337,7 @@ describe('createTooltip', () => {
       // A wide/tall trigger so the fallback (full-rect) and the seeded point differ clearly.
       trigger.getBoundingClientRect = () => new DOMRect(100, 200, 300, 40);
       document.body.append(trigger);
-      const tip = createTooltip({ trigger, content: 'hi', followCursor: true, delay: { show: 400 } });
+      const tip = createTooltip({ trigger, content: 'hi', shouldFollowCursor: true, delay: { show: 400 } });
 
       // Enter at a point away from the trigger's origin — then DON'T move again.
       trigger.dispatchEvent(new MouseEvent('mouseenter', { clientX: 130, clientY: 260 }));
@@ -362,7 +362,7 @@ describe('createTooltip', () => {
       const add = vi.spyOn(trigger, 'addEventListener');
       const remove = vi.spyOn(trigger, 'removeEventListener');
       document.body.append(trigger);
-      const tip = createTooltip({ trigger, content: 'hi', followCursor: true, delay: { show: 400 } });
+      const tip = createTooltip({ trigger, content: 'hi', shouldFollowCursor: true, delay: { show: 400 } });
 
       trigger.dispatchEvent(new MouseEvent('mouseenter', { clientX: 10, clientY: 10 }));
       expect(add.mock.calls.filter((c) => c[0] === 'mousemove')).toHaveLength(1); // tracking started
@@ -382,7 +382,7 @@ describe('createTooltip', () => {
     try {
       const trigger = document.createElement('button');
       document.body.append(trigger);
-      const tip = createTooltip({ trigger, content: 'hi', followCursor: true, delay: { show: 400 } });
+      const tip = createTooltip({ trigger, content: 'hi', shouldFollowCursor: true, delay: { show: 400 } });
 
       trigger.dispatchEvent(new MouseEvent('mouseenter', { clientX: 10, clientY: 10 }));
       // Move during the delay: updates the rect but must NOT position (nothing is shown yet).
@@ -463,17 +463,17 @@ describe('createPopover', () => {
     pop.close();
   });
 
-  it('forwards beforeCompute, platform, flip/shift, and lockPlacement:freeze to anchor', async () => {
+  it('forwards onBeforeCompute, platform, shouldFlip/shift, and lockPlacement:freeze to anchor', async () => {
     const reference = document.createElement('button');
     const panel = document.createElement('div');
     document.body.append(reference);
-    const beforeCompute = vi.fn();
+    const onBeforeCompute = vi.fn();
     const platform = { getOffsetParent: vi.fn() } as unknown as import('./types.js').Platform;
 
     const pop = createPopover({
       reference,
       panel,
-      beforeCompute,
+      onBeforeCompute,
       platform,
       shift: 12,
       lockPlacement: 'freeze',
@@ -481,8 +481,8 @@ describe('createPopover', () => {
     pop.open();
     await Promise.resolve();
 
-    // beforeCompute runs before positioning; the custom platform reaches computePosition.
-    expect(beforeCompute).toHaveBeenCalled();
+    // onBeforeCompute runs before positioning; the custom platform reaches computePosition.
+    expect(onBeforeCompute).toHaveBeenCalled();
     expect(vi.mocked(fui.computePosition).mock.calls[0]![2]!.platform).toBe(platform);
     // freeze flips on the first frame like a normal flip (no fallbackStrategy).
     expect(vi.mocked(fui.flip)).toHaveBeenCalledWith({});
@@ -491,8 +491,8 @@ describe('createPopover', () => {
     pop.close();
   });
 
-  it('disables flip when flip:false', () => {
-    const pop = createPopover({ reference: document.createElement('button'), panel: document.createElement('div'), flip: false });
+  it('disables flip when shouldFlip:false', () => {
+    const pop = createPopover({ reference: document.createElement('button'), panel: document.createElement('div'), shouldFlip: false });
     pop.open();
     expect(vi.mocked(fui.flip)).not.toHaveBeenCalled();
     pop.close();

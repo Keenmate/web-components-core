@@ -87,10 +87,10 @@ export interface EnvironmentSnapshot {
 /** A subscriber notified with each new snapshot (fired immediately on subscribe unless opted out). */
 export type EnvironmentListener = (snapshot: EnvironmentSnapshot) => void;
 
-/** Options for {@link observeEnvironment}. */
-export interface ObserveOptions {
+/** Options for {@link observeEnvironment} and {@link observeViewport}. */
+export interface ObserveEnvironmentOptions {
   /** Fire the listener synchronously with the current snapshot on subscribe. Default `true`. */
-  immediate?: boolean;
+  shouldFireImmediately?: boolean;
 }
 
 /** The static snapshot returned during SSR / when no media-query support exists. */
@@ -340,20 +340,20 @@ export function getEnvironment(): EnvironmentSnapshot {
 
 /**
  * Subscribe to environment changes. The listener fires immediately with the
- * current snapshot (unless `immediate: false`), then again whenever the pointer,
+ * current snapshot (unless `shouldFireImmediately: false`), then again whenever the pointer,
  * hover, orientation, viewport size, or resolved breakpoint changes. Returns an
  * unsubscribe function; the shared `matchMedia`/resize listeners are attached on
  * the first subscriber and torn down when the last one leaves. No-op-safe during
  * SSR (fires once with the desktop default, returns a no-op unsubscribe).
  */
-export function observeEnvironment(listener: EnvironmentListener, opts: ObserveOptions = {}): () => void {
+export function observeEnvironment(listener: EnvironmentListener, opts: ObserveEnvironmentOptions = {}): () => void {
   return subscribe(subscribers, listener, opts);
 }
 
 /**
  * Subscribe to *continuous* viewport-size changes — the noisy companion to
  * {@link observeEnvironment}. The listener fires immediately with the current
- * snapshot (unless `immediate: false`), then again whenever `viewportWidth`/
+ * snapshot (unless `shouldFireImmediately: false`), then again whenever `viewportWidth`/
  * `viewportHeight` change, **throttled to one notify per {@link VIEWPORT_THROTTLE_MS}
  * (≈30 ms), leading + trailing** — so a drag-resize yields a steady ~33 Hz
  * stream plus a final settled read, not the per-frame flood raw `resize` would.
@@ -363,16 +363,16 @@ export function observeEnvironment(listener: EnvironmentListener, opts: ObserveO
  * lazily-started, ref-counted `matchMedia`/`resize` listeners; returns an
  * unsubscribe. No-op-safe during SSR.
  */
-export function observeViewport(listener: EnvironmentListener, opts: ObserveOptions = {}): () => void {
+export function observeViewport(listener: EnvironmentListener, opts: ObserveEnvironmentOptions = {}): () => void {
   return subscribe(viewportSubscribers, listener, opts);
 }
 
 /** Join one channel; the shared listeners start with the first subscriber of either and stop with the last. */
-function subscribe(channel: Set<EnvironmentListener>, listener: EnvironmentListener, opts: ObserveOptions): () => void {
+function subscribe(channel: Set<EnvironmentListener>, listener: EnvironmentListener, opts: ObserveEnvironmentOptions): () => void {
   const first = subscriberCount() === 0;
   channel.add(listener);
   if (first) start();
-  if (opts.immediate !== false) listener(getEnvironment());
+  if (opts.shouldFireImmediately !== false) listener(getEnvironment());
   return once(() => {
     channel.delete(listener);
     if (subscriberCount() === 0) stop();

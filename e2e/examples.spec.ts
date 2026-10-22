@@ -121,7 +121,7 @@ test.describe('examples-search.html', () => {
     await expect(page.locator('#hl-escaped-src')).toContainText('&lt;b&gt;');
   });
 
-  test('SE05: prepare turns ha-324/56 into a separator-insensitive regex', async ({ page }) => {
+  test('SE05: getSearchTermCallback turns ha-324/56 into a separator-insensitive regex', async ({ page }) => {
     await expect(page.locator('#pn-results li:not(.is-miss)')).toHaveCount(5); // incl. XHA-324/56-B (contains)
     await page.locator('#pn-prepare').uncheck();
     await expect(page.locator('#pn-results li:not(.is-miss)')).toHaveCount(2);

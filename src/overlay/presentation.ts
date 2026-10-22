@@ -77,7 +77,7 @@ export interface PresentationContext {
  * re-deriving the booleans. Reactive by construction: call it wherever you build the render
  * context and it reflects the component's current presentation.
  */
-export function presentationContext(presentation: ResolvedPresentation): PresentationContext {
+export function createPresentationContext(presentation: ResolvedPresentation): PresentationContext {
   return {
     presentation,
     isFullscreen: presentation === 'fullscreen',

@@ -10,7 +10,7 @@ Invariants (multiselect's e2e suite depends on them — a change here is a behav
 
 - `regex` = raw value, no flags, no normalization; an invalid typed pattern reuses the
   instance's last valid one (`createRegexCompiler`, one per component instance).
-- A `prepare` (getSearchTermCallback) string is used as-is, never normalized again.
+- A `getSearchTermCallback` string is used as-is, never normalized again.
 - Highlight ranges index into the RETURNED text (NFC for text terms), not the input.
 - Word char = `[\p{L}\p{N}]`; text matches are non-overlapping.
 - No per-item cache here (component-owned) until a second component needs it.

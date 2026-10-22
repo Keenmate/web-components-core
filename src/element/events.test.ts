@@ -171,7 +171,7 @@ describe('runHook', () => {
     protected static override inputs = [
       { configKey: 'beforeSelectCallback', on: 'none' as const },
     ];
-    run<R>(ctx: unknown, opts: { whenUnset: R; onError?: (e: unknown) => R }): Promise<R> {
+    run<R>(ctx: unknown, opts: { whenUnset: R; errorCallback?: (e: unknown) => R }): Promise<R> {
       return this.runHook('beforeSelectCallback', ctx, opts);
     }
   }
@@ -201,17 +201,17 @@ describe('runHook', () => {
     await expect(el.run({}, { whenUnset: { action: 'accept' } })).resolves.toEqual({ action: 'block' });
   });
 
-  it('routes a throw to onError when provided', async () => {
+  it('routes a throw to errorCallback when provided', async () => {
     const el = makeHost();
     el.beforeSelectCallback = () => {
       throw new Error('boom');
     };
     await expect(
-      el.run({}, { whenUnset: { action: 'accept' }, onError: () => ({ action: 'restore' }) }),
+      el.run({}, { whenUnset: { action: 'accept' }, errorCallback: () => ({ action: 'restore' }) }),
     ).resolves.toEqual({ action: 'restore' });
   });
 
-  it('re-throws when no onError is given (no silent swallow)', async () => {
+  it('re-throws when no errorCallback is given (no silent swallow)', async () => {
     const el = makeHost();
     el.beforeSelectCallback = () => {
       throw new Error('boom');
