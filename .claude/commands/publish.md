@@ -41,7 +41,7 @@ Single-package library, everything at root:
   `## [X.Y.Z] - YYYY-MM-DD`.
 - **`./dist/`** — gitignored. Produced by `npm run build` (`tsc -p tsconfig.build.json` → ESM + `.d.ts`).
   Never staged.
-- **Published `files`:** `dist`, `docs/reactivity-and-batching.md` (see `package.json`). npm ALSO
+- **Published `files`:** `dist`, `docs/reactivity-and-batching.md`, `release-notes` (see `package.json`). npm ALSO
   auto-includes `README.md`, `LICENSE`, and `package.json` regardless of `files` — so **the README IS
   published**. `docs/SPEC.md` is a contributor working-doc and is deliberately NOT in `files`, so it does
   not ship.
@@ -49,7 +49,10 @@ Single-package library, everything at root:
   section at the top (newest first), same as every other KeenMate package. Each release adds a new block
   paraphrasing that version's headline user-facing changes and ends the package's list with a
   `See CHANGELOG.md for the full list.` pointer — this is a real release step (see step 4), NOT optional.
-- **Subpath exports:** `.`, `./testing`, `./cem`, `./positioning` — each must resolve to a built file
+- **`./release-notes/<X.Y.Z[-rcN]>.md`** — one per release (no `v` prefix in the file name), published.
+  The upgrade guide + highlights; the CHANGELOG stays the exhaustive list. Same principle and style as
+  `pure-admin/packages/core/release-notes/` and `web-multiselect/release-notes/` (see step 5).
+- **Subpath exports:** `.`, `./testing`, `./cem`, `./positioning`, `./search` — each must resolve to a built file
   under `dist/` after a build.
 
 ## Resolve versions
@@ -98,7 +101,32 @@ list.` pointer if one isn't already present. This section IS published (npm ship
 part of the release, not a nicety. If `## [Unreleased]` held nothing user-facing, note that and skip
 adding an empty block — but say so explicitly.
 
-### 5. Validate CHANGELOG entries match recent work
+Keep **only the two newest** What's New blocks: after adding the new one, delete the older ones (the full
+history lives in the CHANGELOG). Open the new block with a one-line lede linking the release notes from
+step 5: `**[Release notes](release-notes/NEW_VERSION.md)** …` (no `v` in the file name).
+
+### 5. Write the release notes
+
+Create `./release-notes/NEW_VERSION.md` (e.g. `release-notes/1.0.0-rc14.md`). Same principle and style
+as the sibling packages (`../pure-admin/packages/core/release-notes/`, `../web-multiselect/release-notes/`) —
+read the newest one there before writing:
+
+- `# Web Components Core NEW_VERSION — Release Notes`, then
+  `**Released:** YYYY-MM-DD · **Pre-release** (`npm install @keenmate/web-components-core@rc`)` (for a
+  final release: `**Stable**` and no `@rc`).
+- An intro paragraph: what the release is about, and whether upgrading needs any action. Then: "The
+  exhaustive, per-change list is in [`CHANGELOG.md`](https://github.com/KeenMate/web-components-core/blob/vNEW_VERSION/CHANGELOG.md#<anchor>);
+  this document is the upgrade guide and the highlights."
+- `---`-separated sections with a numbered **Contents**. Use the ones that apply, in this order:
+  Requirements (table) · Upgrade checklist (`- [ ]` items grouped by audience: everyone / component
+  authors / engine authors …, each linking to its detail section) · Breaking changes (before → after
+  tables, migration snippets) · New features (API tables + short code samples) · Visible changes without
+  a migration · Fixes · Examples and docs.
+- Cover everything since the previous **published** version, not just the last rc (state that in the intro
+  if an rc was never published).
+- Paraphrase from the CHANGELOG and verify against the source. Don't invent behaviour.
+
+### 6. Validate CHANGELOG entries match recent work
 
 Find the previous released heading (`## [X.Y.Z] - …`) and the commit that shipped it (subject usually
 starts with `vX.Y.Z` or `release`), then `git log --oneline <that-commit>..HEAD`. For every substantive
@@ -106,13 +134,13 @@ commit or uncommitted change, confirm the finalized section mentions it. If some
 missing, **stop and ask** — don't invent entries. Pure doc/example tweaks and trivial fixes don't need
 entries.
 
-### 6. Verify (the gate)
+### 7. Verify (the gate)
 
 Run `npm run typecheck` then `npm test` (or `make verify`). Both must be clean. If anything fails,
 **stop and report** — do not build or commit. This gate is what keeps a broken core off the registry
 that three components depend on.
 
-### 7. Build
+### 8. Build
 
 Run `npm run build` (or `make build`) — `npm run clean:dist` then `tsc -p tsconfig.build.json`. If it
 errors, stop and report. Then smoke-check the emitted entry points for every export map subpath:
@@ -121,23 +149,26 @@ errors, stop and report. Then smoke-check the emitted entry points for every exp
 - `dist/testing/index.js` + `.d.ts`
 - `dist/cem/index.js` + `.d.ts`
 - `dist/positioning/index.js` + `.d.ts`
+- `dist/search/index.js` + `.d.ts`
 
 All must exist and be non-empty.
 
-### 8. Verify the package contents
+### 9. Verify the package contents
 
 Run `npm pack --dry-run` (or `make publish-dry`, which also cleans+builds first). Confirm the file list
-includes `dist/` (JS + `.d.ts`), `docs/reactivity-and-batching.md`, `README.md`, and `package.json`.
+includes `dist/` (JS + `.d.ts`), `docs/reactivity-and-batching.md`, `release-notes/NEW_VERSION.md`,
+`README.md`, and `package.json`.
 `docs/SPEC.md` must NOT appear (it's a contributor working-doc, excluded from `files`). If anything private
 leaked in (`src/`, `*.test.ts`, `tsconfig*.json`, `Makefile`), **stop and report** — the `files` field controls
 this and the leak needs fixing before publish.
 
-### 9. Commit
+### 10. Commit
 
 Stage only:
 
 - `./CHANGELOG.md`
 - `./README.md` (the new What's New block from step 4)
+- `./release-notes/NEW_VERSION.md` (step 5)
 - `./package.json`
 
 Do **not** stage `dist/` (gitignored). Commit message:
@@ -151,7 +182,7 @@ Changed / Internal, as applicable. Terse; full prose lives in the CHANGELOG.>
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
 ```
 
-### 10. Report
+### 11. Report
 
 Report back with:
 
