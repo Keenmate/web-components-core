@@ -37,6 +37,8 @@ One shape for events, callbacks and clickable items across every KM component
 - **`runBeforeCallback` / `runBeforeCallbackSync`** — the one `before*Callback`
   contract: `false` cancels, `undefined` continues, a value continues with it; a
   throw cancels and is logged; the sync variant warns on a returned `Promise`.
+  `runBeforeCallbackEager` answers synchronously for a sync hook and returns a
+  `Promise` only for an async one (keeps sync flows sync).
 - **`withComponentContext`, `ComponentContext`, `EmitDetail`** (main entry).
 - **`@keenmate/web-components-core/actions`** — `ActionItem`, `MenuItem`,
   `MenuDivider`, `MenuEntry`, `ActionEventDetail`; `resolveActionItem`,

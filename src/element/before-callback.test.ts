@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { runBeforeCallback, runBeforeCallbackSync } from './before-callback.js';
+import { runBeforeCallback, runBeforeCallbackEager, runBeforeCallbackSync } from './before-callback.js';
 
 describe('runBeforeCallback', () => {
   it('unset → continue', async () => {
@@ -55,6 +55,28 @@ describe('runBeforeCallbackSync', () => {
   it('a throw cancels', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     expect(runBeforeCallbackSync(() => { throw new Error('x'); }, {})).toEqual({ isCancelled: true });
+    error.mockRestore();
+  });
+});
+
+describe('runBeforeCallbackEager', () => {
+  it('answers synchronously for a sync hook (and when unset)', () => {
+    expect(runBeforeCallbackEager(undefined, {})).toEqual({ isCancelled: false, hasValue: false });
+    expect(runBeforeCallbackEager(() => false, {})).toEqual({ isCancelled: true });
+    expect(runBeforeCallbackEager(() => 'x', {})).toEqual({ isCancelled: false, hasValue: true, value: 'x' });
+  });
+
+  it('returns a Promise for an async hook, same contract', async () => {
+    const result = runBeforeCallbackEager(async () => false, {});
+    expect(result).toBeInstanceOf(Promise);
+    await expect(result).resolves.toEqual({ isCancelled: true });
+  });
+
+  it('a throw or a rejection cancels and is logged', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(runBeforeCallbackEager(() => { throw new Error('x'); }, {})).toEqual({ isCancelled: true });
+    await expect(runBeforeCallbackEager(async () => { throw new Error('y'); }, {})).resolves.toEqual({ isCancelled: true });
+    expect(error).toHaveBeenCalledTimes(2);
     error.mockRestore();
   });
 });

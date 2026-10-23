@@ -769,7 +769,10 @@ value replaces is the hook's documented contract. A throw cancels and is
 logged. Returns a discriminated `BeforeCallbackResult` (`isCancelled`,
 `hasValue`, `value`). `runBeforeCallbackSync` is the variant for triggers that
 need a synchronous answer (`dragstart`, `keydown`); a returned `Promise` there
-is warned and ignored. This supersedes the per-component result objects
+is warned and ignored. `runBeforeCallbackEager` answers synchronously when the
+hook does and returns a `Promise` only for an async hook — for flows that are
+synchronous today (ms: a click selects in the same tick) and must stay so for
+sync hooks. This supersedes the per-component result objects
 (drp's `{ action: 'accept' | 'adjust' | … }`).
 
 **`*Callback` — `runHook(key, ctx, { whenUnset, errorCallback? })`.** Core owns only

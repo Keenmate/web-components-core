@@ -69,3 +69,35 @@ export function runBeforeCallbackSync<Ctx, V = unknown>(
     return CANCELLED;
   }
 }
+
+/**
+ * Run an async-capable `before*Callback`, answering **synchronously when the
+ * hook does**: a plain return yields a result now, a returned `Promise` yields
+ * a `Promise` of the result. For flows that are synchronous today (a click
+ * that selects in the same tick) and must stay so for sync hooks, while still
+ * accepting async ones. Branch with `instanceof Promise`.
+ */
+export function runBeforeCallbackEager<Ctx, V = unknown>(
+  fn: BeforeFn<Ctx>,
+  ctx: Ctx,
+  name = 'before*Callback',
+): BeforeCallbackResult<V> | Promise<BeforeCallbackResult<V>> {
+  if (typeof fn !== 'function') return CONTINUE;
+  let result: unknown;
+  try {
+    result = fn(ctx);
+  } catch (error) {
+    report(name, error);
+    return CANCELLED;
+  }
+  if (result && typeof (result as PromiseLike<unknown>).then === 'function') {
+    return Promise.resolve(result).then(
+      (value) => interpret<V>(value),
+      (error) => {
+        report(name, error);
+        return CANCELLED;
+      },
+    );
+  }
+  return interpret<V>(result);
+}

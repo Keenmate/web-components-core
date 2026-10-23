@@ -31,7 +31,7 @@ export type { EventDef, EventMap, NormalizedEventDef } from './element/events.js
 export { define } from './element/define.js';
 export { withComponentContext, COMPONENT_CONTEXT_KEYS } from './element/context.js';
 export type { ComponentContext, EmitDetail, WithoutComponentContext } from './element/context.js';
-export { runBeforeCallback, runBeforeCallbackSync } from './element/before-callback.js';
+export { runBeforeCallback, runBeforeCallbackEager, runBeforeCallbackSync } from './element/before-callback.js';
 export type { BeforeCallbackResult } from './element/before-callback.js';
 
 // Global registration (window.components) + live-instance registry (SPEC §12.3)
