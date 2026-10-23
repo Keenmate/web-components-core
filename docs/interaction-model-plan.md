@@ -412,3 +412,33 @@ migrated with the docs). Core additions: `runBeforeCallbackEager` (63a51c0) and
   consumers (showcase `^2.5.0`, pure-admin) would auto-pull a stable 2.6.0 → recommend 3.0.0; decide
   2.6 vs 3.0 at the rc15 publish (phase 7).
 
+### Phase 4 — web-treeview done (2026-10-23, treeview ed5cb0c on `feature/rc03-svelte-parity`)
+
+Code + tests migrated (210 chromium e2e incl. a new `interaction-model.spec.ts`). Treeview's
+active line is `feature/rc03-svelte-parity` (55 commits ahead of its `prod`), so the phase was
+committed there. Conventions added:
+
+- **Adapt at the boundary when the engine is big.** `TreeEngine` (5k lines) keeps its internal
+  positional hooks; `WebTreeView` (the wrapper the element and standalone users share) owns the
+  public single-ctx config and adapts it in `mapToEngineConfig` / `mapToRendererConfig`.
+  Adapters are **memoized per source function** — the engine compares callback identities
+  (a changed `getDisplayValueCallback` rebuilds the tree), so a fresh wrapper per update would
+  rebuild on every update. Grid should do the same.
+- **Bridges built once** on the element (`#bridges` object), for the same identity reason; all
+  callback inputs become `on:'update'` (full-config resend is free with memoized adapters — and
+  fixes callbacks assigned after the build never reaching the engine).
+- **Facade from a method-name list** (`createTreeViewController(getTarget)`): one builder for
+  the element (`getTarget = flush + current view`) and a standalone view (`getTarget = this`),
+  with empty-result defaults for reads before the first build.
+- **Context menu = core menu items in the renderer**: `resolveMenuEntries` +
+  `getMenuChildren` (lazy submenu with a loading row) + an `activateContextMenuItem` hook the
+  wrapper supplies (`runAction`). Built-ins act on the node, or on the whole selection when the
+  node is in it; their default text / disabled / danger come from a `defaults` function.
+- **Synchronous before-hooks where the API returns synchronously** (`pasteNodes` →
+  `PasteResult`, `deleteNodes` → counts): `beforeCopy/Cut/Paste/DeleteCallback` are documented
+  sync (like keydown / dragstart); `beforeDropCallback` stays async.
+- **Phantom API removed, not implemented** (`data-changed`, `search-text-changed`,
+  `indexingCompleteCallback`, and `render*Callback` — the progressive `RenderCoordinator` is
+  created in `TreeEngine` but never scheduled, so render stats never fired; follow-up if
+  progressive-render notifications are wanted). Docs/examples: treeview 38a88c7, 0390ae1.
+

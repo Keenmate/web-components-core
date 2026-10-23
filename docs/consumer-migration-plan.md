@@ -74,7 +74,24 @@ in 13 route files (action-buttons, events-callbacks string-veto, custom-renderin
 `^2.0.0-rc10`) would auto-pull a stable **2.6.0** — so ship the breaking change as **3.0.0**
 (decide at phase 7).
 
-**web-multiselect-showcase / web-treeview-showcase / web-grid-showcase /
+**web-treeview-showcase** (surveyed 2026-10-23, after phase 4) — npm `^2.0.0-rc01`, installed
+rc01; already stale before this change (rc02–rc06 positional `on*` / `beforeDropCallback`,
+removed props `dragValidationCallback`, `dragHighlightClass`, `treeRootClass`). ~70 executed
+sites (~20 are `sortCallback(items)` → `({ items })`) + ~75 doc snippets in 17 route files;
+heaviest: `examples/context-menu` (old `label` / `onclick` / `close`), `api/tree`,
+`api/properties`, `api/events`, drag-drop pages. Effectively a rewrite against the current API.
+
+**gcp-documenthub/frontend/personal-documents** (Lit, pinned `2.0.0-rc05`; feeds
+spfx-personal-documents) — 6 sites in `src/components/personal-documents-main.ts`:
+`renderNodeCallback(node, container)` → `({ node, contentElement })`, and the earlier
+selected→checked rename: `@selection-change` → `@checked-change` (**silent** — the old name
+still exists with other data), `detail.selectedPaths` → `detail.paths`, `deselectNode` →
+`uncheckNode`, `clearSelection` → `clearChecked` (silent no-op otherwise). Not a KM-owned demo —
+coordinate with that project.
+
+No svelte-treeview / LiveView / framework-test dependency on web-treeview.
+
+**web-multiselect-showcase / web-grid-showcase /
 keen-web-commandpalette** — survey after the respective component phase (the component
 inventory in `docs/interaction-inventory/` lists the names that change). Grid showcase is
 the biggest (22 routes, heavy `contextMenu` / `dividerBefore` / lowercase `on*` use — see
