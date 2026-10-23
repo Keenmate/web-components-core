@@ -27,7 +27,7 @@ All updated components point at `file:../web-components-core` (dropzone / grid:
 | web-commandpalette | ✓ | ✓ migrated | `55ad94c`, `9c82fe9` |
 | web-editor | ✓ | ✗ only its own `theme="dark"` — ask before migrating | `2a6ee5c` |
 | web-grid | none needed | ✓ migrated; core rc02 → local | `dcf80bf` |
-| web-daterangepicker | **pending** | ✓ already | — |
+| web-daterangepicker | ✓ | ✓ already | `a92140f` (user WIP), `0070ac2` |
 
 Theme policy (decided): components follow the **page**, never the OS on their own.
 No `prefers-color-scheme` rules; a page follows the OS with
@@ -36,17 +36,14 @@ No `prefers-color-scheme` rules; a page follows the OS with
 
 ## Open
 
-1. **web-daterangepicker renames.** Blocked on the user's uncommitted work (32 files,
-   incl. `date-picker.ts`, `date-picker-ui.ts`, `web-component.ts`, `package.json`).
-   Needs: `fixedContainingBlock` ×2 → `shouldUseFixedContainingBlock`, `autoUpdate: false`
-   → `shouldAutoUpdate`, `presentationContext` → `createPresentationContext`,
-   `overlayCoord?.dispose()` → `destroy()`, `resized` → `sizeChanged` (+ comments, test page,
-   e2e title), 3 × `reflect: true` → `shouldReflect`, core → `file:`. Ask: commit their WIP
-   first (as done for treeview) or wait.
+1. **web-daterangepicker** — done. Its e2e has 2 failures that come from the user's own work,
+   not the renames: `context-callbacks:77` (test still expects `{ data, picker }`, detail now
+   also has `controller`) and `icon-theming:76` (`--drp-shadow-xl` no longer chains to
+   `--base-dropdown-box-shadow`). `test/shot-*` / `mobile-time.html` left untracked.
 2. **User-owned leftovers to mention.** commandpalette: README paragraph edit sits in their
    uncommitted README; CHANGELOG needs a theme-context line. web-grid: `package-lock.json`
    uncommitted (mixed with their `docs/package.json` vite 8 / happy-dom change).
-3. **Core rc15 publish** (`/publish rc` after bumping to `1.0.0-rc15`): README What's New
+3. **Core rc15 publish** — on hold: the user is testing the `file:` builds in a few components first. (`/publish rc` after bumping to `1.0.0-rc15`): README What's New
    (keep two blocks), `release-notes/1.0.0-rc15.md` with the rename table + upgrade checklist.
    Then switch every component from `file:` to `1.0.0-rc15`; commandpalette peer dep
    `^1.0.0-rc12` → `^1.0.0-rc15`. Caret ranges (`^1.0.0-rc13` etc.) would pick rc15 up, so
