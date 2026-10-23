@@ -44,6 +44,36 @@ The same concepts are re-implemented per component and have drifted:
    `{ action }` before resolving. New for ms/drp.
 7. **Event helper is `emitWithCallback(name, detail)`** (not `notify` — too vague).
 
+## Decided (event safety + hooks)
+
+8. **`before*Callback(ctx)` contract, everywhere:** one `ctx` argument, may be async; return
+   `false` → cancel, nothing → continue unchanged, a replacement → continue with that
+   (treeview `beforeCopyCallback` returning a narrowed `string[]` is the model). Inventory
+   today: drp async + result object, grid `beforeCommitCallback` async, treeview sync
+   `string[] | false`, ms positional `(option, selectedOptions)` → `boolean | string`.
+9. **Per-value transforms are `get*Callback`, not `before*`.** Grid column
+   `beforeCopyCallback(value, row)` / `beforePasteCallback(value, row)` run per cell and can't
+   cancel → `getCopyValueCallback({ value, row, column })` / `getPasteValueCallback({ text, row,
+   column })` (like `getDisplayValueCallback`); JSDoc says when it runs.
+10. **Component events are `composed: false`, dispatched on the host** (core `dispatch()` default
+    changes from `composed: true`). A component on the page still bubbles through the page; one
+    nested in another component's shadow DOM (e.g. an ms cell editor inside grid) can't leak
+    out and be mistaken for the outer one (retargeting would report the outer host as
+    `e.target`). Slotted components still bubble with the right `e.target`. Phase 1.
+11. **No event name may reuse a native event that crosses shadow DOM** (`click`, `focus*`,
+    `key*`, `pointer*`, `input`, `copy` / `cut` / `paste`, …). Treeview `copy` / `cut` / `paste`
+    collide today (a page `copy` listener gets the native ClipboardEvent *and* treeview's) →
+    `node-copy` / `node-cut` / `node-paste`. Non-composed natives (`select`, `change`) are fine.
+    The rename doesn't touch clipboard behaviour (grid uses the system clipboard; grid A → grid B
+    / Excel already works).
+12. **`action` is reserved for built-ins.** Custom items are `action: 'custom'` + `id`; the event
+    detail carries both (`if (e.detail.id === 'archive')`). A future built-in can never hijack a
+    custom item. Grid used `id` loosely for both → changes.
+13. **Reserved detail names checked at compile time:** core's types reserve `action`, `item`,
+    `id`, `source`, `sourceEvent`, `triggerElement`, `data` (+ `controller`, `element`,
+    presentation fields); a surface context that redeclares one fails to compile. Context stays
+    flat (`onAction(({ row }) => …)`), not nested.
+
 ## Proposed core shape (`@keenmate/web-components-core/actions`)
 
 ```ts
@@ -104,7 +134,7 @@ prefix (`node-click`, `date-select`, `row-change`), notification `onNodeClick` /
 0. **Inventory** (no code) — per component: every action item type, every callback context,
    every DOM event + `on*` notification + `before*Callback`, with current name → new name and
    detail fields. Output: a table per component appended here. Settle open questions.
-1. **Core `/actions` + event helper** — types, `resolveActionItem`, `resolveMenuEntries`,
+1. **Core `/actions` + event helper** — `dispatch()` default `composed: false`; types, `resolveActionItem`, `resolveMenuEntries`,
    `menuDivider`, `emitWithCallback()` on BlissElement; unit tests; SPEC §12.x section; CLAUDE.md note;
    CEM/web-types: event descriptions generated from the detail types where possible.
 2. **web-daterangepicker** — `ActionButton` → `ActionItem`; `custom-action` → unified action
@@ -135,10 +165,11 @@ Each component: own commit(s), CHANGELOG entry with a migration section, tests u
    `triggerElement`, `data` (button data-*), plus the surface's context. Replaces drp
    `custom-action` / `onCustomAction` and grid `ontoolbarclick`; ms and treeview gain it.
    Reason: HTML-authored buttons (drp `showMessage` content) have no `onClick`; frameworks /
-   LiveView / htmx bind DOM events; one listener for all actions. Sub-points, defaults
-   pending the user's OK:
+   LiveView / htmx bind DOM events; one listener for all actions. Sub-points (decided):
    a. fires for built-ins too (`today`, `select-all`, `delete`), not only `custom`;
-   b. `beforeActionCallback(ctx)` → `false` cancels the built-in behaviour;
+   b. `beforeActionCallback(ctx)` → `false` cancels the built-in behaviour; may be async
+      (`boolean | Promise<boolean>`) — confirmation dialogs / server checks; the item is busy
+      while waiting (second click ignored);
    c. order: item `onClick` → `action` event → built-in behaviour.
 2. Rename treeview's internal `TreeController` → `TreeEngine` — default: yes.
 3. Event names: kebab-case present tense without component prefix (drop `cp-`)? — default: yes,
