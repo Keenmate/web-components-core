@@ -348,3 +348,31 @@ Next: phase 1 (core).
 - Consequence until each component's phase lands: components on `file:` core see
   `on*` receive the detail and events stop being composed — their tests that rely on
   the old behaviour fail until migrated (expected; drp is next).
+
+### Phase 2 — web-daterangepicker done (2026-10-23, drp a1c0936)
+
+Code + tests migrated; 284 chromium e2e pass. Docs / examples / ai notes being updated
+separately. Conventions settled here that later phases reuse:
+
+- **Element `createController()` delegates to the current engine** (flush first), and the
+  element passes `hostElement` + `controller` into the engine options, so every context
+  carries the element and a controller that survives `reinit()` rebuilds.
+- **Engine `ctx(fields)`** = `withComponentContext(fields, controller, host, presentation)` —
+  the one place contexts are built.
+- **Engine reports through `on*` options** (`onSelect`, `onAction`, `onMonthChange`); the
+  element bridges them to `this.emit(...)`. A standalone engine uses them as its twins.
+- **Internal controls → `data-<prefix>-action`** (`data-drp-action`); `data-action` /
+  `data-id` are only for action items, so any `[data-action]` inside the component is routed
+  to `runAction` (footer button → its item; consumer HTML → synthetic item, `source` from the
+  container: `message` / `summary` / `calendar`).
+- **Render-time item callbacks get the surface ctx only** (no `action` / `item`) — the
+  invocation fields exist only at activation.
+- **"Message shown by the hook" detection**: `beforeSelectCallback` messages go through
+  `ctx.controller.showMessage`; the engine counts public `showMessage` calls so it doesn't
+  hide the consumer's message after an accept/adjust.
+- **Change notifications detected at render** (`month-change`): compare the visible state
+  with the last render instead of instrumenting every navigation path.
+- **`customStylesCallback()` → `getCustomStylesCallback(ctx)`** — apply the same rename in
+  ms / treeview / grid / dropzone (cross-component).
+- **Raw engine accessors removed** (`el.picker`); the engine class stays exported as
+  `*Engine` for standalone use only.
