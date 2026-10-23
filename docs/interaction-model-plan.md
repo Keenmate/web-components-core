@@ -90,10 +90,11 @@ interface OpenableController { open(): void; close(): void; toggle(): void; read
 
 interface ActionItem<Ctx, A extends string = string> {
   action?: A; id?: string; text: string; icon?: string; tooltip?: string; shortcut?: string;
-  cssClass?: string; isVisible?: boolean; isDisabled?: boolean; isDanger?: boolean;
+  cssClass?: string; isVisible?: boolean; isDisabled?: boolean; isDanger?: boolean; isActive?: boolean;
   getTextCallback?(ctx: Ctx): string;        getIconCallback?(ctx: Ctx): string;
   getTooltipCallback?(ctx: Ctx): string;     getClassCallback?(ctx: Ctx): string | string[];
   getIsVisibleCallback?(ctx: Ctx): boolean;  getIsDisabledCallback?(ctx: Ctx): boolean;
+  getIsActiveCallback?(ctx: Ctx): boolean;
   onClick?(ctx: Ctx): void | Promise<void>;
 }
 interface MenuItem<Ctx, A> extends ActionItem<Ctx, A> {
@@ -323,4 +324,12 @@ F. **Toggle state on `ActionItem`** — editor needs bold/italic "active"; grid 
 23. **E** — commandpalette commands fire the unified `action` event (`source: 'palette'`,
     `item` = command, `selections`); `select` stays for search results; `complete` folds into `action`.
 
-F (toggle state) — pending: clarifying "active" ≠ "disabled".
+24. **F** — core `ActionItem` gains `isActive?` + `getIsActiveCallback(ctx)`: toggle state
+    ("pressed"), not availability; renders `aria-pressed="true"` + `--active` modifier.
+25. Rulebook amendments (findings 6–8) accepted and written: sync interceptor exception
+    (dragstart / keydown; keydown returns `false`, never `true`); camelCase `on*` keeps off
+    native `HTMLElement` handler props; `data-action` / `data-id` reserved for action items,
+    internal controls use `data-<prefix>-action`. Backup of the previous rulebook:
+    `%TEMP%/bliss-naming-backup-20261023-212646`.
+
+Next: phase 1 (core).
