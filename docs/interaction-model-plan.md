@@ -234,3 +234,78 @@ Already found (don't re-derive):
 - Rulebook check: `bash naming-conventions.checks.sh <component> <css-prefix>` (C-NC-2) —
   treeview fails (`tree-changed`, `focused-node-changed`), commandpalette fails (`cp-*`).
 
+
+## Phase 0 — inventory results (2026-10-23)
+
+Per-component tables (current → proposed, file:line, tests/docs to touch) are in
+`docs/interaction-inventory/`: `web-multiselect.md`, `web-daterangepicker.md`, `web-treeview.md`,
+`web-grid.md`, `dropzone-commandpalette-editor.md`. Each ends with a drift summary.
+
+### Cross-cutting findings
+
+1. **Core `static events` managed `on<Name>` props receive the `CustomEvent`, not the detail**
+   (core `src/element/events.ts`). Every BlissElement component (ms, drp, treeview, cp, editor)
+   inherits that. Decision 7/17 ("`on*` gets the same detail") therefore starts in core: the
+   managed `on<Name>` becomes the config twin called by `emitWithCallback` with the detail; it
+   is no longer a listener property. ms/drp also have a second, engine-side `onSelect` with a
+   different signature under the same name — collapses into the one twin.
+2. **Every component leaks its engine** — drp `ctx.picker` / `el.picker`, ms `WebMultiSelect` as
+   1st arg of every item callback + export, treeview `getController()` + export, grid `el.grid`,
+   dropzone `getStore()`, editor `el.engine`. → `el.controller` (facade) everywhere.
+3. **`onClick` on built-in items is silently ignored** (ms, drp); built-ins emit nothing and
+   can't be vetoed (all). Fixed by decision 14.
+4. **Four different cancel sentinels** in before-hooks: `false`, a string (ms toast), `null`
+   (ms search), `null/undefined` (ms add), `true` (ms/treeview keydown = "handled"), mutable
+   `detail.cancel` (grid paste), result objects (drp). Decision 13 unifies.
+5. **Positional args in most get*/render*/search/transform callbacks** (ms ~25, treeview ~20,
+   grid ~25 incl. columns, dropzone all, cp search/steps, drp 2). See open question A.
+6. **Shared `data-action` namespace** — ms treats any `[data-action]` inside rendered content
+   as an action button; internal controls (`remove`, `add-new`, nav arrows) share the attribute
+   with user actions. Rule: `data-action` / `data-id` are reserved for action items; internal
+   controls use a prefixed attribute.
+7. **Some before-hooks can't be async** — treeview `beforeDragStartCallback` (dragstart needs a
+   sync answer), keydown interceptors (`preventDefault` must be sync). Rule amendment: "may be
+   async unless the triggering native event needs a synchronous answer — then documented sync".
+8. **Native-name clashes beyond events**: grid `onpaste` / `onbeforepaste` / `onselect` props
+   shadow `HTMLElement` handler properties. Rule: `on*` twins must not equal a native
+   `GlobalEventHandlers` property name.
+9. **Phantom / dead API**: treeview `data-changed` / `search-text-changed` (typed, never
+   emitted); grid `onrowaction`, column `renderCallback`, `loadOptions`, `lockTooltipCallback`.
+   Remove in the component's phase.
+10. **Incidental bugs** (fix in the component's phase, each with a test): drp all custom
+    buttons share the first tooltip, `SummaryContext` field drift; ms runtime controller is the
+    keyboard one, bulk ops bypass select vetoes; treeview checkbox toggle fires `node-clicked`,
+    blocked paste still emits, `tree-changed` dispatched twice; grid paste never fires
+    `onvalidationerror`, floating toolbar ignores `hidden`, `minWidth` dropped, header submenu
+    `onclick` never called, custom item with a built-in id runs the built-in, header sort skips
+    `ondatarequest`, expand events only on toggle.
+11. **Core `/search` types**: ms needs `SearchCallbackContext` to carry `term` + `signal`
+    (single-ctx `searchCallback`) — a core change in phase 1.
+12. **Out of scope**: dropzone satellites are not BlissElement (no change here); dropzone row
+    actions (pause/resume/retry) are hard-coded — could become built-in action items later.
+
+### Open questions (phase 0)
+
+A. **Scope of "one ctx argument"** — convert *all* callbacks (get*/render*/search/transform,
+   incl. grid column + editorOptions callbacks) in this pass, or only the interaction surface
+   (items, events, before*) now and the rest later? Recommendation: all, per component, in the
+   same breaking release — breaking twice is worse.
+B. **drp rich before-results** — `beforeDateSelectCallback` returns `{action:'accept'|'adjust'|
+   'restore'|'clear', adjusted*, message, showInvalidRange}`; `beforeMonthChangedCallback`
+   returns `{action, metadata, monthHeaders, message}`. Recommendation: `false` = restore,
+   value = adjust, `null` = clear (documented), message via `ctx.controller.showMessage()`;
+   month data loading split into its own `getMonthDataCallback(ctx)` (async, loader).
+C. **grid `beforeCommitCallback`** is validation (`false` = invalid + error message,
+   `transformedValue`), not a veto. Recommendation: rename `validateCallback(ctx)` returning
+   `ValidationResult` (the deprecated old `validateCallback` goes), keeping the before*
+   contract clean.
+D. **grid toolbar built-ins** (`add`/`delete`/`duplicate`/`moveUp`/`moveDown`) have icons but no
+   behaviour. Recommendation: implement them (row ops exist internally) so `action:'delete'`
+   works like ms `select-all`; `beforeActionCallback` vetoes. Built-in names kebab-case
+   everywhere (`move-up`, `sort-asc`).
+E. **commandpalette `cp-command`** — a command *is* an action item. Recommendation: commands
+   fire the unified `action` event (`source:'palette'`, `item` = the command, `selections`);
+   `select` stays for search results; `complete` folds into `action`.
+F. **Toggle state on `ActionItem`** — editor needs bold/italic "active"; grid freeze/visibility
+   toggles and treeview could use it. Recommendation: add `isActive?` + `getIsActiveCallback`
+   to core `ActionItem` (renders `aria-pressed`).
