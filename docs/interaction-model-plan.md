@@ -309,3 +309,18 @@ E. **commandpalette `cp-command`** — a command *is* an action item. Recommenda
 F. **Toggle state on `ActionItem`** — editor needs bold/italic "active"; grid freeze/visibility
    toggles and treeview could use it. Recommendation: add `isActive?` + `getIsActiveCallback`
    to core `ActionItem` (renders `aria-pressed`).
+
+### Decided (phase 0, 2026-10-23)
+
+19. **A** — all callbacks go to one `ctx` argument (get*/render*/search/transform, grid column
+    + editorOptions callbacks too), per component, in the same breaking release.
+20. **B** — drp before-hooks: `false` = restore, value = adjust, `null` = clear; messages via
+    `ctx.controller.showMessage()`; month data loading → `getMonthDataCallback(ctx)`.
+21. **C** — grid `beforeCommitCallback` → `validateCallback(ctx)` returning `ValidationResult`
+    (old deprecated `validateCallback` removed).
+22. **D** — grid toolbar built-ins (`add`, `delete`, `duplicate`, `move-up`, `move-down`) get real
+    behaviour; built-in action names kebab-case everywhere (`sort-asc`, …).
+23. **E** — commandpalette commands fire the unified `action` event (`source: 'palette'`,
+    `item` = command, `selections`); `select` stays for search results; `complete` folds into `action`.
+
+F (toggle state) — pending: clarifying "active" ≠ "disabled".
