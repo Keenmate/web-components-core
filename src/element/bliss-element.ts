@@ -29,12 +29,20 @@ import { trackInstance, untrackInstance } from '../global/instances.js';
 import { getLoggerBundle } from '../logging/logger-registry.js';
 import type { InstanceLogger, LogLevelDesc } from '../logging/create-loggers.js';
 import { dispatch, type DispatchOptions } from './dispatch.js';
+import { withComponentContext, type ComponentContext, type EmitDetail } from './context.js';
 import {
   normalizeEventDefs,
   type EventDef,
   type EventMap,
   type NormalizedEventDef,
 } from './events.js';
+
+/**
+ * Native event names that are `composed` — fired inside a shadow root they
+ * also reach the host's listeners, so a component event must never reuse one
+ * (rulebook C-NC-2).
+ */
+const COMPOSED_NATIVE_EVENT = /^(click|dblclick|auxclick|contextmenu|focus|blur|focusin|focusout|keydown|keyup|keypress|beforeinput|input|copy|cut|paste|drop|wheel|(pointer|mouse|touch|drag|composition)[a-z]*)$/;
 
 const Base = (typeof HTMLElement !== 'undefined' ? HTMLElement : (class {} as unknown)) as typeof HTMLElement;
 
@@ -54,7 +62,7 @@ const NOOP_LOGGERS: Record<string, InstanceLogger> = new Proxy(
   { get: () => NOOP_LOGGER },
 ) as Record<string, InstanceLogger>;
 
-export abstract class BlissElement<TEvents extends EventMap = EventMap> extends Base {
+export abstract class BlissElement<TEvents extends EventMap = EventMap, TController = unknown> extends Base {
   /** The opt-in input table. Subclasses set this to enable attribute/property reactivity. */
   protected static inputs?: readonly InputDef[];
 
@@ -89,8 +97,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
   readonly #byAttribute = new Map<string, InputDef>();
   #clearableKeys: ReadonlySet<string> = EMPTY_SET;
   readonly #eventsByName = new Map<string, NormalizedEventDef>();
-  /** Live handler currently bound via each managed `on<Name>` property, keyed by event name. */
-  readonly #eventHandlers = new Map<string, EventListener>();
+  /** The `on<Name>` twin currently assigned per event, keyed by event name. */
+  readonly #eventHandlers = new Map<string, (detail: unknown) => void>();
+  /** Memoized {@link controller}; `#hasController` distinguishes "not built yet" from an `undefined` facade. */
+  #controller?: TController;
+  #hasController = false;
   readonly #scheduler: MicrotaskScheduler = createMicrotaskScheduler();
   readonly #boundFlush = (): void => this.#flush();
   #pending: Record<string, unknown> | null = null;
@@ -569,25 +580,79 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
   // ── events & callbacks (SPEC §12.5) ───────────────────────────────────────
 
   /**
-   * Fire an outward notification: dispatch a typed `CustomEvent`. `name` and
-   * `detail` are checked against the component's event map (`static events`),
-   * and per-event dispatch overrides from the table are applied (defaulting to
-   * the {@link dispatch} defaults: bubbles + composed). Returns `false` when a
-   * cancelable event was `preventDefault()`-ed. The paired `on<Name>` property
-   * (if declared) is a real listener, so it fires through the normal dispatch —
-   * `emit` does not call it separately.
+   * Fire an outward notification (SPEC §12.5). The detail gets the component
+   * context attached ({@link withContext}: `controller` + `element`
+   * non-enumerable, plus {@link eventContext} extras); then the event's
+   * `on<Name>` twin — if assigned — is called with that detail object, and
+   * finally a typed `CustomEvent` carrying the SAME object is dispatched on the
+   * host (per-event overrides from the table, else the {@link dispatch}
+   * defaults: bubbles, not composed). A throwing twin is logged and the DOM
+   * event still fires. No detail → `{}` + context. Returns `false` when a
+   * cancelable event was `preventDefault()`-ed.
    */
   protected emit<K extends keyof TEvents & string>(
     name: K,
-    detail?: TEvents[K],
+    detail?: EmitDetail<TEvents[K]>,
     opts?: DispatchOptions,
   ): boolean {
     const def = this.#eventsByName.get(name);
-    return dispatch(this, name, detail, {
+    const payload =
+      detail === undefined || (typeof detail === 'object' && detail !== null)
+        ? this.withContext((detail ?? {}) as object)
+        : detail;
+    const twin = this.#eventHandlers.get(name);
+    if (twin) {
+      try {
+        twin.call(this, payload);
+      } catch (error) {
+        console.error(`[BlissElement] <${this.localName ?? 'unknown'}> ${def?.property ?? name} handler threw`, error);
+      }
+    }
+    return dispatch(this, name, payload, {
       bubbles: opts?.bubbles ?? def?.bubbles,
       composed: opts?.composed ?? def?.composed,
       cancelable: opts?.cancelable ?? def?.cancelable,
     });
+  }
+
+  /**
+   * The component's public facade — the object every event detail and every
+   * callback `ctx` carries as `controller`. Built once, lazily, by
+   * {@link createController}; `undefined` for a component without one.
+   */
+  get controller(): TController {
+    if (!this.#hasController) {
+      this.#controller = this.createController();
+      this.#hasController = true;
+    }
+    return this.#controller as TController;
+  }
+
+  /**
+   * Build the public facade (once per element). Override to expose the
+   * component's imperative API — never the internal engine.
+   */
+  protected createController(): TController {
+    return undefined as TController;
+  }
+
+  /**
+   * Extra enumerable fields every event detail and {@link withContext} ctx
+   * carries — popup components return their presentation flags
+   * (`createPresentationContext(...)`). Called per emit, so it reflects the
+   * current state. Default: none.
+   */
+  protected eventContext(): object | undefined {
+    return undefined;
+  }
+
+  /**
+   * Attach the component context to a detail or callback ctx, in place:
+   * `controller` + `element` (non-enumerable — `JSON.stringify`/logs see only
+   * the data) and the {@link eventContext} extras. Fields already present win.
+   */
+  protected withContext<T extends object>(target: T): T & ComponentContext<TController, this> {
+    return withComponentContext(target, this.controller, this, this.eventContext());
   }
 
   /**
@@ -701,6 +766,10 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
       if (!/^[a-z][a-z0-9-]*$/.test(ev.name)) {
         this.#warn(`invalid event table: event "${ev.name}" should be lowercase kebab-case (e.g. "date-select")`);
       }
+      // A composed native name would reach host listeners twice (the browser's and ours).
+      if (COMPOSED_NATIVE_EVENT.test(ev.name)) {
+        this.#warn(`invalid event table: event "${ev.name}" reuses a composed native event name — prefix the domain (e.g. "node-${ev.name}")`);
+      }
       // The managed `on<Name>` property must not collide with an input property.
       if (ev.property && seenKeys.has(ev.property)) {
         this.#warn(`invalid event table: event "${ev.name}" property "${ev.property}" collides with an input configKey`);
@@ -747,9 +816,10 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
   }
 
   /**
-   * Install a managed `on<Name>` handler property per event. Assigning it
-   * (de)registers a real listener for the event, so the property behaves like
-   * `addEventListener(name, …)` and its handler receives the `CustomEvent`.
+   * Install the `on<Name>` twin property per event. It holds a plain function
+   * that {@link emit} calls with the event detail (not the `CustomEvent`) —
+   * the config-style twin of the DOM event. Not a listener: listeners use
+   * `addEventListener` / {@link on}.
    */
   #installEventAccessors(events: readonly NormalizedEventDef[]): void {
     for (const ev of events) {
@@ -763,15 +833,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap> extends 
         enumerable: true,
         get: () => this.#eventHandlers.get(eventName) ?? null,
         set: (handler: unknown) => {
-          const prev = this.#eventHandlers.get(eventName);
-          if (prev) this.removeEventListener(eventName, prev);
-          if (typeof handler === 'function') {
-            const listener = handler as EventListener;
-            this.#eventHandlers.set(eventName, listener);
-            this.addEventListener(eventName, listener);
-          } else {
-            this.#eventHandlers.delete(eventName);
-          }
+          if (typeof handler === 'function') this.#eventHandlers.set(eventName, handler as (detail: unknown) => void);
+          else this.#eventHandlers.delete(eventName);
         },
       });
       if (pre.had) (this as Record<string, unknown>)[prop] = pre.value;

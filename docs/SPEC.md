@@ -728,45 +728,66 @@ each ONE unified primitive:
   (`select`, `change`, `date-select`). The `on<Name>` property is a listener
   alias, not a callback — return value ignored.
 
-**Events — `static events` + `emit()` + managed `on<Name>` properties.** A
-component declares its notifications in a `static events` table (a bare name, or
-an `EventDef` for dispatch/property overrides). `emit(name, detail)` is a typed
-dispatch (name + detail checked against the component's `BlissElement<TEvents>`
-event map, per-event `bubbles`/`composed` overrides applied). The paired
-`on<Name>` property (default `on` + PascalCase, e.g. `onDateSelect`) is installed
-as a **managed listener**: assigning it does `removeEventListener(old)` +
-`addEventListener(new)`, so `el.onSelect = e => e.detail.option` is *identical*
-to `addEventListener('select', …)` and receives the same `CustomEvent`. This is
-the deliberate contract choice (SPEC decision): the handler receives the
-**event**, not a bare positional arg — matching the platform's own `onclick`
-convention and collapsing the property path and `addEventListener` into ONE
-delivery path, so `emit` never calls the property separately. A typed
-`on(name, handler)` method (returns an unsubscribe) complements the property.
-The old per-component pattern — `onSelect: (o) => { this._onSelect?.(o);
-this.dispatchEvent(new CustomEvent('select', …)) }` — collapses to
-`this.emit('select', { option })`.
+**Events — `static events` + `emit()` + `on<Name>` twins.** A component
+declares its notifications in a `static events` table (a bare name, or an
+`EventDef` for dispatch/property overrides). `emit(name, detail)` is typed
+against the component's `BlissElement<TEvents, TController>` event map and does
+three things, in order:
+
+1. **attaches the component context** to the detail, in place (`withContext`):
+   `controller` (the component's public facade, `el.controller`, built once by
+   the `createController()` hook) and `element` (the host) as **non-enumerable**
+   properties, plus the enumerable extras from the `eventContext()` hook (popup
+   components return their presentation flags). Destructuring works;
+   `JSON.stringify`, `Object.keys`, logs and LiveView `pushEvent(…, e.detail)`
+   see only the data. No detail → `{}` + context, so even `ready` carries it.
+2. **calls the `on<Name>` twin** (default `on` + PascalCase, e.g. `onNodeClick`)
+   with that detail object — a plain function property, not a listener. A
+   throwing twin is logged and doesn't stop step 3.
+3. **dispatches the `CustomEvent`** with the **same object** on the host —
+   `bubbles: true`, `composed: false` by default (per-event overrides from the
+   table). Non-composed: an event fired by a component nested in another
+   component's shadow DOM (an editor in a grid cell) can't leak out and be
+   mistaken for the outer component's.
+
+*Changed in rc15 (interaction model, `docs/interaction-model-plan.md`):* the
+twin used to be a managed **listener** receiving the `CustomEvent` (the
+platform's `onclick` convention). That left every component with two `on*`
+contracts under the same name (engine config `onSelect(option)` vs element
+`onSelect(event)`); the house rule is now one detail shape for both surfaces.
+`addEventListener` / the typed `on(name, handler)` method are the listener path.
+
+Dev-time lint (warn-only, once per class) additionally flags an event name that
+reuses a **composed native** (`click`, `focus`, `input`, `copy`, `paste`,
+`keydown`, `pointer*`, `drag*`, …): fired inside a shadow root, the browser's
+event of that name also reaches host listeners.
+
+**`before*Callback` — one contract, `runBeforeCallback(fn, ctx, name?)`.** One
+`ctx`; may be async. `false` cancels (nothing continues), `undefined`
+continues, any other value (incl. `null`) continues with that value — what the
+value replaces is the hook's documented contract. A throw cancels and is
+logged. Returns a discriminated `BeforeCallbackResult` (`isCancelled`,
+`hasValue`, `value`). `runBeforeCallbackSync` is the variant for triggers that
+need a synchronous answer (`dragstart`, `keydown`); a returned `Promise` there
+is warned and ignored. This supersedes the per-component result objects
+(drp's `{ action: 'accept' | 'adjust' | … }`).
 
 **`*Callback` — `runHook(key, ctx, { whenUnset, errorCallback? })`.** Core owns only
 the drift-prone plumbing: unset → `whenUnset`; the callback is invoked with a
 single `ctx` argument and its result is normalized through `Promise.resolve` (so
 sync OR async both work); a throw routes to `errorCallback` if given, else **re-throws**
-(no silent swallow — a component that forgets `errorCallback` fails loudly). The
-**result contract stays the component's** — core cannot own the discriminant,
-because the two daterangepicker hooks already disagree on it
-(`BeforeSelectResult.action: accept|adjust|restore|clear` vs
-`BeforeMonthChangeResult.action: accept|block`), exactly as core can't own event
-names. So `callBeforeSelectCallback`'s guard + `await Promise.resolve` + try/catch
-collapse into the call, while its `switch (result.action)` interpretation and
-loader/`isValidating` side-effects stay in the component.
+(no silent swallow — a component that forgets `errorCallback` fails loudly).
+`runHook` stays the generic path for providers / renderers whose result has no
+shared meaning; interceptors use `runBeforeCallback` above, whose contract core
+now owns (the drp result objects it used to defer to go in rc15).
 
 **Dev-time lint** (warn-only, once per class, with the input-table checks):
 duplicate event name; a name that isn't lowercase kebab/bare (the `date-select`
 convention); an `on<Name>` property that collides with an input `configKey`.
 
-**Deferred to each component's next major:** the actual string renames the
-convention implies (`rowdelete` → `row-delete`, treeview's tense drift). Core
-accepts every existing name verbatim; standardizing the vocabulary is a breaking
-change and rides the same major bump that adopts core.
+**Component renames** (`rowdelete` → `row-delete`, treeview's tense drift,
+`cp-*` prefixes) ride each component's interaction-model migration (rc15). Core
+still accepts any lowercase name; the composed-native lint is warn-only.
 
 ### 12.9 Environment (device / viewport / orientation) — IMPLEMENTED (`src/environment/`)
 
@@ -1061,3 +1082,40 @@ rendering plain text passes an escaper).
 `SearchMatch`, `SearchTermContext`, `PreparedSearchTerm`, `SearchEntry`,
 `SearchCallbackContext`, `ActiveSearchTerm`, `SearchRange`, `HighlightResult`,
 `RegexCompiler`, `PrepareSearchTermOptions`, `WrapRangesOptions`. No dependencies.
+
+### 12.12 Actions (buttons, toolbars, menus) — IMPLEMENTED (`src/actions/`, subpath `/actions`)
+
+**Status:** built (rc15). Plan, decisions and per-component inventory:
+`docs/interaction-model-plan.md`, `docs/interaction-inventory/`.
+
+Every clickable item a consumer configures — action buttons, row/cell toolbars,
+context and header menus, palette commands — is an **`ActionItem<Ctx, A>`**:
+`action?` (a built-in name, else `'custom'`), `id?`, `text`, `icon`, `tooltip`,
+`shortcut`, `cssClass`, `isVisible`, `isDisabled`, `isDanger`, `isActive`
+(toggle state → `aria-pressed`), each dynamic field with a separate
+`get*Callback(ctx)` (callback wins), and `onClick(ctx)`. `MenuItem` adds
+`children` / `getChildrenCallback(ctx)` (may be async) / `shouldCloseOnClick`;
+`MenuDivider` (`menuDivider(text?)`) is its own entry — never a flag on an item.
+`Ctx` is the **surface context** the component builds when it renders or opens
+the surface (the row a menu opened on, the picker's selection), carrying the
+component context (`controller`, `element`).
+
+Helpers: `resolveActionItem(item, ctx, defaults?)` (callback > static >
+component default > base; a throwing callback is logged and the static value
+used), `resolveMenuEntries(entries, ctx, defaults?)` (drops hidden items, trims
+leading / trailing / doubled dividers, expands string built-ins),
+`getMenuChildren`, `normalizeActionItems` (string shorthand),
+`readActionDataset(el)` (`data-*` minus `action` / `id`).
+
+**One `action` event per component.** `runAction({ detail, beforeActionCallback,
+emitAction, runBuiltIn })` fixes the order for every surface:
+`beforeActionCallback` (`false` cancels — nothing else runs) → item `onClick` →
+`action` event + `onAction` twin (`emitAction`, normally `this.emit('action',
+detail)`) → built-in behaviour. The item is busy meanwhile (`aria-busy`, a
+second activation ignored). The detail (`ActionEventDetail`) = surface context +
+`action`, `id`, `item`, `source` (`'action-buttons' | 'row-toolbar' |
+'context-menu' | …`), `sourceEvent`, `triggerElement`, `dataset` — one object for
+`beforeActionCallback`, `onClick`, `onAction` and the DOM event. HTML a consumer
+authors (a `showMessage` body) participates via `data-action="custom"
+data-id="…"`; internal controls use a prefixed attribute so they can't collide.
+

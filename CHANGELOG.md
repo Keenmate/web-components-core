@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — BREAKING (interaction model)
+
+One shape for events, callbacks and clickable items across every KM component
+(`docs/interaction-model-plan.md`).
+
+- **`on<Name>` event properties receive the detail, not the `CustomEvent`.** The
+  property declared by `static events` is now the event's *twin*: `emit()` calls
+  it with the detail object, then dispatches the DOM event carrying the same
+  object. It is no longer a listener — use `addEventListener` / `on()` for that.
+  Migration: `el.onSelect = (e) => e.detail.option` → `el.onSelect = (d) => d.option`.
+- **Events are no longer `composed`.** `dispatch()` and `emit()` default to
+  `bubbles: true, composed: false`: events fire on the host and bubble through the
+  page, but don't escape an enclosing component's shadow root. Pass
+  `composed: true` (per call or per `EventDef`) where crossing is intended.
+- **Every `emit()` detail carries the component context**: `controller` and
+  `element` (non-enumerable — invisible to `JSON.stringify` / `Object.keys`), plus
+  the `eventContext()` extras. An `emit()` with no detail now delivers `{}` + context
+  instead of `undefined`.
+- **`/search` `SearchCallbackContext`** gains `term` (raw) and `signal` — the
+  single argument of a component's `searchCallback(ctx)`.
+
+### Added
+
+- **`BlissElement`**: `controller` getter + `createController()` hook (the public
+  facade, built once), `eventContext()` hook, `withContext(target)`; second type
+  parameter `BlissElement<TEvents, TController>`. Event-table lint warns on a
+  composed native event name (`copy`, `input`, `pointerdown`, …).
+- **`runBeforeCallback` / `runBeforeCallbackSync`** — the one `before*Callback`
+  contract: `false` cancels, `undefined` continues, a value continues with it; a
+  throw cancels and is logged; the sync variant warns on a returned `Promise`.
+- **`withComponentContext`, `ComponentContext`, `EmitDetail`** (main entry).
+- **`@keenmate/web-components-core/actions`** — `ActionItem`, `MenuItem`,
+  `MenuDivider`, `MenuEntry`, `ActionEventDetail`; `resolveActionItem`,
+  `resolveMenuEntries`, `getMenuChildren`, `menuDivider`, `isMenuDivider`,
+  `normalizeActionItems`, `readActionDataset`, and `runAction` (fixed order:
+  `beforeActionCallback` → `onClick` → `action` event → built-in; busy guard).
+
 ### Changed — BREAKING (naming review, no aliases)
 
 Public names brought in line with the house conventions: boolean options take an

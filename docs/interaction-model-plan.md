@@ -333,3 +333,18 @@ F. **Toggle state on `ActionItem`** — editor needs bold/italic "active"; grid 
     `%TEMP%/bliss-naming-backup-20261023-212646`.
 
 Next: phase 1 (core).
+
+### Phase 1 — done (2026-10-23)
+
+- `emitWithCallback` was folded into **`emit()`**: once the `on<Name>` property is the
+  detail-receiving twin (not a listener), a second method only adds a way to get it
+  wrong. Events without a twin declare `property: false`. Rulebook updated.
+- Core: `dispatch()`/`emit()` default `composed: false`; `emit()` attaches context
+  (`controller` via `createController()`, `element`, non-enumerable; `eventContext()`
+  extras), calls the twin with the detail, dispatches the same object; `el.controller`;
+  composed-native lint; `runBeforeCallback` / `runBeforeCallbackSync`;
+  `withComponentContext`; `/actions` (`ActionItem` … `runAction`); `/search`
+  `SearchCallbackContext` + `term`, `signal`. SPEC §12.5 rewritten, §12.12 added.
+- Consequence until each component's phase lands: components on `file:` core see
+  `on*` receive the detail and events stop being composed — their tests that rely on
+  the old behaviour fail until migrated (expected; drp is next).

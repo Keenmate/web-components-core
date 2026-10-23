@@ -594,7 +594,7 @@ describe('BlissElement table validation (warn-only, once per class)', () => {
 });
 
 describe('dispatch', () => {
-  it('emits a composed, bubbling CustomEvent by default', () => {
+  it('emits a bubbling, non-composed CustomEvent by default', () => {
     const el = new TestElement();
     document.body.appendChild(el);
     const handler = vi.fn();
@@ -605,7 +605,7 @@ describe('dispatch', () => {
     const evt = handler.mock.calls[0]![0] as CustomEvent<{ id: number }>;
     expect(evt.detail).toEqual({ id: 7 });
     expect(evt.bubbles).toBe(true);
-    expect(evt.composed).toBe(true);
+    expect(evt.composed).toBe(false);
   });
 });
 

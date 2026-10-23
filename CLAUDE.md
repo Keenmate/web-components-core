@@ -60,7 +60,10 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    `typeof HTMLElement !== 'undefined'` stub, computes `observedAttributes`
    from the input table, coalesces bursts (`setAttributes()` / `batch()` /
    microtask), and provides typed events via `this.emit()` (the free
-   `dispatch()` function underneath). The input table is
+   `dispatch()` function underneath; bubbles, **not composed**). `emit()` attaches
+   the component context (`controller` from `createController()`, `element`,
+   both non-enumerable, + `eventContext()` extras), calls the `on<Name>` twin
+   **with the detail**, then dispatches the same object (SPEC §12.5). The input table is
    **opt-in**: `web-grid` extends `BlissElement` for the SSR base + `emit`
    only and keeps its config-object API.
 
@@ -113,6 +116,11 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
   treeview → multiselect + dropzone → daterangepicker → web-grid (§9).
 
 ## Module notes (lazy-loaded)
+
+Clickable items (buttons / toolbars / menus) and the `action` event live in
+`src/actions/` (subpath `/actions`, SPEC §12.12); `before*Callback`s go through
+`runBeforeCallback` (`false` cancels, value replaces). The cross-component
+migration is tracked in `docs/interaction-model-plan.md`.
 
 Per-module design notes live next to the code and load when working there:
 `src/logging/`, `src/cem/`, `src/testing/`, `src/positioning/`, `src/dom/`,

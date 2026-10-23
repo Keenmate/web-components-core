@@ -1,4 +1,9 @@
-/** Typed `CustomEvent` dispatch. Defaults to `bubbles` + `composed` so events cross shadow roots. */
+/**
+ * Typed `CustomEvent` dispatch. Defaults to `bubbles: true`, `composed: false`:
+ * a component's events fire on its host and bubble through the page, but one
+ * dispatched inside another component's shadow root can't leak out and be
+ * mistaken for the outer component's (an editor inside a grid cell).
+ */
 export interface DispatchOptions {
   bubbles?: boolean;
   composed?: boolean;
@@ -19,7 +24,7 @@ export function dispatch<T>(
     new CustomEvent<T>(name, {
       detail,
       bubbles: opts.bubbles ?? true,
-      composed: opts.composed ?? true,
+      composed: opts.composed ?? false,
       cancelable: opts.cancelable ?? false,
     }),
   );

@@ -34,7 +34,7 @@ describe('normalizeEventDefs', () => {
 });
 
 describe('emit', () => {
-  it('dispatches a composed, bubbling CustomEvent by default', () => {
+  it('dispatches a bubbling, non-composed CustomEvent by default', () => {
     const tag = freshTag();
     class El extends BlissElement<{ select: { option: string } }> {
       protected static override events = ['select'];
@@ -47,14 +47,14 @@ describe('emit', () => {
     const el = document.createElement(tag) as unknown as El;
     document.body.append(el as unknown as Node);
     const outer = vi.fn();
-    document.body.addEventListener('select', outer); // bubbles + composed → reaches ancestor
+    document.body.addEventListener('select', outer); // bubbles → reaches ancestor
 
     el.fire('a');
     expect(outer).toHaveBeenCalledOnce();
     const evt = outer.mock.calls[0]![0] as CustomEvent<{ option: string }>;
     expect(evt.detail.option).toBe('a');
     expect(evt.bubbles).toBe(true);
-    expect(evt.composed).toBe(true);
+    expect(evt.composed).toBe(false);
   });
 
   it('applies per-event dispatch overrides from the table', () => {
@@ -81,7 +81,7 @@ describe('emit', () => {
 });
 
 describe('managed on<Name> handler property', () => {
-  it('assigning a handler registers a listener that receives the CustomEvent', () => {
+  it('assigning a handler makes it the on* twin: called with the detail, before the DOM event, same object', () => {
     const tag = freshTag();
     class El extends BlissElement<{ select: { option: string } }> {
       protected static override events = ['select'];
@@ -91,15 +91,43 @@ describe('managed on<Name> handler property', () => {
     }
     customElements.define(tag, El as unknown as CustomElementConstructor);
 
-    const el = document.createElement(tag) as unknown as El & { onSelect: ((e: CustomEvent) => void) | null };
+    const el = document.createElement(tag) as unknown as El & { onSelect: ((d: unknown) => void) | null };
     document.body.append(el as unknown as Node);
 
-    const handler = vi.fn();
+    const order: string[] = [];
+    const handler = vi.fn(() => order.push('twin'));
+    const listener = vi.fn(() => order.push('event'));
     el.onSelect = handler;
+    el.addEventListener('select', listener);
     el.fire('x');
-    expect(handler).toHaveBeenCalledOnce();
-    expect((handler.mock.calls[0]![0] as CustomEvent).detail).toEqual({ option: 'x' });
-    expect(el.onSelect).toBe(handler); // getter returns the bound handler
+    expect(order).toEqual(['twin', 'event']);
+    const detail = (handler.mock.calls[0] as unknown[])[0] as { option: string };
+    expect(detail.option).toBe('x');
+    expect(((listener.mock.calls[0] as unknown[])[0] as CustomEvent).detail).toBe(detail);
+    expect(el.onSelect).toBe(handler); // getter returns the assigned twin
+  });
+
+  it('a throwing twin is logged and the DOM event still fires', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const tag = freshTag();
+    class El extends BlissElement<{ select: { option: string } }> {
+      protected static override events = ['select'];
+      fire(): void {
+        this.emit('select', { option: 'a' });
+      }
+    }
+    customElements.define(tag, El as unknown as CustomElementConstructor);
+    const el = document.createElement(tag) as unknown as El & { onSelect: unknown };
+    document.body.append(el as unknown as Node);
+    el.onSelect = () => {
+      throw new Error('boom');
+    };
+    const listener = vi.fn();
+    el.addEventListener('select', listener);
+    el.fire();
+    expect(listener).toHaveBeenCalledOnce();
+    expect(error).toHaveBeenCalledOnce();
+    error.mockRestore();
   });
 
   it('reassigning replaces the previous listener; null removes it', () => {
@@ -137,6 +165,76 @@ describe('managed on<Name> handler property', () => {
     customElements.define(tag, El as unknown as CustomElementConstructor);
     const el = document.createElement(tag) as unknown as Record<string, unknown>;
     expect('onInternal' in el).toBe(false);
+  });
+});
+
+describe('component context on event details', () => {
+  interface Ctl {
+    ping(): string;
+  }
+  class El extends BlissElement<{ select: { option: string }; ready: Record<string, never> }, Ctl> {
+    protected static override events = ['select', 'ready'];
+    presentation = 'floating';
+    protected override createController(): Ctl {
+      return { ping: () => 'pong' };
+    }
+    protected override eventContext(): object {
+      return { presentation: this.presentation, isFullscreen: this.presentation === 'fullscreen' };
+    }
+    fire(detail?: { option: string; presentation?: string }): void {
+      if (detail) this.emit('select', detail);
+      else this.emit('ready');
+    }
+  }
+  const tag = freshTag();
+  customElements.define(tag, El as unknown as CustomElementConstructor);
+
+  function make(): El {
+    const el = document.createElement(tag) as unknown as El;
+    document.body.append(el as unknown as Node);
+    return el;
+  }
+
+  it('attaches controller + element non-enumerable, extras enumerable', () => {
+    const el = make();
+    const listener = vi.fn();
+    el.addEventListener('select', listener);
+    el.fire({ option: 'a' });
+    const detail = (listener.mock.calls[0]![0] as CustomEvent).detail;
+    expect(detail.controller.ping()).toBe('pong');
+    expect(detail.controller).toBe(el.controller); // memoized facade
+    expect(detail.element).toBe(el);
+    const { controller, element } = detail; // destructuring works
+    expect(controller).toBe(el.controller);
+    expect(element).toBe(el);
+    expect(Object.keys(detail)).toEqual(['option', 'presentation', 'isFullscreen']);
+    expect(JSON.parse(JSON.stringify(detail))).toEqual({ option: 'a', presentation: 'floating', isFullscreen: false });
+  });
+
+  it('a field the detail already has wins over the component-wide extra', () => {
+    const el = make();
+    const listener = vi.fn();
+    el.addEventListener('select', listener);
+    el.fire({ option: 'a', presentation: 'fullscreen' });
+    expect((listener.mock.calls[0]![0] as CustomEvent).detail.presentation).toBe('fullscreen');
+  });
+
+  it('an event without a detail still carries the context', () => {
+    const el = make();
+    const listener = vi.fn();
+    el.addEventListener('ready', listener);
+    el.fire();
+    const detail = (listener.mock.calls[0]![0] as CustomEvent).detail;
+    expect(detail.element).toBe(el);
+    expect(detail.controller.ping()).toBe('pong');
+  });
+
+  it('controller is undefined for a component without createController', () => {
+    const t = freshTag();
+    class Plain extends BlissElement {}
+    customElements.define(t, Plain as unknown as CustomElementConstructor);
+    const el = document.createElement(t) as unknown as Plain;
+    expect(el.controller).toBeUndefined();
   });
 });
 
@@ -226,7 +324,7 @@ describe('event-table lint (warn-only)', () => {
     const tag = freshTag();
     class El extends BlissElement {
       protected static override inputs = [{ configKey: 'onSelect', on: 'none' as const }];
-      protected static override events = ['Select', 'change', 'change', 'select'];
+      protected static override events = ['Select', 'change', 'change', 'select', 'copy', 'pointerdown'];
     }
     customElements.define(tag, El as unknown as CustomElementConstructor);
     document.body.append(document.createElement(tag)); // construct → validate once
@@ -235,6 +333,9 @@ describe('event-table lint (warn-only)', () => {
     expect(messages.join('\n')).toMatch(/event "Select" should be lowercase/);
     expect(messages.join('\n')).toMatch(/duplicate event "change"/);
     expect(messages.join('\n')).toMatch(/property "onSelect" collides with an input configKey/);
+    expect(messages.join('\n')).toMatch(/event "copy" reuses a composed native event name/);
+    expect(messages.join('\n')).toMatch(/event "pointerdown" reuses a composed native event name/);
+    expect(messages.join('\n')).not.toMatch(/event "change" reuses/);
     warn.mockRestore();
   });
 });

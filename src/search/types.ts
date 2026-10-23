@@ -57,8 +57,15 @@ export interface SearchEntry<T = any> {
   searchValue: unknown;
 }
 
-/** Context passed to a component's `searchCallback(term, signal, context)` as its third argument. */
+/**
+ * The single argument of a component's `searchCallback(ctx)`. Components add
+ * their component context (`controller`, `element`) on top.
+ */
 export interface SearchCallbackContext<T = any> {
+  /** The raw term as typed. */
+  term: string;
+  /** Aborted when a newer search supersedes this one — pass it to `fetch`. */
+  signal: AbortSignal;
   /** The term as prepared by `getSearchTermCallback` (or the plain term when it isn't set). */
   searchTerm: string | RegExp | Record<string, unknown>;
   /**

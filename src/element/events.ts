@@ -1,11 +1,10 @@
 /**
  * The event side of the callback/event model (SPEC §12.5). A component declares
  * its outward notifications in a `static events` table; `BlissElement.emit()`
- * dispatches them (typed against the map) and installs a managed `on<Name>`
- * handler PROPERTY per event — assigning it (de)registers a real listener, so
- * `el.onSelect = e => …` behaves exactly like `addEventListener('select', …)`
- * and receives the same `CustomEvent`. Contrast with `*Callback` inputs, which
- * shape behavior and go through `runHook` (return value honored).
+ * attaches the component context, calls the event's `on<Name>` twin property
+ * with the detail, and dispatches a typed `CustomEvent` carrying the same
+ * object. Listeners use `addEventListener` / `on()`. Contrast with `*Callback`
+ * inputs, which shape behavior and whose return value is used.
  */
 
 /**
@@ -22,11 +21,11 @@ export interface EventDef<D = unknown> {
   /** Phantom detail type carrier; unused at runtime. */
   detail?: D;
   /**
-   * The managed handler property to install (`el.onSelect = …`). Defaults to
-   * `on` + PascalCase(name). Set `false` to expose the event without a property.
+   * The `on*` twin property to install (`el.onSelect = (detail) => …`). Defaults
+   * to `on` + PascalCase(name). Set `false` for an event without a twin.
    */
   property?: string | false;
-  /** Per-event dispatch overrides (else the `dispatch()` defaults: bubbles+composed). */
+  /** Per-event dispatch overrides (else the `dispatch()` defaults: bubbles, not composed). */
   bubbles?: boolean;
   composed?: boolean;
   cancelable?: boolean;
