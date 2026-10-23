@@ -70,7 +70,7 @@ The same concepts are re-implemented per component and have drifted:
     detail carries both (`if (e.detail.id === 'archive')`). A future built-in can never hijack a
     custom item. Grid used `id` loosely for both → changes.
 13. **Reserved detail names checked at compile time:** core's types reserve `action`, `item`,
-    `id`, `source`, `sourceEvent`, `triggerElement`, `data` (+ `controller`, `element`,
+    `id`, `source`, `sourceEvent`, `triggerElement`, `dataset` (+ `controller`, `element`,
     presentation fields); a surface context that redeclares one fails to compile. Context stays
     flat (`onAction(({ row }) => …)`), not nested.
 
@@ -165,25 +165,29 @@ D-NC-6/8/11/12, `.checks.md` / `.checks.sh` C-NC-2 now covers `emit()` / `emitWi
 past tense, composed-native names, component prefix). BlissFramework is not a git repo — a
 backup of the previous files is in `%TEMP%/bliss-naming-backup-20261023-203855`.
 
-## Open questions
+## Decided (round 3)
 
-1. **Decided: one `action` event (option A).** Every component fires `action` (DOM event +
-   `onAction` via `emitWithCallback`) for every clicked item. Detail: `action`, `item`, `source`
-   (`'action-buttons' | 'row-toolbar' | 'context-menu' | 'header-menu' | …`), `sourceEvent`,
-   `triggerElement`, `data` (button data-*), plus the surface's context. Replaces drp
-   `custom-action` / `onCustomAction` and grid `ontoolbarclick`; ms and treeview gain it.
-   Reason: HTML-authored buttons (drp `showMessage` content) have no `onClick`; frameworks /
-   LiveView / htmx bind DOM events; one listener for all actions. Sub-points (decided):
-   a. fires for built-ins too (`today`, `select-all`, `delete`), not only `custom`;
-   b. `beforeActionCallback(ctx)` → `false` cancels the built-in behaviour; may be async
-      (`boolean | Promise<boolean>`) — confirmation dialogs / server checks; the item is busy
-      while waiting (second click ignored);
-   c. order: item `onClick` → `action` event → built-in behaviour.
-2. Rename treeview's internal `TreeController` → `TreeEngine` — default: yes.
-3. Event names: kebab-case present tense without component prefix (drop `cp-`)? — default: yes,
-   except where it collides with a native event (`change`, `select`, `copy`, `paste`, `delete`
-   need a check: native `select`/`copy`/`paste` bubble from inner inputs).
-4. Notification naming: `onNodeClick` (camelCase config key) everywhere; grid's lowercase
-   `onrowchange` properties go — default: yes.
-5. Does every event detail carry `ComponentContext`, or only "interaction" events (not
-   `ready` / `data-changed`)? — default: interaction events only.
+14. **One `action` event (option A).** Every component fires `action` (DOM event + `onAction`
+    via `emitWithCallback`) for every clicked item. Detail: `action`, `id`, `item`, `source`
+    (`'action-buttons' | 'row-toolbar' | 'context-menu' | 'header-menu' | …`), `sourceEvent`,
+    `triggerElement`, `dataset` (button `data-*`), plus the surface's context. Replaces drp
+    `custom-action` / `onCustomAction` and grid `ontoolbarclick`; ms and treeview gain it.
+    Reason: HTML-authored buttons (drp `showMessage` content) have no `onClick`; frameworks /
+    LiveView / htmx bind DOM events; one listener for all actions.
+    a. fires for built-ins too (`today`, `select-all`, `delete`), not only `custom`;
+    b. `beforeActionCallback(ctx)` → `false` cancels the built-in; may be async; the item is
+       busy while waiting (second click ignored);
+    c. order: item `onClick` → `action` event → built-in behaviour.
+15. **`controller` = public facade only**; internal state classes are `*Engine` (treeview
+    `TreeController` → `TreeEngine`). In the rulebook.
+16. **Event names:** kebab-case, present tense, no component prefix (`node-click`, `select`
+    not `cp-select`), never a composed native name (rule 11). In the rulebook + C-NC-2 check.
+17. **`on*` twins are camelCase** (`onRowChange`; grid's `onrowchange` goes). In the rulebook.
+18. **Every event carries `controller` + `element`** (incl. `ready`, `data-change`); the
+    presentation fields (`presentation`, `isFullscreen`, `isModal`) only on popup components
+    (ms, drp, commandpalette) — inline components don't have them. `emitWithCallback` adds
+    them. `controller` / `element` are **non-enumerable** on the detail: destructuring works,
+    `JSON.stringify` / LiveView `pushEvent(…, e.detail)` / `Object.keys` / logs see only data
+    (spread `{...detail}` drops them — accepted). Presentation fields stay enumerable.
+
+No open questions. Next: phase 0 (inventory).
