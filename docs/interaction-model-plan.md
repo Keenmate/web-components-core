@@ -129,8 +129,17 @@ Each component: own commit(s), CHANGELOG entry with a migration section, tests u
 
 ## Open questions
 
-1. One `action` DOM event (detail `{ item, action, ...ctx }`) replacing drp `custom-action`,
-   grid `ontoolbarclick`, … — default: yes.
+1. **Decided: one `action` event (option A).** Every component fires `action` (DOM event +
+   `onAction` via `emitWithCallback`) for every clicked item. Detail: `action`, `item`, `source`
+   (`'action-buttons' | 'row-toolbar' | 'context-menu' | 'header-menu' | …`), `sourceEvent`,
+   `triggerElement`, `data` (button data-*), plus the surface's context. Replaces drp
+   `custom-action` / `onCustomAction` and grid `ontoolbarclick`; ms and treeview gain it.
+   Reason: HTML-authored buttons (drp `showMessage` content) have no `onClick`; frameworks /
+   LiveView / htmx bind DOM events; one listener for all actions. Sub-points, defaults
+   pending the user's OK:
+   a. fires for built-ins too (`today`, `select-all`, `delete`), not only `custom`;
+   b. `beforeActionCallback(ctx)` → `false` cancels the built-in behaviour;
+   c. order: item `onClick` → `action` event → built-in behaviour.
 2. Rename treeview's internal `TreeController` → `TreeEngine` — default: yes.
 3. Event names: kebab-case present tense without component prefix (drop `cp-`)? — default: yes,
    except where it collides with a native event (`change`, `select`, `copy`, `paste`, `delete`
