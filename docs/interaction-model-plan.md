@@ -191,3 +191,46 @@ backup of the previous files is in `%TEMP%/bliss-naming-backup-20261023-203855`.
     (spread `{...detail}` drops them — accepted). Presentation fields stay enumerable.
 
 No open questions. Next: phase 0 (inventory).
+
+## Phase 0 — how to run it, and what's already known
+
+Run as one read-only agent per component (ms, drp, treeview, grid, dropzone, commandpalette,
+editor) in parallel; each returns a table: current name → new name, kind (action item / context /
+event / `on*` / `before*` / `get*`), current signature, detail fields, file:line. Merge here.
+
+Already found (don't re-derive):
+- **ms** `src/types.ts`: `MultiSelectController` (:230), `MultiSelectKeyboardController` (:274),
+  `ActionContext` (:307, has `element`), `ActionButton` (:363, `onClick(multiselect, ctx?)`,
+  `getIsVisibleCallback`…). Events via `this.emit`: `select`, `deselect`, `change`, `add`, `ready`.
+  `beforeSelectCallback(option, selectedOptions)` / `beforeDeselectCallback` positional →
+  `boolean | string`; `beforeSearchCallback(term)`.
+- **drp** `src/types.ts`: `PickerContext { picker }` (:11), `DateRangePickerController` (:23),
+  `ActionButton` (:236, `isVisibleCallback` / `isDisabledCallback`), `ActionButtonContext`
+  (:278), `CustomActionEventDetail` (:964). `custom-action` fired in `date-picker.ts:2557`
+  (`fireCustomActionEvent`, BEFORE `onClick`), detail `{ data, picker, controller }`; stale
+  test `e2e/context-callbacks.spec.ts:77` + description `web-component.ts:202`. Events:
+  `date-select`, `change`, `custom-action`, `ready`. `beforeDateSelectCallback` /
+  `beforeMonthChangedCallback` async with result objects.
+- **treeview**: internal `TreeController` (`src/treeview.ts:123`, `web-component.ts:631`
+  `getController()`), contexts in `src/controller/types.ts` (NodeEventContext, NodeDragContext,
+  Before*Context…); menu `ContextMenuItem` in `src/ltree/types.ts:31` (static only,
+  `onclick()` no args, `shouldCloseOnClick`, `children`, `ContextMenuDivider`). Events (typed
+  `unknown` in `web-component.ts`): `node-clicked`, `node-double-click`, `copy`, `cut`,
+  `paste`, `delete`, `node-drag-start/over`, `node-drop`, `node-drag-denied`,
+  `node-drop-denied`, `data-changed`, `focused-node-changed`, `search-text-changed`,
+  `selection-change`, `checked-change`, `tree-changed`. `before{Copy,Cut,Delete,DragStart}
+  Callback` sync `string[] | false | void`. Clipboard is internal (no system clipboard).
+- **grid** `packages/web-grid/src/types.ts`: `RowToolbarItem` (:297), `ContextMenuItem` (:383),
+  `HeaderMenuItem` (:422), contexts `ContextMenuContext` (:361), `HeaderMenuContext` (:404),
+  `ShortcutContext` (:445). Notifications are lowercase props (:595–657: `onrowchange`,
+  `ontoolbarclick`, `onrowfocus`, …), almost no DOM events (only `rowdelete` in
+  `cell-keydown.ts`). Toolbar click flow `modules/toolbar/element-handlers.ts:385`. Column
+  `beforeCopyCallback(value,row)` / `beforePasteCallback(value,row)` are per-cell transforms →
+  `getCopyValueCallback` / `getPasteValueCallback`. Uses the system clipboard.
+- **commandpalette**: events `cp-open`, `cp-close`, `cp-select`, `cp-complete`, `cp-command`,
+  `cp-ready` → drop prefix (`cp-ready` → `ready`, `cp-open` → `open`, …).
+- **dropzone / editor**: no action items; dropzone `before{FilesAdded,FilesRemoved}Callback`;
+  editor events `mode-change`, `change`, `ready`.
+- Rulebook check: `bash naming-conventions.checks.sh <component> <css-prefix>` (C-NC-2) —
+  treeview fails (`tree-changed`, `focused-node-changed`), commandpalette fails (`cp-*`).
+
