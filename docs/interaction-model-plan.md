@@ -157,6 +157,15 @@ prefix (`node-click`, `date-select`, `row-change`), notification `onNodeClick` /
 Each component: own commit(s), CHANGELOG entry with a migration section, tests updated
 (unit + e2e), docs/README/web-types regenerated.
 
+## Rulebook
+
+The decisions are written into the BlissFramework rulebook (read when scaffolding a component):
+`C:\Git\BlissFramework\guidelines\web-components
+aming-conventions.md` (+ `.decisions.md`
+D-NC-6/8/11/12, `.checks.md` / `.checks.sh` C-NC-2 now covers `emit()` / `emitWithCallback()`,
+past tense, composed-native names, component prefix). BlissFramework is not a git repo — a
+backup of the previous files is in `%TEMP%liss-naming-backup-20261023-203855`.
+
 ## Open questions
 
 1. **Decided: one `action` event (option A).** Every component fires `action` (DOM event +
