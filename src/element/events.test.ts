@@ -229,6 +229,18 @@ describe('component context on event details', () => {
     expect(detail.controller.ping()).toBe('pong');
   });
 
+  it('a frozen detail is copied, not mutated', () => {
+    const el = make();
+    const listener = vi.fn();
+    el.addEventListener('select', listener);
+    const frozen = Object.freeze({ option: 'f' });
+    el.fire(frozen);
+    const detail = (listener.mock.calls[0]![0] as CustomEvent).detail;
+    expect(detail).not.toBe(frozen);
+    expect(detail.option).toBe('f');
+    expect(detail.element).toBe(el);
+  });
+
   it('controller is undefined for a component without createController', () => {
     const t = freshTag();
     class Plain extends BlissElement {}

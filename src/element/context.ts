@@ -22,14 +22,16 @@ export type WithoutComponentContext<T> = T extends object ? Omit<T, keyof Compon
  * Attach `controller` + `element` (non-enumerable) and any `extras` (enumerable,
  * e.g. the presentation flags of a popup component) to `target`, in place, and
  * return it. Fields `target` already has are left alone — a detail that sets
- * its own `presentation` wins over the component-wide one.
+ * its own `presentation` wins over the component-wide one. A frozen / sealed
+ * `target` is shallow-copied first (the copy is returned).
  */
 export function withComponentContext<T extends object, C, E extends HTMLElement>(
-  target: T,
+  source: T,
   controller: C,
   element: E,
   extras?: object,
 ): T & ComponentContext<C, E> {
+  const target = Object.isExtensible(source) ? source : ({ ...source } as T);
   for (const [key, value] of [['controller', controller], ['element', element]] as const) {
     if (!Object.prototype.hasOwnProperty.call(target, key)) {
       Object.defineProperty(target, key, { value, enumerable: false, configurable: true, writable: true });
