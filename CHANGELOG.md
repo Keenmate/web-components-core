@@ -26,7 +26,8 @@ One shape for events, callbacks and clickable items across every KM component
   the `eventContext()` extras. An `emit()` with no detail now delivers `{}` + context
   instead of `undefined`.
 - **`/search` `SearchCallbackContext`** gains `term` (raw) and `signal` — the
-  single argument of a component's `searchCallback(ctx)`.
+  single argument of a component's `searchCallback(ctx)`. `SearchTermContext` gains
+  `term` — the single argument of `getSearchTermCallback(ctx)`.
 
 ### Added
 

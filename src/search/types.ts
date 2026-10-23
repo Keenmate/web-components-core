@@ -37,6 +37,8 @@ export type SearchMatch =
 
 /** Context passed to a component's `getSearchTermCallback`. */
 export interface SearchTermContext {
+  /** The term to prepare (as typed, after any `beforeSearchCallback` rewrite). */
+  term: string;
   /** Which search the term is being prepared for: built-in matching, or the consumer's `searchCallback`. */
   target: 'internal' | 'callback';
   /** The current search behavior. */
