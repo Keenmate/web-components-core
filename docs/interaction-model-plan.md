@@ -39,6 +39,10 @@ The same concepts are re-implemented per component and have drifted:
    own (grid row menu: `row`, `rowIndex`, `column`, `colIndex`, `cellValue`; treeview menu:
    `node`; …). The context is built when the menu/toolbar opens for that row/node and the same
    object goes to every callback and to `onClick` — no closures needed.
+6. **String shorthand everywhere:** a built-in action may be a bare string in any item array
+   (`rowToolbar: ['add', 'delete']`, `actionButtons: ['today', 'clear']`); core expands it to
+   `{ action }` before resolving. New for ms/drp.
+7. **Event helper is `emitWithCallback(name, detail)`** (not `notify` — too vague).
 
 ## Proposed core shape (`@keenmate/web-components-core/actions`)
 
@@ -86,8 +90,10 @@ clicked) is **one event with one detail type**, delivered two ways that can't dr
   (drp's "re-emit the canonical detail" pattern, generalised).
 
 Detail = event-specific fields **+ `ComponentContext`** (`controller`, `element`, presentation
-flags), so a handler can act without reaching for the element. Proposed core helper:
-`this.notify(name, detail)` → builds the context, calls `config.on<Name>` then emits the event.
+flags), so a handler can act without reaching for the element. Core helper on BlissElement:
+`this.emitWithCallback(name, detail)` → adds the context, calls `config.on<Name>(detail)`, then
+emits the DOM event with the same object. Plain `this.emit()` stays for DOM-only events
+(`ready`, anything without a config notification).
 
 Veto hooks stay callbacks (`before*Callback(ctx)` → `false` cancels) and get the same context
 base. Naming to settle (see questions): event names kebab-case, present tense, no component
@@ -99,7 +105,7 @@ prefix (`node-click`, `date-select`, `row-change`), notification `onNodeClick` /
    every DOM event + `on*` notification + `before*Callback`, with current name → new name and
    detail fields. Output: a table per component appended here. Settle open questions.
 1. **Core `/actions` + event helper** — types, `resolveActionItem`, `resolveMenuEntries`,
-   `menuDivider`, `notify()` on BlissElement; unit tests; SPEC §12.x section; CLAUDE.md note;
+   `menuDivider`, `emitWithCallback()` on BlissElement; unit tests; SPEC §12.x section; CLAUDE.md note;
    CEM/web-types: event descriptions generated from the detail types where possible.
 2. **web-daterangepicker** — `ActionButton` → `ActionItem`; `custom-action` → unified action
    event; contexts on `ComponentContext` (keeps `picker` as an extra); events/notifications.
@@ -123,15 +129,13 @@ Each component: own commit(s), CHANGELOG entry with a migration section, tests u
 
 ## Open questions
 
-1. String shorthand in item arrays (`['add', 'delete']` → `{ action }`) — default: keep,
-   core normalises.
-2. One `action` DOM event (detail `{ item, action, ...ctx }`) replacing drp `custom-action`,
+1. One `action` DOM event (detail `{ item, action, ...ctx }`) replacing drp `custom-action`,
    grid `ontoolbarclick`, … — default: yes.
-3. Rename treeview's internal `TreeController` → `TreeEngine` — default: yes.
-4. Event names: kebab-case present tense without component prefix (drop `cp-`)? — default: yes,
+2. Rename treeview's internal `TreeController` → `TreeEngine` — default: yes.
+3. Event names: kebab-case present tense without component prefix (drop `cp-`)? — default: yes,
    except where it collides with a native event (`change`, `select`, `copy`, `paste`, `delete`
    need a check: native `select`/`copy`/`paste` bubble from inner inputs).
-5. Notification naming: `onNodeClick` (camelCase config key) everywhere; grid's lowercase
+4. Notification naming: `onNodeClick` (camelCase config key) everywhere; grid's lowercase
    `onrowchange` properties go — default: yes.
-6. Does every event detail carry `ComponentContext`, or only "interaction" events (not
+5. Does every event detail carry `ComponentContext`, or only "interaction" events (not
    `ready` / `data-changed`)? — default: interaction events only.
