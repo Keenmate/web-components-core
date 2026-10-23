@@ -43,7 +43,7 @@ No `prefers-color-scheme` rules; a page follows the OS with
 2. **User-owned leftovers to mention.** commandpalette: README paragraph edit sits in their
    uncommitted README; CHANGELOG needs a theme-context line. web-grid: `package-lock.json`
    uncommitted (mixed with their `docs/package.json` vite 8 / happy-dom change).
-3. **Core rc15 publish** — on hold: the user is testing the `file:` builds in a few components first. (`/publish rc` after bumping to `1.0.0-rc15`): README What's New
+3. **Core rc15 publish** — on hold: the user is testing the `file:` builds in a few components first, and the interaction-model work (`interaction-model-plan.md`) ships in rc15 too. (`/publish rc` after bumping to `1.0.0-rc15`): README What's New
    (keep two blocks), `release-notes/1.0.0-rc15.md` with the rename table + upgrade checklist.
    Then switch every component from `file:` to `1.0.0-rc15`; commandpalette peer dep
    `^1.0.0-rc12` → `^1.0.0-rc15`. Caret ranges (`^1.0.0-rc13` etc.) would pick rc15 up, so
