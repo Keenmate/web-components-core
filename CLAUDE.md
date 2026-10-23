@@ -119,7 +119,8 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
 
 Clickable items (buttons / toolbars / menus) and the `action` event live in
 `src/actions/` (subpath `/actions`, SPEC §12.12); `before*Callback`s go through
-`runBeforeCallback` (`false` cancels, value replaces). The cross-component
+`runBeforeCallback` (`false` cancels, value replaces; `runBeforeCallbackEager`
+keeps a sync hook's flow synchronous). The cross-component
 migration is tracked in `docs/interaction-model-plan.md`.
 
 Per-module design notes live next to the code and load when working there:

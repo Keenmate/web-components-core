@@ -56,10 +56,23 @@ Heaviest: `features/messages-custom-actions` (51), `bulk-metadata-loading` (25),
 source, dataset }` (break, per policy); refresh the vendored bundle + `.d.ts`; update
 README / guides / ai notes / CHANGELOG; run its `test_app`.
 
-**keen-web-multiselect** — hook already listens to `select` / `deselect` / `change` /
-`add` / `ready` (names unchanged), reads `detail.selectedValues` / `detail.option`. Phase 3
-keeps those fields, so likely only: the new `action` event, `ctx.element` uses in docs,
-and the bundle refresh. Re-survey after phase 3.
+**keen-web-multiselect** (surveyed 2026-10-23, after phase 3) — vendored bundle is **v2.2.0**
+(`priv/static/multiselect.js`). Hook: event listeners and payloads are fine (names + `detail`
+fields unchanged; payloads built field by field). Runtime breaks: `keen_web_multiselect_hook.js:184`
+and `:296` — `searchCallback = (query, signal)` → `({ term, signal })`. Docs: `components.ex`
+(`addNewCallback` ×4), README, guides (`theming.md` showMessage opts + string-veto,
+`tree_of_options.md`), `FEATURES.md` (~15 rows), `ai/*.txt`. **test_app** is the big one: ~200
+runnable lines in 17 files (`examples/*_live.ex` — action_buttons, custom_rendering, data_api,
+events_callbacks, tree, logging, sizes, tooltips, virtual_scrolling, …; `fixtures/add_new_live.ex`
+drives `e2e/add_new.spec.ts`; `priv/static/assets/app.js:75-87`). Action-button icons put as HTML
+in `text` must move to `icon`. `keen-web-multiselect-test` (path dep) has 0 hits.
+
+**web-multiselect-showcase** (surveyed 2026-10-23) — npm `^2.5.0`. ~60 runnable/sample lines
+in 13 route files (action-buttons, events-callbacks string-veto, custom-rendering
+`data-action="remove"`, external-search, tree, tooltips, basic, data-api, api/*) + ~35 rows in
+`src/lib/demo/api-data.ts`. ⚠ `^2.5.0` (and pure-admin/demo `^2.0.1`, theme-designer/app
+`^2.0.0-rc10`) would auto-pull a stable **2.6.0** — so ship the breaking change as **3.0.0**
+(decide at phase 7).
 
 **web-multiselect-showcase / web-treeview-showcase / web-grid-showcase /
 keen-web-commandpalette** — survey after the respective component phase (the component
@@ -67,8 +80,10 @@ inventory in `docs/interaction-inventory/` lists the names that change). Grid sh
 the biggest (22 routes, heavy `contextMenu` / `dividerBefore` / lowercase `on*` use — see
 `interaction-inventory/web-grid.md` §8).
 
-**web-component-framework-test** — check what it exercises (`file:` links) and fix it
-alongside phase 3 (it uses both ms and drp).
+**web-component-framework-test** (surveyed 2026-10-23) — `file:` links, breaks now. Two
+runtime lines: `shared/multiselect-boot.js:74` `getSubtitleCallback = (item)` → `({ item })`;
+`shared/daterangepicker-boot.js:94` `'date-select'` → `'select'` (+ comment :81, test title
+`tests/web-daterangepicker.smoke.spec.ts:26`). Pre-existing: `el.displayMember` is not a prop.
 
 ## How (per consumer)
 

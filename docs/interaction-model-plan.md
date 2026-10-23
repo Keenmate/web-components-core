@@ -378,3 +378,37 @@ separately. Conventions settled here that later phases reuse:
   ms / treeview / grid / dropzone (cross-component).
 - **Raw engine accessors removed** (`el.picker`); the engine class stays exported as
   `*Engine` for standalone use only.
+
+### Phase 3 — web-multiselect done (2026-10-23, ms 82499fb, 4af798a)
+
+Code + tests migrated (146 unit, 384/397 chromium+mobile e2e — the rest load examples pages,
+migrated with the docs). Core additions: `runBeforeCallbackEager` (63a51c0) and
+`SearchTermContext.term` (806c160). New conventions for later phases:
+
+- **Sync stays sync.** A flow that is synchronous today (ms: click → commit in the same tick)
+  runs its before-hook through `runBeforeCallbackEager` and branches with a tiny
+  `then(x, fn)`; only an async hook makes the flow async. Tests keep asserting synchronously.
+- **Bulk gestures veto per item.** Select-All / Clear-All / group checkbox / tree-cascade /
+  inline ✕ call `beforeSelect/DeselectCallback` once per affected item with
+  `ctx.source` (`option | badge | group | select-all | clear-all | clear`); vetoed items are
+  skipped, the rest apply in ONE commit (one `change`). Programmatic `setSelected` / form reset
+  stay veto-free. Grid/treeview row ops should follow this.
+- **Cheap per-item ctx on hot paths.** Data accessors (`getValueCallback`, …) run per option
+  per pass, so `itemCtx(item)` = `Object.create(proto)` + `item`, the prototype carrying
+  `controller` / `element` / presentation as getters (inherited ⇒ non-enumerable). Everything
+  else uses `ctx()` (`withComponentContext`). Treeview / grid row callbacks: same pattern.
+- **Badge-style ctx is always complete** — callbacks that used to get an optional 2nd arg now
+  get defaults (`displayMode` = configured, `isInPopover` = false) instead of `undefined`.
+- **`data-action` triggers anywhere in rendered content** route to `runAction` with
+  `source` from the container (`option` / `badge` / `message`) and the row's item on the
+  detail (`option`); they never trigger the container's own behaviour (row toggle).
+  Synthetic items are cached per trigger element (WeakMap) so the busy guard works.
+- **One controller.** ms had a keydown-only controller; it folded into the public one
+  (focus methods are harmless when closed). `el.controller` delegates to
+  `engine.getController()` after `flush()`.
+- **Exception kept positional:** `selectedOrderCompareCallback(a, b)` — handed straight to
+  `Array.prototype.sort`.
+- **Open:** ms is `2.6.0-rc0x` (a minor rc over published 2.5.0) but now breaking; `^2.x`
+  consumers (showcase `^2.5.0`, pure-admin) would auto-pull a stable 2.6.0 → recommend 3.0.0; decide
+  2.6 vs 3.0 at the rc15 publish (phase 7).
+
