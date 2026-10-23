@@ -154,6 +154,8 @@ prefix (`node-click`, `date-select`, `row-change`), notification `onNodeClick` /
    today); `cp-*` prefix decision applies to commandpalette.
 7. **rc15** — publish core, switch components from `file:`, release notes with one migration
    guide covering renames + interaction model.
+8. **Consumers** (showcases, LiveView wrappers, test apps) — separate plan:
+   `docs/consumer-migration-plan.md`.
 
 Each component: own commit(s), CHANGELOG entry with a migration section, tests updated
 (unit + e2e), docs/README/web-types regenerated.
