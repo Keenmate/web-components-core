@@ -160,11 +160,10 @@ Each component: own commit(s), CHANGELOG entry with a migration section, tests u
 ## Rulebook
 
 The decisions are written into the BlissFramework rulebook (read when scaffolding a component):
-`C:\Git\BlissFramework\guidelines\web-components
-aming-conventions.md` (+ `.decisions.md`
+`C:\Git\BlissFramework\guidelines\web-components/naming-conventions.md` (+ `.decisions.md`
 D-NC-6/8/11/12, `.checks.md` / `.checks.sh` C-NC-2 now covers `emit()` / `emitWithCallback()`,
 past tense, composed-native names, component prefix). BlissFramework is not a git repo — a
-backup of the previous files is in `%TEMP%liss-naming-backup-20261023-203855`.
+backup of the previous files is in `%TEMP%/bliss-naming-backup-20261023-203855`.
 
 ## Open questions
 
