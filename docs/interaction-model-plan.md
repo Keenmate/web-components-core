@@ -446,7 +446,7 @@ committed there. Conventions added:
 
 Code + tests migrated (46 unit, 319 chromium e2e incl. a new `interaction-model.spec.ts`).
 Grid had no events and three item shapes; it now matches ms / drp / treeview. Version:
-proposed **2.0.0-rc01** (all grid consumers use `^1.x`). Conventions added:
+**2.0.0-rc01** (decided 2026-10-24; all grid consumers use `^1.x`). Conventions added:
 
 - **Engine notifies, element emits.** `GridEngine.attachHost(element, getController,
   notify)` gives the engine a ctx prototype (`controller` / `element` as getters — inherited,

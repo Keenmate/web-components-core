@@ -96,7 +96,7 @@ No svelte-treeview / LiveView / framework-test dependency on web-treeview.
 **web-grid consumers** (surveyed 2026-10-24, after phase 5; counts = old-API names in
 non-`node_modules` sources). ⚠ Every one of them (`^1.0.0`, `^1.0.4`, `^1.1.0`,
 `^1.2.0-rc02`) would auto-pull a stable **1.2.0** — so the break ships as **2.0.0-rc01**
-(proposed; grid `package.json` still says 1.2.0-rc02 until decided). Toolbar code that did
+(decided 2026-10-24; consumers bump to `^2.0.0-rc01`). Toolbar code that did
 add / delete / move in `ontoolbarclick` must drop it (the built-ins now act) or switch the
 item to a custom `id`.
 - **web-grid-showcase** — 28 files, ~300 hits: `contextMenu` / `headerContextMenu` items
