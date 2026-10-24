@@ -77,6 +77,10 @@ Attributes, events and CSS are unchanged — only the JS API of components built
 
 ### Fixed
 
+- **`toEnum({ shouldNullOnInvalid: true })` without a `default` accepts `null` on the property
+  path.** `null` is that input's unset value, but only removing the attribute cleared it —
+  `el.x = null` was rejected with a warning and kept the old value. Now both clear it (and a
+  reflected attribute is removed); an unknown string is still rejected.
 - **A throwing `reinit()` / `update()` no longer wedges the element.** The error still reaches
   whoever flushed, but `whenSettled()` waiters now resolve (they used to hang), a failed
   `reinit()` is retried on the next flush or reconnect (it used to be skipped for good, leaving

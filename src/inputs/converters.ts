@@ -35,7 +35,10 @@ function parseJson<V>(raw: string | null, isValid: ((value: unknown) => boolean)
  * Exact-match against a fixed set of strings.
  *
  * Invalid or absent values fall back to `default` — or to `null` when
- * `shouldNullOnInvalid` is set.
+ * `shouldNullOnInvalid` is set. With `shouldNullOnInvalid` and no `default`,
+ * `null` is the unset value on BOTH paths: removing the attribute and
+ * assigning `el.x = null` clear the input alike (an unknown string is still
+ * rejected on the property path).
  */
 export function toEnum<const T extends readonly string[]>(
   values: T,
@@ -43,6 +46,7 @@ export function toEnum<const T extends readonly string[]>(
 ): EnumConverter<T[number]> {
   const set = new Set<string>(values);
   const fallback = (opts.shouldNullOnInvalid ? null : opts.default ?? null) as T[number];
+  const isNullUnset = !!opts.shouldNullOnInvalid && opts.default === undefined;
   return {
     values,
     fromAttribute(raw) {
@@ -50,6 +54,7 @@ export function toEnum<const T extends readonly string[]>(
       return set.has(raw) ? (raw as T[number]) : fallback;
     },
     validate(value): value is T[number] {
+      if (value === null) return isNullUnset;
       return typeof value === 'string' && set.has(value);
     },
     toAttribute: scalarToAttribute,

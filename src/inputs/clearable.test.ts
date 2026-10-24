@@ -19,13 +19,17 @@ describe('isClearableConverter', () => {
     expect(isClearableConverter(toText({ default: 'hi' }))).toBe(false);
   });
 
-  it('toEnum with shouldNullOnInvalid (no default) is clearable via the attribute path', () => {
-    // validate(null) is false (enums require a string) — this case is caught only
-    // by probing fromAttribute(null) === null, which is why both probes are needed.
+  it('toEnum with shouldNullOnInvalid (no default) is clearable on both paths', () => {
     const conv = toEnum(['a', 'b'] as const, { shouldNullOnInvalid: true });
-    expect(conv.validate?.(null)).toBe(false);
+    expect(conv.validate?.(null)).toBe(true);
     expect(conv.fromAttribute?.(null, { getAttribute: () => null, hasAttribute: () => false }, '')).toBe(null);
     expect(isClearableConverter(conv)).toBe(true);
+  });
+
+  it('toEnum with a default does not accept null on the property path', () => {
+    // absent → the default, so null is not the unset value
+    expect(toEnum(['a', 'b'] as const, { default: 'a' }).validate?.(null)).toBe(false);
+    expect(toEnum(['a', 'b'] as const, { default: 'a', shouldNullOnInvalid: true }).validate?.(null)).toBe(false);
   });
 
   it('toEnum with a default is NOT clearable — unset falls to the default', () => {

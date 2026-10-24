@@ -135,7 +135,7 @@ Common cases stay one-liners; the converter is where "ensure the value is
 correct" is enforced. Naming: `to<Type>` — "convert the raw value to a …".
 
 ```ts
-toEnum(values, { default?, shouldNullOnInvalid? })  // exact-match against the set; invalid → default (or null)
+toEnum(values, { default?, shouldNullOnInvalid? })  // exact-match against the set; invalid → default (or null; with no default, el.x = null clears it too)
 toInt({ min?, max?, default? })                // parse + range-check; NaN/out-of-range → default
 toFloat({ min?, max?, default? })
 toText({ shouldTrim?, isEmptyAllowed?, isNullable?, default? })  // string (NOT toString). isNullable:true → absent/empty is null (optional string), not ''

@@ -108,6 +108,17 @@ class ReflectElement extends BlissElement {
 }
 define('reflect-element', ReflectElement as unknown as CustomElementConstructor);
 
+// A nullable enum (`shouldNullOnInvalid`, no default): null is the unset value.
+class NullableEnumElement extends BlissElement {
+  protected static override inputs: readonly InputDef[] = [
+    { configKey: 'size', attribute: 'size', converter: toEnum(['sm', 'lg'] as const, { shouldNullOnInvalid: true }), shouldReflect: true },
+  ];
+  peek(): Readonly<Record<string, unknown>> {
+    return this.config;
+  }
+}
+define('nullable-enum-element', NullableEnumElement as unknown as CustomElementConstructor);
+
 // Unusual: a subclass that claims `dir` as its own input attribute. It must take
 // the normal parse/stage/react path — NOT the always-observed directionChanged hook.
 class DirInputElement extends BlissElement {
@@ -409,6 +420,29 @@ describe('BlissElement reflection', () => {
     (el as unknown as { mode: string }).mode = 'b';
     expect(el.getAttribute('count')).toBe('42');
     expect(el.getAttribute('mode')).toBe('b');
+  });
+
+  it('a nullable enum clears via `el.x = null` like removing the attribute (no warning)', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const el = new NullableEnumElement();
+    document.body.appendChild(el);
+    const host = el as unknown as { size: string | null };
+
+    host.size = 'lg';
+    await tick();
+    expect(el.peek().size).toBe('lg');
+    expect(el.getAttribute('size')).toBe('lg');
+
+    host.size = null;
+    await tick();
+    expect(el.peek().size).toBeNull();
+    expect(el.hasAttribute('size')).toBe(false);
+
+    host.size = 'huge' as never; // an unknown value is still rejected
+    await tick();
+    expect(el.peek().size).toBeNull();
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
   });
 
   it('does not double-process a reflected change (no attribute feedback loop)', async () => {

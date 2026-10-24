@@ -22,6 +22,9 @@ describe('toEnum', () => {
     const c = toEnum(SELECTION, { shouldNullOnInvalid: true });
     expect(c.values).toEqual(SELECTION);
     expect(c.fromAttribute!('nope', reader(), 'x')).toBeNull();
+    // null is the unset value on the property path too; unknown strings are still rejected
+    expect(c.validate!(null)).toBe(true);
+    expect(c.validate!('nope')).toBe(false);
   });
 });
 
