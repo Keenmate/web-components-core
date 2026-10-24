@@ -482,11 +482,11 @@ Grid had no events and three item shapes; it now matches ms / drp / treeview. Ve
 Run as three parallel agents on a shared brief, each verified afterwards (typecheck, unit, full
 e2e on a private port):
 
-| component | commits | unit | e2e | proposed version |
+| component | commits | unit | e2e | version |
 |---|---|---|---|---|
-| web-dropzone | 0cf400e, 98a3084 | 9 → 12 | 147 → 166 (+2 skipped) | 2.0.0-rc01 (was 1.0.0-rc02) |
-| web-commandpalette | 3f53918, 4452513 | 67 → 78 | 67 → 77 | 2.0.0-rc01 (was 1.0.0-rc02) |
-| web-editor | 79bd497, 6e11ed6 | 81 → 94 | 8 → 18 | 1.0.0-rc01 (unpublished 0.0.1) |
+| web-dropzone | 0cf400e, 98a3084 | 9 → 12 | 147 → 166 (+2 skipped) | **1.0.0-rc03** (decided; no stable 1.0.0 published) |
+| web-commandpalette | 3f53918, 4452513 | 67 → 78 | 67 → 77 | **1.0.0-rc03** (decided; no stable 1.0.0 published) |
+| web-editor | 79bd497, 6e11ed6 | 81 → 94 | 8 → 18 | **1.0.0-rc01** (decided; first release) |
 
 Decisions made in this phase:
 - **dropzone**: `DropzoneCore` → `DropzoneEngine`, `getStore()` → `el.controller`; the engine
