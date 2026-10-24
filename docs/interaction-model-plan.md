@@ -519,6 +519,35 @@ Follow-ups found:
   the old names.
 - editor: pipeline type fields `PipelineStage.interactive`, `PipelinePolicy.lock`,
   `InteractionResult.cancelled` predate the boolean rule (rename later).
+- grid (from phase 5): focus after a move-row built-in; built-ins run after the `action`
+  event; lock tooltip text not i18n'd; shortcuts help omits the range shortcuts.
+- consumers: the `keen-web-commandpalette` LiveView bridge needs the changes listed in
+  `docs/consumer-migration-plan.md`.
 
-Next: phase 7 (rc15 publish) — on hold until the user's `file:` testing is done.
+### Input presets — `getBatchValuesCallback` (2026-10-24, core f690ce8; grid 23faaa4 → efbc94a)
+
+Grid was the one component bypassing core's property path: its constructor replaced every
+engine-backed accessor with a synchronous `engine[key] = value` proxy (no validation, no
+reflection), for two reasons — `mode` cross-writes sibling inputs (a preset), and
+read-after-write of engine-derived state. Both now go through core:
+
+- **Core `InputDef.getBatchValuesCallback(value, config)`** returns `{ configKey: value }` for
+  other inputs, staged in the same batch, each through its own converter. Inputs set explicitly
+  in that batch win, whatever the order (markup attribute order too); a rejected explicit write
+  isn't explicit; one level only; runs on property / attribute / removal, not at construction.
+  Before the first connect, batch values reflect at the connect flush (reflecting mid-upgrade
+  swallowed the markup's attribute replay). Known gap: an invalid attribute string counts as
+  explicit. SPEC §6.2.
+- **Grid:** proxies + `reinit()` presence-gating removed — invalid property values now warn and
+  keep the previous one (`el.pageSize = null`). `MODE_PRESETS` (grid.ts) feeds both the engine's
+  `mode` setter (standalone engine) and the input; `#applyConfig` applies `mode` first so core's
+  resolved values land after the engine's preset (kept deliberately — no order dependence for the
+  consumer). Read-after-write follows core's convention: `this.flush()` at the top of public
+  methods and computed getters, and in the controller's engine accessor; `el.engine` is internal
+  and fed on the flush. `cellSelectionMode` became an input (`cell-selection-mode`); UI-driven
+  input writes (page-size select, freeze menu) use `setAttributes()`. e2e `inputs.spec.ts` (8);
+  full suite 328 pass.
+
+Next: web-multiselect review (user, next session). Phase 7 (rc15 publish) — on hold until the
+user's `file:` testing is done.
 
