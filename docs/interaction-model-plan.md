@@ -511,8 +511,8 @@ Decisions made in this phase:
   treeview, grid behave the same). An eager `runAction` variant was suggested as optional.
 
 Follow-ups found:
-- core: `toEnum(…, { shouldNullOnInvalid: true })` rejects `null` assigned as a property while
-  removing the attribute works (cp example pages hit it) — check the property path.
+- ~~core: `toEnum(…, { shouldNullOnInvalid: true })` rejected `null` assigned as a property~~ —
+  fixed in core 6a29a75 (both paths clear it).
 - dropzone: `ai/*.txt` and `docs/api-reference.html` are stale copies from web-multiselect;
   `examples-sharepoint-collisions.html` queries rows with `document.querySelector` although they
   render in shadow DOM (possibly broken, not investigated); CLAUDE.md (user WIP) still documents
