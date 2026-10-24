@@ -89,9 +89,13 @@ destroy on `disconnect()`:
 - editor `web-component.ts:308-316` (engine torn down → undo history lost; tables lost, ED-1)
 - cp `web-component.ts:627` (`close()` on disconnect — maybe intentional for an overlay)
 
-Each repo's `lifecycle.spec.ts` (below) pins the intended behaviour; decide per component whether
-a move must keep state (likely yes for dropzone/editor/drp, "close cleanly" for cp) before the
-tests are written as passing or `test.fail`.
+**Decided 2026-10-24 (user):** a DOM move must **keep state** in dropzone, editor and
+daterangepicker (files + in-flight uploads; content, tables, undo, selection; selection, value,
+open state). The command palette **closes cleanly** (`close` once, focus restored, hotkeys still
+work after the move). Each repo's `lifecycle.spec.ts` pins this. The editor bugs ED-1 to ED-4 are
+fixed test-first, in the editor's lifecycle/content WP: the spec lands red, then the component
+fix turns it green. For drp/dz, the lifecycle spec lands as `test.fail` until the component is
+moved to activate/deactivate (a separate fix WP per repo).
 
 ## Per-component work packages
 
