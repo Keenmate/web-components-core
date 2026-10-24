@@ -120,6 +120,9 @@ export interface InputDef<V = unknown> {
   on?: Reactivity;
   /** reflect property → attribute? */
   shouldReflect?: boolean;
+  /** other inputs this value also sets, in the same batch (§6.2). */
+  getBatchValuesCallback?: (value: V, config: Readonly<Record<string, unknown>>) =>
+    Record<string, unknown> | null | undefined;
 }
 ```
 
@@ -308,6 +311,48 @@ protected override update(partial = {}) {
   `?? DEFAULT`-guarded (a raw `this._x = updates.x` later dereferenced) will now
   receive `null` where it used to receive nothing — that is a latent bug the old
   drop-the-null behavior hid; fix the merge, don't re-drop the null.
+
+### 6.2 Batch values — one input that also sets others (`getBatchValuesCallback`)
+
+Some inputs are presets: `<web-grid mode="excel">` also sets `editTrigger`,
+`isEditable`, … An input row declares that with `getBatchValuesCallback(value,
+config)`, which returns `{ configKey: value }` for the other inputs to set.
+Core applies them in the **same batch** as the triggering input, so the whole
+change is one `reinit()`/`update()` and `el.editTrigger` reads the new value
+right after `el.mode = 'excel'` (config is staged synchronously).
+
+```ts
+{ configKey: 'mode', attribute: 'mode', converter: toEnum(MODES, { default: 'none' }),
+  getBatchValuesCallback: (mode) =>
+    mode === 'excel' ? { editTrigger: 'navigate', isEditable: true } : null }
+```
+
+Rules:
+
+- **When it runs:** whenever the input is set — property, attribute, attribute
+  removal (with the default) — including a re-set to the same value. Not at
+  construction: defaults are seeded as-is, so keep them consistent.
+- **Each value goes through its own input's converter** (`validate`, the property
+  path) and reflects like a property write (before the first connect, at that
+  connect's flush — reflecting mid-upgrade would swallow the initial attribute
+  replay). An invalid value or unknown key warns
+  and is skipped; the rest still apply, and the triggering input is set
+  regardless. A throwing callback warns and sets nothing else.
+- **Explicit wins within a batch.** An input set explicitly (property or
+  attribute) in the same batch is never overridden by a returned value, whatever
+  the order — `<web-grid mode="excel" edit-trigger="click">` keeps `click`, as do
+  `el.editTrigger = 'click'; el.mode = 'excel'` in one tick. A *rejected*
+  property write isn't explicit (it never happened), so the returned value
+  applies. The batch ends at the flush (microtask, `flush()`, `batch()`,
+  `setAttributes()`, or connect while detached).
+- **Across batches the last write wins:** a later `el.mode = 'excel'` overwrites
+  an `editTrigger` set in an earlier batch.
+- **One level only:** returned values don't run their own
+  `getBatchValuesCallback` (no cascades, no cycles).
+- **Known gap:** the attribute path has no rejection — an invalid attribute
+  string resolves to the converter's fallback and still counts as explicit, so
+  `<web-grid mode="excel" edit-trigger="bogus">` ends with `editTrigger` at its
+  default, not the batch value.
 
 ---
 

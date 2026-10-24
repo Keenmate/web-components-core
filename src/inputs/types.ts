@@ -50,6 +50,24 @@ export interface InputDef<V = unknown> {
   /** Reflect property → attribute on assignment? Requires `attribute` + `converter.toAttribute`. */
   shouldReflect?: boolean;
   /**
+   * Other inputs this value also sets, applied in the SAME batch (one
+   * `reinit()`/`update()`), keyed by `configKey`. Called whenever this input is
+   * set (property, attribute, removal → its default; NOT at construction), with
+   * the new value and the current config. Return `null`/`undefined`/`{}` to set
+   * nothing else.
+   *
+   * Each returned value goes through that input's own converter (rejected or
+   * unknown keys warn and are skipped) and reflects like a property write. An
+   * input set **explicitly** in the same batch wins over a returned value,
+   * whatever the order (`<x-el mode="excel" edit-trigger="click">` keeps
+   * `click`); across batches the last write wins. One level only: values set
+   * here don't run their own `getBatchValuesCallback`. SPEC §6.2.
+   */
+  getBatchValuesCallback?: (
+    value: V,
+    config: Readonly<Record<string, unknown>>,
+  ) => Record<string, unknown> | null | undefined;
+  /**
    * Human description for docs / editor IntelliSense (the CEM tooling reads it —
    * SPEC §12.4). The table already carries the STRUCTURE (name, type, default);
    * this is the "extra help text" only a person can write. Ignored at runtime.

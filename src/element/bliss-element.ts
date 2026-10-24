@@ -106,6 +106,18 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   readonly #boundFlush = (): void => this.#flush();
   #pending: Record<string, unknown> | null = null;
   #pendingReinit = false;
+  /**
+   * configKeys set explicitly (property or attribute) since the last flush.
+   * A `getBatchValuesCallback` value never overrides one of these (SPEC §6.2).
+   */
+  #explicitKeys: Set<string> | null = null;
+  /**
+   * Batch values staged before the first connect, reflected at that connect's
+   * flush. Reflecting during upgrade would make the browser run the element's
+   * pending attribute reactions inside our reflect guard — swallowing the
+   * initial attribute replay (`edit-trigger="click"` lost to the batch value).
+   */
+  #deferredReflect: Set<InputDef> | null = null;
   #settleResolvers: Array<() => void> = [];
   #connectedOnce = false;
   /**
@@ -192,7 +204,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       this.#warn(`converter for "${def.configKey}" threw parsing attribute ${name}="${raw}"; using default`, err);
       resolved = this.#fallback(def);
     }
-    this.#stage(resolved);
+    this.#stageExplicit(def, resolved);
   }
 
   connectedCallback(): void {
@@ -848,16 +860,58 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       this.#warn(`rejected invalid value for property "${def.configKey}"; keeping previous value`, value);
       return false;
     }
-    this.#stage(resolved);
-    const { attribute, converter } = def;
-    if (def.shouldReflect && attribute && converter?.toAttribute) {
-      const attrVal = converter.toAttribute(resolved.value as never);
-      this.#withoutReflect(() => {
-        if (attrVal === null) this.removeAttribute(attribute);
-        else this.setAttribute(attribute, attrVal);
-      });
-    }
+    this.#stageExplicit(def, resolved, true);
     return true;
+  }
+
+  /** Reflect a just-staged property value to its attribute, if the row asks for it. */
+  #reflect(def: InputDef, value: unknown): void {
+    const { attribute, converter } = def;
+    if (!def.shouldReflect || !attribute || !converter?.toAttribute) return;
+    const attrVal = converter.toAttribute(value as never);
+    this.#withoutReflect(() => {
+      if (attrVal === null) this.removeAttribute(attribute);
+      else this.setAttribute(attribute, attrVal);
+    });
+  }
+
+  /**
+   * Stage an explicitly set input (property → reflected; attribute → already
+   * there), then the values its `getBatchValuesCallback` returns into the same
+   * batch (SPEC §6.2).
+   */
+  #stageExplicit(def: InputDef, resolved: Resolved, isProperty = false): void {
+    (this.#explicitKeys ??= new Set()).add(def.configKey);
+    this.#stage(resolved);
+    if (isProperty) this.#reflect(def, resolved.value);
+    if (def.getBatchValuesCallback) this.#stageBatchValues(def, resolved.value);
+  }
+
+  #stageBatchValues(source: InputDef, value: unknown): void {
+    let values: Record<string, unknown> | null | undefined;
+    try {
+      values = source.getBatchValuesCallback!(value as never, this.#config);
+    } catch (err) {
+      this.#warn(`getBatchValuesCallback of "${source.configKey}" threw; no other inputs set`, err);
+      return;
+    }
+    if (!values) return;
+    for (const [key, v] of Object.entries(values)) {
+      const def = this.#byConfigKey.get(key);
+      if (!def || key === source.configKey) {
+        this.#warn(`getBatchValuesCallback of "${source.configKey}" returned ${def ? 'its own key' : 'unknown input'} "${key}"; skipped`);
+        continue;
+      }
+      if (this.#explicitKeys?.has(key)) continue; // set explicitly in this batch — it wins
+      const resolved = resolveFromProperty(def, v);
+      if (!resolved) {
+        this.#warn(`getBatchValuesCallback of "${source.configKey}" returned an invalid value for "${key}"; skipped`, v);
+        continue;
+      }
+      this.#stage(resolved);
+      if (this.#connectedOnce) this.#reflect(def, resolved.value);
+      else (this.#deferredReflect ??= new Set()).add(def);
+    }
   }
 
   /** Write our own attribute without `attributeChangedCallback` feeding it back in. */
@@ -892,6 +946,14 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     const partial = this.#pending;
     this.#pendingReinit = false;
     this.#pending = null;
+    if (this.#deferredReflect) {
+      // An input set explicitly since (markup attribute, property) keeps its own state.
+      for (const def of this.#deferredReflect) {
+        if (!this.#explicitKeys?.has(def.configKey)) this.#reflect(def, this.#config[def.configKey]);
+      }
+      this.#deferredReflect = null;
+    }
+    this.#explicitKeys = null; // the batch ends here
     try {
       // A reinit rebuilds from full config, so it absorbs any update keys in the batch.
       if (reinit) this.reinit();

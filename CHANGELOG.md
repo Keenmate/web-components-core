@@ -46,6 +46,11 @@ One shape for events, callbacks and clickable items across every KM component
   `resolveMenuEntries`, `getMenuChildren`, `menuDivider`, `isMenuDivider`,
   `normalizeActionItems`, `readActionDataset`, and `runAction` (fixed order:
   `beforeActionCallback` → `onClick` → `action` event → built-in; busy guard).
+- **`InputDef.getBatchValuesCallback(value, config)`** — an input that also sets
+  others (a preset such as web-grid's `mode`). The returned `{ configKey: value }`
+  map is staged in the same batch, each value through its own converter;
+  inputs set explicitly in that batch win, whatever the order. One level only.
+  SPEC §6.2.
 
 ### Changed — BREAKING (naming review, no aliases)
 
