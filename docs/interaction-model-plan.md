@@ -476,3 +476,49 @@ Grid had no events and three item shapes; it now matches ms / drp / treeview. Ve
   handler runs first.
 - **Docs/examples by an agent** with the same migration scripts used for the fixtures
   (`mig_regex.py`, `mig_items.py` in `%TEMP%/wg-migrate`).
+
+### Phase 6 — dropzone, commandpalette, editor done (2026-10-24, all on `prod`)
+
+Run as three parallel agents on a shared brief, each verified afterwards (typecheck, unit, full
+e2e on a private port):
+
+| component | commits | unit | e2e | proposed version |
+|---|---|---|---|---|
+| web-dropzone | 0cf400e, 98a3084 | 9 → 12 | 147 → 166 (+2 skipped) | 2.0.0-rc01 (was 1.0.0-rc02) |
+| web-commandpalette | 3f53918, 4452513 | 67 → 78 | 67 → 77 | 2.0.0-rc01 (was 1.0.0-rc02) |
+| web-editor | 79bd497, 6e11ed6 | 81 → 94 | 8 → 18 | 1.0.0-rc01 (unpublished 0.0.1) |
+
+Decisions made in this phase:
+- **dropzone**: `DropzoneCore` → `DropzoneEngine`, `getStore()` → `el.controller`; the engine
+  `notify()`s, the renderer patches the DOM, the element `emit()`s (non-composed, present
+  tense: `file-add`, `files-change`, `file-upload-complete`, `ready`, …); satellites (not
+  BlissElement) dispatch `summary-activate` / `queue-open` themselves with the store's context,
+  and bind through an internal non-flushing controller copy (`store-link.ts`) — flushing from a
+  satellite mid-dispatch tore the satellite down. `beforeFilesAddCallback` may return a
+  replacement `File[]`; internal controls use `data-dz-action`. Row actions (pause / resume /
+  retry) stay internal — not host-configurable items yet.
+- **commandpalette**: `cp-*` prefix dropped; `cp-command` + `cp-complete` → one `action`
+  (`source: 'palette'`, `selections`); a veto steps a finished wizard back to its last answer.
+  `Command.name/shortcut/hotkey` → `text/trigger/shortcut`; `Result` / `Selection` /
+  `UsageEntry` keep their data names (stored in recents — renaming would blank users' history).
+  `signal` is non-enumerable on provider ctxs (callback args stay JSON for the LiveView bridge).
+- **editor**: toolbar / selection toolbar / context menu are core action items (`action` =
+  command name, defaults from the command registry incl. `isActive`); keyboard shortcuts stay
+  ProseMirror keymaps (no `action` event, not vetoable); `el.engine` → `el.controller`; new
+  `lock-change` event and `interactionHost` input. Pipeline `run(ctx, rt)` stays two-arg (plugin
+  reducer contract, not a consumer callback).
+- **All three**: `runAction` is async, so `action` fires a microtask after the click (ms, drp,
+  treeview, grid behave the same). An eager `runAction` variant was suggested as optional.
+
+Follow-ups found:
+- core: `toEnum(…, { shouldNullOnInvalid: true })` rejects `null` assigned as a property while
+  removing the attribute works (cp example pages hit it) — check the property path.
+- dropzone: `ai/*.txt` and `docs/api-reference.html` are stale copies from web-multiselect;
+  `examples-sharepoint-collisions.html` queries rows with `document.querySelector` although they
+  render in shadow DOM (possibly broken, not investigated); CLAUDE.md (user WIP) still documents
+  the old names.
+- editor: pipeline type fields `PipelineStage.interactive`, `PipelinePolicy.lock`,
+  `InteractionResult.cancelled` predate the boolean rule (rename later).
+
+Next: phase 7 (rc15 publish) — on hold until the user's `file:` testing is done.
+

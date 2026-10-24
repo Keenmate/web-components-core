@@ -109,8 +109,16 @@ item to a custom `id`.
 - **theme-designer/app** (5 files, ~6 hits), **svelte-pure-admin/docs** (3 files, ~2 hits),
   **pure-admin/demo** (1 file, none of the changed names) — small.
 
-**keen-web-commandpalette** — survey after phase 6 (the component inventory in
-`docs/interaction-inventory/` lists the names that change).
+**keen-web-commandpalette** (LiveView bridge, after phase 6) — must: listen to `select` /
+`action` (was `cp-select` / `cp-complete` / `cp-command`) and read `detail.id` (was
+`commandId`); install `searchCallback({ scope, term, signal })` and
+`getStepOptionsCallback(ctx)`, pushing `term` (was `query`); send commands / contexts / options
+with the new fields (`text`, `trigger`, `shortcut`, `isLiveSearch`, `isFreeTextAllowed`).
+`data-search-event` / `data-step-options-event` are unchanged.
+
+**web-dropzone / web-editor consumers** — not surveyed yet (do it before rc15): the react/vue
+dropzone examples used `files-changed`; structural-mode markup must rename
+`data-action="remove"` / `"row-action"` to `data-dz-action`.
 
 **web-component-framework-test** (surveyed 2026-10-23) — `file:` links. **Runtime lines fixed
 2026-10-24** (not a git repo — the originals are `%TEMP%/multiselect-boot.js.bak` /
