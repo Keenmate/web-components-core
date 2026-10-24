@@ -408,9 +408,9 @@ migrated with the docs). Core additions: `runBeforeCallbackEager` (63a51c0) and
   `engine.getController()` after `flush()`.
 - **Exception kept positional:** `selectedOrderCompareCallback(a, b)` — handed straight to
   `Array.prototype.sort`.
-- **Open:** ms is `2.6.0-rc0x` (a minor rc over published 2.5.0) but now breaking; `^2.x`
-  consumers (showcase `^2.5.0`, pure-admin) would auto-pull a stable 2.6.0 → recommend 3.0.0; decide
-  2.6 vs 3.0 at the rc15 publish (phase 7).
+- **Decided (2026-10-24):** ms ships the breaking change as **3.0.0-rc01** (not 2.6.0 — `^2.x`
+  consumers such as showcase `^2.5.0` / pure-admin would auto-pull a stable 2.6.0). The unpublished
+  2.6.0-rc04 section was folded into `[Unreleased]`.
 
 ### Phase 4 — web-treeview done (2026-10-23, treeview ed5cb0c on `feature/rc03-svelte-parity`)
 

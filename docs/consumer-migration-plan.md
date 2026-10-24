@@ -71,8 +71,8 @@ in `text` must move to `icon`. `keen-web-multiselect-test` (path dep) has 0 hits
 in 13 route files (action-buttons, events-callbacks string-veto, custom-rendering
 `data-action="remove"`, external-search, tree, tooltips, basic, data-api, api/*) + ~35 rows in
 `src/lib/demo/api-data.ts`. ⚠ `^2.5.0` (and pure-admin/demo `^2.0.1`, theme-designer/app
-`^2.0.0-rc10`) would auto-pull a stable **2.6.0** — so ship the breaking change as **3.0.0**
-(decide at phase 7).
+`^2.0.0-rc10`) would auto-pull a stable **2.6.0** — so the breaking change ships as **3.0.0-rc01**
+(decided 2026-10-24); consumers bump to `^3.0.0-rc01`.
 
 **web-treeview-showcase** (surveyed 2026-10-23, after phase 4) — npm `^2.0.0-rc01`, installed
 rc01; already stale before this change (rc02–rc06 positional `on*` / `beforeDropCallback`,
