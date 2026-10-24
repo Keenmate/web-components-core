@@ -20,6 +20,8 @@ be migrated on their own schedule, in one pass per consumer, against a published
 | `web-multiselect-showcase` | ms | npm `^2.5.0` | bumped to the ms rc after phase 3 |
 | `web-treeview-showcase` | treeview | npm `^2.0.0-rc01` | bumped after phase 4 |
 | `web-grid-showcase` (SvelteKit) | grid | npm `^1.0.0` (+ npm overrides) | bumped after phase 5 |
+| `dhl-rdm-organiogram/frontend-pure` | grid | npm `^1.2.0-rc02` | bumped after phase 5 |
+| `theme-designer/app`, `svelte-pure-admin/docs`, `pure-admin/demo` | grid | npm `^1.1.0` / `^1.0.4` / pinned `1.2.0-rc02` | bumped after phase 5 |
 | `keen-web-daterangepicker` (Phoenix LiveView wrapper) | drp | **vendored bundle** in `priv/static` + hook `keen_web_daterangepicker_hook.js` | the bundle is refreshed |
 | `keen-web-multiselect` (+ `keen-web-multiselect-test`) | ms | vendored bundle + hook `keen_web_multiselect_hook.js` | the bundle is refreshed |
 | LiveView bridge for commandpalette (`@keenmate/keen-web-commandpalette`) | cp | consumes `cp-*` event names + `data-search-event` / `data-step-options-event` | bumped after phase 6 |
@@ -91,16 +93,31 @@ coordinate with that project.
 
 No svelte-treeview / LiveView / framework-test dependency on web-treeview.
 
-**web-multiselect-showcase / web-grid-showcase /
-keen-web-commandpalette** — survey after the respective component phase (the component
-inventory in `docs/interaction-inventory/` lists the names that change). Grid showcase is
-the biggest (22 routes, heavy `contextMenu` / `dividerBefore` / lowercase `on*` use — see
-`interaction-inventory/web-grid.md` §8).
+**web-grid consumers** (surveyed 2026-10-24, after phase 5; counts = old-API names in
+non-`node_modules` sources). ⚠ Every one of them (`^1.0.0`, `^1.0.4`, `^1.1.0`,
+`^1.2.0-rc02`) would auto-pull a stable **1.2.0** — so the break ships as **2.0.0-rc01**
+(proposed; grid `package.json` still says 1.2.0-rc02 until decided). Toolbar code that did
+add / delete / move in `ontoolbarclick` must drop it (the built-ins now act) or switch the
+item to a custom `id`.
+- **web-grid-showcase** — 28 files, ~300 hits: `contextMenu` / `headerContextMenu` items
+  (`label` / `visible` / `disabled` / `dividerBefore` / `onclick`), lowercase `on*`
+  (`ondatarequest` ×28, `onrowchange` ×25, `ontoolbarclick` ×10, …), `beforeCommitCallback`,
+  `fillDragCallback`, `rowToolbar`, `rowShortcuts`, `cellToolbar`, `onrowaction` (dead).
+  `src/lib/demo/api-data.ts` documents the props — regenerate from the grid README.
+- **dhl-rdm-organiogram/frontend-pure** — 13 files, ~80 hits (real app, not a demo) —
+  coordinate with that project.
+- **theme-designer/app** (5 files, ~6 hits), **svelte-pure-admin/docs** (3 files, ~2 hits),
+  **pure-admin/demo** (1 file, none of the changed names) — small.
 
-**web-component-framework-test** (surveyed 2026-10-23) — `file:` links, breaks now. Two
-runtime lines: `shared/multiselect-boot.js:74` `getSubtitleCallback = (item)` → `({ item })`;
-`shared/daterangepicker-boot.js:94` `'date-select'` → `'select'` (+ comment :81, test title
-`tests/web-daterangepicker.smoke.spec.ts:26`). Pre-existing: `el.displayMember` is not a prop.
+**keen-web-commandpalette** — survey after phase 6 (the component inventory in
+`docs/interaction-inventory/` lists the names that change).
+
+**web-component-framework-test** (surveyed 2026-10-23) — `file:` links. **Runtime lines fixed
+2026-10-24** (not a git repo — the originals are `%TEMP%/multiselect-boot.js.bak` /
+`daterangepicker-boot.js.bak`): `shared/multiselect-boot.js:74` `getSubtitleCallback =
+({ item })`, `shared/daterangepicker-boot.js` listens to `'select'` (+ its header comment).
+Left: the test title `tests/web-daterangepicker.smoke.spec.ts:26` still says `date-select`.
+Pre-existing: `el.displayMember` is not a prop.
 
 ## How (per consumer)
 

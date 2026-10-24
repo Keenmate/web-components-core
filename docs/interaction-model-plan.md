@@ -442,3 +442,37 @@ committed there. Conventions added:
   created in `TreeEngine` but never scheduled, so render stats never fired; follow-up if
   progressive-render notifications are wanted). Docs/examples: treeview 38a88c7, 0390ae1.
 
+### Phase 5 — web-grid done (2026-10-24, grid 8924b1d + 434556a on `prod`)
+
+Code + tests migrated (46 unit, 319 chromium e2e incl. a new `interaction-model.spec.ts`).
+Grid had no events and three item shapes; it now matches ms / drp / treeview. Version:
+proposed **2.0.0-rc01** (all grid consumers use `^1.x`). Conventions added:
+
+- **Engine notifies, element emits.** `GridEngine.attachHost(element, getController,
+  notify)` gives the engine a ctx prototype (`controller` / `element` as getters — inherited,
+  so non-enumerable and one allocation per per-cell ctx) and a `notify(name, detail)` that
+  the element routes to `emit()`. Modules call `ctx.engine.notify(...)`; no `on*` storage
+  in the engine. A standalone engine runs without a host (plain ctx, no events).
+- **One item layer for every surface** (`modules/items`): built-in defaults per surface
+  (`rowActionDefaults` / `cellMenuDefaults` / `headerMenuDefaults` — text from
+  `labels`, state like "move-up disabled on the first row"), `activateGridItem` (core
+  `runAction` + the built-in), and the built-ins. Toolbar, inline actions, cell toolbar,
+  both menus and both shortcut kinds all go through it.
+- **Built-ins do the work, factories shape the rows.** Row built-ins mutate `items`
+  (`insertRow` / `removeRows` / `duplicateRow` / `moveRow`, also on the controller);
+  `createEmptyRowCallback` / `createDuplicateRowCallback` let a consumer shape the new row
+  instead of re-implementing the action. Ctrl+Delete stays a *request* event (`row-delete`) —
+  deleting on a key without opt-in would surprise every editable grid.
+- **Menu-open hooks are sync before-hooks that may replace** (`beforeContextMenuOpenCallback`
+  → `false` / entries); they subsume the old "mutate the items in `on…open`" pattern.
+- **Mode flags replace "presence of a handler"** — server-side filtering was "an
+  `onfilterchange` is set"; with events that can't be detected, so it's `filterMode`.
+- **Option callbacks inside nested config** (`editorOptions.get*Callback`) get the grid's
+  ctx via a WeakMap from the options object to the grid's ctx factory, bound when
+  `columns` are set — no signature threading through ~50 helper calls.
+- **Shortcuts are action items bound to a key** (`shortcut` is the chord); a shortcut can
+  name a built-in (`{ shortcut: 'Ctrl+D', action: 'duplicate' }`). Document-level toolbar
+  shortcut listeners skip already-handled keydowns (`defaultPrevented`) — the focused cell's
+  handler runs first.
+- **Docs/examples by an agent** with the same migration scripts used for the fixtures
+  (`mig_regex.py`, `mig_items.py` in `%TEMP%/wg-migrate`).
