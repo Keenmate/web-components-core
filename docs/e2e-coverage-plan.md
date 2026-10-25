@@ -292,3 +292,91 @@ and `content` specs land as `test.fail` until fixed (fixing is a separate, user-
 The pageerror guard is now copied into 7 repos. Core's `/testing` subpath is runner-agnostic DOM
 fixtures; Playwright fixtures were explicitly deferred (SPEC §12.7). If drift appears, consider a
 `/testing/playwright` subpath exporting the guarded `test` — not part of this plan.
+
+## Results (2026-10-25): every WP executed
+
+All repos are on `prod`; nothing was pushed. Each repo's `test/NOTES.md` has the details, repro
+steps and fix ideas (grid: `docs/test/NOTES.md`; drp: `test/FINDINGS.md`). `test.fail` = pins a
+component bug.
+
+| Repo | Before | After | of which `test.fail` | Commits |
+|---|---|---|---|---|
+| web-daterangepicker | 286 | 379 | 20 | 5f6c0c8 … 434b261 |
+| web-treeview | 210 (+15 skip) | 382 (+11 skip: TV-4 ×10, TV-1) | 28 | 63b045a … e6c2be9 |
+| web-dropzone | 166 (+2 skip) | 302 | 14 | da467f0 … 4539a6e |
+| web-grid | 328 (+3 skip) | 548 | 38 | 1edd15e … 36028c6 |
+| web-commandpalette | 77 | 138 | 2 | a6476cb … 6918047 |
+| web-editor | 18 | 164 | 5 | 1a665cf … 5e5e46a (fix: 6b26107) |
+
+Fixed: **ED-1 to ED-4.** A DOM move now keeps the engine alive (deactivate/activate). It pauses
+ProseMirror's internal `domObserver` to avoid a leak, and `plugins` reassignment carries the
+content over as HTML.
+
+### Most serious open bugs (fix candidates)
+- **drp #17**: Apply never fires `select`/`change` or refreshes the form value, for any
+  `commit-mode="apply"` picker (incl. every time/datetime picker).
+- **drp #21**: any `on:'reinit'` change drops the selection while the input keeps the old text.
+- **grid GRID-1**: duplicated key handling. It is the root cause of the number-column type-to-edit
+  bug (#1), `getCopyValueCallback` never being used (#9 partly), the unsaveable new row (#17) and
+  GRID-2. Fix it first.
+- **grid #7**: drafts are keyed by row position → an edit shows on the wrong row after sort/page/filter.
+- **grid #21**: tooltip text isn't attribute-escaped (row data can inject attributes).
+- **treeview #8**: copies keep the source id → the original row vanishes (Ctrl+C/V, `duplicateNodes`).
+- **treeview #12**: `get*Callback`s see `node.data === undefined` during the initial insert → throws, renders nothing.
+- **treeview #18**: every config update re-inserts all data (wipes `search-text`, re-indexes).
+- **dropzone #9**: the worker pool doesn't refill → "Retry all" ignores `concurrency`.
+- **dropzone #10/#11**: popover "Add more" is dead; selector-toggles-popover is lost (leftover code in `dropzone.ts`).
+- **editor ED-9**: a `plugins` set that fails to assemble leaves the editor empty (content lost).
+- D1 lifecycle (keep state on a DOM move) still to do in drp (#16), dropzone (DZ-4) and treeview
+  (#15). The tests are written as `test.fail`.
+
+### Open questions for the user
+Core:
+- **ED-11**: an invalid *attribute* value falls back to the default silently; only an invalid
+  *property* value warns (`bliss-element.ts:860`). Should the attribute path warn too?
+
+drp:
+- #22: should `commit-mode="manual"` stage picks like `apply` (without the button), or commit without closing?
+- #19: what is `display-time-format-mask` for?
+- #27: should the relative `rolling-year-range` (`-5:+5`) be implemented, or the docs fixed?
+- #28: is RTL supported?
+
+treeview:
+- Should TV-4 (PageUp/PageDown, Shift-extend) be implemented?
+- Does D1 apply to the treeview?
+- Close TV-5? It does not reproduce.
+- TV-1: which items count as invalid?
+- Add `node-expand`/`node-collapse` events (with an async before-hook) for lazy loading?
+- Arrow/Enter keys inside the context menu?
+- #16: fix the `is-sorted`/`sortCallback` semantics, or document them?
+
+dropzone:
+- #11: should the button/minimal selector toggle the popover when there are files?
+- DZ-3: implement `value-format` or remove it?
+- #12: should `el.addFiles(files, opts)` forward the options?
+- Should a `mode` flip keep files, as D1 now does for moves?
+
+grid:
+- #4: filtering is API-only and the README promises per-column filters. Build a filter row, or remove the dead code?
+- #11: should the `*RowById` methods fall back to `idMember`?
+- #13: should Shift+Arrow and Shift+click range extension be added?
+- #15: what is the target for "built-ins run after `action`"?
+- #26: `editTrigger:'button'` renders no button. Implement it or remove it?
+- #33: should the grid move to core `/logging`? It still uses its own copy of loglevel.
+
+cp:
+- CP-2: what is the error signal for a failed search?
+- CP-3: should save-without-load warn, or just be documented?
+- Should errors print by default?
+- CP-4: should `open` become an input, or stop being reflected?
+
+editor:
+- Fix ED-5 to ED-9 now?
+- Is relying on ProseMirror's internal `domObserver` acceptable?
+- Commit trailer: `web-editor/CLAUDE.md` asks for `Opus 4.8`, while the session uses `Opus 5.5`.
+
+### Next work packages
+1. Answer the questions above.
+2. Fix WPs, one per repo, ordered by the list above. Turn each `test.fail` green and remove its marker.
+3. D1 lifecycle fix in drp, dropzone and treeview.
+4. Optional unit layers (drp, treeview).
