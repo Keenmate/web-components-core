@@ -32,6 +32,10 @@
     "./search": {
       "types": "./dist/search/index.d.ts",
       "import": "./dist/search/index.js"
+    },
+    "./menu": {
+      "types": "./dist/menu/index.d.ts",
+      "import": "./dist/menu/index.js"
     }
   },
   "files": [

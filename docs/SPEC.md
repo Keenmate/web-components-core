@@ -1187,3 +1187,37 @@ second activation ignored). The detail (`ActionEventDetail`) = surface context +
 authors (a `showMessage` body) participates via `data-action="custom"
 data-id="…"`; internal controls use a prefixed attribute so they can't collide.
 
+### 12.13 Menu (context / dropdown menus) — IMPLEMENTED (`src/menu/`, subpath `/menu`)
+
+**The gap.** web-treeview, web-grid and web-editor each rendered their own context
+menu from `/actions` data — three renderers, three positioning stacks, three dismiss
+rules, no keyboard model beyond shortcut letters + Esc.
+
+**API.** `openMenu(entries, ctx, opts) → MenuHandle { isOpen, element, close(),
+focusFirst(), update() }`. Options: `at` (viewport point or element), `host` (shadow
+root / element the levels are appended to; the stylesheet is adopted into its root),
+`runAction(item, { triggerElement, sourceEvent })` (the component's wrapper over core
+`runAction()` — a leaf closes the menu first, then runs; a `shouldCloseOnClick: false`
+item runs and its level re-renders when the returned promise settles),
+`onClose(reason)` (`'action' | 'escape' | 'tab' | 'outside-click' | 'scroll' | 'blur' |
+'overlay' | 'api'`), `renderItem(item, el, ctx, resolved)` (fill-or-fall-through),
+`renderMenu(el, close)` (full custom content; core still positions + dismisses),
+`defaults` / `prepareItem` (built-in state / rewrite, every level), `placement`,
+`offset`, `className`, `shouldFocusFirst`, `returnFocusTo`,
+`shouldCloseOnOutsideInteraction` (default `true`), `overlayGroup`, `loadingText`,
+`inheritThemeFrom`. No visible item → nothing rendered, a closed handle, no `onClose`.
+
+**Decisions.** Icons are inserted as HTML (developer-supplied, like action buttons);
+label and shortcut are text. Items are `div[role=menuitem][tabindex=-1]` (not buttons —
+no native Space/Enter click to double-fire). The keyboard is a capture `keydown` on the
+document while open, so the menu is keyboard-modal whether focus is in it or still on
+the opener; handled keys are consumed. Hover focuses items (roving focus follows the
+pointer). Focus returns to `returnFocusTo` only when the menu held focus and the close
+wasn't pointer-away (outside press / scroll / blur / overlay). `isActive` renders
+`aria-pressed` (the `/actions` convention). The menu registers with `registerOverlay`
+(one overlay open at a time). Styling: shared `bliss-menu`, `__item` (`--danger`
+`--active` `--disabled` `--has-submenu`), `__icon`, `__label`, `__shortcut`,
+`__divider` (`--named`), `__loading`, `--submenu`, `--custom`, `--has-icons`; every
+value reads `--bliss-menu-*` falling back to `--base-*`, in `@layer component`. A
+component maps its own variables onto `--bliss-menu-*` on its host.
+

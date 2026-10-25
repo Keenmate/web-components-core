@@ -1,0 +1,429 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// jsdom has no layout — record anchor() calls instead of positioning.
+const anchors: { floating: HTMLElement; reference: unknown; opts: Record<string, unknown>; destroy: ReturnType<typeof vi.fn> }[] = [];
+vi.mock('../positioning/anchor.js', () => ({
+  anchor: vi.fn((floating: HTMLElement, reference: unknown, opts: Record<string, unknown>) => {
+    const destroy = vi.fn();
+    anchors.push({ floating, reference, opts, destroy });
+    return { update: vi.fn(), destroy };
+  }),
+}));
+
+import { menuDivider } from '../actions/resolve.js';
+import type { MenuEntry } from '../actions/types.js';
+import { __resetOverlays, registerOverlay } from '../overlay/active-overlay.js';
+import { openMenu, type MenuCloseReason, type OpenMenuOptions } from './index.js';
+
+interface Ctx {
+  name: string;
+}
+const ctx: Ctx = { name: 'node' };
+
+let host: HTMLElement;
+let shadow: ShadowRoot;
+let opener: HTMLButtonElement;
+
+beforeEach(() => {
+  anchors.length = 0;
+  host = document.createElement('div');
+  shadow = host.attachShadow({ mode: 'open' });
+  opener = document.createElement('button');
+  shadow.append(opener);
+  document.body.append(host);
+});
+afterEach(() => {
+  document.body.replaceChildren();
+  __resetOverlays();
+  vi.useRealTimers();
+});
+
+const levels = () => Array.from(shadow.querySelectorAll<HTMLElement>('.bliss-menu'));
+const items = (level = levels()[0]!) => Array.from(level.querySelectorAll<HTMLElement>('.bliss-menu__item'));
+const byId = (id: string) => shadow.querySelector<HTMLElement>(`.bliss-menu__item[data-id="${id}"]`)!;
+const active = () => shadow.activeElement;
+const key = (k: string, init: KeyboardEventInit = {}) => {
+  const target = (shadow.activeElement as HTMLElement | null) ?? document.body;
+  const e = new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true, ...init });
+  target.dispatchEvent(e);
+  return e;
+};
+const flush = () => new Promise((r) => setTimeout(r, 0));
+
+function open(entries: readonly (MenuEntry<Ctx> | string)[], extra: Partial<OpenMenuOptions<Ctx>> = {}) {
+  const runAction = vi.fn();
+  const onClose = vi.fn<(reason: MenuCloseReason) => void>();
+  const handle = openMenu<Ctx>(entries, ctx, { at: { x: 10, y: 20 }, host: shadow, runAction, onClose, returnFocusTo: opener, ...extra });
+  return { handle, runAction, onClose };
+}
+
+const basic: MenuEntry<Ctx>[] = [
+  { id: 'a', text: 'Alpha', shortcut: 'a' },
+  { id: 'b', text: 'Beta', isDisabled: true, shortcut: 'b' },
+  menuDivider(),
+  { id: 'c', text: 'Gamma' },
+];
+
+describe('rendering', () => {
+  it('renders items, dividers, roles and states; positions at the point', () => {
+    const { handle } = open([
+      { id: 'x', text: 'X', icon: '<svg data-i="1"></svg>', shortcut: 'Ctrl+X', isDanger: true, cssClass: 'extra more' },
+      menuDivider('Group'),
+      { id: 'y', text: 'Y', isActive: true, tooltip: 'tip' },
+      { id: 'z', text: 'Z', isDisabled: true, children: [{ id: 'z1' }] },
+      { id: 'hidden', isVisible: false },
+    ]);
+    expect(handle.isOpen).toBe(true);
+    const [root] = levels();
+    expect(root!.getAttribute('role')).toBe('menu');
+    expect(root!.classList.contains('bliss-menu--has-icons')).toBe(true);
+    const [x, y, z] = items();
+    expect(items()).toHaveLength(3);
+    expect(x!.getAttribute('role')).toBe('menuitem');
+    expect(x!.tabIndex).toBe(-1);
+    expect(x!.dataset).toMatchObject({ action: 'custom', id: 'x' });
+    expect(x!.className).toBe('bliss-menu__item bliss-menu__item--danger extra more');
+    expect(x!.querySelector('.bliss-menu__icon svg')).not.toBeNull();
+    expect(x!.querySelector('.bliss-menu__shortcut')!.textContent).toBe('Ctrl+X');
+    expect(y!.classList.contains('bliss-menu__item--active')).toBe(true);
+    expect(y!.getAttribute('aria-pressed')).toBe('true');
+    expect(y!.title).toBe('tip');
+    expect(y!.querySelector('.bliss-menu__icon')!.innerHTML).toBe(''); // the icon column is reserved
+    expect(z!.getAttribute('aria-disabled')).toBe('true');
+    expect(z!.getAttribute('aria-haspopup')).toBe('menu');
+    expect(z!.getAttribute('aria-expanded')).toBe('false');
+    expect(z!.classList.contains('bliss-menu__item--has-submenu')).toBe(true);
+    const divider = root!.querySelector('.bliss-menu__divider')!;
+    expect(divider.getAttribute('role')).toBe('separator');
+    expect(divider.classList.contains('bliss-menu__divider--named')).toBe(true);
+    expect(divider.textContent).toBe('Group');
+    expect(anchors[0]!.opts).toMatchObject({ placement: 'bottom-start', offset: 0 });
+    expect(root!.style.left).toBe('10px');
+  });
+
+  it('icon is HTML; label and shortcut are escaped text', () => {
+    open([{ id: 'x', text: '<b>bold</b>', shortcut: '<i>', icon: '<b class="ic">!</b>' }]);
+    const x = byId('x');
+    expect(x.querySelector('.bliss-menu__icon b.ic')).not.toBeNull();
+    expect(x.querySelector('.bliss-menu__label')!.textContent).toBe('<b>bold</b>');
+    expect(x.querySelector('.bliss-menu__label b')).toBeNull();
+    expect(x.querySelector('.bliss-menu__shortcut')!.innerHTML).toBe('&lt;i&gt;');
+  });
+
+  it('renderItem fills an item; left empty, the default content renders', () => {
+    const renderItem = vi.fn((item: MenuEntry<Ctx>, el: HTMLElement, c: Ctx) => {
+      if ((item as { id?: string }).id === 'a') el.textContent = `custom ${c.name}`;
+    });
+    open(basic, { renderItem });
+    expect(byId('a').textContent).toBe('custom node');
+    expect(byId('c').querySelector('.bliss-menu__label')!.textContent).toBe('Gamma');
+    expect(renderItem).toHaveBeenCalledTimes(3);
+  });
+
+  it('adopts the stylesheet into the host root; extra className on every level', () => {
+    open([{ id: 's', text: 'S', children: [{ id: 's1', text: 'S1' }] }], { className: 'wtv-menu' });
+    const adopted = (shadow as { adoptedStyleSheets?: CSSStyleSheet[] }).adoptedStyleSheets?.length ?? 0;
+    expect(adopted + shadow.querySelectorAll('style').length).toBeGreaterThan(0);
+    byId('s').click();
+    expect(levels().every((l) => l.classList.contains('wtv-menu'))).toBe(true);
+    expect(levels()[1]!.classList.contains('bliss-menu--submenu')).toBe(true);
+  });
+
+  it('no visible item → nothing rendered, handle closed, onClose not called', () => {
+    const { handle, onClose } = open([{ id: 'h', isVisible: false }, menuDivider()]);
+    expect(handle.isOpen).toBe(false);
+    expect(handle.element).toBeNull();
+    expect(levels()).toHaveLength(0);
+    handle.close();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('defaults + prepareItem apply at every level', () => {
+    open(['copy', { id: 'more', text: 'More', children: [{ action: 'copy' }] }], {
+      defaults: (item) => (item.action === 'copy' ? { text: 'Copy!' } : undefined),
+      prepareItem: (item) => (item.action === 'copy' ? { ...item, shortcut: 'c' } : item),
+    });
+    expect(items()[0]!.querySelector('.bliss-menu__label')!.textContent).toBe('Copy!');
+    expect(items()[0]!.querySelector('.bliss-menu__shortcut')!.textContent).toBe('c');
+    byId('more').click();
+    expect(items(levels()[1])[0]!.querySelector('.bliss-menu__shortcut')!.textContent).toBe('c');
+  });
+
+  it('renderMenu takes over the root; core still positions and dismisses it', () => {
+    const { handle, onClose } = open(basic, {
+      renderMenu: (el, close) => {
+        el.innerHTML = '<button class="mine">x</button>';
+        el.querySelector('button')!.addEventListener('click', close);
+      },
+    });
+    const root = levels()[0]!;
+    expect(root.classList.contains('bliss-menu--custom')).toBe(true);
+    expect(root.hasAttribute('role')).toBe(false);
+    expect(items()).toHaveLength(0);
+    expect(anchors).toHaveLength(1);
+    root.querySelector<HTMLButtonElement>('.mine')!.click();
+    expect(handle.isOpen).toBe(false);
+    expect(onClose).toHaveBeenCalledWith('api');
+  });
+});
+
+describe('activation', () => {
+  it('a click closes first, then runs the item with the invocation', () => {
+    const order: string[] = [];
+    const { runAction, onClose } = open(basic, {
+      runAction: vi.fn(() => void order.push('run')),
+      onClose: vi.fn(() => void order.push('close')),
+    });
+    const a = byId('a');
+    a.click();
+    expect(order).toEqual(['close', 'run']);
+    expect(levels()).toHaveLength(0);
+    void runAction;
+    void onClose;
+  });
+
+  it('hands the item, trigger and event to runAction; a disabled item does nothing', () => {
+    const { runAction, handle } = open(basic);
+    byId('b').click();
+    expect(runAction).not.toHaveBeenCalled();
+    expect(handle.isOpen).toBe(true);
+    byId('c').click();
+    expect(runAction).toHaveBeenCalledOnce();
+    const [item, inv] = runAction.mock.calls[0]!;
+    expect(item).toBe(basic[3]);
+    expect(inv.triggerElement.dataset.id).toBe('c');
+    expect(inv.sourceEvent.type).toBe('click');
+  });
+
+  it('shouldCloseOnClick:false keeps it open and re-renders the level after the run', async () => {
+    let n = 0;
+    const entries: MenuEntry<Ctx>[] = [{ id: 'bump', shouldCloseOnClick: false, getTextCallback: () => `Bump ${n}` }];
+    let release!: () => void;
+    const { handle } = open(entries, { runAction: () => new Promise<void>((r) => (release = () => (n++, r()))) });
+    byId('bump').click();
+    expect(handle.isOpen).toBe(true);
+    expect(byId('bump').textContent).toBe('Bump 0');
+    release();
+    await flush();
+    expect(byId('bump').textContent).toBe('Bump 1');
+  });
+});
+
+describe('submenus', () => {
+  it('opens on hover, positions right of the owner, collapses after leaving', () => {
+    vi.useFakeTimers();
+    open([{ id: 'p', text: 'P', children: [{ id: 'p1', text: 'P1' }] }, { id: 'q', text: 'Q' }]);
+    const p = byId('p');
+    p.dispatchEvent(new MouseEvent('mouseenter'));
+    expect(levels()).toHaveLength(2);
+    expect(p.getAttribute('aria-expanded')).toBe('true');
+    expect(anchors[1]!.reference).toBe(p);
+    expect(anchors[1]!.opts).toMatchObject({ placement: 'right-start' });
+    byId('q').dispatchEvent(new MouseEvent('mouseenter'));
+    vi.advanceTimersByTime(200);
+    expect(levels()).toHaveLength(1);
+    expect(anchors[1]!.destroy).toHaveBeenCalled();
+    expect(p.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('entering the submenu cancels the collapse', () => {
+    vi.useFakeTimers();
+    open([{ id: 'p', text: 'P', children: [{ id: 'p1', text: 'P1' }] }]);
+    const p = byId('p');
+    p.dispatchEvent(new MouseEvent('mouseenter'));
+    p.dispatchEvent(new MouseEvent('mouseleave'));
+    levels()[1]!.dispatchEvent(new MouseEvent('mouseenter'));
+    vi.advanceTimersByTime(200);
+    expect(levels()).toHaveLength(2);
+  });
+
+  it('a lazy getChildrenCallback shows a loading row, then the items (with ctx)', async () => {
+    let resolve!: (e: MenuEntry<Ctx>[]) => void;
+    const getChildrenCallback = vi.fn((_c: Ctx) => new Promise<MenuEntry<Ctx>[]>((r) => (resolve = r)));
+    open([{ id: 'lazy', text: 'Lazy', getChildrenCallback }], { loadingText: 'Loading…' });
+    byId('lazy').click();
+    const sub = levels()[1]!;
+    expect(sub.querySelector('.bliss-menu__loading')!.textContent).toBe('Loading…');
+    expect(getChildrenCallback).toHaveBeenCalledWith(ctx);
+    resolve([{ id: 'l1', text: 'L1' }]);
+    await flush();
+    expect(sub.querySelector('.bliss-menu__loading')).toBeNull();
+    expect(byId('l1').textContent).toBe('L1');
+  });
+
+  it('a lazy submenu resolving to nothing closes again', async () => {
+    open([{ id: 'lazy', text: 'Lazy', getChildrenCallback: async () => [] }]);
+    byId('lazy').click();
+    expect(levels()).toHaveLength(2);
+    await flush();
+    expect(levels()).toHaveLength(1);
+  });
+});
+
+describe('keyboard', () => {
+  it('↓/↑ wrap and skip dividers + disabled; Home / End', () => {
+    open(basic);
+    key('ArrowDown');
+    expect(active()).toBe(byId('a'));
+    key('ArrowDown');
+    expect(active()).toBe(byId('c')); // skipped disabled b and the divider
+    key('ArrowDown');
+    expect(active()).toBe(byId('a')); // wrapped
+    key('ArrowUp');
+    expect(active()).toBe(byId('c'));
+    key('Home');
+    expect(active()).toBe(byId('a'));
+    key('End');
+    expect(active()).toBe(byId('c'));
+  });
+
+  it('↑ with nothing focused goes to the last item; handled keys are consumed', () => {
+    open(basic);
+    const e = key('ArrowUp');
+    expect(active()).toBe(byId('c'));
+    expect(e.defaultPrevented).toBe(true);
+  });
+
+  it('shouldFocusFirst / focusFirst() focus the first enabled item', () => {
+    open([{ id: 'off', isDisabled: true }, { id: 'on', text: 'On' }], { shouldFocusFirst: true });
+    expect(active()).toBe(byId('on'));
+  });
+
+  it('→ / Enter open a submenu focusing its first item; ← and Esc close it and refocus the owner', () => {
+    open([{ id: 'p', text: 'P', children: [{ id: 'p1', text: 'P1', isDisabled: true }, { id: 'p2', text: 'P2' }] }], {
+      shouldFocusFirst: true,
+    });
+    key('ArrowRight');
+    expect(levels()).toHaveLength(2);
+    expect(active()).toBe(byId('p2'));
+    key('ArrowLeft');
+    expect(levels()).toHaveLength(1);
+    expect(active()).toBe(byId('p'));
+    key('Enter');
+    expect(active()).toBe(byId('p2'));
+    key('Escape');
+    expect(levels()).toHaveLength(1);
+    expect(active()).toBe(byId('p'));
+  });
+
+  it('→ on a lazy submenu focuses its first item once loaded', async () => {
+    open([{ id: 'p', text: 'P', getChildrenCallback: async () => [{ id: 'p1', text: 'P1' }] }], { shouldFocusFirst: true });
+    key('ArrowRight');
+    await flush();
+    expect(active()).toBe(byId('p1'));
+  });
+
+  it('Enter / Space run a leaf; focus returns to returnFocusTo', () => {
+    const { runAction, onClose } = open(basic, { shouldFocusFirst: true });
+    key(' ');
+    expect(runAction).toHaveBeenCalledOnce();
+    expect(runAction.mock.calls[0]![1].sourceEvent.type).toBe('keydown');
+    expect(onClose).toHaveBeenCalledWith('action');
+    expect(active()).toBe(opener);
+  });
+
+  it('Esc on the root closes and returns focus; Tab closes without preventing default', () => {
+    const first = open(basic, { shouldFocusFirst: true });
+    key('Escape');
+    expect(first.onClose).toHaveBeenCalledWith('escape');
+    expect(active()).toBe(opener);
+    const second = open(basic, { shouldFocusFirst: true });
+    const e = key('Tab');
+    expect(second.onClose).toHaveBeenCalledWith('tab');
+    expect(e.defaultPrevented).toBe(false);
+    expect(active()).toBe(opener);
+  });
+
+  it('an item shortcut runs it even when focus is outside the menu; a disabled one does not', () => {
+    const { runAction } = open(basic);
+    opener.focus();
+    key('b');
+    expect(runAction).not.toHaveBeenCalled();
+    key('A');
+    expect(runAction).toHaveBeenCalledOnce();
+    expect(runAction.mock.calls[0]![0]).toBe(basic[0]);
+  });
+
+  it('a key-name shortcut (F2) matches exactly', () => {
+    const { runAction } = open([{ id: 'r', text: 'Rename', shortcut: 'F2' }]);
+    key('F2');
+    expect(runAction).toHaveBeenCalledOnce();
+  });
+
+  it('modified keys and unknown keys pass through', () => {
+    const { runAction } = open(basic);
+    expect(key('a', { ctrlKey: true }).defaultPrevented).toBe(false);
+    expect(key('z').defaultPrevented).toBe(false);
+    expect(runAction).not.toHaveBeenCalled();
+  });
+});
+
+describe('dismiss + cleanup', () => {
+  it('an outside pointerdown closes; inside does not; focus is not pulled back', () => {
+    const { handle, onClose } = open(basic, { shouldFocusFirst: true });
+    byId('a').dispatchEvent(new Event('pointerdown', { bubbles: true, composed: true }));
+    expect(handle.isOpen).toBe(true);
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true, composed: true }));
+    expect(handle.isOpen).toBe(false);
+    expect(onClose).toHaveBeenCalledWith('outside-click');
+    expect(active()).not.toBe(opener);
+  });
+
+  it('scroll outside (document or the host shadow root) and window blur close', () => {
+    const a = open(basic);
+    const scroller = document.createElement('div');
+    shadow.append(scroller);
+    scroller.dispatchEvent(new Event('scroll')); // not composed — seen via the shadow root
+    expect(a.onClose).toHaveBeenCalledWith('scroll');
+    const b = open(basic);
+    levels()[0]!.dispatchEvent(new Event('scroll'));
+    expect(b.handle.isOpen).toBe(true);
+    window.dispatchEvent(new Event('blur'));
+    expect(b.onClose).toHaveBeenCalledWith('blur');
+  });
+
+  it('another KM overlay opening closes it', () => {
+    const { onClose } = open(basic);
+    registerOverlay(() => {}).activate();
+    expect(onClose).toHaveBeenCalledWith('overlay');
+  });
+
+  it('shouldCloseOnOutsideInteraction:false ignores outside presses but Escape still closes', () => {
+    const { handle, onClose } = open(basic, { shouldCloseOnOutsideInteraction: false });
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true, composed: true }));
+    window.dispatchEvent(new Event('blur'));
+    expect(handle.isOpen).toBe(true);
+    key('Escape');
+    expect(onClose).toHaveBeenCalledWith('escape');
+  });
+
+  it('close() removes every level, destroys positioning and all document / window listeners', () => {
+    const docAdd = vi.spyOn(document, 'addEventListener');
+    const docRemove = vi.spyOn(document, 'removeEventListener');
+    const winAdd = vi.spyOn(window, 'addEventListener');
+    const winRemove = vi.spyOn(window, 'removeEventListener');
+    const { handle, onClose } = open([{ id: 'p', text: 'P', children: [{ id: 'p1', text: 'P1' }] }]);
+    byId('p').click();
+    expect(levels()).toHaveLength(2);
+    handle.close();
+    handle.close();
+    expect(levels()).toHaveLength(0);
+    expect(anchors.every((a) => a.destroy.mock.calls.length === 1)).toBe(true);
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledWith('api');
+    expect(docRemove.mock.calls.length).toBe(docAdd.mock.calls.length);
+    expect(winRemove.mock.calls.length).toBe(winAdd.mock.calls.length);
+    const e = key('ArrowDown');
+    expect(e.defaultPrevented).toBe(false);
+    docAdd.mockRestore();
+    docRemove.mockRestore();
+    winAdd.mockRestore();
+    winRemove.mockRestore();
+  });
+
+  it('an element `at` anchors to it with a 4px gap', () => {
+    open(basic, { at: opener, placement: 'top-start' });
+    expect(anchors[0]!.reference).toBe(opener);
+    expect(anchors[0]!.opts).toMatchObject({ placement: 'top-start', offset: 4 });
+  });
+});

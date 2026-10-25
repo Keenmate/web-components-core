@@ -27,14 +27,28 @@ export type { Placement, Strategy, Platform, VirtualElement };
  */
 export type MatchWidth = 'min' | 'exact' | 'max' | false;
 
+/** The object form of {@link AnchorOptions.offset} (floating-ui `offset()` axes, in px). */
+export interface AnchorOffset {
+  /** Gap away from the reference. */
+  mainAxis?: number;
+  /** Shift along the reference edge (skidding). */
+  crossAxis?: number;
+  /** Like `crossAxis`, but flips sign with an aligned placement (`-start` / `-end`). */
+  alignmentAxis?: number | null;
+}
+
 /** Options for the low-level {@link anchor} primitive. */
 export interface AnchorOptions {
   /** Preferred placement. Default `'bottom-start'`. */
   placement?: Placement;
   /** Positioning strategy. Default `'fixed'` (portal-friendly, avoids ancestor clipping). */
   strategy?: Strategy;
-  /** Gap between reference and floating, in px. Default `4`. */
-  offset?: number;
+  /**
+   * Gap between reference and floating, in px. Default `4`. The object form
+   * (floating-ui `offset()` axes) also shifts along the edge: `crossAxis` /
+   * `alignmentAxis` (e.g. a submenu nudged up to line up with its parent item).
+   */
+  offset?: number | AnchorOffset;
   /** Allow flipping to the opposite side on overflow. Default `true`. */
   shouldFlip?: boolean;
   /** Shift padding in px to stay in view, or `false` to disable. Default `8`. */

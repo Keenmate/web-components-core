@@ -371,6 +371,27 @@ const tip = createTooltip({ trigger, content: 'Help text', delay: { show: 200 } 
 `inheritThemeFrom` (copies `data-theme` onto portaled layers — C-CS-10), and a
 `platform` escape hatch.
 
+## Menu (`@keenmate/web-components-core/menu`)
+
+The shared context / dropdown menu over `/actions` entries: rendering, (lazy)
+submenus, positioning, outside-interaction dismiss and the WAI-ARIA menu keyboard.
+
+```ts
+import { openMenu } from '@keenmate/web-components-core/menu';
+
+const menu = openMenu(entries, ctx, {
+  at: { x: e.clientX, y: e.clientY },  // or an element
+  host: this.shadowRoot,                // where it renders (styles adopted there)
+  runAction: (item, { triggerElement, sourceEvent }) => this.activate(item, triggerElement, sourceEvent),
+  onClose: (reason) => { /* sync your state */ },
+  returnFocusTo: this.bodyEl,
+  shouldFocusFirst: isOpenedFromKeyboard,
+});
+menu.close();
+```
+
+Style it by setting `--bliss-menu-*` on your host (they default to the `--base-*` tokens).
+
 ## Search (`@keenmate/web-components-core/search`)
 
 Built-in search rules shared by every component with a search box: normalization

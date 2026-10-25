@@ -127,9 +127,12 @@ Clickable items (buttons / toolbars / menus) and the `action` event live in
 keeps a sync hook's flow synchronous). The cross-component
 migration is tracked in `docs/interaction-model-plan.md`.
 
+The shared context / dropdown menu lives in `src/menu/` (subpath `/menu`, SPEC
+§12.13): `openMenu(entries, ctx, opts)` over `/actions` + `/positioning`.
+
 Per-module design notes live next to the code and load when working there:
 `src/logging/`, `src/cem/`, `src/testing/`, `src/positioning/`, `src/dom/`,
-`src/search/` (each has a `CLAUDE.md`).
+`src/search/`, `src/menu/` (each has a `CLAUDE.md`).
 
 Note: `BlissElement`'s input-validation warnings deliberately bypass the
 `/logging` loggers and call `console.warn` directly, so they surface even when logging is disabled.

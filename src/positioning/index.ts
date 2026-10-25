@@ -23,6 +23,7 @@ export type { DriftReport } from './containing-block.js';
 export { platform } from '@floating-ui/dom';
 export type {
   AnchorHandle,
+  AnchorOffset,
   AnchorOptions,
   MatchWidth,
   Placement,

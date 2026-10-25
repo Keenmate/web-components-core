@@ -45,6 +45,21 @@ One shape for events, callbacks and clickable items across every KM component
 
 ### Added
 
+- **Shared menu — `@keenmate/web-components-core/menu`** (SPEC §12.13). `openMenu(entries,
+  ctx, { at, host, runAction, onClose, renderItem, renderMenu, … })` renders `/actions`
+  menu entries (HTML icon, escaped label / shortcut, danger / active / disabled, named
+  dividers, `cssClass`), submenus incl. lazy `getChildrenCallback` with a loading row,
+  positions every level through `/positioning` `anchor()` (cleaned up on close), dismisses
+  on outside press / scroll / wheel / window blur / another KM overlay (`registerOverlay`),
+  runs item shortcut keys, and implements the WAI-ARIA menu keyboard model (↑↓ wrap
+  skipping dividers + disabled, Home/End, →/Enter into a submenu, ←/Esc back to the parent
+  item, Enter/Space run, Esc/Tab close, roving focus, `menu` / `menuitem` / `separator`
+  roles, `aria-haspopup` / `aria-expanded` / `aria-disabled`). `shouldFocusFirst` /
+  `focusFirst()` for keyboard opens, `returnFocusTo` on close. Shared `bliss-menu*` BEM
+  classes styled by `--bliss-menu-*` custom properties defaulting to the `--base-*`
+  tokens, adopted into the host root (`adoptStyles`, `@layer component`).
+- **`anchor()` `offset`** also takes the object form `{ mainAxis, crossAxis, alignmentAxis }`
+  (`AnchorOffset`).
 - **`Converter.fromAttribute` gets an optional 4th argument, `reportInvalid(reason?)`**,
   which every built-in `to*` factory calls for an unusable present value. A
   custom converter that doesn't call it keeps the old silent-fallback behaviour.
