@@ -120,6 +120,29 @@ describe('instance line format', () => {
     make('solo').say('DRAG', 'warn', 'hello');
     expect(consoleLines(warn)).toEqual([`[CORE:ELEMENT] ${tag}#solo hello`]);
   });
+
+  it('this.log held from before the bundle registered follows it afterwards', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const tag = freshTag();
+    const ns = freshNs();
+    class El extends BlissElement {
+      get held(): Record<string, { warn(...a: unknown[]): void }> {
+        return this.log;
+      }
+    }
+    customElements.define(tag, El as unknown as CustomElementConstructor); // built before registration
+    const el = document.createElement(tag) as unknown as El;
+    (el as unknown as HTMLElement).id = 'early';
+    document.body.append(el as unknown as Node);
+    const held = el.held; // the CORE fallback proxy
+    registerComponent(tag, El as unknown as CustomElementConstructor, {
+      config: { name: 'x', version: '1' },
+      logging: createLoggers(ns, ['INIT', 'UI']),
+    });
+    held.UI!.warn('own category');
+    held.DRAG!.warn('unknown category');
+    expect(consoleLines(warn)).toEqual([`[${ns}:UI] #early own category`, `[${ns}:INIT] #early unknown category`]);
+  });
 });
 
 describe('default level warn', () => {

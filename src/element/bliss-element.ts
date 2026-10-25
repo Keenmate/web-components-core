@@ -397,9 +397,15 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   protected get log(): Record<string, InstanceLogger> {
     const { bundle, loggers } = getElementLoggers(this);
     if (bundle) return loggers;
-    // Not memoized against the bundle: a later registration still takes effect.
+    // Not memoized against the bundle: a later registration still takes effect,
+    // even through a reference held from before it (then it's the bundle's own
+    // category, or its first one for a name it doesn't define).
     return (this.#coreLogProxy ??= new Proxy({} as Record<string, InstanceLogger>, {
-      get: () => getElementLoggers(this).loggers.ELEMENT,
+      get: (_target, key) => {
+        const now = getElementLoggers(this);
+        if (!now.bundle) return now.loggers.ELEMENT;
+        return now.loggers[key as string] ?? now.loggers[now.bundle.LOGGING_CATEGORIES[0]!];
+      },
     }));
   }
 
