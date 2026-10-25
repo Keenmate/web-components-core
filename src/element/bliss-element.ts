@@ -197,14 +197,43 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     // A property assigned before upgrade wins over the initial attribute the
     // browser replays right after the constructor (see #preUpgradeKeys).
     if (!this.#connectedOnce && this.#preUpgradeKeys?.has(def.configKey)) return;
+    let isInvalid = false;
+    let reason: string | undefined;
     let resolved: Resolved;
     try {
-      resolved = resolveFromAttribute(def, raw, this as unknown as AttrReader);
+      resolved = resolveFromAttribute(def, raw, this as unknown as AttrReader, (r) => {
+        isInvalid = true;
+        reason ??= r;
+      });
     } catch (err) {
-      this.#warn(`converter for "${def.configKey}" threw parsing attribute ${name}="${raw}"; using default`, err);
-      resolved = this.#fallback(def);
+      this.#warn(`converter for "${def.configKey}" threw parsing attribute ${name}="${raw}"; keeping previous value`, err);
+      this.#restoreAttribute(def);
+      return;
+    }
+    if (isInvalid) {
+      // Same rule as the property path: warn, keep the current value (the default
+      // before any valid value), stage nothing — and it isn't an explicit write, so
+      // a batch value (getBatchValuesCallback) may still set this input.
+      this.#warn(
+        `rejected invalid value for attribute ${name}="${raw}"${reason ? ` (${reason})` : ''}; keeping previous value`,
+        this.#config[def.configKey],
+      );
+      this.#restoreAttribute(def);
+      return;
     }
     this.#stageExplicit(def, resolved);
+  }
+
+  /**
+   * After a rejected attribute value: a reflected input writes its current value
+   * back, so the DOM shows what the element uses. Non-reflected inputs leave the
+   * author's markup alone. Before the first connect it waits for that connect's
+   * flush (reflecting mid-upgrade would swallow the initial attribute replay).
+   */
+  #restoreAttribute(def: InputDef): void {
+    if (!def.shouldReflect) return;
+    if (this.#connectedOnce) this.#reflect(def, this.#config[def.configKey]);
+    else (this.#deferredReflect ??= new Set()).add(def);
   }
 
   connectedCallback(): void {
@@ -738,10 +767,6 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       this.#config[def.configKey] = value;
       if (def.field) (this as Record<string, unknown>)[def.field] = value;
     }
-  }
-
-  #fallback(def: InputDef): Resolved {
-    return { configKey: def.configKey, field: def.field, value: def.default, on: def.on ?? 'update' };
   }
 
   /** Sanity-check the input + event tables once per class; warn (never throw) on mistakes. */

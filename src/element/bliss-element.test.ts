@@ -347,15 +347,17 @@ describe('row-level default', () => {
   }
   define('row-default-element', RowDefaultElement as unknown as CustomElementConstructor);
 
-  it('applies when the converter has no default: absent, removed, unparsable', async () => {
+  it('applies when the converter has no default: absent, removed; unparsable keeps the previous value', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     const el = document.createElement('row-default-element') as unknown as RowDefaultElement & { size: unknown };
     expect(el.size).toBe(5);
     (el as unknown as HTMLElement).setAttribute('size', '7');
     expect(el.size).toBe(7);
+    (el as unknown as HTMLElement).setAttribute('size', 'abc');
+    expect(el.size).toBe(7);
     (el as unknown as HTMLElement).removeAttribute('size');
     expect(el.size).toBe(5);
-    (el as unknown as HTMLElement).setAttribute('size', 'abc');
-    expect(el.size).toBe(5);
+    vi.restoreAllMocks();
   });
 });
 

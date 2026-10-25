@@ -108,6 +108,10 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
   the console when authoring a table.
 - Removing an attribute is reactive: it resets that input to its `default`
   (absent == default), consistent with construction.
+- Invalid values follow one rule on both paths: warn and keep the previous value
+  (the default before any valid one). Converters flag a bad attribute string via
+  `fromAttribute`'s `reportInvalid` argument; a reflected input then writes its
+  current value back (SPEC §6).
 - Docs/IntelliSense are **secondary** and fed from JSDoc comments (BlissFramework
   C-CEM-13 format), *not* from the parser structure. Converter introspection
   (e.g. `toEnum(...).values`) is optional and nothing depends on it.

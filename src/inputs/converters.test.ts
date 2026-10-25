@@ -291,3 +291,44 @@ function reader(attrs: Record<string, string> = {}) {
     hasAttribute: (n: string) => n in attrs,
   };
 }
+
+describe('reportInvalid (attribute path)', () => {
+  /** Parse `raw` and return the reason reported, or `undefined` when it wasn't. */
+  const reported = (c: { fromAttribute?: (...a: never[]) => unknown }, raw: string | null): string | undefined => {
+    let reason: string | undefined;
+    let isInvalid = false;
+    (c.fromAttribute as (r: string | null, el: unknown, a: string, rep: (s?: string) => void) => unknown)(raw, reader(), 'x', (s) => {
+      isInvalid = true;
+      reason = s;
+    });
+    return isInvalid ? reason ?? '' : undefined;
+  };
+
+  it('reports an unusable present value, with a reason', () => {
+    expect(reported(toEnum(['a', 'b']), 'c')).toBe('expected one of a | b');
+    expect(reported(toInt(), 'abc')).toBe('not a number');
+    expect(reported(toInt({ min: 1, max: 5 }), '9')).toBe('out of range 1..5');
+    expect(reported(toFloat(), 'x')).toBe('not a number');
+    expect(reported(toBool('default-true'), 'maybe')).toBe('expected true | false');
+    expect(reported(toBool('tristate'), 'maybe')).toBe('expected true | false');
+    expect(reported(toBytes(), '1.5 HB')).toBe('expected a size like "10mb"');
+    expect(reported(toList({ itemType: 'int' }), '1,x')).toBe('expected integers separated by ","');
+    expect(reported(toList({ requiredCount: 2 }), 'a')).toBe('expected 2 items separated by ","');
+    expect(reported(toValue(), '{bad')).toBe('malformed JSON');
+    expect(reported(toObjectArray(), '{}')).toBe('expected a JSON array');
+    expect(reported(toObject(), '[]')).toBe('expected a JSON object');
+    expect(reported(toCustom((_raw, rep) => rep?.('nope')), 'z')).toBe('nope');
+  });
+
+  it('never reports absent, blank-as-unset or always-valid values', () => {
+    expect(reported(toEnum(['a']), null)).toBeUndefined();
+    expect(reported(toInt(), null)).toBeUndefined();
+    expect(reported(toInt(), '010')).toBeUndefined();
+    expect(reported(toBool('presence'), 'false')).toBeUndefined();
+    expect(reported(toBool('default-true'), '')).toBeUndefined();
+    expect(reported(toText(), '')).toBeUndefined();
+    expect(reported(toList(), '')).toBeUndefined();
+    expect(reported(toObject(), '  ')).toBeUndefined();
+    expect(reported(toBytes(), '10mb')).toBeUndefined();
+  });
+});

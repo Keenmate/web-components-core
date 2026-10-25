@@ -25,7 +25,10 @@ attribute change ─┐
 property assign  ─┘
 ```
 
-- An **attribute** change runs `converter.fromAttribute(raw)`.
+- An **attribute** change runs `converter.fromAttribute(raw)`. A value the
+  converter reports invalid warns and keeps the previous value (the default before
+  any valid value); a reflected input then writes that value back to the attribute.
+  Removing the attribute is never invalid: it resets to the default.
 - A **property** assignment runs `converter.validate(value)` (rejected values
   warn and keep the previous value), and reflects to an attribute if the input
   declares `shouldReflect: true`.

@@ -98,8 +98,10 @@ export type AttrReader = { getAttribute(n: string): string | null; hasAttribute(
 export type Reactivity = 'update' | 'reinit' | 'none';   // apply in place / full rebuild / store only
 
 export interface Converter<V> {
-  /** attribute path: raw string (null when absent/removed) → validated V (or fallback). */
-  fromAttribute?(raw: string | null, el: AttrReader, attr: string): V;
+  /** attribute path: raw string (null when absent/removed) → validated V (or fallback).
+   *  Call reportInvalid for an unusable present value (§6: warn + keep previous). */
+  fromAttribute?(raw: string | null, el: AttrReader, attr: string,
+                 reportInvalid?: (reason?: string) => void): V;
   /** property path: is this JS-assigned value acceptable? (callbacks, arrays, objects). */
   validate?(value: unknown): value is V;
   /** optional reflect V → attribute string. */
@@ -162,6 +164,14 @@ Each factory returns a `Converter<V>`; `toEnum`/`toList`/… set both
 assignment is validated against the same rules an attribute is parsed by.
 A brand-new input type is just a **new converter created anywhere** (in
 core or a component) — no core edit, no closed union.
+
+Every factory calls `reportInvalid(reason)` when a *present* attribute value
+can't be used (`page-size="abc"`, `mode="exel"`, malformed JSON, …), so core can
+warn and keep the previous value (§6). Never reported: an absent/removed
+attribute, `toText` (any string is text; `''` without `isEmptyAllowed` is
+"unset"), `toBool('presence')` (any value means on), a blank list/JSON. A custom
+converter that doesn't call it keeps the old behaviour — its fallback applies
+silently. `toCustom(parse)` passes `reportInvalid` to `parse` as a 2nd argument.
 
 ### Mapping the requirements
 
@@ -266,6 +276,16 @@ The `static inputs` table is sanity-checked once per class at construction
 without an `attribute` / without `converter.toAttribute`. Removing an attribute
 is reactive — it resets that input to its `default` (absent == default).
 
+**Invalid values — one rule for both paths: warn and keep the previous value.**
+A property value `validate` rejects, and an attribute value the converter reports
+invalid (or whose converter throws), both `console.warn` and stage nothing — no
+`reinit()`/`update()`, and the write isn't explicit for §6.2. Before any valid
+value the previous value is the default, so `<x page-size="abc">` in markup ends
+at the default. After a rejected attribute, an input with `shouldReflect` writes
+its current value back (before the first connect: at that connect's flush), so
+the DOM shows what the element uses; a non-reflected input leaves the markup
+alone. The write-back runs inside the reflect guard, so it can't re-enter.
+
 ### 6.1 The null-clear contract (`BlissElement` ↔ engine)
 
 The `partial` handed to `update()`, and the config an engine receives, carry
@@ -349,10 +369,9 @@ Rules:
   an `editTrigger` set in an earlier batch.
 - **One level only:** returned values don't run their own
   `getBatchValuesCallback` (no cascades, no cycles).
-- **Known gap:** the attribute path has no rejection — an invalid attribute
-  string resolves to the converter's fallback and still counts as explicit, so
-  `<web-grid mode="excel" edit-trigger="bogus">` ends with `editTrigger` at its
-  default, not the batch value.
+- **A rejected attribute isn't explicit either** (§6): `<web-grid mode="excel"
+  edit-trigger="bogus">` warns and ends with the batch value `navigate`, in
+  either attribute order.
 
 ---
 

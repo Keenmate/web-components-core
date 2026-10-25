@@ -121,6 +121,18 @@ describe('getBatchValuesCallback', () => {
     expect(el.editTrigger).toBe('navigate');
   });
 
+  it('a rejected attribute is not explicit either — in markup, whatever the order', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    for (const html of [
+      '<preset-element edit-trigger="clik" mode="excel"></preset-element>',
+      '<preset-element mode="excel" edit-trigger="clik"></preset-element>',
+    ]) {
+      const el = make(html);
+      expect(el.editTrigger).toBe('navigate');
+      expect(el.getAttribute('edit-trigger')).toBe('navigate'); // reflected: the bad markup is rewritten
+    }
+  });
+
   it('a rejected mode value does not run the callback', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const el = make();

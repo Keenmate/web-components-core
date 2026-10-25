@@ -25,8 +25,16 @@ export type Reactivity = 'update' | 'reinit' | 'none';
  * same rules an attribute string is parsed by — correctness can't drift.
  */
 export interface Converter<V> {
-  /** Attribute path: raw string (`null` when absent/removed) → validated `V` (or fallback). */
-  fromAttribute?(raw: string | null, el: AttrReader, attr: string): V;
+  /**
+   * Attribute path: raw string (`null` when absent/removed) → validated `V` (or fallback).
+   *
+   * Call `reportInvalid` when a present (non-`null`) `raw` can't be used. Core then
+   * warns, keeps the input's current value (the default before any valid value) and
+   * ignores the returned fallback. A converter that never calls it keeps the old
+   * behaviour: the returned fallback is applied silently. Absent/removed (`null`) is
+   * never invalid — it means "unset".
+   */
+  fromAttribute?(raw: string | null, el: AttrReader, attr: string, reportInvalid?: (reason?: string) => void): V;
   /** Property path: is this JS-assigned value acceptable? (callbacks, arrays, objects). */
   validate?(value: unknown): value is V;
   /** Optional reflect `V` → attribute string (`null` removes the attribute). */

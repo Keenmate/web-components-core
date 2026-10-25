@@ -332,7 +332,7 @@ content over as HTML.
 
 ### Open questions for the user
 Core:
-- **ED-11**: an invalid *attribute* value falls back to the default silently; only an invalid
+- ~~**ED-11**~~ RESOLVED 2026-10-25 (core: invalid attributes warn + keep the previous value; reflected inputs write it back). Was: an invalid *attribute* value fell back to the default silently; only an invalid
   *property* value warns (`bliss-element.ts:860`). Should the attribute path warn too?
 
 drp:

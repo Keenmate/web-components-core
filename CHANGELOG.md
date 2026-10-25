@@ -29,8 +29,26 @@ One shape for events, callbacks and clickable items across every KM component
   single argument of a component's `searchCallback(ctx)`. `SearchTermContext` gains
   `term` — the single argument of `getSearchTermCallback(ctx)`.
 
+### Changed
+
+- **An invalid attribute value now warns and keeps the previous value**, the same
+  rule as the property path. `el.setAttribute('page-size', 'abc')` on a
+  `page-size` of 25 used to reset it silently to the default; it now warns
+  (`rejected invalid value for attribute page-size="abc" (not a number); keeping
+  previous value`) and stays 25. In markup the previous value is the default, so
+  the result is unchanged there — only the warning is new. An input with
+  `shouldReflect` writes its current value back to the attribute. A rejected
+  attribute no longer counts as explicit for `getBatchValuesCallback`, so
+  `<web-grid mode="excel" edit-trigger="bogus">` gets the preset's `editTrigger`.
+  A converter that throws while parsing also keeps the previous value now (was:
+  the default). Removing an attribute still resets to the default.
+
 ### Added
 
+- **`Converter.fromAttribute` gets an optional 4th argument, `reportInvalid(reason?)`**,
+  which every built-in `to*` factory calls for an unusable present value. A
+  custom converter that doesn't call it keeps the old silent-fallback behaviour.
+  `toCustom(parse)` passes it to `parse` as a 2nd argument.
 - **`BlissElement`**: `controller` getter + `createController()` hook (the public
   facade, built once), `eventContext()` hook, `withContext(target)`; second type
   parameter `BlissElement<TEvents, TController>`. Event-table lint warns on a
