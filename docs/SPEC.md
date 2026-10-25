@@ -278,13 +278,20 @@ is reactive — it resets that input to its `default` (absent == default).
 
 **Invalid values — one rule for both paths: warn and keep the previous value.**
 A property value `validate` rejects, and an attribute value the converter reports
-invalid (or whose converter throws), both `console.warn` and stage nothing — no
+invalid (or whose converter throws), both warn and stage nothing — no
 `reinit()`/`update()`, and the write isn't explicit for §6.2. Before any valid
 value the previous value is the default, so `<x page-size="abc">` in markup ends
 at the default. After a rejected attribute, an input with `shouldReflect` writes
 its current value back (before the first connect: at that connect's flush), so
 the DOM shows what the element uses; a non-reflected input leaves the markup
 alone. The write-back runs inside the reflect guard, so it can't re-enter.
+
+The warning goes through the element's instance logger (`INIT` category, else the
+bundle's first; `[CORE:ELEMENT] tag#id` when the tag has no logging bundle) — it is
+visible at the default `warn` level and silenced by `disableLogging()` like any
+other line. *(Amended: these warnings used to bypass the loggers via a direct
+`console.warn`; that exception was revoked — core has no direct `console` calls,
+§12.1.)*
 
 ### 6.1 The null-clear contract (`BlissElement` ↔ engine)
 
@@ -551,6 +558,41 @@ Optional companion module: `createPerfLogger(namespace)` (treeview's
 `perfStart` / `perfEnd` / `perfMeasure` / `perfSummary`), opt-in per
 component.
 
+**Default level, core's own messages, page-wide switch** *(added after rc14)*:
+
+- **Every bundle starts at `warn`** (`DEFAULT_LOG_LEVEL`) — errors and warnings
+  visible out of the box; `enableLogging()` (default `debug`) adds info/debug;
+  `disableLogging()` silences everything. A level persisted in `localStorage`
+  (`km-log:NS:CAT`, only written by an explicit `logger.setLevel(x)` — the bundle
+  controls never persist) wins over the default. A second `createLoggers()` for
+  the same namespace keeps the current level.
+- **No direct `console.*` in core.** A core message with an element behind it is
+  logged through that element's instance logger (§12.3), so it carries the
+  component's namespace + instance: input validation under `INIT`, actions / menus /
+  `on<Name>` twins / `before*Callback`s under `UI`, falling back to the bundle's
+  first category when the component redefined its categories without that name.
+  A tag with no registered bundle (e.g. web-grid, which keeps its own logger) falls
+  back to core's own bundle `createLoggers('CORE', ['ELEMENT','ACTIONS','MENU','THEME'])`
+  with the tag kept in the label (`[CORE:ELEMENT] web-grid#main`). A message with no
+  element (`setThemeMode('sepia')`) uses the CORE bundle with no instance part.
+  Element resolution (`src/logging/element-logger.ts`): a custom element, a plain
+  element inside one's shadow root, a shadow root's host, or a ctx's `element`
+  (the component context). `resolveActionItem` / `resolveMenuEntries` /
+  `getMenuChildren` / `runBeforeCallback*` take an optional trailing `logSource`
+  (default: the ctx); `openMenu` passes its `host`, `runAction` its detail.
+- **Page-wide switch — `window.components.logging`** (non-enumerable; tag names
+  always contain a hyphen, so no clash, and enumerating `window.components` /
+  `getRegisteredTags()` still yields components only): `enableLogging(level?)`,
+  `disableLogging()`, `setLogLevel(level)`, `getCategories()` — the per-component
+  method names. Applies to every bundle created so far AND later (a late
+  `createLoggers()` adopts the current global level). Components bundle their own
+  core copy, so the state (bundle list, current level, the controls object) lives
+  on `globalThis[Symbol.for('@keenmate/web-components-core:logging')]` and is
+  shared by every copy. A later per-component call wins for that component (it
+  just sets that bundle's levels again); per-instance overrides apply on top.
+  `getGlobalLogging()` is the code-side handle. SSR-safe: no `window` → nothing
+  published.
+
 ### 12.2 Positioning — IMPLEMENTED (`src/positioning/`)
 
 **Status:** built as the `@keenmate/web-components-core/positioning` subpath over
@@ -660,6 +702,8 @@ auto-registered while the rest did not. Core consolidates it:
   `setCategoryLevel`/`getCategories`). Returns the entry (generic on the element
   type). SSR-safe: the global write is skipped without `window`, `define()`
   no-ops without `customElements`.
+- **Global logging switch** — `window.components.logging` (non-enumerable) drives
+  every bundle on the page incl. `CORE` and later registrations; see §12.1.
 - **Live-instance registry** — `BlissElement` adds itself to a per-tag `Set` on
   connect and removes itself on disconnect (a DOM move re-tracks the same
   element, no duplicate). `getInstances(tag)` returns the live elements; the
@@ -670,8 +714,10 @@ auto-registered while the rest did not. Core consolidates it:
   `getInstances()`.
 - **Per-instance logging** — `BlissElement` exposes `this.log` (an instance
   logger per category of the tag's `createLoggers` bundle, wired by
-  `registerComponent`'s `logging` option). Each line is prefixed with a `tag#id`
-  handle (the element's own `id` when set, else a `tag#n` counter) and gated by
+  `registerComponent`'s `logging` option). Each line reads
+  `[NAMESPACE:CATEGORY] #id` (the element's own `id` when set, read per line, else
+  a running number — the tag is not repeated; a tag with no bundle falls back to
+  `CORE:ELEMENT` labelled `tag#id`, §12.1) and is gated by
   the MORE verbose of the type-level category level and the
   instance's own override, emitting via `console` directly so an instance can
   log while its type stays silent. `element.enableLogging(level?)` /

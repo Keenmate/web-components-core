@@ -4,6 +4,7 @@ import { dispatch } from './dispatch.js';
 import { define } from './define.js';
 import { toBool, toCustom, toEnum, toFunction, toInt, toText } from '../inputs/converters.js';
 import type { InputDef } from '../inputs/types.js';
+import { consoleLines } from '../logging/console-line.test-util.js';
 
 const SELECTION = ['single', 'multiple', 'range'] as const;
 
@@ -277,7 +278,7 @@ describe('BlissElement', () => {
     expect(el.updates).toHaveLength(0);
     expect(el.reinits).toBe(0);
     expect(warn).toHaveBeenCalledOnce();
-    expect(warn.mock.calls[0]![0]).toContain('rejected invalid value for property "selectionMode"');
+    expect(consoleLines(warn)[0]).toContain('rejected invalid value for property "selectionMode"');
     warn.mockRestore();
   });
 
@@ -332,7 +333,7 @@ describe('BlissElement', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const el = new ThrowingElement(); // seedDefaults triggers the throwing converter
     expect(warn).toHaveBeenCalled();
-    expect(warn.mock.calls[0]![0]).toContain('threw computing its default');
+    expect(consoleLines(warn)[0]).toContain('threw computing its default');
     expect((el as unknown as { bad: unknown }).bad).toBeUndefined(); // fell back to (absent) default
     warn.mockRestore();
   });
@@ -584,7 +585,7 @@ describe('BlissElement lifecycle (build-once + activate/deactivate)', () => {
 
 describe('BlissElement table validation (warn-only, once per class)', () => {
   const tableWarnings = (warn: ReturnType<typeof vi.spyOn>): string[] =>
-    warn.mock.calls.map((c) => String(c[0])).filter((m) => m.includes('invalid input table'));
+    consoleLines(warn).filter((m) => m.includes('invalid input table'));
 
   it('warns on duplicate configKey', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});

@@ -134,8 +134,14 @@ Per-module design notes live next to the code and load when working there:
 `src/logging/`, `src/cem/`, `src/testing/`, `src/positioning/`, `src/dom/`,
 `src/search/`, `src/menu/` (each has a `CLAUDE.md`).
 
-Note: `BlissElement`'s input-validation warnings deliberately bypass the
-`/logging` loggers and call `console.warn` directly, so they surface even when logging is disabled.
+**No direct `console.*` in core** (SPEC §12.1). Core messages with an element
+behind them (input validation → `INIT`, actions / menus / twins / before-callbacks
+→ `UI`) go through that element's instance logger via `coreLog(source, category,
+coreCategory)` (`src/logging/element-logger.ts`); no element, or a tag with no
+logging bundle → core's `CORE` bundle (`ELEMENT/ACTIONS/MENU/THEME`). Every
+bundle defaults to `warn`; `window.components.logging` (non-enumerable) is the
+page-wide switch. The old "input-validation warnings bypass the loggers"
+exception is revoked — they're silenced by `disableLogging()` like everything else.
 
 ## `whenSettled()` / `flush()` (SPEC §12.7)
 

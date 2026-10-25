@@ -30,6 +30,7 @@
  */
 
 import { composedParent } from '../dom/composed-tree.js';
+import { coreLog } from '../logging/element-logger.js';
 import { once } from '../dom/once.js';
 
 /** A concrete color scheme. */
@@ -247,7 +248,7 @@ export function resolveThemeSource(host: Element, source: ThemeSource | undefine
       }
       found ??= document.querySelector(source);
     } catch {
-      console.warn(`[web-components-core] theme-source "${source}" is not a valid selector; using the page`);
+      coreLog(host, 'INIT', 'THEME').warn(`theme-source "${source}" is not a valid selector; using the page`);
       return null;
     }
   }
@@ -269,7 +270,7 @@ export function getThemeMode(): ThemeMode {
  */
 export function setThemeMode(mode: ThemeMode): void {
   if (mode !== 'auto' && mode !== 'dark' && mode !== 'light') {
-    console.warn(`[web-components-core] setThemeMode: unknown mode "${String(mode)}"; expected 'dark', 'light' or 'auto'`);
+    coreLog(null, 'INIT', 'THEME').warn(`setThemeMode: unknown mode "${String(mode)}"; expected 'dark', 'light' or 'auto'`);
     return;
   }
   const s = state();

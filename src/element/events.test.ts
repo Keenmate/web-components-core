@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BlissElement } from './bliss-element.js';
 import { normalizeEventDefs, defaultEventProperty } from './events.js';
+import { consoleLines } from '../logging/console-line.test-util.js';
 
 let seq = 0;
 function freshTag(): string {
@@ -341,7 +342,7 @@ describe('event-table lint (warn-only)', () => {
     customElements.define(tag, El as unknown as CustomElementConstructor);
     document.body.append(document.createElement(tag)); // construct → validate once
 
-    const messages = warn.mock.calls.map((c) => String(c[1] ?? c[0]));
+    const messages = consoleLines(warn);
     expect(messages.join('\n')).toMatch(/event "Select" should be lowercase/);
     expect(messages.join('\n')).toMatch(/duplicate event "change"/);
     expect(messages.join('\n')).toMatch(/property "onSelect" collides with an input configKey/);

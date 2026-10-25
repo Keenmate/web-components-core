@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { runBeforeCallback, runBeforeCallbackEager, runBeforeCallbackSync } from './before-callback.js';
+import { consoleLines } from '../logging/console-line.test-util.js';
 
 describe('runBeforeCallback', () => {
   it('unset → continue', async () => {
@@ -30,7 +31,7 @@ describe('runBeforeCallback', () => {
       isCancelled: true,
     });
     expect(error).toHaveBeenCalledTimes(2);
-    expect(String(error.mock.calls[1]![0])).toContain('beforeDeleteCallback');
+    expect(consoleLines(error)[1]).toContain('beforeDeleteCallback');
     error.mockRestore();
   });
 });
@@ -48,7 +49,7 @@ describe('runBeforeCallbackSync', () => {
       isCancelled: false,
       hasValue: false,
     });
-    expect(String(warn.mock.calls[0]![0])).toContain('beforeDragStartCallback must be synchronous');
+    expect(consoleLines(warn)[0]).toContain('beforeDragStartCallback must be synchronous');
     warn.mockRestore();
   });
 

@@ -16,6 +16,7 @@
 import { define } from '../element/define.js';
 import type { LoggerBundle, LogLevelDesc } from '../logging/create-loggers.js';
 import { attachLoggerBundle } from '../logging/logger-registry.js';
+import { publishGlobalLogging, type GlobalLoggingControls } from '../logging/global-logging.js';
 import { getInstances } from './instances.js';
 
 /** Build/package metadata surfaced for runtime introspection. Extra keys are allowed. */
@@ -60,10 +61,20 @@ export interface RegisterComponentOptions {
   shouldAutoDefine?: boolean;
 }
 
+/**
+ * `window.components`: one entry per component tag, plus the NON-enumerable
+ * page-wide `logging` switch (every bundle — components + CORE; tag names always
+ * contain a hyphen, so it can't clash, and enumerating the object still yields
+ * tags only).
+ */
+export type ComponentsRegistry = Record<string, RegisteredComponent | undefined> & {
+  readonly logging?: GlobalLoggingControls;
+};
+
 declare global {
   interface Window {
-    /** Registry of KeenMate web components, keyed by tag name. */
-    components?: Record<string, RegisteredComponent | undefined>;
+    /** Registry of KeenMate web components, keyed by tag name (+ the non-enumerable `logging` switch). */
+    components?: ComponentsRegistry;
   }
 }
 
@@ -101,6 +112,7 @@ export function registerComponent<T extends HTMLElement = HTMLElement>(
   };
   if (typeof window !== 'undefined') {
     (window.components ??= {})[tagName] = entry as RegisteredComponent;
+    publishGlobalLogging(); // re-publish if the page replaced window.components
   }
   if (shouldAutoDefine) define(tagName, elementClass);
   return entry;

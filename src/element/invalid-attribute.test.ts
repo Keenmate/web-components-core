@@ -3,6 +3,7 @@ import { BlissElement } from './bliss-element.js';
 import { define } from './define.js';
 import { toBool, toCustom, toEnum, toInt, toText } from '../inputs/converters.js';
 import type { Converter, InputDef } from '../inputs/types.js';
+import { consoleLines } from '../logging/console-line.test-util.js';
 
 /** A legacy converter that never calls reportInvalid: its fallback applies silently. */
 const legacyInt: Converter<number> = {
@@ -58,7 +59,7 @@ const make = (html = '<invalid-element></invalid-element>'): Host => {
   document.body.innerHTML = html;
   return document.body.firstElementChild as unknown as Host;
 };
-const warnings = (spy: ReturnType<typeof vi.spyOn>): string[] => spy.mock.calls.map((c: unknown[]) => String(c[0]));
+const warnings = (spy: ReturnType<typeof vi.spyOn>): string[] => consoleLines(spy);
 
 describe('invalid attribute values', () => {
   afterEach(() => {
@@ -72,8 +73,9 @@ describe('invalid attribute values', () => {
     expect(el.pageSize).toBe(10);
     expect(el.size).toBe('sm');
     expect(warnings(warn)).toEqual([
-      '[BlissElement] <invalid-element> rejected invalid value for attribute page-size="abc" (not a number); keeping previous value',
-      '[BlissElement] <invalid-element> rejected invalid value for attribute size="huge" (expected one of sm | lg); keeping previous value',
+      // No logging bundle registered for this tag → core's CORE bundle, tag kept in the instance part.
+      expect.stringMatching(/^\[CORE:ELEMENT\] invalid-element#\d+ rejected invalid value for attribute page-size="abc" \(not a number\); keeping previous value$/),
+      expect.stringMatching(/^\[CORE:ELEMENT\] invalid-element#\d+ rejected invalid value for attribute size="huge" \(expected one of sm \| lg\); keeping previous value$/),
     ]);
   });
 

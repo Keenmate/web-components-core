@@ -11,6 +11,7 @@
  * surface below, never on the engine internals.
  */
 import { LOG_LEVELS, getLogger, type LogLevelDesc, type CoreLogger } from './log-core.js';
+import { registerGlobalLoggingTarget } from './global-logging.js';
 
 /**
  * The public logger surface: the five level methods plus level control.
@@ -36,6 +37,13 @@ export const DEFAULT_CATEGORIES = ['INIT', 'DATA', 'UI'] as const;
 /** Level `enableLogging()` applies when called with no argument. */
 export const DEFAULT_ENABLED_LEVEL: LogLevelDesc = 'debug';
 
+/**
+ * Level every category starts at: errors and warnings are visible out of the
+ * box, info/debug/trace need `enableLogging()`. A level the user persisted in
+ * localStorage (`km-log:NS:CAT`) still wins over this default.
+ */
+export const DEFAULT_LOG_LEVEL: LogLevelDesc = 'warn';
+
 /** Stable palette; categories are coloured by their index (cycled). */
 const PALETTE = [
   '#4c8bf5', // blue
@@ -50,10 +58,17 @@ const PALETTE = [
 
 const PREFIXED = new WeakSet<CoreLogger>();
 
-/** Wrap a logger's methodFactory to emit `%c[NAMESPACE:CATEGORY]` + CSS, then the raw args. Idempotent. */
+/**
+ * First-time setup of a category logger: wrap its methodFactory to emit
+ * `%c[NAMESPACE:CATEGORY]` + CSS, then the raw args, and apply
+ * {@link DEFAULT_LOG_LEVEL} (unless a persisted level exists). Idempotent — a
+ * second `createLoggers()` for the same name keeps the current level.
+ */
 function applyColorPrefix(logger: CoreLogger, label: string, color: string): void {
   if (PREFIXED.has(logger)) return;
   PREFIXED.add(logger);
+  // Explicit default (independent of the engine root); a persisted user level wins.
+  logger.setDefaultLevel(DEFAULT_LOG_LEVEL);
   const original = logger.methodFactory;
   const css = `color:${color};font-weight:bold`;
   logger.methodFactory = (methodName, level, loggerName) => {
@@ -102,9 +117,17 @@ const INSTANCE_METHODS: readonly [keyof InstanceLogger, number, 'debug' | 'info'
   ['error', LOG_LEVELS.ERROR, 'error'],
 ];
 
-function makeInstanceLogger(meta: CategoryMeta, instanceId: string, getOverride: () => LogLevelDesc | undefined): InstanceLogger {
+/**
+ * An instance label: a fixed string, or a function read on every line (so an
+ * `id` assigned after the element was created still shows up). An empty label
+ * omits the instance part entirely (`%c[NS:CAT]` only).
+ */
+export type InstanceLabel = string | (() => string);
+
+function makeInstanceLogger(meta: CategoryMeta, instanceId: InstanceLabel, getOverride: () => LogLevelDesc | undefined): InstanceLogger {
   const css = `color:${meta.color};font-weight:bold`;
   const idCss = 'color:#888';
+  const labelOf = typeof instanceId === 'function' ? instanceId : () => instanceId;
   const out = {} as Record<keyof InstanceLogger, (...args: unknown[]) => void>;
   for (const [name, methodLevel, consoleMethod] of INSTANCE_METHODS) {
     out[name] = (...args: unknown[]): void => {
@@ -112,14 +135,20 @@ function makeInstanceLogger(meta: CategoryMeta, instanceId: string, getOverride:
       // Effective threshold = the more verbose (lower) of type level and override.
       const effective = Math.min(meta.logger.getLevel(), override == null ? LOG_LEVELS.SILENT : toLevelNum(override));
       if (methodLevel < effective) return;
+      // Looked up per call (not bound once), so a console replaced later — a test
+      // spy, a log collector — still receives the line.
       const emit = (console[consoleMethod] ?? console.log).bind(console);
-      emit(`%c[${meta.label}]%c ${instanceId}`, css, idCss, ...args);
+      const id = labelOf();
+      if (id) emit(`%c[${meta.label}]%c ${id}`, css, idCss, ...args);
+      else emit(`%c[${meta.label}]`, css, ...args);
     };
   }
   return out as InstanceLogger;
 }
 
 export interface LoggerBundle<C extends string> {
+  /** The namespace this bundle was built with (the `NAMESPACE` in `NAMESPACE:CATEGORY`). */
+  readonly namespace: string;
   /** One logger per category, keyed by category name. */
   loggers: Record<C, Logger>;
   /** Turn logging on across all categories (default level: `debug`). */
@@ -132,10 +161,11 @@ export interface LoggerBundle<C extends string> {
   setCategoryLevel(category: C, level: LogLevelDesc): void;
   /**
    * Build instance-scoped loggers (one per category) for a single element.
-   * `instanceId` prefixes each line; `getOverrideLevel` is read on every call,
-   * so toggling an instance's level takes effect live. Used by `BlissElement`.
+   * `instanceId` prefixes each line (a function is re-read per line; `''` omits
+   * the instance part); `getOverrideLevel` is read on every call, so toggling
+   * an instance's level takes effect live. Used by `BlissElement`.
    */
-  forInstance(instanceId: string, getOverrideLevel: () => LogLevelDesc | undefined): Record<C, InstanceLogger>;
+  forInstance(instanceId: InstanceLabel, getOverrideLevel: () => LogLevelDesc | undefined): Record<C, InstanceLogger>;
   /** The category list this bundle was built with. */
   readonly LOGGING_CATEGORIES: readonly C[];
 }
@@ -172,7 +202,8 @@ export function createLoggers<C extends string>(
     for (const category of categories) loggers[category].setLevel(level, false);
   };
 
-  return {
+  const bundle: LoggerBundle<C> = {
+    namespace,
     loggers,
     LOGGING_CATEGORIES: categories,
     enableLogging(level: LogLevelDesc = DEFAULT_ENABLED_LEVEL) {
@@ -187,7 +218,7 @@ export function createLoggers<C extends string>(
     setCategoryLevel(category: C, level: LogLevelDesc) {
       loggers[category]?.setLevel(level, false);
     },
-    forInstance(instanceId: string, getOverrideLevel: () => LogLevelDesc | undefined) {
+    forInstance(instanceId: InstanceLabel, getOverrideLevel: () => LogLevelDesc | undefined) {
       const result = {} as Record<C, InstanceLogger>;
       for (const category of categories) {
         result[category] = makeInstanceLogger(meta[category], instanceId, getOverrideLevel);
@@ -195,4 +226,8 @@ export function createLoggers<C extends string>(
       return result;
     },
   };
+  // Enlist under the page-wide switch (window.components.logging); adopts the
+  // current global level when one was already set.
+  registerGlobalLoggingTarget(bundle);
+  return bundle;
 }

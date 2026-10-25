@@ -42,8 +42,36 @@ One shape for events, callbacks and clickable items across every KM component
   `<web-grid mode="excel" edit-trigger="bogus">` gets the preset's `editTrigger`.
   A converter that throws while parsing also keeps the previous value now (was:
   the default). Removing an attribute still resets to the default.
+- **Default log level is `warn`** for every logger bundle (component bundles and
+  core's own `CORE`): errors and warnings are visible out of the box,
+  `enableLogging()` adds info/debug, `disableLogging()` silences everything. A
+  level persisted in `localStorage` still wins.
+- **Instance log line format** is now `[MULTISELECT:UI] #country  <message>` — the
+  tag is no longer repeated after the namespace; `#<id>` or `#<n>` when the
+  element has no id. The id is read per line (no longer memoized on first log).
+  Elements whose tag has no logging bundle log through `CORE:ELEMENT` as
+  `web-grid#main`; `this.log` for such a tag no longer no-ops.
+- **Core's own messages go through loggers — no direct `console` calls.**
+  Input-validation warnings (were `[BlissElement] <tag> …` via `console.warn`,
+  deliberately bypassing logging), throwing `on<Name>` twins, action / menu /
+  `before*Callback` errors and theme warnings are logged through the element's
+  instance logger (`INIT` for input validation, `UI` for actions / menus / twins;
+  the bundle's first category when it lacks that name), else the new `CORE`
+  bundle (`CORE:ELEMENT` / `ACTIONS` / `MENU` / `THEME`). They are therefore
+  silenced by `disableLogging()`. `resolveActionItem` / `resolveMenuEntries` /
+  `getMenuChildren` / `runBeforeCallback*` take an optional trailing `logSource`
+  (defaults to the `ctx`, used when it carries the component as `element`).
 
 ### Added
+
+- **`window.components.logging` — the page-wide logging switch.** A non-enumerable
+  key (tag enumeration is unaffected) with `enableLogging(level?)` /
+  `disableLogging()` / `setLogLevel(level)` / `getCategories()`, applied to every
+  bundle on the page (all components + `CORE`, across bundled core copies) and to
+  bundles created later. A later per-component call wins for that component;
+  per-instance overrides still apply on top. Also exported as
+  `getGlobalLogging()`; `coreLogging` / `CORE_LOG_CATEGORIES` expose core's own
+  bundle, `DEFAULT_LOG_LEVEL` the default, and `LoggerBundle` gains `namespace`.
 
 - **Shared menu — `@keenmate/web-components-core/menu`** (SPEC §12.13). `openMenu(entries,
   ctx, { at, host, runAction, onClose, renderItem, renderMenu, … })` renders `/actions`

@@ -287,6 +287,48 @@ Categories default to `INIT / DATA / UI` (redefinable / extendable).
 `enableLogging()` / `disableLogging()` / `setLogLevel()` / `setCategoryLevel()`
 control the whole bundle (i.e. all instances of that component type).
 
+**Default level: `warn`.** Errors and warnings are visible out of the box;
+`enableLogging()` (default `debug`) adds info/debug; `disableLogging()` silences
+everything, warnings included. A level persisted in `localStorage`
+(`km-log:NS:CAT`) still wins over the default.
+
+### Page-wide switch — `window.components.logging`
+
+One set of controls for **every** bundle on the page — each component's plus
+core's own `CORE` bundle — including components registered later (they adopt the
+current global level). It is a non-enumerable key, so enumerating
+`window.components` still yields component tags only.
+
+```js
+window.components.logging.disableLogging();        // all components + CORE
+window.components.logging.enableLogging('debug');
+window.components.logging.setLogLevel('warn');
+window.components.logging.getCategories();         // ['CORE:ELEMENT', 'MULTISELECT:INIT', …]
+
+// A later per-component call wins for that component:
+window.components['web-multiselect'].logging.setLogLevel('debug');
+```
+
+Also available in code as `getGlobalLogging()`.
+
+### Core's own messages
+
+Core never writes to `console` directly. A message with a component behind it
+(a rejected input value, a throwing `on<Name>` twin, an action / menu callback
+that threw, a bad `theme-source`) goes through **that element's** instance
+logger; one without an element uses the `CORE` bundle
+(`CORE:ELEMENT` / `CORE:ACTIONS` / `CORE:MENU` / `CORE:THEME`):
+
+```
+[MULTISELECT:INIT] #country  rejected invalid value for attribute max-height="abc" (not a number); keeping previous value  300
+[CORE:ELEMENT] web-grid#main  rejected invalid value for property "pageSize"; keeping previous value  -5   ← tag has no logging bundle
+[CORE:THEME]  setThemeMode: unknown mode "sepia"; expected 'dark', 'light' or 'auto'
+```
+
+Input validation logs under `INIT`, actions / menus / event twins under `UI`
+(falling back to the bundle's first category when the component redefined its
+categories without that name).
+
 ### Per-instance logging
 
 `BlissElement` also exposes **`this.log`** — an instance logger per category,
@@ -306,26 +348,15 @@ el.disableLogging();
 el.isLoggingEnabled;       // boolean
 ```
 
-Each line is prefixed with a `tag#id` handle — the element's own `id` when set,
-else a `tag#n` counter:
+Each line reads `[NAMESPACE:CATEGORY] #id` — the element's own `id` when set
+(read per line, so an `id` assigned later shows up), else a running number. When
+the tag has no logging bundle, `this.log` falls back to `CORE:ELEMENT` with the
+tag kept in the label (`web-grid#main`):
 
 ```
-[MULTISELECT:DATA] web-multiselect#country-picker  update  ['maxHeight']
-[MULTISELECT:DATA] web-multiselect#1               update  ['searchPlaceholder']
+[MULTISELECT:DATA] #country-picker  update  ['maxHeight']
+[MULTISELECT:DATA] #1               update  ['searchPlaceholder']
 ```
-
-> ### ⚠️ Logging caveat: the instance label is memoized
->
-> The `tag#id` handle is computed **once, on first access to `this.log`**, and
-> cached for the element's lifetime. In practice the element's `id` is set in
-> markup before its first lifecycle log, so the label reflects it correctly.
->
-> But if the `id` attribute is **assigned later** — after the element has already
-> logged once — the label keeps the value it had at first access (the counter, if
-> there was no `id` then). The *element reference* returned by `getInstances()` is
-> always the reliable handle; the string label is a convenience for reading the
-> console. Set the `id` before the element first logs (i.e. in markup / before
-> connection) if you want it to appear in the label.
 
 ## Style injection
 

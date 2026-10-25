@@ -26,7 +26,7 @@ import {
   type ThemeSource,
 } from '../environment/theme.js';
 import { trackInstance, untrackInstance } from '../global/instances.js';
-import { getLoggerBundle } from '../logging/logger-registry.js';
+import { coreLog, getElementLoggers, setInstanceLogLevelSource } from '../logging/element-logger.js';
 import type { InstanceLogger, LogLevelDesc } from '../logging/create-loggers.js';
 import { dispatch, type DispatchOptions } from './dispatch.js';
 import { withComponentContext, type ComponentContext, type EmitDetail } from './context.js';
@@ -52,15 +52,6 @@ const VALIDATED = new WeakSet<object>();
 /** Shared empty set for elements without an input table (opt-in). */
 const EMPTY_SET: ReadonlySet<string> = new Set();
 
-/** Monotonic per-element counter, purely for a readable `tag#n` log id. */
-let INSTANCE_SEQ = 0;
-
-/** One shared no-op logger for components whose tag has no attached bundle. */
-const NOOP_LOGGER: InstanceLogger = { trace() {}, debug() {}, info() {}, warn() {}, error() {} };
-const NOOP_LOGGERS: Record<string, InstanceLogger> = new Proxy(
-  {},
-  { get: () => NOOP_LOGGER },
-) as Record<string, InstanceLogger>;
 
 export abstract class BlissElement<TEvents extends EventMap = EventMap, TController = unknown> extends Base {
   /** The opt-in input table. Subclasses set this to enable attribute/property reactivity. */
@@ -151,12 +142,14 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   /** Unsubscribe from the theme context; set only while connected AND `hasThemeContext` is on. */
   #themeUnsub?: () => void;
   #internals?: ElementInternals;
-  #logId?: string;
   #logLevel?: LogLevelDesc;
-  #instanceLoggers?: Record<string, InstanceLogger>;
+  /** `this.log` for a tag with no bundle: every category → `CORE:ELEMENT` (built once). */
+  #coreLogProxy?: Record<string, InstanceLogger>;
 
   constructor() {
     super();
+    // Messages core logs on this element's behalf honour its enableLogging() override.
+    setInstanceLogLevelSource(this, () => this.#logLevel);
     const ctor = this.constructor as typeof BlissElement;
     const defs = ctor.inputs ?? [];
     const events = normalizeEventDefs(ctor.events);
@@ -392,21 +385,22 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
 
   /**
    * Instance-scoped loggers, one per category of the bundle this component
-   * registered (via `registerComponent`'s `logging` option). Each line is
-   * prefixed with a `tag#id` handle — the element's own `id` when set, else a
-   * `tag#n` counter — and gated by the more verbose of the type-level category
-   * level and this instance's own override, so a devtools overlay can make ONE
-   * element loud while its type stays quiet (SPEC §12.3). Returns no-op loggers
-   * when the tag has no attached bundle. Prefer this over the shared type-level
-   * loggers inside a component.
+   * registered (via `registerComponent`'s `logging` option). Each line reads
+   * `[NAMESPACE:CATEGORY] #id` — the element's own `id` when set (read per
+   * line), else a running number — and is gated by the more verbose of the
+   * type-level category level and this instance's own override, so a devtools
+   * overlay can make ONE element loud while its type stays quiet (SPEC §12.3).
+   * When the tag has no attached bundle, every category maps to core's
+   * `CORE:ELEMENT` logger labelled `tag#id`. Prefer this over the shared
+   * type-level loggers inside a component.
    */
   protected get log(): Record<string, InstanceLogger> {
-    if (this.#instanceLoggers) return this.#instanceLoggers;
-    const bundle = getLoggerBundle(this.localName);
-    if (!bundle) return NOOP_LOGGERS; // not memoized: a later registration can still take effect
-    // Prefer the element's id (readable in an overlay); fall back to a counter.
-    const id = (this.#logId ??= `${this.localName}#${this.id || ++INSTANCE_SEQ}`);
-    return (this.#instanceLoggers = bundle.forInstance(id, () => this.#logLevel));
+    const { bundle, loggers } = getElementLoggers(this);
+    if (bundle) return loggers;
+    // Not memoized against the bundle: a later registration still takes effect.
+    return (this.#coreLogProxy ??= new Proxy({} as Record<string, InstanceLogger>, {
+      get: () => getElementLoggers(this).loggers.ELEMENT,
+    }));
   }
 
   /**
@@ -646,7 +640,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       try {
         twin.call(this, payload);
       } catch (error) {
-        console.error(`[BlissElement] <${this.localName ?? 'unknown'}> ${def?.property ?? name} handler threw`, error);
+        coreLog(this, 'UI', 'ELEMENT').error(`${def?.property ?? name} handler threw`, error);
       }
     }
     return dispatch(this, name, payload, {
@@ -815,12 +809,13 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   }
 
   /**
-   * Always-on console warning for input validation failures. Deliberately uses
-   * `console.warn` directly — NOT the (future) categorized logger — so rejected
-   * inputs surface even when logging is disabled.
+   * Input / table validation warning, logged through this element's instance
+   * logger (`INIT` category, else the bundle's first; `CORE:ELEMENT` when the
+   * tag has no bundle). Visible at the default `warn` level; silenced like any
+   * other line by `disableLogging()`.
    */
   #warn(message: string, ...detail: unknown[]): void {
-    console.warn(`[BlissElement] <${this.localName ?? 'unknown'}> ${message}`, ...detail);
+    coreLog(this, 'INIT', 'ELEMENT').warn(message, ...detail);
   }
 
   /**

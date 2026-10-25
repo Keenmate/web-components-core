@@ -9,6 +9,7 @@
 import { getMenuChildren, isMenuDivider, resolveMenuEntries } from '../actions/resolve.js';
 import type { MenuEntry, MenuItem, ResolvedActionItem } from '../actions/types.js';
 import { adoptStyles } from '../dom/adopt-styles.js';
+import { coreLog } from '../logging/element-logger.js';
 import { registerOverlay, type OverlayHandle } from '../overlay/active-overlay.js';
 import { anchor } from '../positioning/anchor.js';
 import type { AnchorHandle } from '../positioning/types.js';
@@ -106,7 +107,7 @@ export function openMenu<Ctx, A extends string = string>(
   const renderLevel = (level: Level<Ctx, A>, list: Entries<Ctx, A>): number => {
     const el = level.el;
     el.textContent = '';
-    const resolvedEntries = resolveMenuEntries(list.map(prepare), ctx, opts.defaults);
+    const resolvedEntries = resolveMenuEntries(list.map(prepare), ctx, opts.defaults, host);
     // Any icon at this level → every item gets the icon column, so labels line up.
     const hasIcons = resolvedEntries.some((e) => e.kind === 'item' && !!e.resolved.icon);
     el.classList.toggle(`${BLOCK}--has-icons`, hasIcons);
@@ -197,7 +198,7 @@ export function openMenu<Ctx, A extends string = string>(
     try {
       result = level.source();
     } catch (error) {
-      console.error('[web-components-core] menu entries threw', error);
+      coreLog(host, 'UI', 'MENU').error('menu entries threw', error);
       result = [];
     }
     if (!isThenable<Entries<Ctx, A>>(result)) {
@@ -213,7 +214,7 @@ export function openMenu<Ctx, A extends string = string>(
         onFilled?.(count);
       },
       (error) => {
-        console.error('[web-components-core] menu entries threw', error);
+        coreLog(host, 'UI', 'MENU').error('menu entries threw', error);
         if (token === level.token && chain.includes(level)) onFilled?.(renderLevel(level, []));
       },
     );
@@ -273,7 +274,7 @@ export function openMenu<Ctx, A extends string = string>(
       owner,
       source:
         typeof item.getChildrenCallback === 'function'
-          ? () => getMenuChildren(item, ctx)
+          ? () => getMenuChildren(item, ctx, host)
           : () => item.children ?? [],
       position: null,
       token: 0,
@@ -346,7 +347,7 @@ export function openMenu<Ctx, A extends string = string>(
     try {
       result = opts.runAction?.(record.item, { triggerElement: itemEl, sourceEvent: event });
     } catch (error) {
-      console.error('[web-components-core] menu runAction threw', error);
+      coreLog(host, 'UI', 'MENU').error('menu runAction threw', error);
     }
     if (!isKeptOpen) return;
     const level = chain.find((l) => l.el.contains(itemEl));

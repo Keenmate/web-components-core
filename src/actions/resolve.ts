@@ -1,4 +1,5 @@
 import { runBeforeCallback } from '../element/before-callback.js';
+import { coreLog } from '../logging/element-logger.js';
 import type {
   ActionEventDetail,
   ActionItem,
@@ -8,17 +9,21 @@ import type {
   ResolvedActionItem,
 } from './types.js';
 
-function report(field: string, error: unknown): void {
-  console.error(`[web-components-core] action item ${field} threw — using the static value`, error);
+/**
+ * Log a throwing item callback through the component behind `logSource` (an
+ * element, a shadow root, or a ctx carrying `element`) — `CORE:ACTIONS` when none.
+ */
+function report(field: string, error: unknown, logSource: unknown): void {
+  coreLog(logSource, 'UI', 'ACTIONS').error(`action item ${field} threw — using the static value`, error);
 }
 
 /** Call `cb(ctx)` if set; a throw is logged and falls back to `undefined`. */
-function call<Ctx, R>(cb: ((ctx: Ctx) => R) | undefined, ctx: Ctx, field: string): R | undefined {
+function call<Ctx, R>(cb: ((ctx: Ctx) => R) | undefined, ctx: Ctx, field: string, logSource: unknown): R | undefined {
   if (typeof cb !== 'function') return undefined;
   try {
     return cb(ctx);
   } catch (error) {
-    report(field, error);
+    report(field, error, logSource);
     return undefined;
   }
 }
@@ -35,27 +40,30 @@ function classList(value: string | string[] | undefined): string {
  * Resolve every field of an item against `ctx`: the `get*Callback` wins, else
  * the static field, else `defaults` (a component's built-in state, e.g.
  * "select-all is disabled when everything is selected"), else the base
- * default. A throwing callback is logged and the static value used.
+ * default. A throwing callback is logged and the static value used — through
+ * the component behind `logSource` (defaults to `ctx`, which is used when it
+ * carries the component as `element`).
  */
 export function resolveActionItem<Ctx, A extends string>(
   item: ActionItem<Ctx, A>,
   ctx: Ctx,
   defaults: Partial<ResolvedActionItem<A>> = {},
+  logSource: unknown = ctx,
 ): ResolvedActionItem<A> {
-  const cbClass = call(item.getClassCallback, ctx, 'getClassCallback');
+  const cbClass = call(item.getClassCallback, ctx, 'getClassCallback', logSource);
   return {
     action: item.action ?? defaults.action ?? 'custom',
     id: item.id ?? defaults.id,
-    text: call(item.getTextCallback, ctx, 'getTextCallback') ?? item.text ?? defaults.text ?? '',
-    icon: call(item.getIconCallback, ctx, 'getIconCallback') ?? item.icon ?? defaults.icon,
-    tooltip: call(item.getTooltipCallback, ctx, 'getTooltipCallback') ?? item.tooltip ?? defaults.tooltip,
+    text: call(item.getTextCallback, ctx, 'getTextCallback', logSource) ?? item.text ?? defaults.text ?? '',
+    icon: call(item.getIconCallback, ctx, 'getIconCallback', logSource) ?? item.icon ?? defaults.icon,
+    tooltip: call(item.getTooltipCallback, ctx, 'getTooltipCallback', logSource) ?? item.tooltip ?? defaults.tooltip,
     shortcut: item.shortcut ?? defaults.shortcut,
     cssClass: cbClass !== undefined ? classList(cbClass) : classList(item.cssClass ?? defaults.cssClass),
-    isVisible: call(item.getIsVisibleCallback, ctx, 'getIsVisibleCallback') ?? item.isVisible ?? defaults.isVisible ?? true,
+    isVisible: call(item.getIsVisibleCallback, ctx, 'getIsVisibleCallback', logSource) ?? item.isVisible ?? defaults.isVisible ?? true,
     isDisabled:
-      call(item.getIsDisabledCallback, ctx, 'getIsDisabledCallback') ?? item.isDisabled ?? defaults.isDisabled ?? false,
+      call(item.getIsDisabledCallback, ctx, 'getIsDisabledCallback', logSource) ?? item.isDisabled ?? defaults.isDisabled ?? false,
     isDanger: item.isDanger ?? defaults.isDanger ?? false,
-    isActive: call(item.getIsActiveCallback, ctx, 'getIsActiveCallback') ?? item.isActive ?? defaults.isActive ?? false,
+    isActive: call(item.getIsActiveCallback, ctx, 'getIsActiveCallback', logSource) ?? item.isActive ?? defaults.isActive ?? false,
   };
 }
 
@@ -85,12 +93,14 @@ export type ResolvedMenuEntry<Ctx, A extends string> =
 /**
  * Resolve a menu level: hidden items are dropped, then dividers are trimmed —
  * no leading / trailing divider, no two in a row (when two meet, the later
- * label wins). `defaults` maps an item to its built-in state.
+ * label wins). `defaults` maps an item to its built-in state. `logSource`: see
+ * {@link resolveActionItem}.
  */
 export function resolveMenuEntries<Ctx, A extends string>(
   entries: readonly (MenuEntry<Ctx, A> | string)[] | null | undefined,
   ctx: Ctx,
   defaults?: (item: MenuItem<Ctx, A>) => Partial<ResolvedActionItem<A>> | undefined,
+  logSource: unknown = ctx,
 ): ResolvedMenuEntry<Ctx, A>[] {
   const out: ResolvedMenuEntry<Ctx, A>[] = [];
   for (const raw of entries ?? []) {
@@ -106,7 +116,7 @@ export function resolveMenuEntries<Ctx, A extends string>(
       else out.push(divider);
       continue;
     }
-    const resolved = resolveActionItem(entry, ctx, defaults?.(entry));
+    const resolved = resolveActionItem(entry, ctx, defaults?.(entry), logSource);
     if (!resolved.isVisible) continue;
     const hasChildren = typeof entry.getChildrenCallback === 'function' || !!entry.children?.length;
     out.push({ kind: 'item', item: entry, resolved, hasChildren });
@@ -115,16 +125,17 @@ export function resolveMenuEntries<Ctx, A extends string>(
   return out;
 }
 
-/** A menu item's submenu: `getChildrenCallback` (may be async) wins over `children`. */
+/** A menu item's submenu: `getChildrenCallback` (may be async) wins over `children`. `logSource`: see {@link resolveActionItem}. */
 export async function getMenuChildren<Ctx, A extends string>(
   item: MenuItem<Ctx, A>,
   ctx: Ctx,
+  logSource: unknown = ctx,
 ): Promise<MenuEntry<Ctx, A>[]> {
   if (typeof item.getChildrenCallback === 'function') {
     try {
       return (await item.getChildrenCallback(ctx)) ?? [];
     } catch (error) {
-      report('getChildrenCallback', error);
+      report('getChildrenCallback', error, logSource);
       return item.children ?? [];
     }
   }
@@ -176,13 +187,13 @@ export async function runAction<Ctx, A extends string>(opts: RunActionOptions<Ct
   const trigger = detail.triggerElement;
   trigger?.setAttribute('aria-busy', 'true');
   try {
-    const gate = await runBeforeCallback(opts.beforeActionCallback, detail, 'beforeActionCallback');
+    const gate = await runBeforeCallback(opts.beforeActionCallback, detail, 'beforeActionCallback', detail);
     if (gate.isCancelled) return false;
     if (typeof detail.item.onClick === 'function') {
       try {
         await detail.item.onClick(detail);
       } catch (error) {
-        console.error('[web-components-core] action item onClick threw', error);
+        coreLog(detail, 'UI', 'ACTIONS').error('action item onClick threw', error);
       }
     }
     opts.emitAction(detail);
@@ -190,7 +201,7 @@ export async function runAction<Ctx, A extends string>(opts: RunActionOptions<Ct
       try {
         await opts.runBuiltIn(detail);
       } catch (error) {
-        console.error(`[web-components-core] built-in action "${detail.action}" threw`, error);
+        coreLog(detail, 'UI', 'ACTIONS').error(`built-in action "${detail.action}" threw`, error);
       }
     }
     return true;

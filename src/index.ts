@@ -41,6 +41,7 @@ export type {
   ComponentLoggingControls,
   RegisteredComponent,
   RegisterComponentOptions,
+  ComponentsRegistry,
 } from './global/register-component.js';
 export { getInstances, getRegisteredTags } from './global/instances.js';
 
@@ -113,8 +114,12 @@ export {
 export type { OverlayHandle, OverlayActivatedDetail } from './overlay/active-overlay.js';
 
 // Logging (SPEC §12.1) — engine is vendored (no `loglevel` dependency); see log-core.ts.
-export { createLoggers, DEFAULT_CATEGORIES, DEFAULT_ENABLED_LEVEL } from './logging/create-loggers.js';
-export type { LoggerBundle, Logger, LogLevelDesc, InstanceLogger } from './logging/create-loggers.js';
+export { createLoggers, DEFAULT_CATEGORIES, DEFAULT_ENABLED_LEVEL, DEFAULT_LOG_LEVEL } from './logging/create-loggers.js';
+export type { LoggerBundle, Logger, LogLevelDesc, InstanceLogger, InstanceLabel } from './logging/create-loggers.js';
+export { getGlobalLogging } from './logging/global-logging.js';
+export type { GlobalLoggingControls } from './logging/global-logging.js';
+export { coreLogging, CORE_LOG_CATEGORIES } from './logging/element-logger.js';
+export type { CoreLogCategory } from './logging/element-logger.js';
 export { setLogPersistKeyPrefix, getLogPersistKeyPrefix, LOG_LEVELS } from './logging/log-core.js';
 export type { LogLevelName } from './logging/log-core.js';
 export { createPerfLogger } from './logging/perf-logger.js';

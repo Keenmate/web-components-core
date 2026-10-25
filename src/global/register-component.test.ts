@@ -117,7 +117,8 @@ describe('live-instance registry', () => {
     a.shout();
     b.shout();
     expect(spy).toHaveBeenCalledOnce(); // only a
-    expect(spy.mock.calls[0]![0]!).toMatch(new RegExp(`^%c\\[PERINST:DATA\\]%c ${tag}#\\d+$`));
+    // Own bundle → the tag is dropped from the instance part (the namespace already names it).
+    expect(spy.mock.calls[0]![0]!).toMatch(/^%c\[PERINST:DATA\]%c #\d+$/);
 
     a.disableLogging();
     a.shout();
@@ -146,11 +147,11 @@ describe('live-instance registry', () => {
 
     named.enableLogging();
     named.shout();
-    expect(spy.mock.calls[0]![0]!).toBe(`%c[LABELID:DATA]%c ${tag}#country-picker`);
+    expect(spy.mock.calls[0]![0]!).toBe('%c[LABELID:DATA]%c #country-picker');
 
     anon.enableLogging();
     anon.shout();
-    expect(spy.mock.calls[1]![0]!).toMatch(new RegExp(`^%c\\[LABELID:DATA\\]%c ${tag}#\\d+$`));
+    expect(spy.mock.calls[1]![0]!).toMatch(/^%c\[LABELID:DATA\]%c #\d+$/);
   });
 
   it('a DOM move re-tracks the same instance without duplicating it', () => {
