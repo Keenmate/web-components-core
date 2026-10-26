@@ -38,9 +38,9 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const levels = () => Array.from(shadow.querySelectorAll<HTMLElement>('.bliss-menu'));
-const items = (level = levels()[0]!) => Array.from(level.querySelectorAll<HTMLElement>('.bliss-menu__item'));
-const byId = (id: string) => shadow.querySelector<HTMLElement>(`.bliss-menu__item[data-id="${id}"]`)!;
+const levels = () => Array.from(shadow.querySelectorAll<HTMLElement>('.km-menu'));
+const items = (level = levels()[0]!) => Array.from(level.querySelectorAll<HTMLElement>('.km-menu__item'));
+const byId = (id: string) => shadow.querySelector<HTMLElement>(`.km-menu__item[data-id="${id}"]`)!;
 const active = () => shadow.activeElement;
 const key = (k: string, init: KeyboardEventInit = {}) => {
   const target = (shadow.activeElement as HTMLElement | null) ?? document.body;
@@ -76,29 +76,29 @@ describe('rendering', () => {
     expect(handle.isOpen).toBe(true);
     const [root] = levels();
     expect(root!.getAttribute('role')).toBe('menu');
-    expect(root!.classList.contains('bliss-menu--has-icons')).toBe(true);
+    expect(root!.classList.contains('km-menu--has-icons')).toBe(true);
     const [x, y, z] = items();
     expect(items()).toHaveLength(3);
     expect(x!.getAttribute('role')).toBe('menuitem');
     expect(x!.tabIndex).toBe(-1);
     expect(x!.dataset).toMatchObject({ action: 'custom', id: 'x' });
-    expect(x!.className).toBe('bliss-menu__item bliss-menu__item--danger extra more');
-    expect(x!.querySelector('.bliss-menu__icon svg')).not.toBeNull();
-    expect(x!.querySelector('.bliss-menu__shortcut')!.textContent).toBe('Ctrl+X');
+    expect(x!.className).toBe('km-menu__item km-menu__item--danger extra more');
+    expect(x!.querySelector('.km-menu__icon svg')).not.toBeNull();
+    expect(x!.querySelector('.km-menu__shortcut')!.textContent).toBe('Ctrl+X');
     expect(x!.hasAttribute('aria-checked')).toBe(false);
-    expect(y!.classList.contains('bliss-menu__item--toggled')).toBe(true);
+    expect(y!.classList.contains('km-menu__item--toggled')).toBe(true);
     expect(y!.getAttribute('role')).toBe('menuitemcheckbox');
     expect(y!.getAttribute('aria-checked')).toBe('true');
     expect(y!.hasAttribute('aria-pressed')).toBe(false);
     expect(y!.title).toBe('tip');
-    expect(y!.querySelector('.bliss-menu__icon')!.innerHTML).toBe(''); // the icon column is reserved
+    expect(y!.querySelector('.km-menu__icon')!.innerHTML).toBe(''); // the icon column is reserved
     expect(z!.getAttribute('aria-disabled')).toBe('true');
     expect(z!.getAttribute('aria-haspopup')).toBe('menu');
     expect(z!.getAttribute('aria-expanded')).toBe('false');
-    expect(z!.classList.contains('bliss-menu__item--has-submenu')).toBe(true);
-    const divider = root!.querySelector('.bliss-menu__divider')!;
+    expect(z!.classList.contains('km-menu__item--has-submenu')).toBe(true);
+    const divider = root!.querySelector('.km-menu__divider')!;
     expect(divider.getAttribute('role')).toBe('separator');
-    expect(divider.classList.contains('bliss-menu__divider--named')).toBe(true);
+    expect(divider.classList.contains('km-menu__divider--named')).toBe(true);
     expect(divider.textContent).toBe('Group');
     expect(anchors[0]!.opts).toMatchObject({ placement: 'bottom-start', offset: 0 });
     expect(root!.style.left).toBe('10px');
@@ -107,10 +107,10 @@ describe('rendering', () => {
   it('icon is HTML; label and shortcut are escaped text', () => {
     open([{ id: 'x', text: '<b>bold</b>', shortcut: '<i>', icon: '<b class="ic">!</b>' }]);
     const x = byId('x');
-    expect(x.querySelector('.bliss-menu__icon b.ic')).not.toBeNull();
-    expect(x.querySelector('.bliss-menu__label')!.textContent).toBe('<b>bold</b>');
-    expect(x.querySelector('.bliss-menu__label b')).toBeNull();
-    expect(x.querySelector('.bliss-menu__shortcut')!.innerHTML).toBe('&lt;i&gt;');
+    expect(x.querySelector('.km-menu__icon b.ic')).not.toBeNull();
+    expect(x.querySelector('.km-menu__label')!.textContent).toBe('<b>bold</b>');
+    expect(x.querySelector('.km-menu__label b')).toBeNull();
+    expect(x.querySelector('.km-menu__shortcut')!.innerHTML).toBe('&lt;i&gt;');
   });
 
   it('renderItem fills an item; left empty, the default content renders', () => {
@@ -119,7 +119,7 @@ describe('rendering', () => {
     });
     open(basic, { renderItem });
     expect(byId('a').textContent).toBe('custom node');
-    expect(byId('c').querySelector('.bliss-menu__label')!.textContent).toBe('Gamma');
+    expect(byId('c').querySelector('.km-menu__label')!.textContent).toBe('Gamma');
     expect(renderItem).toHaveBeenCalledTimes(3);
   });
 
@@ -129,7 +129,7 @@ describe('rendering', () => {
     expect(adopted + shadow.querySelectorAll('style').length).toBeGreaterThan(0);
     byId('s').click();
     expect(levels().every((l) => l.classList.contains('wtv-menu'))).toBe(true);
-    expect(levels()[1]!.classList.contains('bliss-menu--submenu')).toBe(true);
+    expect(levels()[1]!.classList.contains('km-menu--submenu')).toBe(true);
   });
 
   it('no visible item → nothing rendered, handle closed, onClose not called', () => {
@@ -146,10 +146,10 @@ describe('rendering', () => {
       defaults: (item) => (item.action === 'copy' ? { text: 'Copy!' } : undefined),
       prepareItem: (item) => (item.action === 'copy' ? { ...item, shortcut: 'c' } : item),
     });
-    expect(items()[0]!.querySelector('.bliss-menu__label')!.textContent).toBe('Copy!');
-    expect(items()[0]!.querySelector('.bliss-menu__shortcut')!.textContent).toBe('c');
+    expect(items()[0]!.querySelector('.km-menu__label')!.textContent).toBe('Copy!');
+    expect(items()[0]!.querySelector('.km-menu__shortcut')!.textContent).toBe('c');
     byId('more').click();
-    expect(items(levels()[1])[0]!.querySelector('.bliss-menu__shortcut')!.textContent).toBe('c');
+    expect(items(levels()[1])[0]!.querySelector('.km-menu__shortcut')!.textContent).toBe('c');
   });
 
   it('renderMenu takes over the root; core still positions and dismisses it', () => {
@@ -160,7 +160,7 @@ describe('rendering', () => {
       },
     });
     const root = levels()[0]!;
-    expect(root.classList.contains('bliss-menu--custom')).toBe(true);
+    expect(root.classList.contains('km-menu--custom')).toBe(true);
     expect(root.hasAttribute('role')).toBe(false);
     expect(items()).toHaveLength(0);
     expect(anchors).toHaveLength(1);
@@ -246,11 +246,11 @@ describe('submenus', () => {
     open([{ id: 'lazy', text: 'Lazy', getChildrenCallback }], { loadingText: 'Loading…' });
     byId('lazy').click();
     const sub = levels()[1]!;
-    expect(sub.querySelector('.bliss-menu__loading')!.textContent).toBe('Loading…');
+    expect(sub.querySelector('.km-menu__loading')!.textContent).toBe('Loading…');
     expect(getChildrenCallback).toHaveBeenCalledWith(ctx);
     resolve([{ id: 'l1', text: 'L1' }]);
     await flush();
-    expect(sub.querySelector('.bliss-menu__loading')).toBeNull();
+    expect(sub.querySelector('.km-menu__loading')).toBeNull();
     expect(byId('l1').textContent).toBe('L1');
   });
 
@@ -337,7 +337,7 @@ describe('keyboard', () => {
     );
     expect(byId('off').getAttribute('role')).toBe('menuitemcheckbox');
     expect(byId('off').getAttribute('aria-checked')).toBe('false');
-    expect(byId('off').classList.contains('bliss-menu__item--toggled')).toBe(false);
+    expect(byId('off').classList.contains('km-menu__item--toggled')).toBe(false);
     expect(byId('cb').getAttribute('aria-checked')).toBe('true');
     expect(byId('def').getAttribute('role')).toBe('menuitemcheckbox');
     expect(byId('plain').getAttribute('role')).toBe('menuitem');

@@ -1270,9 +1270,10 @@ its toggle state (`isToggled`, `getIsToggledCallback`, or an `isToggled` from
 (+ the `--toggled` modifier when on); the rest are `role="menuitem"`. The keyboard
 treats both alike (Enter / Space run; a toggle closes the menu unless
 `shouldCloseOnClick: false`). The menu registers with `registerOverlay`
-(one overlay open at a time). Styling: shared `bliss-menu`, `__item` (`--danger`
+(one overlay open at a time). Styling: shared `km-menu` (`km-` is
+reserved for shared UI rendered by core — not a component prefix), `__item` (`--danger`
 `--toggled` `--disabled` `--has-submenu`), `__icon`, `__label`, `__shortcut`,
 `__divider` (`--named`), `__loading`, `--submenu`, `--custom`, `--has-icons`; every
-value reads `--bliss-menu-*` falling back to `--base-*`, in `@layer component`. A
-component maps its own variables onto `--bliss-menu-*` on its host.
+value reads `--km-menu-*` falling back to `--base-*`, in `@layer component`. A
+component maps its own variables onto `--km-menu-*` on its host.
 

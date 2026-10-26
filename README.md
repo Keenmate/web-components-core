@@ -421,7 +421,7 @@ const menu = openMenu(entries, ctx, {
 menu.close();
 ```
 
-Style it by setting `--bliss-menu-*` on your host (they default to the `--base-*` tokens).
+Style it by setting `--km-menu-*` on your host (they default to the `--base-*` tokens).
 
 ## Search (`@keenmate/web-components-core/search`)
 

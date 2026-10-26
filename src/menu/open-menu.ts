@@ -21,7 +21,7 @@ type Entries<Ctx, A extends string> = readonly (MenuEntry<Ctx, A> | string)[];
 /** Delay before a submenu the pointer left collapses (time to cross the gap). */
 const SUBMENU_HIDE_DELAY = 150;
 
-const BLOCK = 'bliss-menu';
+const BLOCK = 'km-menu';
 const ITEM = `${BLOCK}__item`;
 
 /** One open menu level. Open levels form a chain: root → submenu → sub-submenu. */

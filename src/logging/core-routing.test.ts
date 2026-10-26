@@ -356,7 +356,7 @@ describe('former console call sites', () => {
         throw new Error('r');
       },
     });
-    shadow.querySelector<HTMLElement>('.bliss-menu__item')!.click();
+    shadow.querySelector<HTMLElement>('.km-menu__item')!.click();
     handle.close();
     expect(consoleLines(error)).toEqual([`[${ns}:UI] #menu-owner menu runAction threw`]);
   });

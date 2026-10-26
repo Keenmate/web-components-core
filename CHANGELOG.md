@@ -52,6 +52,10 @@ One shape for events, callbacks and clickable items across every KM component
   defines its toggle state (`isToggled`, `getIsToggledCallback`, or a `defaults`
   `isToggled`) as `role="menuitemcheckbox"` + `aria-checked="true|false"` instead of
   `menuitem` + `aria-pressed`; the keyboard treats it like any item.
+- **BREAKING — shared menu prefix `bliss-` → `km-`** (no alias): `/menu` classes
+  `.bliss-menu*` → `.km-menu*`, custom properties `--bliss-menu-*` → `--km-menu-*` (still
+  falling back to `--base-*`). `km-` is the prefix reserved for shared UI rendered by
+  core (menu, future tooltip …) — not a component prefix.
 - **An invalid attribute value now warns and keeps the previous value**, the same
   rule as the property path. `el.setAttribute('page-size', 'abc')` on a
   `page-size` of 25 used to reset it silently to the default; it now warns
@@ -104,8 +108,8 @@ One shape for events, callbacks and clickable items across every KM component
   skipping dividers + disabled, Home/End, →/Enter into a submenu, ←/Esc back to the parent
   item, Enter/Space run, Esc/Tab close, roving focus, `menu` / `menuitem` / `separator`
   roles, `aria-haspopup` / `aria-expanded` / `aria-disabled`). `shouldFocusFirst` /
-  `focusFirst()` for keyboard opens, `returnFocusTo` on close. Shared `bliss-menu*` BEM
-  classes styled by `--bliss-menu-*` custom properties defaulting to the `--base-*`
+  `focusFirst()` for keyboard opens, `returnFocusTo` on close. Shared `km-menu*` BEM
+  classes styled by `--km-menu-*` custom properties defaulting to the `--base-*`
   tokens, adopted into the host root (`adoptStyles`, `@layer component`).
 - **`anchor()` `offset`** also takes the object form `{ mainAxis, crossAxis, alignmentAxis }`
   (`AnchorOffset`).
