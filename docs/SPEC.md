@@ -541,7 +541,7 @@ export function createLoggers<C extends string>(
   enableLogging(): void;
   disableLogging(): void;
   setLogLevel(level: LogLevel): void;
-  setCategoryLevel(category: C, level: LogLevel): void;
+  setCategoryLevel(category: C | `${string}:${C}`, level: LogLevel): void; // 'DATA' or 'GRID:DATA'
   LOGGING_CATEGORIES: readonly C[];
 };
 ```

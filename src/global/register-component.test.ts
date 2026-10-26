@@ -53,6 +53,9 @@ describe('registerComponent', () => {
     expect(entry.logging?.getCategories()).toEqual(['INIT', 'DATA']);
     entry.logging?.setCategoryLevel('DATA', 'debug');
     expect(spy).toHaveBeenCalledWith('DATA', 'debug');
+    spy.mockRestore();
+    entry.logging?.setCategoryLevel('REGTEST:INIT', 'error'); // the namespaced form works too
+    expect(logging.loggers.INIT.getLevel()).toBe(4); // error
   });
 
   it('omits logging when no bundle is supplied', () => {

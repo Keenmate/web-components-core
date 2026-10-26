@@ -89,6 +89,10 @@ One shape for events, callbacks and clickable items across every KM component
 
 ### Added
 
+- **`setCategoryLevel` accepts the namespaced category** as it prints in the console
+  (`window.components['web-grid'].logging.setCategoryLevel('GRID:DATA', 'debug')`) as
+  well as the bare one (`'DATA'`). The namespace must be the bundle's (case-insensitive);
+  anything else is ignored.
 - **`window.components.logging` — the page-wide logging switch.** A non-enumerable
   key (tag enumeration is unaffected) with `enableLogging(level?)` /
   `disableLogging()` / `setLogLevel(level)` / `getCategories()`, applied to every

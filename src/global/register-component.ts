@@ -37,6 +37,7 @@ export interface ComponentLoggingControls {
   enableLogging(level?: LogLevelDesc): void;
   disableLogging(): void;
   setLogLevel(level: LogLevelDesc): void;
+  /** Bare (`'DATA'`) or namespaced as it prints (`'GRID:DATA'`). */
   setCategoryLevel(category: string, level: LogLevelDesc): void;
   getCategories(): string[];
 }

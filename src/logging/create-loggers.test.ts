@@ -58,6 +58,19 @@ describe('createLoggers', () => {
     expect(bundle.loggers.INIT.getLevel()).toBe(LOG_LEVELS.WARN); // unchanged
   });
 
+  it('setCategoryLevel accepts the namespaced form (NS:CAT) as well as the bare one', () => {
+    const bundle = createLoggers('NSCATNS');
+    bundle.setLogLevel('warn');
+    bundle.setCategoryLevel('NSCATNS:DATA', 'debug');
+    expect(bundle.loggers.DATA.getLevel()).toBe(LOG_LEVELS.DEBUG);
+    const loose = bundle.setCategoryLevel as (category: string, level: 'trace' | 'error') => void;
+    loose('nscatns:ui', 'error'); // case-insensitive
+    expect(bundle.loggers.UI.getLevel()).toBe(LOG_LEVELS.ERROR);
+    bundle.setCategoryLevel('OTHER:INIT', 'trace'); // another namespace → ignored
+    loose('NOPE', 'trace'); // unknown → ignored
+    expect(bundle.loggers.INIT.getLevel()).toBe(LOG_LEVELS.WARN);
+  });
+
   it('forInstance: instance override logs while the type stays silent', () => {
     const spy = vi.spyOn(console, 'debug').mockImplementation(() => {});
     const bundle = createLoggers('NSINST1');

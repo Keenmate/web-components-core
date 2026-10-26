@@ -157,8 +157,11 @@ export interface LoggerBundle<C extends string> {
   disableLogging(): void;
   /** Set the same level on every category. */
   setLogLevel(level: LogLevelDesc): void;
-  /** Set the level of one category. */
-  setCategoryLevel(category: C, level: LogLevelDesc): void;
+  /**
+   * Set the level of one category — bare (`'DATA'`) or namespaced as it prints
+   * (`'GRID:DATA'`; the namespace must be this bundle's). Unknown → no-op.
+   */
+  setCategoryLevel(category: C | `${string}:${C}`, level: LogLevelDesc): void;
   /**
    * Build instance-scoped loggers (one per category) for a single element.
    * `instanceId` prefixes each line (a function is re-read per line; `''` omits
@@ -215,8 +218,15 @@ export function createLoggers<C extends string>(
     setLogLevel(level: LogLevelDesc) {
       setAll(level);
     },
-    setCategoryLevel(category: C, level: LogLevelDesc) {
-      loggers[category]?.setLevel(level, false);
+    setCategoryLevel(category: C | `${string}:${C}`, level: LogLevelDesc) {
+      let name: string = category;
+      const colon = name.indexOf(':');
+      if (colon >= 0) {
+        if (name.slice(0, colon).toUpperCase() !== namespace.toUpperCase()) return;
+        name = name.slice(colon + 1);
+      }
+      const logger = (loggers as Record<string, Logger>)[name] ?? (loggers as Record<string, Logger>)[name.toUpperCase()];
+      logger?.setLevel(level, false);
     },
     forInstance(instanceId: InstanceLabel, getOverrideLevel: () => LogLevelDesc | undefined) {
       const result = {} as Record<C, InstanceLogger>;
