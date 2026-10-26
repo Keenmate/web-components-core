@@ -30,7 +30,7 @@ describe('resolveActionItem', () => {
       isVisible: true,
       isDisabled: false,
       isDanger: false,
-      isActive: false,
+      isToggled: false,
     });
   });
 
@@ -41,14 +41,14 @@ describe('resolveActionItem', () => {
       isDisabled: false,
       getTextCallback: ({ row }) => `Archive (${row.status})`,
       getIsVisibleCallback: ({ row }) => row.status !== 'archived',
-      getIsActiveCallback: () => true,
+      getIsToggledCallback: () => true,
     };
     const r = resolveActionItem(item, ctx, { isDisabled: true, icon: 'box' });
     expect(r.text).toBe('Archive (open)');
     expect(r.isVisible).toBe(true);
     expect(r.isDisabled).toBe(false); // static beats the built-in default
     expect(r.icon).toBe('box'); // falls back to the default
-    expect(r.isActive).toBe(true);
+    expect(r.isToggled).toBe(true);
   });
 
   it('a component default applies when neither callback nor static is set', () => {

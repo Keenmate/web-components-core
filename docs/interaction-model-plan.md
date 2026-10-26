@@ -329,6 +329,8 @@ F. **Toggle state on `ActionItem`** — editor needs bold/italic "active"; grid 
 
 24. **F** — core `ActionItem` gains `isActive?` + `getIsActiveCallback(ctx)`: toggle state
     ("pressed"), not availability; renders `aria-pressed="true"` + `--active` modifier.
+    **Renamed 2026-10-26** → `isToggled` / `getIsToggledCallback`, modifier `--toggled`;
+    menu toggles render `role="menuitemcheckbox"` + `aria-checked`.
 25. Rulebook amendments (findings 6–8) accepted and written: sync interceptor exception
     (dragstart / keydown; keydown returns `false`, never `true`); camelCase `on*` keeps off
     native `HTMLElement` handler props; `data-action` / `data-id` reserved for action items,

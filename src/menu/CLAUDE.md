@@ -10,8 +10,9 @@ focus in the menu or still on the opener; handled keys are consumed). Dismiss li
 and are all removed in `close()` — keep add/remove balanced (a test counts them). A leaf
 closes BEFORE `runAction` (focus is back on the opener when the action runs); keep-open
 items refresh their level after the returned promise settles. Items are `div`s, not
-buttons (no native Space-on-keyup click). Tests mock `../positioning/anchor.js` (jsdom
-has no layout).
+buttons (no native Space-on-keyup click). A toggle item (defines `isToggled` /
+`getIsToggledCallback` / a `defaults` `isToggled`) is `menuitemcheckbox` +
+`aria-checked`. Tests mock `../positioning/anchor.js` (jsdom has no layout).
 
 Consumers: web-treeview (adopted). Pending: web-grid (`modules/contextmenu`: toggle class
 via `cssClass`, `prepareItem` for built-in submenus, its shadow scroll subscription calls

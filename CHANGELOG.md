@@ -43,6 +43,15 @@ One shape for events, callbacks and clickable items across every KM component
   read the *pre*-action state in the event (e.g. "the row about to be deleted") must
   now take it from the detail's surface context (`row`, `node`, …), which is captured
   before the built-in runs.
+- **BREAKING — `/actions` toggle state renamed `isActive` → `isToggled`** (no alias):
+  `ActionItem.isActive` → `isToggled`, `getIsActiveCallback` → `getIsToggledCallback`,
+  `ResolvedActionItem.isActive` → `isToggled`, the menu modifier `__item--active` →
+  `__item--toggled` (and its color variable `…-active-color` → `…-toggled-color`).
+  Meaning: the thing the item toggles is ON (Bold while the caret is in bold, "Show
+  hidden" checked). Buttons keep `aria-pressed`. **`openMenu()`** renders an item that
+  defines its toggle state (`isToggled`, `getIsToggledCallback`, or a `defaults`
+  `isToggled`) as `role="menuitemcheckbox"` + `aria-checked="true|false"` instead of
+  `menuitem` + `aria-pressed`; the keyboard treats it like any item.
 - **An invalid attribute value now warns and keeps the previous value**, the same
   rule as the property path. `el.setAttribute('page-size', 'abc')` on a
   `page-size` of 25 used to reset it silently to the default; it now warns
@@ -87,7 +96,7 @@ One shape for events, callbacks and clickable items across every KM component
 
 - **Shared menu — `@keenmate/web-components-core/menu`** (SPEC §12.13). `openMenu(entries,
   ctx, { at, host, runAction, onClose, renderItem, renderMenu, … })` renders `/actions`
-  menu entries (HTML icon, escaped label / shortcut, danger / active / disabled, named
+  menu entries (HTML icon, escaped label / shortcut, danger / toggled / disabled, named
   dividers, `cssClass`), submenus incl. lazy `getChildrenCallback` with a loading row,
   positions every level through `/positioning` `anchor()` (cleaned up on close), dismisses
   on outside press / scroll / wheel / window blur / another KM overlay (`registerOverlay`),

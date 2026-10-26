@@ -66,8 +66,8 @@ export const MENU_CSS = `
   background: var(--bliss-menu-danger-hover-bg, color-mix(in srgb, var(--bliss-menu-danger-color, var(--base-danger-color, #d13438)) 10%, transparent));
 }
 
-.bliss-menu__item--active {
-  color: var(--bliss-menu-active-color, var(--base-accent-color, #0078d4));
+.bliss-menu__item--toggled {
+  color: var(--bliss-menu-toggled-color, var(--base-accent-color, #0078d4));
 }
 
 .bliss-menu__icon {

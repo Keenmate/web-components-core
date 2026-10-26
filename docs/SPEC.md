@@ -1205,8 +1205,9 @@ rendering plain text passes an escaper).
 Every clickable item a consumer configures — action buttons, row/cell toolbars,
 context and header menus, palette commands — is an **`ActionItem<Ctx, A>`**:
 `action?` (a built-in name, else `'custom'`), `id?`, `text`, `icon`, `tooltip`,
-`shortcut`, `cssClass`, `isVisible`, `isDisabled`, `isDanger`, `isActive`
-(toggle state → `aria-pressed`), each dynamic field with a separate
+`shortcut`, `cssClass`, `isVisible`, `isDisabled`, `isDanger`, `isToggled`
+(toggle state — the thing it toggles is ON; a button renders `aria-pressed`, a menu
+item `role="menuitemcheckbox"` + `aria-checked`), each dynamic field with a separate
 `get*Callback(ctx)` (callback wins), and `onClick(ctx)`. `MenuItem` adds
 `children` / `getChildrenCallback(ctx)` (may be async) / `shouldCloseOnClick`;
 `MenuDivider` (`menuDivider(text?)`) is its own entry — never a flag on an item.
@@ -1263,10 +1264,14 @@ no native Space/Enter click to double-fire). The keyboard is a capture `keydown`
 document while open, so the menu is keyboard-modal whether focus is in it or still on
 the opener; handled keys are consumed. Hover focuses items (roving focus follows the
 pointer). Focus returns to `returnFocusTo` only when the menu held focus and the close
-wasn't pointer-away (outside press / scroll / blur / overlay). `isActive` renders
-`aria-pressed` (the `/actions` convention). The menu registers with `registerOverlay`
+wasn't pointer-away (outside press / scroll / blur / overlay). An item that defines
+its toggle state (`isToggled`, `getIsToggledCallback`, or an `isToggled` from
+`defaults`) is a toggle: `role="menuitemcheckbox"` + `aria-checked="true|false"`
+(+ the `--toggled` modifier when on); the rest are `role="menuitem"`. The keyboard
+treats both alike (Enter / Space run; a toggle closes the menu unless
+`shouldCloseOnClick: false`). The menu registers with `registerOverlay`
 (one overlay open at a time). Styling: shared `bliss-menu`, `__item` (`--danger`
-`--active` `--disabled` `--has-submenu`), `__icon`, `__label`, `__shortcut`,
+`--toggled` `--disabled` `--has-submenu`), `__icon`, `__label`, `__shortcut`,
 `__divider` (`--named`), `__loading`, `--submenu`, `--custom`, `--has-icons`; every
 value reads `--bliss-menu-*` falling back to `--base-*`, in `@layer component`. A
 component maps its own variables onto `--bliss-menu-*` on its host.

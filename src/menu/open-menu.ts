@@ -1,6 +1,6 @@
 /**
  * `openMenu()` — the shared context / dropdown menu (SPEC §12.13). Renders core
- * `/actions` menu entries (icon, label, shortcut, danger / active / disabled,
+ * `/actions` menu entries (icon, label, shortcut, danger / toggled / disabled,
  * named dividers, `cssClass`), opens submenus (static `children` or a lazy
  * `getChildrenCallback` with a loading row), positions every level through
  * `/positioning` `anchor()`, dismisses on outside interaction, and implements the
@@ -127,7 +127,13 @@ export function openMenu<Ctx, A extends string = string>(
       const { item, resolved, hasChildren } = entry;
       const itemEl = document.createElement('div');
       itemEl.className = ITEM;
-      itemEl.setAttribute('role', 'menuitem');
+      // A toggle (defines its toggle state) is a menuitemcheckbox; the rest are menuitems.
+      const isToggle =
+        item.isToggled !== undefined ||
+        typeof item.getIsToggledCallback === 'function' ||
+        opts.defaults?.(item)?.isToggled !== undefined;
+      itemEl.setAttribute('role', isToggle ? 'menuitemcheckbox' : 'menuitem');
+      if (isToggle) itemEl.setAttribute('aria-checked', String(resolved.isToggled));
       itemEl.tabIndex = -1;
       itemEl.dataset.action = resolved.action;
       if (resolved.id !== undefined) itemEl.dataset.id = resolved.id;
@@ -136,10 +142,7 @@ export function openMenu<Ctx, A extends string = string>(
         itemEl.setAttribute('aria-disabled', 'true');
       }
       if (resolved.isDanger) itemEl.classList.add(`${ITEM}--danger`);
-      if (resolved.isActive) {
-        itemEl.classList.add(`${ITEM}--active`);
-        itemEl.setAttribute('aria-pressed', 'true');
-      }
+      if (resolved.isToggled) itemEl.classList.add(`${ITEM}--toggled`);
       if (hasChildren) {
         itemEl.classList.add(`${ITEM}--has-submenu`);
         itemEl.setAttribute('aria-haspopup', 'menu');

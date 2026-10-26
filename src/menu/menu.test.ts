@@ -69,7 +69,7 @@ describe('rendering', () => {
     const { handle } = open([
       { id: 'x', text: 'X', icon: '<svg data-i="1"></svg>', shortcut: 'Ctrl+X', isDanger: true, cssClass: 'extra more' },
       menuDivider('Group'),
-      { id: 'y', text: 'Y', isActive: true, tooltip: 'tip' },
+      { id: 'y', text: 'Y', isToggled: true, tooltip: 'tip' },
       { id: 'z', text: 'Z', isDisabled: true, children: [{ id: 'z1' }] },
       { id: 'hidden', isVisible: false },
     ]);
@@ -85,8 +85,11 @@ describe('rendering', () => {
     expect(x!.className).toBe('bliss-menu__item bliss-menu__item--danger extra more');
     expect(x!.querySelector('.bliss-menu__icon svg')).not.toBeNull();
     expect(x!.querySelector('.bliss-menu__shortcut')!.textContent).toBe('Ctrl+X');
-    expect(y!.classList.contains('bliss-menu__item--active')).toBe(true);
-    expect(y!.getAttribute('aria-pressed')).toBe('true');
+    expect(x!.hasAttribute('aria-checked')).toBe(false);
+    expect(y!.classList.contains('bliss-menu__item--toggled')).toBe(true);
+    expect(y!.getAttribute('role')).toBe('menuitemcheckbox');
+    expect(y!.getAttribute('aria-checked')).toBe('true');
+    expect(y!.hasAttribute('aria-pressed')).toBe(false);
     expect(y!.title).toBe('tip');
     expect(y!.querySelector('.bliss-menu__icon')!.innerHTML).toBe(''); // the icon column is reserved
     expect(z!.getAttribute('aria-disabled')).toBe('true');
@@ -320,6 +323,30 @@ describe('keyboard', () => {
     expect(runAction.mock.calls[0]![1].sourceEvent.type).toBe('keydown');
     expect(onClose).toHaveBeenCalledWith('action');
     expect(active()).toBe(opener);
+  });
+
+  it('a toggle (isToggled / getIsToggledCallback / a toggled default) is a menuitemcheckbox; Enter / Space run it', () => {
+    const { runAction } = open(
+      [
+        { id: 'off', text: 'Off', isToggled: false },
+        { id: 'cb', text: 'Cb', getIsToggledCallback: (c) => c.name === 'node' },
+        { id: 'def', text: 'Def' },
+        { id: 'plain', text: 'Plain' },
+      ],
+      { shouldFocusFirst: true, defaults: (item) => (item.id === 'def' ? { isToggled: false } : undefined) },
+    );
+    expect(byId('off').getAttribute('role')).toBe('menuitemcheckbox');
+    expect(byId('off').getAttribute('aria-checked')).toBe('false');
+    expect(byId('off').classList.contains('bliss-menu__item--toggled')).toBe(false);
+    expect(byId('cb').getAttribute('aria-checked')).toBe('true');
+    expect(byId('def').getAttribute('role')).toBe('menuitemcheckbox');
+    expect(byId('plain').getAttribute('role')).toBe('menuitem');
+    expect(byId('plain').hasAttribute('aria-checked')).toBe(false);
+    key('ArrowDown');
+    expect(active()).toBe(byId('cb'));
+    key('Enter');
+    expect(runAction).toHaveBeenCalledOnce();
+    expect(runAction.mock.calls[0]![0].id).toBe('cb');
   });
 
   it('Esc on the root closes and returns focus; Tab closes without preventing default', () => {

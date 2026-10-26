@@ -46,11 +46,13 @@ export interface ActionItem<Ctx = ComponentContext, A extends string = string> {
   /** Destructive styling. Default `false`. */
   isDanger?: boolean;
   /**
-   * Toggle state — the thing this item toggles is currently on (Bold while
-   * the caret is in bold text). Still clickable; rendered as
-   * `aria-pressed="true"`. Not availability: that's {@link isDisabled}.
+   * Toggle state — the thing this item toggles is currently ON (Bold while the
+   * caret is in bold text; "Show hidden" checked). Still clickable. A button
+   * renders it as `aria-pressed`; a menu item that defines it (or
+   * {@link getIsToggledCallback}) is a toggle: `role="menuitemcheckbox"` +
+   * `aria-checked`. Not availability: that's {@link isDisabled}.
    */
-  isActive?: boolean;
+  isToggled?: boolean;
 
   getTextCallback?(ctx: Ctx): string;
   getIconCallback?(ctx: Ctx): string;
@@ -58,7 +60,7 @@ export interface ActionItem<Ctx = ComponentContext, A extends string = string> {
   getClassCallback?(ctx: Ctx): string | string[];
   getIsVisibleCallback?(ctx: Ctx): boolean;
   getIsDisabledCallback?(ctx: Ctx): boolean;
-  getIsActiveCallback?(ctx: Ctx): boolean;
+  getIsToggledCallback?(ctx: Ctx): boolean;
 
   /**
    * Runs on click with the surface context plus the action fields — the same
@@ -124,5 +126,5 @@ export interface ResolvedActionItem<A extends string = string> {
   isVisible: boolean;
   isDisabled: boolean;
   isDanger: boolean;
-  isActive: boolean;
+  isToggled: boolean;
 }

@@ -40,7 +40,7 @@ Heaviest: `features/messages-custom-actions` (51), `bulk-metadata-loading` (25),
   `onDateSelect(e)` → `onSelect(detail)`; new `month-change` worth a demo.
 - `ctx.picker` / `el.picker` → `ctx.controller` / `el.controller`.
 - `actionButtons`: `{ action: 'custom' }` → `{ id }`; `isVisibleCallback` →
-  `getIsVisibleCallback`; `onClick(detail)`; showcase `beforeActionCallback`, `isActive`,
+  `getIsVisibleCallback`; `onClick(detail)`; showcase `beforeActionCallback`, `isToggled`,
   `icon`, `isDanger`.
 - `beforeDateSelectCallback` result objects → `beforeSelectCallback` return contract
   (`false` / value / `null`, `ctx.controller.showMessage`, `ctx.markRangeInvalid()`).

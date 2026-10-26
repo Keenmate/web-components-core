@@ -63,7 +63,8 @@ export function resolveActionItem<Ctx, A extends string>(
     isDisabled:
       call(item.getIsDisabledCallback, ctx, 'getIsDisabledCallback', logSource) ?? item.isDisabled ?? defaults.isDisabled ?? false,
     isDanger: item.isDanger ?? defaults.isDanger ?? false,
-    isActive: call(item.getIsActiveCallback, ctx, 'getIsActiveCallback', logSource) ?? item.isActive ?? defaults.isActive ?? false,
+    isToggled:
+      call(item.getIsToggledCallback, ctx, 'getIsToggledCallback', logSource) ?? item.isToggled ?? defaults.isToggled ?? false,
   };
 }
 
