@@ -180,7 +180,8 @@ backup of the previous files is in `%TEMP%/bliss-naming-backup-20261023-203855`.
     a. fires for built-ins too (`today`, `select-all`, `delete`), not only `custom`;
     b. `beforeActionCallback(ctx)` → `false` cancels the built-in; may be async; the item is
        busy while waiting (second click ignored);
-    c. order: item `onClick` → `action` event → built-in behaviour.
+    c. order: item `onClick` → built-in behaviour → `action` event (2026-10-26, #15: the event
+       is a notification after the fact — listeners see the state the built-in left).
 15. **`controller` = public facade only**; internal state classes are `*Engine` (treeview
     `TreeController` → `TreeEngine`). In the rulebook.
 16. **Event names:** kebab-case, present tense, no component prefix (`node-click`, `select`

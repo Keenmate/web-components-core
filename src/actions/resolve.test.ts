@@ -149,7 +149,7 @@ describe('runAction', () => {
     return { ...ctx, action: item.action ?? 'custom', id: item.id, item, source: 'row-toolbar', triggerElement: trigger, dataset: {} };
   }
 
-  it('order: before → onClick → action event → built-in, all with the same object', async () => {
+  it('order: before → onClick → built-in → action event, all with the same object', async () => {
     const order: string[] = [];
     const item: ActionItem<RowCtx> = { action: 'delete', onClick: async () => void order.push('onClick') };
     const d = detail(item);
@@ -161,7 +161,7 @@ describe('runAction', () => {
       runBuiltIn: (x) => void (order.push('built-in'), seen.push(x)),
     });
     expect(ok).toBe(true);
-    expect(order).toEqual(['before', 'onClick', 'event', 'built-in']);
+    expect(order).toEqual(['before', 'onClick', 'built-in', 'event']);
     expect(seen.every((x) => x === d)).toBe(true);
   });
 
@@ -199,7 +199,7 @@ describe('runAction', () => {
     expect(btn.hasAttribute('aria-busy')).toBe(false);
   });
 
-  it('a throwing onClick is logged; the event and built-in still run', async () => {
+  it('a throwing onClick is logged; the built-in and the event still run', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const emitAction = vi.fn();
     const runBuiltIn = vi.fn();
@@ -210,6 +210,36 @@ describe('runAction', () => {
     });
     expect(emitAction).toHaveBeenCalledOnce();
     expect(runBuiltIn).toHaveBeenCalledOnce();
+    expect(error).toHaveBeenCalledOnce();
+    error.mockRestore();
+  });
+
+  it('the event sees the state the built-in left (an async built-in is awaited)', async () => {
+    const rows = ['a', 'b'];
+    let seen: string[] = [];
+    await runAction({
+      detail: detail({ action: 'delete' }),
+      runBuiltIn: async () => {
+        await Promise.resolve();
+        rows.pop();
+      },
+      emitAction: () => void (seen = [...rows]),
+    });
+    expect(seen).toEqual(['a']);
+  });
+
+  it('a throwing built-in is logged; the event still fires', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const emitAction = vi.fn();
+    const ok = await runAction({
+      detail: detail({ action: 'delete' }),
+      runBuiltIn: () => {
+        throw new Error('boom');
+      },
+      emitAction,
+    });
+    expect(ok).toBe(true);
+    expect(emitAction).toHaveBeenCalledOnce();
     expect(error).toHaveBeenCalledOnce();
     error.mockRestore();
   });

@@ -1224,9 +1224,13 @@ leading / trailing / doubled dividers, expands string built-ins),
 **One `action` event per component.** `runAction({ detail, beforeActionCallback,
 emitAction, runBuiltIn })` fixes the order for every surface:
 `beforeActionCallback` (`false` cancels — nothing else runs) → item `onClick` →
-`action` event + `onAction` twin (`emitAction`, normally `this.emit('action',
-detail)`) → built-in behaviour. The item is busy meanwhile (`aria-busy`, a
-second activation ignored). The detail (`ActionEventDetail`) = surface context +
+built-in behaviour → `action` event + `onAction` twin (`emitAction`, normally
+`this.emit('action', detail)`). The event is a **notification after the fact**: a
+listener sees the state the built-in left (grid `delete` → the row is already gone
+from `items`; `add` → the new row is present; `move-*` → the new order). A throwing
+`onClick` or built-in is logged (not thrown) and the event still fires — the
+activation happened; listeners re-read the actual state. The item is busy
+meanwhile (`aria-busy`, a second activation ignored). The detail (`ActionEventDetail`) = surface context +
 `action`, `id`, `item`, `source` (`'action-buttons' | 'row-toolbar' |
 'context-menu' | …`), `sourceEvent`, `triggerElement`, `dataset` — one object for
 `beforeActionCallback`, `onClick`, `onAction` and the DOM event. HTML a consumer

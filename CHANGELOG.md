@@ -31,6 +31,18 @@ One shape for events, callbacks and clickable items across every KM component
 
 ### Changed
 
+- **BREAKING — `runAction` runs the built-in BEFORE the `action` event** (#15). The
+  order is now `beforeActionCallback` (veto) → item `onClick` → built-in → `action`
+  event + `onAction` twin (was: … → `onClick` → event → built-in). The event is a
+  notification after the fact: a listener sees the state the built-in left — after
+  web-grid `delete` the row is already gone from `items`, after `add` the new row is
+  present, after `move-*` the new order is in place. To prevent a built-in, use
+  `beforeActionCallback` (returning `false`), not the event. A built-in that throws
+  is logged (`UI` / `CORE:ACTIONS`) and the event **still fires** — the activation
+  happened and listeners re-read the actual state. **Review note:** listeners that
+  read the *pre*-action state in the event (e.g. "the row about to be deleted") must
+  now take it from the detail's surface context (`row`, `node`, …), which is captured
+  before the built-in runs.
 - **An invalid attribute value now warns and keeps the previous value**, the same
   rule as the property path. `el.setAttribute('page-size', 'abc')` on a
   `page-size` of 25 used to reset it silently to the default; it now warns
@@ -106,7 +118,7 @@ One shape for events, callbacks and clickable items across every KM component
   `MenuDivider`, `MenuEntry`, `ActionEventDetail`; `resolveActionItem`,
   `resolveMenuEntries`, `getMenuChildren`, `menuDivider`, `isMenuDivider`,
   `normalizeActionItems`, `readActionDataset`, and `runAction` (fixed order:
-  `beforeActionCallback` → `onClick` → `action` event → built-in; busy guard).
+  `beforeActionCallback` → `onClick` → built-in → `action` event; busy guard).
 - **`InputDef.getBatchValuesCallback(value, config)`** — an input that also sets
   others (a preset such as web-grid's `mode`). The returned `{ configKey: value }`
   map is staged in the same batch, each value through its own converter;

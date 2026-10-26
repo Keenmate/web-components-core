@@ -165,7 +165,7 @@ export interface RunActionOptions<Ctx, A extends string> {
   detail: ActionEventDetail<Ctx, A>;
   /** The component's `beforeActionCallback` — `false` cancels everything (async OK). */
   beforeActionCallback?: ((detail: ActionEventDetail<Ctx, A>) => unknown) | null;
-  /** Fire the `action` event (and its `onAction` twin) — usually `this.emit('action', detail)`. */
+  /** Fire the `action` event (and its `onAction` twin) after the built-in — usually `this.emit('action', detail)`. */
   emitAction(detail: ActionEventDetail<Ctx, A>): void;
   /** The built-in behaviour for `detail.action`, if any. */
   runBuiltIn?(detail: ActionEventDetail<Ctx, A>): void | Promise<void>;
@@ -174,10 +174,13 @@ export interface RunActionOptions<Ctx, A extends string> {
 /**
  * Run one activation in the shared order (SPEC §12.11):
  * `beforeActionCallback` (`false` cancels — nothing else runs) → the item's
- * `onClick` → the `action` event → the built-in behaviour. The item is busy
- * while it runs (`aria-busy` on the trigger); a second activation meanwhile is
- * ignored. Errors in `onClick` / the built-in are logged, not thrown.
- * Resolves `false` when cancelled or ignored as busy.
+ * `onClick` → the built-in behaviour → the `action` event. The event is a
+ * notification after the fact: a listener sees the state the built-in left
+ * (a deleted row is already gone, an added one is present). A throwing
+ * `onClick` or built-in is logged, not thrown, and the event still fires —
+ * the activation happened; listeners re-read the actual state. The item is
+ * busy while it runs (`aria-busy` on the trigger); a second activation
+ * meanwhile is ignored. Resolves `false` when cancelled or ignored as busy.
  */
 export async function runAction<Ctx, A extends string>(opts: RunActionOptions<Ctx, A>): Promise<boolean> {
   const { detail } = opts;
@@ -196,7 +199,6 @@ export async function runAction<Ctx, A extends string>(opts: RunActionOptions<Ct
         coreLog(detail, 'UI', 'ACTIONS').error('action item onClick threw', error);
       }
     }
-    opts.emitAction(detail);
     if (opts.runBuiltIn) {
       try {
         await opts.runBuiltIn(detail);
@@ -204,6 +206,7 @@ export async function runAction<Ctx, A extends string>(opts: RunActionOptions<Ct
         coreLog(detail, 'UI', 'ACTIONS').error(`built-in action "${detail.action}" threw`, error);
       }
     }
+    opts.emitAction(detail);
     return true;
   } finally {
     busyItems.delete(key);

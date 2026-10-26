@@ -124,7 +124,9 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
 Clickable items (buttons / toolbars / menus) and the `action` event live in
 `src/actions/` (subpath `/actions`, SPEC §12.12); `before*Callback`s go through
 `runBeforeCallback` (`false` cancels, value replaces; `runBeforeCallbackEager`
-keeps a sync hook's flow synchronous). The cross-component
+keeps a sync hook's flow synchronous). `runAction` order: `beforeActionCallback` →
+item `onClick` → built-in → `action` event (a notification after the fact; a throwing
+built-in is logged and the event still fires). The cross-component
 migration is tracked in `docs/interaction-model-plan.md`.
 
 The shared context / dropdown menu lives in `src/menu/` (subpath `/menu`, SPEC
