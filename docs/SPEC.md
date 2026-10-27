@@ -880,7 +880,7 @@ free functions taking a root + CSS strings, NOT `BlissElement` methods.
   module-level and shared across every instance via `adoptedStyleSheets` (dedup
   per root); `<style>` fallback where constructable sheets are unsupported;
   no-op under SSR.
-- **`createStyleSlot(root, { position?, className? })`** → `{ set, clear,
+- **`createStyleSlot(root, { position?, cssClass? })`** → `{ set, clear,
   destroy }` — a PER-INSTANCE, replaceable `<style>` slot for the
   `customStylesCallback` pattern (user CSS that changes at runtime). One element
   at a consistent position, so re-`set` replaces rather than stacks — fixing the

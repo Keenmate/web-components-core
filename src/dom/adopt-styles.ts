@@ -92,7 +92,7 @@ export interface StyleSlotOptions {
   /** Insert at the start (`'first'`) or end (`'last'`) of the root. Default `'last'` (so it wins the cascade). */
   position?: 'first' | 'last';
   /** Optional class on the `<style>` element (e.g. for debugging / removal). */
-  className?: string;
+  cssClass?: string;
 }
 
 /**
@@ -113,7 +113,7 @@ export function createStyleSlot(
     if (typeof document === 'undefined') return null;
     if (!element) {
       element = document.createElement('style');
-      if (opts.className) element.className = opts.className;
+      if (opts.cssClass) element.className = opts.cssClass;
     }
     if (element.parentNode !== target) {
       if (position === 'first' && target.firstChild) target.insertBefore(element, target.firstChild);

@@ -85,9 +85,9 @@ describe('createStyleSlot', () => {
     expect(last.lastElementChild!.tagName).toBe('STYLE');
   });
 
-  it('applies the className and destroy removes the element', () => {
+  it('applies cssClass and destroy removes the element', () => {
     const root = shadow();
-    const slot = createStyleSlot(root, { className: 'ms-custom-styles' });
+    const slot = createStyleSlot(root, { cssClass: 'ms-custom-styles' });
     slot.set('.a {}');
     expect(root.querySelector('style')!.className).toBe('ms-custom-styles');
     slot.destroy();

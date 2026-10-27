@@ -391,7 +391,7 @@ import styles from './main.css?inline';
 adoptStyles(this.shadowRoot, styles);
 
 // per-instance user CSS (the customStylesCallback pattern) — one replaceable slot
-const slot = createStyleSlot(this.shadowRoot, { className: 'custom-styles' });
+const slot = createStyleSlot(this.shadowRoot, { cssClass: 'custom-styles' });
 slot.set(this.config.customStylesCallback?.());  // re-set replaces; falsy clears
 ```
 
