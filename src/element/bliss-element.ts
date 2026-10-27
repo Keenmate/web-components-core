@@ -131,6 +131,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * nothing schedules.
    */
   #hasFailedReinit = false;
+  /** Cancels the pending post-disconnect removal check (see {@link removedCallback}); set only while one is scheduled. */
+  #cancelRemovalCheck?: () => void;
   /** Unsubscribe from the environment observable; set only while connected AND `environmentChanged` is overridden. */
   #envUnsub?: () => void;
   /** Unsubscribe from the throttled viewport observable; set only while connected AND `viewportChanged` is overridden. */
@@ -233,6 +235,9 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     // Track the live instance for the window.components registry (SPEC §12.3),
     // before any build so a devtools overlay sees it even mid-reinit.
     trackInstance(this.localName, this);
+    // Reconnected before the removal check ran → a DOM move, not a removal.
+    this.#cancelRemovalCheck?.();
+    this.#cancelRemovalCheck = undefined;
     if (!this.#connectedOnce) {
       this.#connectedOnce = true;
       // The pre-upgrade window is over; the initial-attribute guard is no longer
@@ -286,9 +291,36 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#sizeUnsub = undefined;
     this.#themeUnsub?.();
     this.#themeUnsub = undefined;
+    this.#scheduleRemovalCheck();
     if (!this.#isActive) return; // connect() never ran (its build threw)
     this.#isActive = false;
     this.disconnect();
+  }
+
+  /**
+   * Opt-in (only when {@link removedCallback} is overridden — no timers for the
+   * rest): after a disconnect, wait one animation frame and fire the hook if the
+   * element is still detached. A synchronous DOM move (disconnect → connect in
+   * the same task) cancels the check in `connectedCallback`. rAF doesn't run in
+   * a hidden tab, so a hidden document (and any environment without rAF — SSR,
+   * jsdom without `pretendToBeVisual`) falls back to a macrotask.
+   */
+  #scheduleRemovalCheck(): void {
+    if (this.removedCallback === BlissElement.prototype.removedCallback) return;
+    this.#cancelRemovalCheck?.();
+    const check = (): void => {
+      this.#cancelRemovalCheck = undefined;
+      if (this.isConnected) return;
+      this.removedCallback();
+    };
+    const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+    if (typeof requestAnimationFrame === 'function' && !isHidden) {
+      const id = requestAnimationFrame(check);
+      this.#cancelRemovalCheck = () => cancelAnimationFrame(id);
+    } else {
+      const id = setTimeout(check, 0);
+      this.#cancelRemovalCheck = () => clearTimeout(id);
+    }
   }
 
   // ── public batching API ─────────────────────────────────────────────────
@@ -465,6 +497,27 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * tear down structure here — only the live resources. No-op by default.
    */
   protected disconnect(): void {
+    /* opt-in */
+  }
+
+  /**
+   * Final teardown hook: the element was disconnected and NOT reconnected by
+   * the next animation frame (a macrotask when rAF is unavailable or the tab is
+   * hidden) — i.e. it was really removed, not moved. A synchronous DOM move
+   * (`disconnect()`→`connect()` in one task) never fires it. Runs after
+   * {@link disconnect}. Use it to cancel in-flight work and release resources
+   * that should survive a move but not a removal (e.g. abort uploads, then
+   * destroy).
+   *
+   * Overriding it is the opt-in: the base schedules the post-disconnect check
+   * only for subclasses that override this hook.
+   *
+   * Re-adding the element after it fired is a fresh activation: `connect()`
+   * runs as usual (no `reinit()` — the base doesn't know what the hook tore
+   * down). A subclass that destroyed its structure here rebuilds it in
+   * `connect()` (e.g. "no store → build one"). No-op by default.
+   */
+  protected removedCallback(): void {
     /* opt-in */
   }
 

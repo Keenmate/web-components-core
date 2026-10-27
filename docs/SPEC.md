@@ -230,6 +230,8 @@ export abstract class BlissElement extends Base {
   protected connect(): void { /* opt-in, no-op by default */ }
   /** Stop what connect() started. Every disconnect. Shadow DOM persists — don't tear down structure. */
   protected disconnect(): void { /* opt-in, no-op by default */ }
+  /** Really removed (still detached one animation frame after disconnect). Opt-in by overriding. */
+  protected removedCallback(): void { /* opt-in, no-op by default */ }
 
   // DIRECTION: `dir` is always observed (a global attribute, never an input).
   /** Effective writing direction is RTL (resolves CSS `direction`: element, ancestor, <html>, or a rule). */
@@ -266,6 +268,14 @@ properties/callbacks — so everything is reactive by construction:
   waiters resolve, a failed `reinit()` is retried on the next flush, and
   `connect()` waits for a successful build (`disconnect()` runs only after
   `connect()` did).
+- **Removal vs move** — `removedCallback()` (opt-in: the base schedules the
+  check only when a subclass overrides it) fires after `disconnect()` once the
+  element is still detached at the next animation frame (a macrotask where rAF
+  is unavailable or the document is hidden). A synchronous move never fires it.
+  Use it for teardown that must survive a move but not a removal (cancel uploads,
+  `destroy()`). Re-adding the element after it fired is a fresh activation:
+  `connect()` runs as usual (no forced `reinit()`); a subclass that tore its
+  structure down in the hook rebuilds it in `connect()`.
 
 Plus a typed `dispatch(el, name, detail, {bubbles=true, composed=true})`
 and generic DOM utils (`resolveEnumAttribute`, `createMicrotaskScheduler`)

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `removedCallback()` lifecycle hook
+
+- **`BlissElement.removedCallback()`** (protected, no-op default): fires after
+  `disconnect()` when the element is still detached at the next animation frame
+  (macrotask fallback where rAF is unavailable or the tab is hidden) — a real
+  removal, not a move. A synchronous DOM move never fires it. Opt-in: the
+  post-disconnect check is scheduled only for subclasses that override the hook.
+  Re-adding the element after it fired is a fresh activation: `connect()` runs as
+  usual (no forced `reinit()`; a subclass that tore its structure down rebuilds it in
+  `connect()`).
+
 ### Fixed — page-wide menu theming (`/menu`)
 
 - **Three-layer CSS variables.** Every menu value now reads

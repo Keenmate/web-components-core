@@ -84,6 +84,13 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
      listeners, observers, floating-ui `autoUpdate`, timers.
    - **`disconnect()`** — every disconnect. Stop what `connect()` started.
 
+   - **`removedCallback()`** — opt-in (override = subscribe): fires after
+     `disconnect()` when the element is still detached at the next animation
+     frame (macrotask fallback: no rAF / hidden tab). A synchronous move never
+     fires it. Re-adding afterwards is a fresh activation: `connect()` runs as
+     usual (no forced `reinit()` — rebuild in `connect()` if the hook tore
+     structure down).
+
    A DOM move (reorder/re-parent) fires `disconnect()`→`connect()` and
    **re-activates without rebuilding** (`reinit()` runs only on first connect or
    an `on:'reinit'` change) — so transient UI state survives. `connect()`/
