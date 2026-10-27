@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `defer` / `release()` / `ready` for every component (SPEC §6.3)
+
+- **`defer`** (global attribute, always observed, + reflecting `el.defer`) holds the
+  first build — no `reinit()`/`update()`/`connect()` — while options, callbacks and
+  listeners are wired. **`release()`** (or removing `defer`) runs the first build
+  once with everything set so far. Latched.
+- **Readiness**: after the first live build (`reinit()` + `connect()`) the host gets
+  the `ready` attribute and `:state(ready)`, the core-declared **`ready` event**
+  (+ `onReady` twin) fires once, `isReady` turns `true`, `whenReady()` resolves.
+- BREAKING for components with their own gate/announcement (web-multiselect,
+  web-daterangepicker `defer` + `ready()` + `is-ready`; web-editor `is-ready`;
+  web-treeview `data-ready`): they must drop it in their v2 pass — until then
+  core's `ready` fires in addition to theirs.
+
 ### Added — `removedCallback()` lifecycle hook
 
 - **`BlissElement.removedCallback()`** (protected, no-op default): fires after

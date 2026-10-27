@@ -148,6 +148,19 @@ class WebMultiSelect extends BlissElement {
   resources. A DOM move re-activates **without rebuilding**, so transient UI
   state survives. Keep them balanced.
 
+**Defer / release / ready** (every component): `<x-comp defer>` (or `el.defer =
+true` before connect) holds the first build — no `reinit()`/`update()`/`connect()`
+— while you wire options, callbacks and listeners; **`el.release()`** (or removing
+`defer`) then builds **once** with everything in place. Order: `defer` →
+`release()` → `reinit()` → `connect()` → **`ready`**. After the first build the host
+gets the `ready` attribute and `:state(ready)`, the `ready` event (+ `onReady`
+twin) fires once, `el.isReady` turns `true`, and **`await el.whenReady()`**
+resolves. Latched — a later `defer` never re-holds.
+
+```css
+x-comp[defer]:not([ready]) { min-height: 2.5rem; visibility: hidden; }
+```
+
 Batch many changes into one reinit/update with `setAttributes({ ... })` or
 `batch(() => { ... })`. To await the pipeline deterministically — in a test or
 before reading rendered state — use **`await el.whenSettled()`**: it resolves

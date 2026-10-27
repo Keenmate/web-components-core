@@ -233,6 +233,12 @@ export abstract class BlissElement extends Base {
   /** Really removed (still detached one animation frame after disconnect). Opt-in by overriding. */
   protected removedCallback(): void { /* opt-in, no-op by default */ }
 
+  // DEFER / READY (§6.3): `defer` attribute/property holds the first build until release().
+  defer: boolean;
+  release(): void;
+  readonly isReady: boolean;            // + `ready` attribute, :state(ready), `ready` event / onReady
+  whenReady(): Promise<void>;
+
   // DIRECTION: `dir` is always observed (a global attribute, never an input).
   /** Effective writing direction is RTL (resolves CSS `direction`: element, ancestor, <html>, or a rule). */
   protected get isRtl(): boolean { /* … */ }
@@ -389,6 +395,38 @@ Rules:
 - **A rejected attribute isn't explicit either** (§6): `<web-grid mode="excel"
   edit-trigger="bogus">` warns and ends with the batch value `navigate`, in
   either attribute order.
+
+### 6.3 Defer / release / ready — the first build, for every component
+
+Complex setups (options, callbacks like `getCustomStylesCallback`, listeners)
+should land in ONE first build instead of build-then-restyle. Core provides the
+gate and the readiness signal for every `BlissElement`; no component re-implements
+them.
+
+- **`defer`** — a global attribute (always observed, like `dir`) with a reflecting
+  boolean property `el.defer`. When it is present at the first connect, the build
+  is **held**: no `reinit()`/`update()`, no `connect()`, no environment/theme
+  subscriptions. Inputs keep staging into `config` (a held element flushes nothing —
+  like a detached one), so `whenSettled()` waits for the release; `flush()`,
+  `setAttributes()` and `batch()` stage but don't build. A pre-upgrade
+  `el.defer = true` is applied as the attribute at the first connect.
+- **`release()`** — or removing `defer` — runs the first build now: one
+  `reinit()` with everything set so far, then `connect()`, then `ready`. Detached →
+  the build runs at the next connect. **Latched**: once released (or once the first
+  build started) re-adding `defer` has no effect, and `release()` is a no-op.
+- **`ready`** — after the first successful build is live (`reinit()` + `connect()`
+  ran), once per element lifetime: the host gets the `ready` attribute and the
+  `:state(ready)` custom state (`ElementInternals.states` via the shared
+  `internals`; skipped where unavailable), the `ready` event fires (bubbles, not
+  composed; detail = component context only) with its `onReady` twin, `isReady`
+  turns `true` and `whenReady()` resolves. A rebuild or a DOM move never
+  re-announces. A throwing first build keeps `ready` pending until a later flush
+  succeeds. Core declares `ready`/`onReady` itself; a subclass may list `ready` in
+  its `static events` (for docs) without a duplicate.
+
+Lifecycle: `defer` → `release()` → `reinit()` → `connect()` → `ready`. A subclass
+that declares its own `defer` attribute input takes the attribute over (the core
+gate is then off), the same dedup rule as `dir`.
 
 ---
 

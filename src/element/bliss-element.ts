@@ -32,6 +32,7 @@ import { dispatch, type DispatchOptions } from './dispatch.js';
 import { withComponentContext, type ComponentContext, type EmitDetail } from './context.js';
 import {
   normalizeEventDefs,
+  withCoreEvents,
   type EventDef,
   type EventMap,
   type NormalizedEventDef,
@@ -51,6 +52,13 @@ const VALIDATED = new WeakSet<object>();
 
 /** Shared empty set for elements without an input table (opt-in). */
 const EMPTY_SET: ReadonlySet<string> = new Set();
+
+/** Global attribute holding the first build until {@link BlissElement.release} (SPEC §6.3). */
+export const DEFER_ATTRIBUTE = 'defer';
+/** Host attribute (and `:state(ready)` custom state) set once the first build is live (SPEC §6.3). */
+export const READY_ATTRIBUTE = 'ready';
+/** The core-provided event fired once the first build is live; twin `onReady`. */
+const READY_EVENT = 'ready';
 
 
 export abstract class BlissElement<TEvents extends EventMap = EventMap, TController = unknown> extends Base {
@@ -77,7 +85,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     // writing-direction switch reaches the directionChanged() hook, and
     // `theme-source` (SPEC §12.10) so a component can read its theme from a chosen
     // element. Deduped in case a subclass declares either as an input attribute.
-    for (const global of ['dir', THEME_SOURCE_ATTRIBUTE]) {
+    // `defer` (SPEC §6.3) is the build gate every component gets.
+    for (const global of ['dir', THEME_SOURCE_ATTRIBUTE, DEFER_ATTRIBUTE]) {
       if (!attrs.includes(global)) attrs.push(global);
     }
     return attrs;
@@ -144,6 +153,17 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   /** Unsubscribe from the theme context; set only while connected AND `hasThemeContext` is on. */
   #themeUnsub?: () => void;
   #internals?: ElementInternals;
+  /**
+   * The `defer` gate no longer holds (SPEC §6.3): {@link release} was called, the
+   * attribute was removed, or the first build started. Latched — re-adding
+   * `defer` afterwards never re-holds.
+   */
+  #isReleased = false;
+  /** `el.defer` assigned before upgrade — applied as the attribute at first connect. */
+  #preUpgradeDefer?: boolean;
+  /** The first build is live and `ready` was announced (once per element lifetime). */
+  #isReady = false;
+  #readyResolvers: Array<() => void> = [];
   #logLevel?: LogLevelDesc;
   /** `this.log` for a tag with no bundle: every category → `CORE:ELEMENT` (built once). */
   #coreLogProxy?: Record<string, InstanceLogger>;
@@ -154,7 +174,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     setInstanceLogLevelSource(this, () => this.#logLevel);
     const ctor = this.constructor as typeof BlissElement;
     const defs = ctor.inputs ?? [];
-    const events = normalizeEventDefs(ctor.events);
+    const events = withCoreEvents(normalizeEventDefs(ctor.events));
     this.#validateOnce(defs, events);
     for (const def of defs) {
       this.#byConfigKey.set(def.configKey, def);
@@ -165,6 +185,10 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#seedDefaults(defs);
     this.#installAccessors(defs);
     this.#installEventAccessors(events);
+    if (!this.#byConfigKey.has('defer')) {
+      const pre = this.#liftPreUpgrade('defer');
+      if (pre.had) this.#preUpgradeDefer = !!pre.value;
+    }
   }
 
   // ── lifecycle ──────────────────────────────────────────────────────────
@@ -185,6 +209,12 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     if (name === THEME_SOURCE_ATTRIBUTE && !this.#byAttribute.has(THEME_SOURCE_ATTRIBUTE)) {
       this.#themeSource = raw || null;
       this.#resubscribeTheme();
+      return;
+    }
+    // Global `defer` (SPEC §6.3): removing it releases the held first build.
+    // Before the first connect the gate is read at that connect, so nothing to do.
+    if (name === DEFER_ATTRIBUTE && !this.#byAttribute.has(DEFER_ATTRIBUTE)) {
+      if (raw === null && this.#connectedOnce) this.release();
       return;
     }
     const def = this.#byAttribute.get(name);
@@ -239,6 +269,10 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#cancelRemovalCheck?.();
     this.#cancelRemovalCheck = undefined;
     if (!this.#connectedOnce) {
+      // A pre-upgrade `el.defer = …` becomes the attribute now (the constructor may
+      // not touch attributes); the gate is read by the flush below.
+      if (this.#preUpgradeDefer !== undefined) this.toggleAttribute(DEFER_ATTRIBUTE, this.#preUpgradeDefer);
+      this.#preUpgradeDefer = undefined;
       this.#connectedOnce = true;
       // The pre-upgrade window is over; the initial-attribute guard is no longer
       // needed and later setAttribute()s react normally.
@@ -256,7 +290,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * a later flush rebuilds it.
    */
   #activate(): void {
-    if (this.#isActive || !this.isConnected) return;
+    if (this.#isActive || !this.isConnected || this.#isHeld()) return;
     this.#isActive = true;
     this.connect();
     // Subscribe to device/viewport/orientation ONLY when the subclass opts in by
@@ -279,6 +313,35 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       this.#sizeUnsub = observeElementSize(this, (size) => this.sizeChanged(size), { shouldFireImmediately: false });
     }
     this.#subscribeTheme();
+    if (!this.#isReady) this.#announceReady();
+  }
+
+  /**
+   * First build is live (built + `connect()` ran): set the `ready` attribute and
+   * `:state(ready)`, fire `ready` (+ `onReady`), resolve {@link whenReady}. Once
+   * per element lifetime — a rebuild or reconnect never re-announces.
+   */
+  #announceReady(): void {
+    this.#isReady = true;
+    this.#withoutReflect(() => this.setAttribute(READY_ATTRIBUTE, ''));
+    try {
+      this.internals?.states?.add(READY_ATTRIBUTE);
+    } catch {
+      // CustomStateSet unavailable, or an older engine that only accepts `--dashed`
+      // idents — the `ready` attribute is the portable hook then.
+    }
+    const resolvers = this.#readyResolvers;
+    this.#readyResolvers = [];
+    try {
+      this.emit(READY_EVENT as keyof TEvents & string);
+    } finally {
+      for (const resolve of resolvers) resolve();
+    }
+  }
+
+  /** The `defer` gate holds the first build (SPEC §6.3). */
+  #isHeld(): boolean {
+    return !this.#isReleased && !this.#byAttribute.has(DEFER_ATTRIBUTE) && this.hasAttribute(DEFER_ATTRIBUTE);
   }
 
   disconnectedCallback(): void {
@@ -321,6 +384,57 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       const id = setTimeout(check, 0);
       this.#cancelRemovalCheck = () => clearTimeout(id);
     }
+  }
+
+  // ── defer / release / ready (SPEC §6.3) ───────────────────────────────────
+
+  /**
+   * Hold the first build. While `defer` is set when the element first connects,
+   * nothing is built — no `reinit()`/`update()`, no `connect()` — and every input,
+   * callback and listener assigned meanwhile accumulates. {@link release} (or
+   * removing the attribute) then builds ONCE with all of it in place. Reflects to
+   * the `defer` attribute. Latched: after the first build, setting it again has no
+   * effect.
+   */
+  get defer(): boolean {
+    return this.hasAttribute(DEFER_ATTRIBUTE);
+  }
+
+  set defer(value: boolean) {
+    this.toggleAttribute(DEFER_ATTRIBUTE, !!value);
+  }
+
+  /**
+   * Release the `defer` gate: run the first build now (one `reinit()` with every
+   * pending input, then `connect()`, then `ready`). While detached, the build runs
+   * at the next connect. No-op once released or built. Removing the `defer`
+   * attribute does the same.
+   */
+  release(): void {
+    if (this.#isReleased) return;
+    this.#isReleased = true;
+    if (!this.#connectedOnce || !this.isConnected) return; // the (next) connect builds
+    this.#flushNow();
+    this.#activate();
+  }
+
+  /**
+   * Whether the first build is live — the `ready` event has fired, the host has
+   * the `ready` attribute and matches `:state(ready)`. `false` while a `defer`
+   * gate holds and before the first connect.
+   */
+  get isReady(): boolean {
+    return this.#isReady;
+  }
+
+  /**
+   * Resolves once the first build is live (right after the `ready` event); at
+   * once when it already is. Never rejects — a throwing first build keeps it
+   * pending until a later flush succeeds.
+   */
+  whenReady(): Promise<void> {
+    if (this.#isReady) return Promise.resolve();
+    return new Promise<void>((resolve) => this.#readyResolvers.push(resolve));
   }
 
   // ── public batching API ─────────────────────────────────────────────────
@@ -1020,6 +1134,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
 
   #flush(): void {
     if (!this.isConnected) return; // hold until connected
+    if (this.#isHeld()) return; // hold until release() (SPEC §6.3)
+    this.#isReleased = true; // building now — a later `defer` never re-holds
     const isRetry = this.#hasFailedReinit;
     const reinit = this.#pendingReinit || isRetry;
     const partial = this.#pending;

@@ -91,6 +91,13 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
      usual (no forced `reinit()` — rebuild in `connect()` if the hook tore
      structure down).
 
+   **Defer / ready (SPEC §6.3), every component:** a `defer` attribute/property
+   holds the first build (no `reinit()`/`update()`/`connect()`); `release()` (or
+   removing `defer`) builds once with everything set so far. After the first live
+   build: `ready` attribute + `:state(ready)` + `ready` event (`onReady` twin) +
+   `isReady` / `whenReady()`. Order: defer → release → reinit → connect → ready.
+   Latched — `defer` never re-holds after the first build.
+
    A DOM move (reorder/re-parent) fires `disconnect()`→`connect()` and
    **re-activates without rebuilding** (`reinit()` runs only on first connect or
    an `on:'reinit'` change) — so transient UI state survives. `connect()`/

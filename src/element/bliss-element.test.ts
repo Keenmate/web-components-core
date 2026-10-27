@@ -157,6 +157,7 @@ describe('BlissElement', () => {
       'note',
       'dir',
       'theme-source',
+      'defer',
     ]);
   });
 
@@ -178,7 +179,7 @@ describe('BlissElement', () => {
 
   it('routes dir through the input pipeline (not directionChanged) when declared as an input attribute', async () => {
     // `dir` listed once (deduped), not appended a second time.
-    expect(DirInputElement.observedAttributes).toEqual(['dir', 'theme-source']);
+    expect(DirInputElement.observedAttributes).toEqual(['dir', 'theme-source', 'defer']);
 
     const el = document.createElement('dir-input-element') as DirInputElement;
     document.body.appendChild(el);

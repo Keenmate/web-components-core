@@ -77,3 +77,22 @@ export function normalizeEventDefs(
     return { name: def.name, property, bubbles: def.bubbles, composed: def.composed, cancelable: def.cancelable };
   });
 }
+
+/**
+ * Events core fires for EVERY component, whatever its table declares: `ready`
+ * (twin `onReady`, SPEC §6.3). A subclass entry of the same name wins (its
+ * property / flags override), so declaring `ready` for docs is harmless.
+ */
+const CORE_EVENTS: readonly NormalizedEventDef[] = [
+  { name: 'ready', property: 'onReady', bubbles: undefined, composed: undefined, cancelable: undefined },
+];
+
+/**
+ * Append the {@link CORE_EVENTS} the subclass table doesn't declare itself.
+ *
+ * @internal BlissElement plumbing — exported, but not part of the stable API.
+ */
+export function withCoreEvents(events: NormalizedEventDef[]): NormalizedEventDef[] {
+  const missing = CORE_EVENTS.filter((core) => !events.some((ev) => ev.name === core.name));
+  return missing.length ? [...events, ...missing.map((ev) => ({ ...ev }))] : events;
+}
