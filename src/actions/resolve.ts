@@ -192,7 +192,7 @@ export async function runAction<Ctx, A extends string>(opts: RunActionOptions<Ct
   trigger?.setAttribute('aria-busy', 'true');
   try {
     const gate = await runBeforeCallback(opts.beforeActionCallback, detail, 'beforeActionCallback', detail);
-    if (gate.isCancelled) return false;
+    if (gate.isRejected) return false;
     if (typeof detail.item.onClick === 'function') {
       try {
         await detail.item.onClick(detail);

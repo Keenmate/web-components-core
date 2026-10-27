@@ -4,31 +4,31 @@ import { consoleLines } from '../logging/console-line.test-util.js';
 
 describe('runBeforeCallback', () => {
   it('unset → continue', async () => {
-    await expect(runBeforeCallback(undefined, {})).resolves.toEqual({ isCancelled: false, hasValue: false });
+    await expect(runBeforeCallback(undefined, {})).resolves.toEqual({ isRejected: false, hasValue: false });
   });
 
-  it('false → cancel; undefined → continue; a value (incl. null) → continue with it', async () => {
-    await expect(runBeforeCallback(() => false, {})).resolves.toEqual({ isCancelled: true });
-    await expect(runBeforeCallback(() => undefined, {})).resolves.toEqual({ isCancelled: false, hasValue: false });
-    await expect(runBeforeCallback(() => ['a'], {})).resolves.toEqual({ isCancelled: false, hasValue: true, value: ['a'] });
-    await expect(runBeforeCallback(() => null, {})).resolves.toEqual({ isCancelled: false, hasValue: true, value: null });
+  it('false → reject; undefined → continue; a value (incl. null) → continue with it', async () => {
+    await expect(runBeforeCallback(() => false, {})).resolves.toEqual({ isRejected: true });
+    await expect(runBeforeCallback(() => undefined, {})).resolves.toEqual({ isRejected: false, hasValue: false });
+    await expect(runBeforeCallback(() => ['a'], {})).resolves.toEqual({ isRejected: false, hasValue: true, value: ['a'] });
+    await expect(runBeforeCallback(() => null, {})).resolves.toEqual({ isRejected: false, hasValue: true, value: null });
   });
 
   it('true is a value, not "handled" — it continues', async () => {
-    await expect(runBeforeCallback(() => true, {})).resolves.toEqual({ isCancelled: false, hasValue: true, value: true });
+    await expect(runBeforeCallback(() => true, {})).resolves.toEqual({ isRejected: false, hasValue: true, value: true });
   });
 
   it('awaits a Promise and passes one ctx', async () => {
     const fn = vi.fn(async (ctx: { n: number }) => (ctx.n > 1 ? false : undefined));
-    await expect(runBeforeCallback(fn, { n: 2 })).resolves.toEqual({ isCancelled: true });
+    await expect(runBeforeCallback(fn, { n: 2 })).resolves.toEqual({ isRejected: true });
     expect(fn).toHaveBeenCalledWith({ n: 2 });
   });
 
-  it('a throw (sync or async) cancels and is logged', async () => {
+  it('a throw (sync or async) rejects and is logged', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    await expect(runBeforeCallback(() => { throw new Error('x'); }, {})).resolves.toEqual({ isCancelled: true });
+    await expect(runBeforeCallback(() => { throw new Error('x'); }, {})).resolves.toEqual({ isRejected: true });
     await expect(runBeforeCallback(async () => { throw new Error('y'); }, {}, 'beforeDeleteCallback')).resolves.toEqual({
-      isCancelled: true,
+      isRejected: true,
     });
     expect(error).toHaveBeenCalledTimes(2);
     expect(consoleLines(error)[1]).toContain('beforeDeleteCallback');
@@ -38,45 +38,45 @@ describe('runBeforeCallback', () => {
 
 describe('runBeforeCallbackSync', () => {
   it('same contract, synchronously', () => {
-    expect(runBeforeCallbackSync(() => false, {})).toEqual({ isCancelled: true });
-    expect(runBeforeCallbackSync(() => undefined, {})).toEqual({ isCancelled: false, hasValue: false });
-    expect(runBeforeCallbackSync(() => ['p'], {})).toEqual({ isCancelled: false, hasValue: true, value: ['p'] });
+    expect(runBeforeCallbackSync(() => false, {})).toEqual({ isRejected: true });
+    expect(runBeforeCallbackSync(() => undefined, {})).toEqual({ isRejected: false, hasValue: false });
+    expect(runBeforeCallbackSync(() => ['p'], {})).toEqual({ isRejected: false, hasValue: true, value: ['p'] });
   });
 
   it('a returned Promise is warned and treated as continue', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     expect(runBeforeCallbackSync(async () => false, {}, 'beforeDragStartCallback')).toEqual({
-      isCancelled: false,
+      isRejected: false,
       hasValue: false,
     });
     expect(consoleLines(warn)[0]).toContain('beforeDragStartCallback must be synchronous');
     warn.mockRestore();
   });
 
-  it('a throw cancels', () => {
+  it('a throw rejects', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    expect(runBeforeCallbackSync(() => { throw new Error('x'); }, {})).toEqual({ isCancelled: true });
+    expect(runBeforeCallbackSync(() => { throw new Error('x'); }, {})).toEqual({ isRejected: true });
     error.mockRestore();
   });
 });
 
 describe('runBeforeCallbackEager', () => {
   it('answers synchronously for a sync hook (and when unset)', () => {
-    expect(runBeforeCallbackEager(undefined, {})).toEqual({ isCancelled: false, hasValue: false });
-    expect(runBeforeCallbackEager(() => false, {})).toEqual({ isCancelled: true });
-    expect(runBeforeCallbackEager(() => 'x', {})).toEqual({ isCancelled: false, hasValue: true, value: 'x' });
+    expect(runBeforeCallbackEager(undefined, {})).toEqual({ isRejected: false, hasValue: false });
+    expect(runBeforeCallbackEager(() => false, {})).toEqual({ isRejected: true });
+    expect(runBeforeCallbackEager(() => 'x', {})).toEqual({ isRejected: false, hasValue: true, value: 'x' });
   });
 
   it('returns a Promise for an async hook, same contract', async () => {
     const result = runBeforeCallbackEager(async () => false, {});
     expect(result).toBeInstanceOf(Promise);
-    await expect(result).resolves.toEqual({ isCancelled: true });
+    await expect(result).resolves.toEqual({ isRejected: true });
   });
 
-  it('a throw or a rejection cancels and is logged', async () => {
+  it('a throw or a rejection rejects and is logged', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    expect(runBeforeCallbackEager(() => { throw new Error('x'); }, {})).toEqual({ isCancelled: true });
-    await expect(runBeforeCallbackEager(async () => { throw new Error('y'); }, {})).resolves.toEqual({ isCancelled: true });
+    expect(runBeforeCallbackEager(() => { throw new Error('x'); }, {})).toEqual({ isRejected: true });
+    await expect(runBeforeCallbackEager(async () => { throw new Error('y'); }, {})).resolves.toEqual({ isRejected: true });
     expect(error).toHaveBeenCalledTimes(2);
     error.mockRestore();
   });

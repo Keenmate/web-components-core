@@ -6,33 +6,33 @@ import { coreLog } from '../logging/element-logger.js';
  *
  * | returns | meaning |
  * |---|---|
- * | `false` | cancel — nothing continues |
+ * | `false` | reject — nothing starts |
  * | nothing (`undefined`) | continue unchanged |
  * | any other value (incl. `null`) | continue with that value — what it replaces is the hook's documented contract |
  *
- * Unset → continue. A throw cancels (a crashed guard must not let a delete
+ * Unset → continue. A throw rejects (a crashed guard must not let a delete
  * through) and is logged as an error — through the component behind the
  * optional `logSource` (an element, a shadow root, or a ctx carrying the
  * component as `element`; defaults to `ctx`), else `CORE:ELEMENT`.
  */
 export type BeforeCallbackResult<V = unknown> =
-  | { readonly isCancelled: true }
-  | { readonly isCancelled: false; readonly hasValue: false }
-  | { readonly isCancelled: false; readonly hasValue: true; readonly value: V };
+  | { readonly isRejected: true }
+  | { readonly isRejected: false; readonly hasValue: false }
+  | { readonly isRejected: false; readonly hasValue: true; readonly value: V };
 
 type BeforeFn<Ctx> = ((ctx: Ctx) => unknown) | null | undefined;
 
-const CANCELLED = Object.freeze({ isCancelled: true as const });
-const CONTINUE = Object.freeze({ isCancelled: false as const, hasValue: false as const });
+const REJECTED = Object.freeze({ isRejected: true as const });
+const CONTINUE = Object.freeze({ isRejected: false as const, hasValue: false as const });
 
 function interpret<V>(result: unknown): BeforeCallbackResult<V> {
-  if (result === false) return CANCELLED;
+  if (result === false) return REJECTED;
   if (result === undefined) return CONTINUE;
-  return { isCancelled: false, hasValue: true, value: result as V };
+  return { isRejected: false, hasValue: true, value: result as V };
 }
 
 function report(name: string, error: unknown, logSource: unknown): void {
-  coreLog(logSource, 'UI', 'ELEMENT').error(`${name} threw — treated as cancel`, error);
+  coreLog(logSource, 'UI', 'ELEMENT').error(`${name} threw — treated as reject`, error);
 }
 
 /** Run an async-capable `before*Callback` (sync or `Promise` results both work). */
@@ -47,7 +47,7 @@ export async function runBeforeCallback<Ctx, V = unknown>(
     return interpret<V>(await fn(ctx));
   } catch (error) {
     report(name, error, logSource);
-    return CANCELLED;
+    return REJECTED;
   }
 }
 
@@ -72,7 +72,7 @@ export function runBeforeCallbackSync<Ctx, V = unknown>(
     return interpret<V>(result);
   } catch (error) {
     report(name, error, logSource);
-    return CANCELLED;
+    return REJECTED;
   }
 }
 
@@ -95,14 +95,14 @@ export function runBeforeCallbackEager<Ctx, V = unknown>(
     result = fn(ctx);
   } catch (error) {
     report(name, error, logSource);
-    return CANCELLED;
+    return REJECTED;
   }
   if (result && typeof (result as PromiseLike<unknown>).then === 'function') {
     return Promise.resolve(result).then(
       (value) => interpret<V>(value),
       (error) => {
         report(name, error, logSource);
-        return CANCELLED;
+        return REJECTED;
       },
     );
   }

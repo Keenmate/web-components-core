@@ -943,10 +943,10 @@ reuses a **composed native** (`click`, `focus`, `input`, `copy`, `paste`,
 event of that name also reaches host listeners.
 
 **`before*Callback` — one contract, `runBeforeCallback(fn, ctx, name?)`.** One
-`ctx`; may be async. `false` cancels (nothing continues), `undefined`
+`ctx`; may be async. `false` rejects (nothing starts — a before-callback vetoes an operation before it begins; "cancel" is reserved for stopping a running one), `undefined`
 continues, any other value (incl. `null`) continues with that value — what the
-value replaces is the hook's documented contract. A throw cancels and is
-logged. Returns a discriminated `BeforeCallbackResult` (`isCancelled`,
+value replaces is the hook's documented contract. A throw rejects and is
+logged. Returns a discriminated `BeforeCallbackResult` (`isRejected`,
 `hasValue`, `value`). `runBeforeCallbackSync` is the variant for triggers that
 need a synchronous answer (`dragstart`, `keydown`); a returned `Promise` there
 is warned and ignored. `runBeforeCallbackEager` answers synchronously when the

@@ -333,8 +333,8 @@ describe('former console call sites', () => {
     await runBeforeCallback(() => { throw new Error('x'); }, {}, 'beforeDeleteCallback');
     runBeforeCallbackSync(async () => true, ctx, 'beforeDragStartCallback');
     expect(consoleLines(error)).toEqual([
-      `[${ns}:UI] #ms beforeDeleteCallback threw — treated as cancel`,
-      '[CORE:ELEMENT] beforeDeleteCallback threw — treated as cancel',
+      `[${ns}:UI] #ms beforeDeleteCallback threw — treated as reject`,
+      '[CORE:ELEMENT] beforeDeleteCallback threw — treated as reject',
     ]);
     expect(consoleLines(warn)).toEqual([
       `[${ns}:UI] #ms beforeDragStartCallback must be synchronous; a returned Promise is ignored (continuing)`,

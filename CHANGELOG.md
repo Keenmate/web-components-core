@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`/menu`: `OpenMenuOptions.onClose` → `closeCallback`; `/search`
   `PrepareSearchTermOptions.onObjectTerm` → `objectTermCallback`** (`on*` is reserved for
   event twins).
+- **`BeforeCallbackResult.isCancelled` → `isRejected`** (`runBeforeCallback` /
+  `runBeforeCallbackSync` / `runBeforeCallbackEager`): a before-callback *rejects*
+  an operation before it starts; "cancel" is reserved for stopping a running one.
+  The throw log now reads "treated as reject".
 - **`/dom`: `createStyleSlot({ className })` → `{ cssClass }`** (`StyleSlotOptions`).
 - **`/menu`: `OpenMenuOptions.className` → `cssClass`** — the same name as the
   item-level `cssClass` (and `createTooltip`).
