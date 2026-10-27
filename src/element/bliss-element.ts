@@ -168,7 +168,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   /** {@link #announceReady} is queued (first build live; fires on the next microtask). */
   #isReadyScheduled = false;
   #readyResolvers: Array<() => void> = [];
-  /** An ancestor `<fieldset disabled>` disables this form-associated element (`formDisabledCallback`). */
+  /** Last `formDisabledCallback` value — the browser's combined (own attribute OR fieldset) state. */
   #isFormDisabled = false;
   /** {@link isEffectivelyDisabled} as of the last flush — `undefined` before the first build. */
   #lastEffectiveDisabled?: boolean;
@@ -871,12 +871,13 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   }
 
   /**
-   * Browser callback (form-associated elements only): an ancestor `<fieldset>`
-   * was disabled / re-enabled, or the element moved in or out of one. Kept apart
-   * from the `isDisabled` input — `el.disabled` keeps the author's value, like a
-   * native control — and merged into {@link isEffectivelyDisabled}. While live,
-   * pending writes flush first, then {@link disabledChanged} fires on a flip.
-   * Don't override; implement {@link disabledChanged}.
+   * Browser callback (form-associated elements only): the element's disabled
+   * state flipped. The browser reports the COMBINED state — its own `disabled`
+   * attribute OR a disabled ancestor `<fieldset>` — so core keeps the raw value
+   * and derives the fieldset side in {@link isFormDisabled}; the `isDisabled`
+   * input (attribute `disabled`, which must reflect) carries the own side. While
+   * live, pending writes flush first, then {@link disabledChanged} fires on a
+   * flip. Don't override; implement {@link disabledChanged}.
    */
   formDisabledCallback(isDisabled: boolean): void {
     if (this.#isFormDisabled === isDisabled) return;
@@ -884,9 +885,32 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     if (this.isConnected) this.#flushNow(); // ends with #syncDisabled(); a no-op while held
   }
 
-  /** Disabled by an ancestor `<fieldset disabled>` (form-associated elements only). */
+  /**
+   * Disabled by an ancestor `<fieldset disabled>` only (form-associated elements),
+   * NOT by the element's own `disabled` attribute. Without the own attribute the
+   * browser's state IS the fieldset state; with it the browser can't tell the two
+   * apart (no callback fires for a fieldset flip then), so the ancestors are read.
+   */
   protected get isFormDisabled(): boolean {
-    return this.#isFormDisabled;
+    if (!this.#isFormDisabled) return false;
+    return !this.hasAttribute('disabled') || this.#isInDisabledFieldset();
+  }
+
+  /** HTML's rule: a descendant of a `<fieldset disabled>`, outside its first `<legend>`. */
+  #isInDisabledFieldset(): boolean {
+    let child: Element = this;
+    for (let node = this.parentElement; node; child = node, node = node.parentElement) {
+      if (node.localName !== 'fieldset' || !node.hasAttribute('disabled')) continue;
+      let legend: Element | undefined;
+      for (const c of Array.from(node.children)) {
+        if (c.localName === 'legend') {
+          legend = c;
+          break;
+        }
+      }
+      if (legend !== child) return true;
+    }
+    return false;
   }
 
   /**
@@ -895,7 +919,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * `<fieldset>`. Read it in `reinit()`; react to flips in {@link disabledChanged}.
    */
   protected get isEffectivelyDisabled(): boolean {
-    return this.#config.isDisabled === true || this.#isFormDisabled;
+    return this.#config.isDisabled === true || this.isFormDisabled;
   }
 
   /**
@@ -1091,6 +1115,12 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       }
       if (def.shouldReflect && !def.converter?.toAttribute) {
         this.#warn(`invalid input table: "${def.configKey}" has shouldReflect:true but its converter has no toAttribute`);
+      }
+      // SPEC §6.4: the browser treats a form-associated element's OWN `disabled`
+      // attribute as disabling it (formDisabledCallback, :disabled, no submit), so
+      // a non-reflecting input would leave `el.isDisabled = false` stuck disabled.
+      if (def.attribute === 'disabled' && !def.shouldReflect && (ctor as { formAssociated?: boolean }).formAssociated) {
+        this.#warn(`invalid input table: "${def.configKey}" (attribute "disabled") must have shouldReflect:true on a form-associated element — otherwise clearing it by property leaves the element disabled`);
       }
     }
 

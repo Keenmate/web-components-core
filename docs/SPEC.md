@@ -450,8 +450,18 @@ Every form-participating component has the `isDisabled` input (attribute
 be disabled by an ancestor `<fieldset disabled>`, reported by the browser through
 `formDisabledCallback` — which **core implements once** (components don't):
 
-- `isFormDisabled` (protected) — the fieldset side, kept apart from the input so
-  `el.disabled` keeps the author's value (like a native control's `disabled`).
+- **`isDisabled` must reflect** (`shouldReflect: true`). The browser treats a
+  form-associated element's OWN `disabled` attribute as disabling it — it calls
+  `formDisabledCallback(true)` for it too, matches `:disabled`, skips it on submit —
+  so a non-reflecting input set to `false` by property would leave the attribute,
+  and the element, disabled. The input-table sanity check warns (`INIT` /
+  `CORE:ELEMENT`) when a form-associated class declares a non-reflecting
+  `disabled` input.
+- `isFormDisabled` (protected) — the **fieldset side only**, never written into
+  `isDisabled`. The callback reports the combined state (own attribute OR
+  fieldset); without the own attribute that IS the fieldset state, with it core
+  reads the ancestors (a `<fieldset disabled>` outside its first `<legend>`), since
+  no callback fires for a fieldset flip while the own attribute keeps it disabled.
 - `isEffectivelyDisabled` (protected) — `config.isDisabled === true ||
   isFormDisabled`: the state the component must apply. Read it in `reinit()`.
 - `disabledChanged(isDisabled)` (protected hook, no-op default) — fires when the

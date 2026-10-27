@@ -170,7 +170,11 @@ x-comp[defer]:not([ready]) { min-height: 2.5rem; visibility: hidden; }
 **Disabled**: core implements `formDisabledCallback` for form-associated elements.
 A component reads `this.isEffectivelyDisabled` (its `isDisabled` input OR a
 disabled ancestor `<fieldset>`) in `reinit()` and applies flips in the
-**`disabledChanged(isDisabled)`** hook; `el.disabled` keeps the author's value.
+**`disabledChanged(isDisabled)`** hook. The `isDisabled` input (attribute `disabled`)
+**must reflect** (`shouldReflect: true`) — the browser disables a form-associated
+element by its own `disabled` attribute, so a non-reflecting input would stay
+disabled after `el.isDisabled = false` (core warns). A fieldset never writes
+`el.isDisabled`.
 
 Batch many changes into one reinit/update with `setAttributes({ ... })` or
 `batch(() => { ... })`. To await the pipeline deterministically — in a test or

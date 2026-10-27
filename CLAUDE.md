@@ -107,7 +107,9 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    **Disabled (SPEC §6.4):** core implements `formDisabledCallback` once; a
    component reads `this.isEffectivelyDisabled` (`isDisabled` input OR a disabled
    `<fieldset>`) in `reinit()` and applies flips in the `disabledChanged(isDisabled)`
-   hook (leave `isDisabled` out of `update()`).
+   hook (leave `isDisabled` out of `update()`). `isDisabled` **must reflect** — the
+   browser disables a form-associated host by its own `disabled` attribute (core
+   warns on a non-reflecting one); `isFormDisabled` is fieldset-only.
 
    A DOM move (reorder/re-parent) fires `disconnect()`→`connect()` and
    **re-activates without rebuilding** (`reinit()` runs only on first connect or

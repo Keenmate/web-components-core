@@ -41,6 +41,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   microtask, not `requestAnimationFrame`: rAF stalls in hidden tabs. Code that read
   `isReady` synchronously right after append must `await el.whenReady()`.
 
+### Fixed — `isDisabled` must reflect; `isFormDisabled` is fieldset-only (SPEC §6.4)
+
+- The browser calls `formDisabledCallback(true)` for a form-associated element's
+  OWN `disabled` attribute too, so `isFormDisabled` used to read `true` for it and
+  a non-reflecting `isDisabled` got stuck disabled (`el.isDisabled = false` left the
+  attribute). `isFormDisabled` now reports the fieldset side only (ancestors read
+  while the own attribute is set), and the contract is that the `isDisabled` input
+  (attribute `disabled`) reflects — the input-table check warns when a
+  form-associated class declares a non-reflecting `disabled` input. The old
+  "`el.disabled` keeps the author's value" wording is gone.
+
 ### Added — `destroy()` in `BlissElement` (SPEC §6.5)
 
 - Public **`destroy()`**: runs `disconnect()` if active, cancels the pending flush
