@@ -232,6 +232,11 @@ export abstract class BlissElement extends Base {
   protected disconnect(): void { /* opt-in, no-op by default */ }
   /** Really removed (still detached one animation frame after disconnect). Opt-in by overriding. */
   protected removedCallback(): void { /* opt-in, no-op by default */ }
+  /** Final teardown (§6.5): disconnect() if active, cancel timers, then destroyCallback(). Idempotent. */
+  destroy(): void;
+  readonly isDestroyed: boolean;
+  /** The component's own cleanup, called once by destroy(). */
+  protected destroyCallback(): void { /* opt-in, no-op by default */ }
 
   // DEFER / READY (§6.3): `defer` attribute / `shouldDefer` property holds the first build until release().
   shouldDefer: boolean;
@@ -449,6 +454,26 @@ be disabled by an ancestor `<fieldset disabled>`, reported by the browser throug
 
 The native `:disabled` pseudo-class already matches a form-associated host
 disabled either way, so CSS needs nothing from core.
+
+### 6.5 Destroy — `destroy()` / `destroyCallback()` / `isDestroyed`
+
+Every component gets a public **`destroy()`** from the base (components no longer
+write their own). In order it: marks the element destroyed (`isDestroyed` →
+`true`; a second call is a no-op), cancels the pending microtask flush and the
+post-disconnect `removedCallback` check (a destroy supersedes it), drops pending
+input writes, resolves `whenSettled()` waiters, untracks the instance, stops the
+environment / viewport / size / theme subscriptions and runs **`disconnect()`**
+if the element is active, then calls the protected **`destroyCallback()`** hook —
+the component's own cleanup (engine / store / picker, in-flight work), run once
+even if `disconnect()` throws (a throw from either is rethrown).
+
+A destroyed element is **inert**: input writes still validate and store into
+`config`, but nothing reaches `reinit()`/`update()`; `flush()`, `whenSettled()`
+and `release()` are no-ops; `dir` changes don't reach `directionChanged()`.
+**Re-inserting it** logs a warning (`INIT` / `CORE:ELEMENT`) and stays inert — no
+rebuild, no `connect()`, no `ready`. Create a new element instead. The `ready`
+state is left as it was. `ElementInternals` can't be detached — a subclass that
+set a form value or custom states clears them in `destroyCallback()`.
 
 ---
 

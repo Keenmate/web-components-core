@@ -147,6 +147,10 @@ class WebMultiSelect extends BlissElement {
 - **`connect()` / `disconnect()`** — every connect/disconnect, for live
   resources. A DOM move re-activates **without rebuilding**, so transient UI
   state survives. Keep them balanced.
+- **`destroy()`** (public) — final teardown: runs `disconnect()` if active,
+  cancels pending work, then the protected **`destroyCallback()`** hook for the
+  component's own cleanup; `el.isDestroyed` turns `true`. Idempotent. A destroyed
+  element is inert — re-inserting it warns and never rebuilds.
 
 **Defer / release / ready** (every component): `<x-comp defer>` (or `el.shouldDefer =
 true` before connect) holds the first build — no `reinit()`/`update()`/`connect()`

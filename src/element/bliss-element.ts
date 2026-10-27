@@ -140,6 +140,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * nothing schedules.
    */
   #hasFailedReinit = false;
+  /** {@link destroy} ran — the element is inert for good (SPEC §6.5). */
+  #isDestroyed = false;
   /** Cancels the pending post-disconnect removal check (see {@link removedCallback}); set only while one is scheduled. */
   #cancelRemovalCheck?: () => void;
   /** Unsubscribe from the environment observable; set only while connected AND `environmentChanged` is overridden. */
@@ -207,7 +209,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     // declared `dir` as its own input attribute — then it takes the normal input
     // path below, matching the dedup in observedAttributes.
     if (name === 'dir' && !this.#byAttribute.has('dir')) {
-      if (this.#connectedOnce) this.directionChanged(this.isRtl);
+      if (this.#connectedOnce && !this.#isDestroyed) this.directionChanged(this.isRtl);
       return;
     }
     // Global `theme-source` (SPEC §12.10): re-resolve the source when connected.
@@ -267,6 +269,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   }
 
   connectedCallback(): void {
+    if (this.#isDestroyed) {
+      // Destroyed elements stay inert: no rebuild, no connect(), no subscriptions.
+      coreLog(this, 'INIT', 'ELEMENT').warn(`<${this.localName}> was destroyed — reconnecting it does nothing; create a new element instead`);
+      return;
+    }
     // Track the live instance for the window.components registry (SPEC §12.3),
     // before any build so a devtools overlay sees it even mid-reinit.
     trackInstance(this.localName, this);
@@ -295,7 +302,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * a later flush rebuilds it.
    */
   #activate(): void {
-    if (this.#isActive || !this.isConnected || this.#isHeld()) return;
+    if (this.#isDestroyed || this.#isActive || !this.isConnected || this.#isHeld()) return;
     this.#isActive = true;
     this.connect();
     // Subscribe to device/viewport/orientation ONLY when the subclass opts in by
@@ -350,7 +357,14 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   }
 
   disconnectedCallback(): void {
+    if (this.#isDestroyed) return; // destroy() already stopped everything
     untrackInstance(this.localName, this);
+    this.#scheduleRemovalCheck();
+    this.#deactivate();
+  }
+
+  /** Stop the live side: the opt-in subscriptions, then `disconnect()` if `connect()` ran. */
+  #deactivate(): void {
     this.#envUnsub?.();
     this.#envUnsub = undefined;
     this.#viewportUnsub?.();
@@ -359,7 +373,6 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#sizeUnsub = undefined;
     this.#themeUnsub?.();
     this.#themeUnsub = undefined;
-    this.#scheduleRemovalCheck();
     if (!this.#isActive) return; // connect() never ran (its build threw)
     this.#isActive = false;
     this.disconnect();
@@ -492,8 +505,50 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * flush — not before the change is actually applied.
    */
   whenSettled(): Promise<void> {
-    if (!this.#pending && !this.#pendingReinit) return Promise.resolve();
+    if (this.#isDestroyed || (!this.#pending && !this.#pendingReinit)) return Promise.resolve();
     return new Promise<void>((resolve) => this.#settleResolvers.push(resolve));
+  }
+
+  // ── destroy (SPEC §6.5) ──────────────────────────────────────────────────
+
+  /**
+   * Tear the element down for good. Stops everything the base owns — runs
+   * {@link disconnect} if the element is active, drops the environment /
+   * viewport / size / theme subscriptions, cancels a pending flush and the
+   * post-disconnect {@link removedCallback} check, untracks the instance —
+   * then calls {@link destroyCallback} for the component's own cleanup, which
+   * runs **once** (even if `disconnect()` throws; a throw from either is rethrown).
+   * Idempotent: later calls do nothing.
+   *
+   * Afterwards the element is **inert**: input writes still store into
+   * `config` but never reach `reinit()`/`update()` (`flush()` / `whenSettled()`
+   * resolve at once), `release()` builds nothing, and re-inserting it into the
+   * DOM logs a warning and stays inert — no rebuild, no `connect()`. Create a
+   * new element instead. `ready` state (attribute, `:state(ready)`, `isReady`)
+   * is left as it was; `ElementInternals` can't be detached, so a subclass that
+   * set a form value clears it in `destroyCallback()`.
+   */
+  destroy(): void {
+    if (this.#isDestroyed) return;
+    this.#isDestroyed = true;
+    this.#scheduler.cancel();
+    this.#cancelRemovalCheck?.();
+    this.#cancelRemovalCheck = undefined;
+    this.#pending = null;
+    this.#pendingReinit = false;
+    this.#hasFailedReinit = false;
+    this.#resolveSettled();
+    untrackInstance(this.localName, this);
+    try {
+      this.#deactivate();
+    } finally {
+      this.destroyCallback();
+    }
+  }
+
+  /** {@link destroy} ran — the element is inert and won't rebuild. */
+  get isDestroyed(): boolean {
+    return this.#isDestroyed;
   }
 
   // ── subclass surface ─────────────────────────────────────────────────────
@@ -637,6 +692,17 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * `connect()` (e.g. "no store → build one"). No-op by default.
    */
   protected removedCallback(): void {
+    /* opt-in */
+  }
+
+  /**
+   * The component's own teardown, called once by {@link destroy} — after the
+   * base ran {@link disconnect} (if active) and cancelled its timers. Release
+   * what `reinit()` built and anything `disconnect()` keeps for a reconnect
+   * (engines, stores, pickers, in-flight work). Never followed by a rebuild.
+   * No-op by default.
+   */
+  protected destroyCallback(): void {
     /* opt-in */
   }
 
@@ -1186,6 +1252,13 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   }
 
   #flush(): void {
+    if (this.#isDestroyed) {
+      // Inputs still store into `config`, but nothing is ever applied again.
+      this.#pending = null;
+      this.#pendingReinit = false;
+      this.#resolveSettled();
+      return;
+    }
     if (!this.isConnected) return; // hold until connected
     if (this.#isHeld()) return; // hold until release() (SPEC §6.3)
     this.#isReleased = true; // building now — a later `defer` never re-holds

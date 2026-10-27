@@ -32,6 +32,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Components bundling an older core keep the old name, so mixed-version pages don't
   close each other's overlays until all are rebuilt.
 
+### Added — `destroy()` in `BlissElement` (SPEC §6.5)
+
+- Public **`destroy()`**: runs `disconnect()` if active, cancels the pending flush
+  and the `removedCallback` check, then the protected **`destroyCallback()`** hook;
+  readonly **`isDestroyed`**. Idempotent. A destroyed element is inert — a
+  reconnect warns via the element's logger and never rebuilds. Components with
+  their own `destroy()` (web-multiselect, web-editor, web-dropzone) should move
+  their cleanup into `destroyCallback()`.
+
 ### Added — fieldset-aware disabled state (SPEC §6.4)
 
 - `BlissElement` implements **`formDisabledCallback`** once (form-associated

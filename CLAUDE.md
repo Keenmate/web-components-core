@@ -90,9 +90,13 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
      fires it. Re-adding afterwards is a fresh activation: `connect()` runs as
      usual (no forced `reinit()` — rebuild in `connect()` if the hook tore
      structure down).
+   - **`destroy()`** (public, SPEC §6.5) — final teardown: `disconnect()` if
+     active, cancels pending flush / removal check, then the protected
+     **`destroyCallback()`** hook; `isDestroyed` turns true; idempotent. The
+     element is inert afterwards — a reconnect warns and never rebuilds.
 
-   **Defer / ready (SPEC §6.3), every component:** a `defer` attribute/property
-   holds the first build (no `reinit()`/`update()`/`connect()`); `release()` (or
+   **Defer / ready (SPEC §6.3), every component:** a `defer` attribute / `shouldDefer`
+   property holds the first build (no `reinit()`/`update()`/`connect()`); `release()` (or
    removing `defer`) builds once with everything set so far. After the first live
    build: `ready` attribute + `:state(ready)` + `ready` event (`onReady` twin) +
    `isReady` / `whenReady()`. Order: defer → release → reinit → connect → ready.
