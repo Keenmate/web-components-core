@@ -45,13 +45,13 @@ export interface PopoverOptions {
   /**
    * Per-frame hook run immediately before positioning — publish the reference's
    * measured width to a CSS var, clamp min/max width, etc. (see
-   * {@link AnchorOptions.onBeforeCompute}).
+   * {@link AnchorOptions.beforeComputeCallback}).
    */
-  onBeforeCompute?(): void;
+  beforeComputeCallback?(): void;
   /** Escape hatch: a custom floating-ui platform (e.g. a narrowed shadow-DOM containing-block heuristic). */
   platform?: Platform;
   /** Called after each placement with the resolved placement. */
-  onPlaced?(placement: Placement): void;
+  placedCallback?(placement: Placement): void;
 }
 
 /** Handle returned by {@link createPopover}. */
@@ -92,10 +92,10 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
         ...(opts.shouldFlip !== undefined ? { shouldFlip: opts.shouldFlip } : {}),
         ...(opts.shift !== undefined ? { shift: opts.shift } : {}),
         ...(opts.shouldAutoUpdate !== undefined ? { shouldAutoUpdate: opts.shouldAutoUpdate } : {}),
-        ...(opts.onBeforeCompute ? { onBeforeCompute: opts.onBeforeCompute } : {}),
+        ...(opts.beforeComputeCallback ? { beforeComputeCallback: opts.beforeComputeCallback } : {}),
         ...(opts.platform ? { platform: opts.platform } : {}),
         ...(defaultTheme ? { inheritThemeFrom: defaultTheme } : {}),
-        ...(opts.onPlaced ? { onPlaced: opts.onPlaced } : {}),
+        ...(opts.placedCallback ? { placedCallback: opts.placedCallback } : {}),
       });
     },
     close() {

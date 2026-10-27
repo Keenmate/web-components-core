@@ -160,7 +160,7 @@ export function anchor(
   let isDestroyed = false;
   const run = (): void => {
     if (isDestroyed) return;
-    opts.onBeforeCompute?.();
+    opts.beforeComputeCallback?.();
     void computePosition(reference, floating, {
       placement,
       strategy,
@@ -178,14 +178,14 @@ export function anchor(
         flipEnabled = false;
         middleware = buildMiddleware(opts, false);
       }
-      opts.onPlaced?.(resolved);
-      opts.onComputed?.({ x, y, placement: resolved });
-      if (opts.onDrift && reference instanceof Element) {
+      opts.placedCallback?.(resolved);
+      opts.computedCallback?.({ x, y, placement: resolved });
+      if (opts.driftCallback && reference instanceof Element) {
         // Measure against the same frame floating-ui used: the fixed-CB offset parent
         // when the sugar is on, else the viewport. Only reports when actually drifted.
         const offsetParent = useFixedCB ? getFixedPositionOffsetParent(floating) : window;
         const report = detectFixedDrift({ panel: floating, reference, expectedX: x, expectedY: y, offsetParent });
-        if (report) opts.onDrift(report);
+        if (report) opts.driftCallback(report);
       }
     });
   };

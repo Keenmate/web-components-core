@@ -742,7 +742,7 @@ anchor(floating: HTMLElement, reference: HTMLElement | VirtualElement, opts: {
   lockPlacement?: boolean;            // keep first placement unless it must flip
   shouldAutoUpdate?: boolean;         // default true
   inheritThemeFrom?: HTMLElement;     // copy data-theme onto `floating` (C-CS-10)
-  onPlaced?(placement: Placement): void;
+  placedCallback?(placement: Placement): void;
 }): { update(): void; destroy(): void };
 
 createTooltip(opts: { trigger; container; content; placement?; offset?; delay?; cssClass?; visibleClass? }): TooltipHandle;

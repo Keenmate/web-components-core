@@ -45,7 +45,7 @@ export interface TooltipOptions {
    * tooltip that would otherwise overlap (e.g. a remove-button tooltip hiding its
    * parent badge tooltip).
    */
-  onBeforeShow?(): void;
+  beforeShowCallback?(): void;
 }
 
 /** Handle returned by {@link createTooltip}. */
@@ -119,7 +119,7 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
   const show = (): void => {
     clearTimers();
     if (visible) return;
-    opts.onBeforeShow?.();
+    opts.beforeShowCallback?.();
     visible = true;
     container.append(element);
     const reference = opts.shouldFollowCursor ? cursorReference : opts.trigger;

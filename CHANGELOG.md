@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`/menu`: `OpenMenuOptions.className` → `cssClass`** — the same name as the
   item-level `cssClass` (and `createTooltip`).
+- **`/positioning` option callbacks off the `on*` prefix** (`on*` is reserved for
+  event twins, SPEC §12.5): `anchor` / `createPopover` `onBeforeCompute` →
+  `beforeComputeCallback`, `onPlaced` → `placedCallback`, `onComputed` →
+  `computedCallback`, `onDrift` → `driftCallback`; `createTooltip` `onBeforeShow` →
+  `beforeShowCallback`.
 
 ### Added — fieldset-aware disabled state (SPEC §6.4)
 

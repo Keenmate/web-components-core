@@ -30,15 +30,15 @@ describe('anchor', () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
-    const onPlaced = vi.fn();
+    const placedCallback = vi.fn();
 
-    const handle = anchor(floating, reference, { onPlaced });
+    const handle = anchor(floating, reference, { placedCallback });
     await Promise.resolve(); // let computePosition resolve
 
     expect(floating.style.position).toBe('fixed');
     expect(floating.style.left).toBe('10px');
     expect(floating.style.top).toBe('20px');
-    expect(onPlaced).toHaveBeenCalledWith('bottom-start');
+    expect(placedCallback).toHaveBeenCalledWith('bottom-start');
 
     const cleanup = vi.mocked(fui.autoUpdate).mock.results[0]!.value as ReturnType<typeof vi.fn>;
     handle.destroy();
@@ -54,14 +54,14 @@ describe('anchor', () => {
     expect(vi.mocked(fui.shift)).toHaveBeenCalledWith({ padding: 8 });
   });
 
-  it('reports computed coordinates via onComputed', async () => {
+  it('reports computed coordinates via computedCallback', async () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
-    const onComputed = vi.fn();
-    anchor(floating, reference, { onComputed });
+    const computedCallback = vi.fn();
+    anchor(floating, reference, { computedCallback });
     await Promise.resolve();
-    expect(onComputed).toHaveBeenCalledWith({ x: 10, y: 20, placement: 'bottom-start' });
+    expect(computedCallback).toHaveBeenCalledWith({ x: 10, y: 20, placement: 'bottom-start' });
   });
 
   it('appends a size() height-cap for maxHeight and an arrow() last', () => {
@@ -139,16 +139,16 @@ describe('anchor', () => {
     expect(vi.mocked(fui.computePosition)).toHaveBeenCalledOnce();
   });
 
-  it('runs onBeforeCompute before each computePosition', async () => {
+  it('runs beforeComputeCallback before each computePosition', async () => {
     const order: string[] = [];
     vi.mocked(fui.computePosition).mockImplementationOnce(() => {
       order.push('compute');
       return Promise.resolve({ x: 1, y: 2, placement: 'bottom-start', strategy: 'fixed', middlewareData: {} }) as never;
     });
-    const onBeforeCompute = vi.fn(() => order.push('before'));
-    anchor(document.createElement('div'), document.createElement('button'), { onBeforeCompute });
+    const beforeComputeCallback = vi.fn(() => order.push('before'));
+    anchor(document.createElement('div'), document.createElement('button'), { beforeComputeCallback });
     await Promise.resolve();
-    expect(onBeforeCompute).toHaveBeenCalled();
+    expect(beforeComputeCallback).toHaveBeenCalled();
     expect(order).toEqual(['before', 'compute']);
   });
 
@@ -195,16 +195,16 @@ describe('anchor', () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
-    const onPlaced = vi.fn();
-    const onComputed = vi.fn();
+    const placedCallback = vi.fn();
+    const computedCallback = vi.fn();
 
-    const handle = anchor(floating, reference, { onPlaced, onComputed });
+    const handle = anchor(floating, reference, { placedCallback, computedCallback });
     handle.destroy(); // before computePosition's promise settles
     await Promise.resolve();
 
     expect(floating.style.left).toBe('0px');
-    expect(onPlaced).not.toHaveBeenCalled();
-    expect(onComputed).not.toHaveBeenCalled();
+    expect(placedCallback).not.toHaveBeenCalled();
+    expect(computedCallback).not.toHaveBeenCalled();
 
     handle.update(); // a no-op once destroyed
     expect(vi.mocked(fui.computePosition)).toHaveBeenCalledOnce();
@@ -235,36 +235,36 @@ describe('anchor', () => {
     expect(vi.mocked(fui.computePosition).mock.calls[0]![2]!.platform).toBe(platform);
   });
 
-  it('onDrift reports when the panel lands away from where it was positioned', async () => {
+  it('driftCallback reports when the panel lands away from where it was positioned', async () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
     // computePosition (mocked) writes x:10/y:20, but the panel actually renders at 100/100.
     floating.getBoundingClientRect = () =>
       ({ x: 100, y: 100, top: 100, left: 100, right: 100, bottom: 100, width: 0, height: 0, toJSON() {} }) as DOMRect;
-    const onDrift = vi.fn();
+    const driftCallback = vi.fn();
 
-    anchor(floating, reference, { onDrift });
+    anchor(floating, reference, { driftCallback });
     await Promise.resolve();
 
-    expect(onDrift).toHaveBeenCalledOnce();
-    const report = onDrift.mock.calls[0]![0] as { driftX: number; driftY: number };
+    expect(driftCallback).toHaveBeenCalledOnce();
+    const report = driftCallback.mock.calls[0]![0] as { driftX: number; driftY: number };
     expect(report.driftX).toBeCloseTo(90);
     expect(report.driftY).toBeCloseTo(80);
   });
 
-  it('onDrift does not fire when the panel is on target', async () => {
+  it('driftCallback does not fire when the panel is on target', async () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
     floating.getBoundingClientRect = () =>
       ({ x: 10, y: 20, top: 20, left: 10, right: 10, bottom: 20, width: 0, height: 0, toJSON() {} }) as DOMRect;
-    const onDrift = vi.fn();
+    const driftCallback = vi.fn();
 
-    anchor(floating, reference, { onDrift });
+    anchor(floating, reference, { driftCallback });
     await Promise.resolve();
 
-    expect(onDrift).not.toHaveBeenCalled();
+    expect(driftCallback).not.toHaveBeenCalled();
   });
 });
 
@@ -400,13 +400,13 @@ describe('createTooltip', () => {
     }
   });
 
-  it('calls onBeforeShow right before showing', () => {
+  it('calls beforeShowCallback right before showing', () => {
     const trigger = document.createElement('button');
     document.body.append(trigger);
-    const onBeforeShow = vi.fn();
-    const tip = createTooltip({ trigger, content: 'hi', onBeforeShow });
+    const beforeShowCallback = vi.fn();
+    const tip = createTooltip({ trigger, content: 'hi', beforeShowCallback });
     tip.show();
-    expect(onBeforeShow).toHaveBeenCalledOnce();
+    expect(beforeShowCallback).toHaveBeenCalledOnce();
     expect(tip.isVisible).toBe(true);
     tip.destroy();
   });
@@ -463,17 +463,17 @@ describe('createPopover', () => {
     pop.close();
   });
 
-  it('forwards onBeforeCompute, platform, shouldFlip/shift, and lockPlacement:freeze to anchor', async () => {
+  it('forwards beforeComputeCallback, platform, shouldFlip/shift, and lockPlacement:freeze to anchor', async () => {
     const reference = document.createElement('button');
     const panel = document.createElement('div');
     document.body.append(reference);
-    const onBeforeCompute = vi.fn();
+    const beforeComputeCallback = vi.fn();
     const platform = { getOffsetParent: vi.fn() } as unknown as import('./types.js').Platform;
 
     const pop = createPopover({
       reference,
       panel,
-      onBeforeCompute,
+      beforeComputeCallback,
       platform,
       shift: 12,
       lockPlacement: 'freeze',
@@ -481,8 +481,8 @@ describe('createPopover', () => {
     pop.open();
     await Promise.resolve();
 
-    // onBeforeCompute runs before positioning; the custom platform reaches computePosition.
-    expect(onBeforeCompute).toHaveBeenCalled();
+    // beforeComputeCallback runs before positioning; the custom platform reaches computePosition.
+    expect(beforeComputeCallback).toHaveBeenCalled();
     expect(vi.mocked(fui.computePosition).mock.calls[0]![2]!.platform).toBe(platform);
     // freeze flips on the first frame like a normal flip (no fallbackStrategy).
     expect(vi.mocked(fui.flip)).toHaveBeenCalledWith({});
