@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — fieldset-aware disabled state (SPEC §6.4)
+
+- `BlissElement` implements **`formDisabledCallback`** once (form-associated
+  elements). Protected **`isFormDisabled`**, **`isEffectivelyDisabled`**
+  (`isDisabled` input OR a disabled `<fieldset>`) and the **`disabledChanged(isDisabled)`**
+  hook (fires on a flip of the merged state on a built element; not for a rebuild).
+  web-dropzone's hand-written `formDisabledCallback` should move onto it.
+
 ### Added — `defer` / `release()` / `ready` for every component (SPEC §6.3)
 
 - **`defer`** (global attribute, always observed, + reflecting `el.defer`) holds the

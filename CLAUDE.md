@@ -98,6 +98,11 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    `isReady` / `whenReady()`. Order: defer → release → reinit → connect → ready.
    Latched — `defer` never re-holds after the first build.
 
+   **Disabled (SPEC §6.4):** core implements `formDisabledCallback` once; a
+   component reads `this.isEffectivelyDisabled` (`isDisabled` input OR a disabled
+   `<fieldset>`) in `reinit()` and applies flips in the `disabledChanged(isDisabled)`
+   hook (leave `isDisabled` out of `update()`).
+
    A DOM move (reorder/re-parent) fires `disconnect()`→`connect()` and
    **re-activates without rebuilding** (`reinit()` runs only on first connect or
    an `on:'reinit'` change) — so transient UI state survives. `connect()`/

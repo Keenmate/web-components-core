@@ -164,6 +164,10 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   /** The first build is live and `ready` was announced (once per element lifetime). */
   #isReady = false;
   #readyResolvers: Array<() => void> = [];
+  /** An ancestor `<fieldset disabled>` disables this form-associated element (`formDisabledCallback`). */
+  #isFormDisabled = false;
+  /** {@link isEffectivelyDisabled} as of the last flush — `undefined` before the first build. */
+  #lastEffectiveDisabled?: boolean;
   #logLevel?: LogLevelDesc;
   /** `this.log` for a tag with no bundle: every category → `CORE:ELEMENT` (built once). */
   #coreLogProxy?: Record<string, InstanceLogger>;
@@ -785,6 +789,54 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     return this.internals?.form ?? null;
   }
 
+  /**
+   * Browser callback (form-associated elements only): an ancestor `<fieldset>`
+   * was disabled / re-enabled, or the element moved in or out of one. Kept apart
+   * from the `isDisabled` input — `el.disabled` keeps the author's value, like a
+   * native control — and merged into {@link isEffectivelyDisabled}. While live,
+   * pending writes flush first, then {@link disabledChanged} fires on a flip.
+   * Don't override; implement {@link disabledChanged}.
+   */
+  formDisabledCallback(isDisabled: boolean): void {
+    if (this.#isFormDisabled === isDisabled) return;
+    this.#isFormDisabled = isDisabled;
+    if (this.isConnected) this.#flushNow(); // ends with #syncDisabled(); a no-op while held
+  }
+
+  /** Disabled by an ancestor `<fieldset disabled>` (form-associated elements only). */
+  protected get isFormDisabled(): boolean {
+    return this.#isFormDisabled;
+  }
+
+  /**
+   * The disabled state a component must APPLY: its `isDisabled` input (the
+   * conventional configKey, attribute `disabled`) OR a disabled ancestor
+   * `<fieldset>`. Read it in `reinit()`; react to flips in {@link disabledChanged}.
+   */
+  protected get isEffectivelyDisabled(): boolean {
+    return this.#config.isDisabled === true || this.#isFormDisabled;
+  }
+
+  /**
+   * {@link isEffectivelyDisabled} flipped on a built element — from the
+   * `isDisabled` input (an `update` batch) or a `<fieldset>` change. Not called
+   * for a rebuild (`reinit()` reads the state itself) nor before the first build.
+   * Apply the disabled state here and leave `isDisabled` out of `update()`.
+   * No-op by default.
+   */
+  protected disabledChanged(_isDisabled: boolean): void {
+    /* opt-in */
+  }
+
+  /** After a successful flush: report a flip of the effective disabled state. */
+  #syncDisabled(isRebuilt: boolean): void {
+    const next = this.isEffectivelyDisabled;
+    const prev = this.#lastEffectiveDisabled;
+    this.#lastEffectiveDisabled = next;
+    if (isRebuilt || prev === undefined || prev === next) return;
+    this.disabledChanged(next);
+  }
+
   // ── events & callbacks (SPEC §12.5) ───────────────────────────────────────
 
   /**
@@ -1162,6 +1214,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       this.#resolveSettled();
     }
     this.#hasFailedReinit = false;
+    this.#syncDisabled(reinit);
     // A rebuild that finally succeeded while connected activates what the failed one skipped.
     if (isRetry) this.#activate();
   }

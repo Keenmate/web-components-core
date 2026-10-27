@@ -428,6 +428,27 @@ Lifecycle: `defer` → `release()` → `reinit()` → `connect()` → `ready`. A
 that declares its own `defer` attribute input takes the attribute over (the core
 gate is then off), the same dedup rule as `dir`.
 
+### 6.4 Disabled state — the `isDisabled` input + `<fieldset disabled>`
+
+Every form-participating component has the `isDisabled` input (attribute
+`disabled`). A form-associated element (`static formAssociated = true`) can also
+be disabled by an ancestor `<fieldset disabled>`, reported by the browser through
+`formDisabledCallback` — which **core implements once** (components don't):
+
+- `isFormDisabled` (protected) — the fieldset side, kept apart from the input so
+  `el.disabled` keeps the author's value (like a native control's `disabled`).
+- `isEffectivelyDisabled` (protected) — `config.isDisabled === true ||
+  isFormDisabled`: the state the component must apply. Read it in `reinit()`.
+- `disabledChanged(isDisabled)` (protected hook, no-op default) — fires when the
+  effective state flips on a built element: after an `update` batch that changed
+  `isDisabled`, or a fieldset change (pending writes flush first). Not for a
+  rebuild (`reinit()` read it) nor before the first build; a change while detached
+  is reported at the reconnect flush. Apply disabled-ness here and leave
+  `isDisabled` out of `update()`.
+
+The native `:disabled` pseudo-class already matches a form-associated host
+disabled either way, so CSS needs nothing from core.
+
 ---
 
 ## 7. Fit check — all five components
