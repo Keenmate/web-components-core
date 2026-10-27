@@ -4,7 +4,7 @@ import {
   notifyOverlayActivated,
   dismissAllOverlays,
   onOverlayActivated,
-  OVERLAY_ACTIVATED_EVENT,
+  OVERLAY_ACTIVATE_EVENT,
   __resetOverlays,
 } from './active-overlay.js';
 
@@ -94,7 +94,7 @@ describe('active-overlay coordination', () => {
 
     // A Svelte/plain-DOM opener that never imported core:
     document.dispatchEvent(
-      new CustomEvent(OVERLAY_ACTIVATED_EVENT, { detail: { source: 'external' } }),
+      new CustomEvent(OVERLAY_ACTIVATE_EVENT, { detail: { source: 'external' } }),
     );
 
     expect(a).toHaveBeenCalledTimes(1);

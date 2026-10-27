@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `beforeComputeCallback`, `onPlaced` → `placedCallback`, `onComputed` →
   `computedCallback`, `onDrift` → `driftCallback`; `createTooltip` `onBeforeShow` →
   `beforeShowCallback`.
+- **Overlay coordination event `km-overlay-activated` → `km-overlay-activate`**
+  (single act = `<domain>-<verb>`, no past tense); `OVERLAY_ACTIVATED_EVENT` →
+  `OVERLAY_ACTIVATE_EVENT`, `OverlayActivatedDetail` → `OverlayActivateDetail`.
+  Components bundling an older core keep the old name, so mixed-version pages don't
+  close each other's overlays until all are rebuilt.
 
 ### Added — fieldset-aware disabled state (SPEC §6.4)
 

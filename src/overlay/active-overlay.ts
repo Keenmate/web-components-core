@@ -5,7 +5,7 @@
  * calendar, a future menu, …) — and any *external* popover (a Svelte component, a
  * plain-DOM widget, another framework) — cooperate so that opening one dismisses all
  * the others. There is exactly one coordination channel: a `document` CustomEvent
- * `km-overlay-activated` (namespaced like `km-log`), carrying `{ source, group }`.
+ * `km-overlay-activate` (namespaced like `km-log`), carrying `{ source, group }`.
  * Everyone routes through it, so **nothing has to import this module to participate**
  * — pure DOM code can both trigger and observe the same behaviour.
  *
@@ -18,11 +18,11 @@
  * group via the {@link ALL_GROUPS} wildcard.
  *
  * Direction A — dismiss KM overlays from outside code:
- *   document.dispatchEvent(new CustomEvent('km-overlay-activated', { detail: { source: myId, group: 'A' } }))
+ *   document.dispatchEvent(new CustomEvent('km-overlay-activate', { detail: { source: myId, group: 'A' } }))
  *   // or, if you import core: notifyOverlayActivated(myId, 'A')
  *
  * Direction B — have your own popover dismissed when a KM overlay opens:
- *   document.addEventListener('km-overlay-activated', (e) => {
+ *   document.addEventListener('km-overlay-activate', (e) => {
  *     const { source, group } = e.detail;
  *     if (source !== myId && group === myGroup) closeMyPopover();
  *   })
@@ -35,14 +35,14 @@
  * SSR-safe: with no `document`, registration still works but activation is a no-op.
  */
 
-/** The single coordination event. `detail` is an {@link OverlayActivatedDetail}. */
-export const OVERLAY_ACTIVATED_EVENT = 'km-overlay-activated';
+/** The single coordination event. `detail` is an {@link OverlayActivateDetail}. */
+export const OVERLAY_ACTIVATE_EVENT = 'km-overlay-activate';
 
 /** Wildcard group: an activation carrying it dismisses overlays in *every* group. */
 export const ALL_GROUPS = Symbol('km-overlay-all-groups');
 
-/** Detail payload of {@link OVERLAY_ACTIVATED_EVENT}. */
-export interface OverlayActivatedDetail {
+/** Detail payload of {@link OVERLAY_ACTIVATE_EVENT}. */
+export interface OverlayActivateDetail {
   /** Opaque identity of the overlay that opened; peers with a different source dismiss. */
   source: unknown;
   /** Coordination group; only same-group overlays dismiss (or all when {@link ALL_GROUPS}). */
@@ -85,7 +85,7 @@ function groupMatches(participantGroup: unknown, eventGroup: unknown): boolean {
 
 /** The single document listener: dismiss same-group participants whose id ≠ the opener's source. */
 function onActivated(e: Event): void {
-  const detail = (e as CustomEvent<OverlayActivatedDetail>).detail;
+  const detail = (e as CustomEvent<OverlayActivateDetail>).detail;
   const source = detail?.source;
   const group = detail?.group;
   // Snapshot: a dismiss handler may destroy (mutating the set) mid-iteration.
@@ -96,13 +96,13 @@ function onActivated(e: Event): void {
 
 function ensureListening(): void {
   if (listening || !hasDocument()) return;
-  document.addEventListener(OVERLAY_ACTIVATED_EVENT, onActivated);
+  document.addEventListener(OVERLAY_ACTIVATE_EVENT, onActivated);
   listening = true;
 }
 
 function stopListeningIfIdle(): void {
   if (listening && participants.size === 0 && hasDocument()) {
-    document.removeEventListener(OVERLAY_ACTIVATED_EVENT, onActivated);
+    document.removeEventListener(OVERLAY_ACTIVATE_EVENT, onActivated);
     listening = false;
   }
 }
@@ -111,7 +111,7 @@ function stopListeningIfIdle(): void {
 function broadcast(source: unknown, group: unknown): void {
   if (!hasDocument()) return;
   document.dispatchEvent(
-    new CustomEvent<OverlayActivatedDetail>(OVERLAY_ACTIVATED_EVENT, { detail: { source, group } }),
+    new CustomEvent<OverlayActivateDetail>(OVERLAY_ACTIVATE_EVENT, { detail: { source, group } }),
   );
 }
 
@@ -170,11 +170,11 @@ export function dismissAllOverlays(group?: unknown): void {
 export function onOverlayActivated(handler: (source: unknown, group: unknown) => void): () => void {
   if (!hasDocument()) return () => {};
   const listener = (e: Event) => {
-    const detail = (e as CustomEvent<OverlayActivatedDetail>).detail;
+    const detail = (e as CustomEvent<OverlayActivateDetail>).detail;
     handler(detail?.source, detail?.group);
   };
-  document.addEventListener(OVERLAY_ACTIVATED_EVENT, listener);
-  return () => document.removeEventListener(OVERLAY_ACTIVATED_EVENT, listener);
+  document.addEventListener(OVERLAY_ACTIVATE_EVENT, listener);
+  return () => document.removeEventListener(OVERLAY_ACTIVATE_EVENT, listener);
 }
 
 /** Test-only: drop all participants and detach the listener. */
@@ -182,7 +182,7 @@ export function __resetOverlays(): void {
   participants.clear();
   active.clear();
   if (listening && hasDocument()) {
-    document.removeEventListener(OVERLAY_ACTIVATED_EVENT, onActivated);
+    document.removeEventListener(OVERLAY_ACTIVATE_EVENT, onActivated);
   }
   listening = false;
 }
