@@ -52,7 +52,7 @@ export const MENU_CSS = `
   background: ${km('bg', 'var(--base-dropdown-bg, var(--base-elevated-bg, var(--base-main-bg, light-dark(#ffffff, #2b2b2b))))')};
   border: ${km('border', `var(--base-dropdown-border, 1px solid ${BORDER_COLOR})`)};
   border-radius: ${km('border-radius', '4px')};
-  box-shadow: ${km('shadow', 'var(--base-dropdown-box-shadow, 0 2px 8px rgba(0, 0, 0, 0.15))')};
+  box-shadow: ${km('shadow', 'var(--base-dropdown-box-shadow, 0 8px 16px rgba(0, 0, 0, 0.15))')};
   color: ${km('text-color', 'var(--base-text-color-1, light-dark(#242424, #f5f5f5))')};
   font-family: ${km('font-family', 'var(--base-font-family, inherit)')};
   font-size: ${km('font-size', '14px')};
@@ -99,7 +99,7 @@ export const MENU_CSS = `
 
 .km-menu__item--danger:hover,
 .km-menu__item--danger:focus {
-  background: ${km('danger-hover-bg', `color-mix(in srgb, ${DANGER_COLOR} 10%, transparent)`)};
+  background: ${km('danger-hover-bg', `var(--base-danger-bg-subtle, color-mix(in srgb, ${DANGER_COLOR} 10%, transparent))`)};
 }
 
 .km-menu__item--toggled {
