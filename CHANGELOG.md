@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — page-wide menu theming (`/menu`)
+
+- **Three-layer CSS variables.** Every menu value now reads
+  `var(--_km-menu-X, var(--km-menu-X, var(--base-…, <default>)))`: the component's
+  per-instance variable (mapped onto the private `--_km-menu-*` with no fallback) →
+  the page-wide `--km-menu-*` → `--base-*` → default. Before, components mapped
+  `:host { --km-menu-bg: var(--wtv-context-menu-bg); }`, which is guaranteed-invalid
+  when the component variable is unset and shadowed a `:root { --km-menu-bg }`, so
+  page-level menu theming never reached menus inside components. **Components now
+  set only `--_km-menu-*`** (and leave their own menu variables unset by default).
+
+### Added
+
+- **`--km-menu-hover-color`** — item text colour on hover / focus / open submenu
+  (default unchanged; danger / toggled items keep theirs).
+- **`component-variables.manifest.json`** — the `--km-menu-*` / `--base-*` variable
+  list (usage, fallback, default), shipped and exported as
+  `./component-variables.manifest.json`; a unit test keeps it in sync with the stylesheet.
+- `.km-menu__item` no longer sets `color: inherit` (it inherits anyway).
+
 ### Changed — BREAKING (interaction model)
 
 One shape for events, callbacks and clickable items across every KM component

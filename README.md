@@ -421,7 +421,30 @@ const menu = openMenu(entries, ctx, {
 menu.close();
 ```
 
-Style it by setting `--km-menu-*` on your host (they default to the `--base-*` tokens).
+### Menu theming
+
+Every menu value resolves, highest precedence first:
+**component variable** (one instance) → **`--km-menu-*`** (every menu on the page) →
+**`--base-*`** (theme) → literal default.
+
+```css
+:root { --km-menu-bg: #fffbe6; }                      /* every menu on the page */
+web-tree-view.files { --wtv-context-menu-bg: #eef; }  /* just this tree's menu */
+```
+
+A component that renders a menu maps its variables onto the **private**
+`--_km-menu-*` layer, with no fallback, and never sets `--km-menu-*` itself:
+
+```css
+:host {
+  --_km-menu-bg: var(--wtv-context-menu-bg);          /* unset → falls through to --km-menu-bg */
+  --_km-menu-hover-color: var(--wtv-context-menu-hover-color);
+}
+```
+
+The full variable list (with each one's `--base-*` fallback and default) ships as
+[`component-variables.manifest.json`](./component-variables.manifest.json)
+(`@keenmate/web-components-core/component-variables.manifest.json`).
 
 ## Search (`@keenmate/web-components-core/search`)
 

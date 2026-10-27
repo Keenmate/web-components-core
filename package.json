@@ -36,10 +36,12 @@
     "./menu": {
       "types": "./dist/menu/index.d.ts",
       "import": "./dist/menu/index.js"
-    }
+    },
+    "./component-variables.manifest.json": "./component-variables.manifest.json"
   },
   "files": [
     "dist",
+    "component-variables.manifest.json",
     "docs/reactivity-and-batching.md",
     "release-notes"
   ],

@@ -1273,7 +1273,33 @@ treats both alike (Enter / Space run; a toggle closes the menu unless
 (one overlay open at a time). Styling: shared `km-menu` (`km-` is
 reserved for shared UI rendered by core — not a component prefix), `__item` (`--danger`
 `--toggled` `--disabled` `--has-submenu`), `__icon`, `__label`, `__shortcut`,
-`__divider` (`--named`), `__loading`, `--submenu`, `--custom`, `--has-icons`; every
-value reads `--km-menu-*` falling back to `--base-*`, in `@layer component`. A
-component maps its own variables onto `--km-menu-*` on its host.
+`__divider` (`--named`), `__loading`, `--submenu`, `--custom`, `--has-icons`, in
+`@layer component`.
+
+**Variable chain.** Every value reads three layers, highest precedence first:
+`var(--_km-menu-X, var(--km-menu-X, var(--base-…, <default>)))`.
+
+1. **Component variable** (one instance) — the component maps its own variable onto
+   the *private* `--_km-menu-X` on its host, **with no fallback**
+   (`:host { --_km-menu-bg: var(--wtv-context-menu-bg); }`). Unset component
+   variable → the private one is guaranteed-invalid → the lookup falls through. The
+   component variable must itself be unset by default (no `:host` default), or it
+   would always win.
+2. **`--km-menu-X`** (every menu on the page) — public, set by the page
+   (`:root { --km-menu-bg: … }`). Components never set `--km-menu-*`: a host-level
+   `--km-menu-bg: var(--wtv-context-menu-bg)` is guaranteed-invalid when the
+   component variable is unset and shadows the page value.
+3. **`--base-*`** theme tokens, then the literal default.
+
+```css
+:root { --km-menu-bg: #fffbe6; }                 /* every menu on the page */
+web-tree-view.files { --wtv-context-menu-bg: #eef; } /* just this tree's menu */
+```
+
+`--km-menu-hover-color` (item text on hover / focus / open submenu) defaults to
+unchanged; it is applied at zero specificity, so danger / toggled items keep their
+colour. The full list (name, usage, `--base-*` fallback, default) ships as
+`component-variables.manifest.json` at the package root (export
+`./component-variables.manifest.json`); a unit test keeps it in sync with the
+stylesheet.
 

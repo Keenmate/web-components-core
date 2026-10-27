@@ -17,3 +17,13 @@ buttons (no native Space-on-keyup click). A toggle item (defines `isToggled` /
 Consumers: web-treeview, web-editor (adopted). Pending: web-grid (`modules/contextmenu`: toggle class
 via `cssClass`, `prepareItem` for built-in submenus, its shadow scroll subscription calls
 `close()`).
+
+**CSS variables — three layers** (`styles.ts`, every value via the `km()` helper):
+`var(--_km-menu-X, var(--km-menu-X, var(--base-…, <default>)))`. `--_km-menu-*` is
+private: the consuming component sets it on its host from its own per-instance
+variable with **no fallback** (`--_km-menu-bg: var(--wtv-context-menu-bg)`), and must
+leave that component variable unset by default. `--km-menu-*` is the page-wide public
+layer (`:root`) — components must never set it (a host-level mapping shadows the page
+value when the component variable is unset). Adding / removing a variable: update
+`component-variables.manifest.json` at the repo root (shipped; `styles.test.ts` fails
+on drift) and SPEC §12.13.
