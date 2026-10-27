@@ -159,7 +159,9 @@ true` before connect) holds the first build — no `reinit()`/`update()`/`connec
 `release()` → `reinit()` → `connect()` → **`ready`**. After the first build the host
 gets the `ready` attribute and `:state(ready)`, the `ready` event (+ `onReady`
 twin) fires once, `el.isReady` turns `true`, and **`await el.whenReady()`**
-resolves. Latched — a later `defer` never re-holds.
+resolves — all on the microtask after the build, so a `ready` listener added right
+after `createElement` / append / the import still catches it. Latched — a later
+`defer` never re-holds.
 
 ```css
 x-comp[defer]:not([ready]) { min-height: 2.5rem; visibility: hidden; }

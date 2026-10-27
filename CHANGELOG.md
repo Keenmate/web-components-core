@@ -32,6 +32,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Components bundling an older core keep the old name, so mixed-version pages don't
   close each other's overlays until all are rebuilt.
 
+### Changed — `ready` fires asynchronously (SPEC §6.3)
+
+- The `ready` event, the `ready` attribute / `:state(ready)`, `isReady` and
+  `whenReady()` now all flip on the **microtask** after the first build +
+  `connect()`, not synchronously inside it — `el.addEventListener('ready', …)` right
+  after `document.createElement` / append / the import no longer misses it. A
+  microtask, not `requestAnimationFrame`: rAF stalls in hidden tabs. Code that read
+  `isReady` synchronously right after append must `await el.whenReady()`.
+
 ### Added — `destroy()` in `BlissElement` (SPEC §6.5)
 
 - Public **`destroy()`**: runs `disconnect()` if active, cancels the pending flush

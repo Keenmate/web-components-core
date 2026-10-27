@@ -99,7 +99,9 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    property holds the first build (no `reinit()`/`update()`/`connect()`); `release()` (or
    removing `defer`) builds once with everything set so far. After the first live
    build: `ready` attribute + `:state(ready)` + `ready` event (`onReady` twin) +
-   `isReady` / `whenReady()`. Order: defer → release → reinit → connect → ready.
+   `isReady` / `whenReady()`, all on the **microtask** after the build (so a
+   listener added right after `createElement` catches it; not rAF — hidden tabs).
+   Order: defer → release → reinit → connect → ready.
    Latched — `defer` never re-holds after the first build.
 
    **Disabled (SPEC §6.4):** core implements `formDisabledCallback` once; a

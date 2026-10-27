@@ -420,13 +420,22 @@ them.
   the build runs at the next connect. **Latched**: once released (or once the first
   build started) re-adding `defer` has no effect, and `release()` is a no-op.
 - **`ready`** — after the first successful build is live (`reinit()` + `connect()`
-  ran), once per element lifetime: the host gets the `ready` attribute and the
+  ran), **on the next microtask**, once per element lifetime: the host gets the `ready` attribute and the
   `:state(ready)` custom state (`ElementInternals.states` via the shared
   `internals`; skipped where unavailable), the `ready` event fires (bubbles, not
   composed; detail = component context only) with its `onReady` twin, `isReady`
   turns `true` and `whenReady()` resolves. A rebuild or a DOM move never
   re-announces. A throwing first build keeps `ready` pending until a later flush
-  succeeds. Core declares `ready`/`onReady` itself; a subclass may list `ready` in
+  succeeds. **Asynchronous by design**: an element built during upgrade
+  (`document.createElement` of a defined tag, `define()` over parsed markup, the
+  component's import) would otherwise announce before the caller's next line could
+  `addEventListener('ready', …)`. A microtask — not `requestAnimationFrame` ("after
+  first paint", the old multiselect/daterangepicker timing) — because rAF never
+  fires in a hidden tab (a background-tab `whenReady()` would hang) and isn't
+  available in SSR/jsdom; `ready` means "the build is live", not "painted" (a
+  consumer that needs paint awaits a frame itself). Until the microtask runs
+  `isReady` is still `false` — everything flips together. A `destroy()` before it
+  suppresses the announcement. Core declares `ready`/`onReady` itself; a subclass may list `ready` in
   its `static events` (for docs) without a duplicate.
 
 Lifecycle: `defer` → `release()` → `reinit()` → `connect()` → `ready`. A subclass

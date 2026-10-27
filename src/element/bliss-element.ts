@@ -165,6 +165,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   #preUpgradeDefer?: boolean;
   /** The first build is live and `ready` was announced (once per element lifetime). */
   #isReady = false;
+  /** {@link #announceReady} is queued (first build live; fires on the next microtask). */
+  #isReadyScheduled = false;
   #readyResolvers: Array<() => void> = [];
   /** An ancestor `<fieldset disabled>` disables this form-associated element (`formDisabledCallback`). */
   #isFormDisabled = false;
@@ -325,7 +327,17 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       this.#sizeUnsub = observeElementSize(this, (size) => this.sizeChanged(size), { shouldFireImmediately: false });
     }
     this.#subscribeTheme();
-    if (!this.#isReady) this.#announceReady();
+    if (!this.#isReady && !this.#isReadyScheduled) {
+      // Announce on a microtask, not synchronously (SPEC §6.3): an element built
+      // during upgrade (createElement of a defined tag, `define()` after parsing,
+      // an import) would otherwise fire `ready` before the caller's next line
+      // could `addEventListener('ready', …)`. A microtask (not rAF) so it never
+      // stalls in a hidden tab / SSR-ish env and stays before the next paint.
+      this.#isReadyScheduled = true;
+      queueMicrotask(() => {
+        if (!this.#isDestroyed) this.#announceReady();
+      });
+    }
   }
 
   /**
@@ -439,7 +451,9 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   /**
    * Whether the first build is live — the `ready` event has fired, the host has
    * the `ready` attribute and matches `:state(ready)`. `false` while a `defer`
-   * gate holds and before the first connect.
+   * gate holds and before the first connect. Flips together with the `ready`
+   * event, on the microtask after the first build + `connect()` (SPEC §6.3) — so
+   * a listener added right after `createElement` / append still catches it.
    */
   get isReady(): boolean {
     return this.#isReady;

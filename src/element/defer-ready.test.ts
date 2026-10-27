@@ -48,6 +48,12 @@ describe('defer / release() / ready', () => {
     el.onReady = twin;
     expect(el.isReady).toBe(false);
     document.body.appendChild(el);
+    // ready is announced on a microtask after the build — a listener added right
+    // after append / createElement still catches it.
+    expect(el.calls).toEqual(['reinit', 'connect']);
+    expect(el.isReady).toBe(false);
+    expect(el.hasAttribute('ready')).toBe(false);
+    await Promise.resolve();
     expect(el.calls).toEqual(['reinit', 'connect', 'ready']);
     expect(el.isReady).toBe(true);
     expect(el.hasAttribute('ready')).toBe(true);
@@ -75,9 +81,10 @@ describe('defer / release() / ready', () => {
     expect(el.hasAttribute('ready')).toBe(false);
     const ready = el.whenReady();
     el.release();
-    expect(el.calls).toEqual(['reinit', 'connect', 'ready']);
+    expect(el.calls).toEqual(['reinit', 'connect']);
     expect(el.seenLabel).toBe('b');
     await ready;
+    expect(el.calls).toEqual(['reinit', 'connect', 'ready']);
     el.release(); // no-op
     expect(el.calls).toHaveLength(3);
   });
@@ -86,6 +93,7 @@ describe('defer / release() / ready', () => {
     const el = make(true);
     document.body.appendChild(el);
     el.removeAttribute('defer');
+    await Promise.resolve();
     expect(el.calls).toEqual(['reinit', 'connect', 'ready']);
     el.shouldDefer = true;
     el.isCompact = true;
@@ -93,13 +101,14 @@ describe('defer / release() / ready', () => {
     expect(el.calls).toEqual(['reinit', 'connect', 'ready', 'update:isCompact']);
   });
 
-  it('el.shouldDefer property reflects to the attribute; false releases', () => {
+  it('el.shouldDefer property reflects to the attribute; false releases', async () => {
     const el = make(false);
     el.shouldDefer = true;
     expect(el.hasAttribute('defer')).toBe(true);
     document.body.appendChild(el);
     expect(el.calls).toEqual([]);
     el.shouldDefer = false;
+    await Promise.resolve();
     expect(el.calls).toEqual(['reinit', 'connect', 'ready']);
   });
 
@@ -111,12 +120,13 @@ describe('defer / release() / ready', () => {
     expect(el.calls).toEqual([]);
   });
 
-  it('release() while detached builds at the next connect', () => {
+  it('release() while detached builds at the next connect', async () => {
     const el = make(true);
     el.label = 'z';
     el.release();
     expect(el.calls).toEqual([]);
     document.body.appendChild(el);
+    await Promise.resolve();
     expect(el.calls).toEqual(['reinit', 'connect', 'ready']);
     expect(el.seenLabel).toBe('z');
   });
@@ -134,7 +144,7 @@ describe('defer / release() / ready', () => {
     expect(isSettled).toBe(true);
   });
 
-  it('a throwing first build delays ready until a later build succeeds', () => {
+  it('a throwing first build delays ready until a later build succeeds', async () => {
     class FlakyElement extends BlissElement {
       shouldFail = true;
       protected override reinit(): void {
@@ -155,15 +165,46 @@ describe('defer / release() / ready', () => {
     expect(el.isReady).toBe(false);
     el.shouldFail = false;
     el.flush();
+    await Promise.resolve();
     expect(el.isReady).toBe(true);
   });
 
-  it('sets :state(ready) when CustomStateSet is available', () => {
+  it('sets :state(ready) when CustomStateSet is available', async () => {
     const el = make(false);
     document.body.appendChild(el);
+    await el.whenReady();
     const states = (el as unknown as { internals: ElementInternals | null }).internals?.states;
     if (states) expect(states.has('ready')).toBe(true);
   });
+  it('a listener added right after createElement + append of an upgraded tag catches ready', async () => {
+    const el = document.createElement('gated-element') as Gated;
+    document.body.appendChild(el);
+    const listener = vi.fn();
+    el.addEventListener('ready', listener);
+    expect(el.isReady).toBe(false);
+    await Promise.resolve();
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(el.isReady).toBe(true);
+  });
+
+  it('a DOM move before the microtask announces ready once', async () => {
+    const el = make(false);
+    document.body.appendChild(el);
+    el.remove();
+    document.body.appendChild(el);
+    await Promise.resolve();
+    expect(el.calls.filter((c) => c === 'ready')).toHaveLength(1);
+  });
+
+  it('destroy() before the microtask suppresses ready', async () => {
+    const el = make(false);
+    document.body.appendChild(el);
+    el.destroy();
+    await Promise.resolve();
+    expect(el.isReady).toBe(false);
+    expect(el.calls).not.toContain('ready');
+  });
+
   it('a pre-upgrade el.shouldDefer = true becomes the defer attribute and holds', () => {
     const el = document.createElement('gated-late-element') as Gated;
     (el as unknown as { shouldDefer: boolean }).shouldDefer = true;
