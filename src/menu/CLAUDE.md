@@ -14,6 +14,6 @@ buttons (no native Space-on-keyup click). A toggle item (defines `isToggled` /
 `getIsToggledCallback` / a `defaults` `isToggled`) is `menuitemcheckbox` +
 `aria-checked`. Tests mock `../positioning/anchor.js` (jsdom has no layout).
 
-Consumers: web-treeview (adopted). Pending: web-grid (`modules/contextmenu`: toggle class
+Consumers: web-treeview, web-editor (adopted). Pending: web-grid (`modules/contextmenu`: toggle class
 via `cssClass`, `prepareItem` for built-in submenus, its shadow scroll subscription calls
-`close()`), web-editor (`ui/context-menu.ts`, CommandBar menu variant).
+`close()`).
