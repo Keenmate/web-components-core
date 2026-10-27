@@ -53,9 +53,13 @@ export interface SearchTermContext {
  */
 export type PreparedSearchTerm = string | RegExp | Record<string, unknown> | null | undefined;
 
-/** One item paired with its search value (the raw `searchValueMember` / `getSearchValueCallback` output). */
+/**
+ * One searchable record paired with its search value (the raw `searchValueMember` /
+ * `getSearchValueCallback` output). `data` is the component's own record (an option,
+ * a tree node, a row …) — domain-neutral; `item` is reserved for action items.
+ */
 export interface SearchEntry<T = any> {
-  item: T;
+  data: T;
   searchValue: unknown;
 }
 
@@ -63,13 +67,16 @@ export interface SearchEntry<T = any> {
  * The single argument of a component's `searchCallback(ctx)`. Components add
  * their component context (`controller`, `element`) on top.
  */
-export interface SearchCallbackContext<T = any> {
-  /** The raw term as typed. */
-  term: string;
+export interface SearchCallbackContext<T = any, TTerm = string | RegExp | Record<string, unknown>> {
+  /**
+   * The term to search for: the typed text (after any `beforeSearchCallback`
+   * rewrite), or — when `getSearchTermCallback` is set — what it returned for
+   * `target: 'callback'` (a string, RegExp or object; narrow it via `TTerm`).
+   * There is no separate raw/prepared pair; the typed text is on the element.
+   */
+  term: TTerm;
   /** Aborted when a newer search supersedes this one — pass it to `fetch`. */
   signal: AbortSignal;
-  /** The term as prepared by `getSearchTermCallback` (or the plain term when it isn't set). */
-  searchTerm: string | RegExp | Record<string, unknown>;
   /**
    * Every current item with its search value. Built on first access; each value is
    * computed once and the array is the SAME reference until the items change, so a

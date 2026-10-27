@@ -1280,9 +1280,12 @@ have to re-implement the same rules to agree with it. The rules move here once, 
   RegExp is matched raw (made stateless); an object is unusable there (`objectTermCallback`, the
   component warns). For `target: 'callback'` anything goes.
 - `searchCallback(ctx)` — the consumer's engine (FlexSearch, a server).
-  `SearchCallbackContext` = `{ term, signal, searchTerm, entries }`: the raw term, an
-  `AbortSignal` for superseded searches, the prepared term, and every item
-  paired with its search value (`SearchEntry`, which may be an object from
+  `SearchCallbackContext<T, TTerm>` = `{ term, signal, entries }`: the term to search
+  for (the prepared term — `getSearchTermCallback`'s `target: 'callback'` result, else
+  the typed text; ONE field, no raw/prepared pair), an `AbortSignal` for superseded
+  searches, and every record paired with its search value (`SearchEntry` =
+  `{ data, searchValue }` — `data` is domain-neutral, `item` is reserved for action
+  items; the value may be an object from
   `getSearchValueCallback`). `entries` is built lazily on first access and is the **same
   array** until the items change, so an engine can key its index on it.
 

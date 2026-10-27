@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed — BREAKING (v2 naming unification)
 
+- **`/search`: `SearchCallbackContext` has ONE term** — `term` is now the prepared
+  term (`getSearchTermCallback` `target: 'callback'` result, else the typed text;
+  typed via the new `TTerm` generic); the separate `searchTerm` field is gone.
+  **`SearchEntry.item` → `data`** (`item` is reserved for action items).
 - **`el.defer` → `el.shouldDefer`** (boolean `should*` prefix; the attribute stays
   `defer`). A subclass input with configKey `shouldDefer` owns the property.
 - **`/menu`: `OpenMenuOptions.onClose` → `closeCallback`; `/search`
