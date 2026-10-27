@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed — BREAKING (v2 naming unification)
 
+- **`el.defer` → `el.shouldDefer`** (boolean `should*` prefix; the attribute stays
+  `defer`). A subclass input with configKey `shouldDefer` owns the property.
 - **`/menu`: `OpenMenuOptions.className` → `cssClass`** — the same name as the
   item-level `cssClass` (and `createTooltip`).
 - **`/positioning` option callbacks off the `on*` prefix** (`on*` is reserved for
@@ -32,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added — `defer` / `release()` / `ready` for every component (SPEC §6.3)
 
-- **`defer`** (global attribute, always observed, + reflecting `el.defer`) holds the
+- **`defer`** (global attribute, always observed, + reflecting `el.shouldDefer`) holds the
   first build — no `reinit()`/`update()`/`connect()` — while options, callbacks and
   listeners are wired. **`release()`** (or removing `defer`) runs the first build
   once with everything set so far. Latched.

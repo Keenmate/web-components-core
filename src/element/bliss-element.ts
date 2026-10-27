@@ -159,7 +159,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * `defer` afterwards never re-holds.
    */
   #isReleased = false;
-  /** `el.defer` assigned before upgrade — applied as the attribute at first connect. */
+  /** `el.shouldDefer` assigned before upgrade — applied as the `defer` attribute at first connect. */
   #preUpgradeDefer?: boolean;
   /** The first build is live and `ready` was announced (once per element lifetime). */
   #isReady = false;
@@ -189,8 +189,9 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#seedDefaults(defs);
     this.#installAccessors(defs);
     this.#installEventAccessors(events);
-    if (!this.#byConfigKey.has('defer')) {
-      const pre = this.#liftPreUpgrade('defer');
+    // A subclass declaring its own `shouldDefer` input owns the property.
+    if (!this.#byConfigKey.has('shouldDefer')) {
+      const pre = this.#liftPreUpgrade('shouldDefer');
       if (pre.had) this.#preUpgradeDefer = !!pre.value;
     }
   }
@@ -273,7 +274,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#cancelRemovalCheck?.();
     this.#cancelRemovalCheck = undefined;
     if (!this.#connectedOnce) {
-      // A pre-upgrade `el.defer = …` becomes the attribute now (the constructor may
+      // A pre-upgrade `el.shouldDefer = …` becomes the attribute now (the constructor may
       // not touch attributes); the gate is read by the flush below.
       if (this.#preUpgradeDefer !== undefined) this.toggleAttribute(DEFER_ATTRIBUTE, this.#preUpgradeDefer);
       this.#preUpgradeDefer = undefined;
@@ -393,18 +394,18 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   // ── defer / release / ready (SPEC §6.3) ───────────────────────────────────
 
   /**
-   * Hold the first build. While `defer` is set when the element first connects,
+   * Hold the first build (attribute `defer`). While it is set when the element first connects,
    * nothing is built — no `reinit()`/`update()`, no `connect()` — and every input,
    * callback and listener assigned meanwhile accumulates. {@link release} (or
    * removing the attribute) then builds ONCE with all of it in place. Reflects to
    * the `defer` attribute. Latched: after the first build, setting it again has no
    * effect.
    */
-  get defer(): boolean {
+  get shouldDefer(): boolean {
     return this.hasAttribute(DEFER_ATTRIBUTE);
   }
 
-  set defer(value: boolean) {
+  set shouldDefer(value: boolean) {
     this.toggleAttribute(DEFER_ATTRIBUTE, !!value);
   }
 

@@ -148,7 +148,7 @@ class WebMultiSelect extends BlissElement {
   resources. A DOM move re-activates **without rebuilding**, so transient UI
   state survives. Keep them balanced.
 
-**Defer / release / ready** (every component): `<x-comp defer>` (or `el.defer =
+**Defer / release / ready** (every component): `<x-comp defer>` (or `el.shouldDefer =
 true` before connect) holds the first build — no `reinit()`/`update()`/`connect()`
 — while you wire options, callbacks and listeners; **`el.release()`** (or removing
 `defer`) then builds **once** with everything in place. Order: `defer` →

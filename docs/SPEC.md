@@ -233,8 +233,8 @@ export abstract class BlissElement extends Base {
   /** Really removed (still detached one animation frame after disconnect). Opt-in by overriding. */
   protected removedCallback(): void { /* opt-in, no-op by default */ }
 
-  // DEFER / READY (§6.3): `defer` attribute/property holds the first build until release().
-  defer: boolean;
+  // DEFER / READY (§6.3): `defer` attribute / `shouldDefer` property holds the first build until release().
+  shouldDefer: boolean;
   release(): void;
   readonly isReady: boolean;            // + `ready` attribute, :state(ready), `ready` event / onReady
   whenReady(): Promise<void>;
@@ -404,12 +404,12 @@ gate and the readiness signal for every `BlissElement`; no component re-implemen
 them.
 
 - **`defer`** — a global attribute (always observed, like `dir`) with a reflecting
-  boolean property `el.defer`. When it is present at the first connect, the build
+  boolean property `el.shouldDefer` (the `shouldX` → `x` attribute rule). When it is present at the first connect, the build
   is **held**: no `reinit()`/`update()`, no `connect()`, no environment/theme
   subscriptions. Inputs keep staging into `config` (a held element flushes nothing —
   like a detached one), so `whenSettled()` waits for the release; `flush()`,
   `setAttributes()` and `batch()` stage but don't build. A pre-upgrade
-  `el.defer = true` is applied as the attribute at the first connect.
+  `el.shouldDefer = true` is applied as the `defer` attribute at the first connect.
 - **`release()`** — or removing `defer` — runs the first build now: one
   `reinit()` with everything set so far, then `connect()`, then `ready`. Detached →
   the build runs at the next connect. **Latched**: once released (or once the first
@@ -426,7 +426,8 @@ them.
 
 Lifecycle: `defer` → `release()` → `reinit()` → `connect()` → `ready`. A subclass
 that declares its own `defer` attribute input takes the attribute over (the core
-gate is then off), the same dedup rule as `dir`.
+gate is then off), the same dedup rule as `dir`; one with a `shouldDefer` configKey
+owns the property.
 
 ### 6.4 Disabled state — the `isDisabled` input + `<fieldset disabled>`
 

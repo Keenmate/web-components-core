@@ -87,19 +87,19 @@ describe('defer / release() / ready', () => {
     document.body.appendChild(el);
     el.removeAttribute('defer');
     expect(el.calls).toEqual(['reinit', 'connect', 'ready']);
-    el.defer = true;
+    el.shouldDefer = true;
     el.isCompact = true;
     await el.whenSettled();
     expect(el.calls).toEqual(['reinit', 'connect', 'ready', 'update:isCompact']);
   });
 
-  it('el.defer property reflects to the attribute; false releases', () => {
+  it('el.shouldDefer property reflects to the attribute; false releases', () => {
     const el = make(false);
-    el.defer = true;
+    el.shouldDefer = true;
     expect(el.hasAttribute('defer')).toBe(true);
     document.body.appendChild(el);
     expect(el.calls).toEqual([]);
-    el.defer = false;
+    el.shouldDefer = false;
     expect(el.calls).toEqual(['reinit', 'connect', 'ready']);
   });
 
@@ -163,5 +163,36 @@ describe('defer / release() / ready', () => {
     document.body.appendChild(el);
     const states = (el as unknown as { internals: ElementInternals | null }).internals?.states;
     if (states) expect(states.has('ready')).toBe(true);
+  });
+  it('a pre-upgrade el.shouldDefer = true becomes the defer attribute and holds', () => {
+    const el = document.createElement('gated-late-element') as Gated;
+    (el as unknown as { shouldDefer: boolean }).shouldDefer = true;
+    class GatedLate extends GatedElement {}
+    define('gated-late-element', GatedLate as unknown as CustomElementConstructor);
+    document.body.appendChild(el);
+    expect(el.hasAttribute('defer')).toBe(true);
+    expect(el.calls).toEqual([]);
+    expect(el.shouldDefer).toBe(true);
+    el.release();
+    expect(el.calls).toEqual(['reinit', 'connect']);
+  });
+
+  it('a subclass declaring its own shouldDefer / defer input takes the gate over', () => {
+    class OwnDefer extends BlissElement {
+      protected static override inputs: readonly InputDef[] = [
+        { configKey: 'shouldDefer', attribute: 'defer', converter: toBool('presence'), default: false, on: 'none' },
+      ];
+      builds = 0;
+      protected override reinit(): void {
+        this.builds++;
+      }
+    }
+    define('own-defer-element', OwnDefer as unknown as CustomElementConstructor);
+    const el = document.createElement('own-defer-element') as OwnDefer & { shouldDefer: boolean };
+    el.setAttribute('defer', '');
+    document.body.appendChild(el);
+    expect(el.builds).toBe(1);
+    expect(el.shouldDefer).toBe(true);
+    expect((OwnDefer as unknown as { observedAttributes: string[] }).observedAttributes.filter((a) => a === 'defer')).toHaveLength(1);
   });
 });
