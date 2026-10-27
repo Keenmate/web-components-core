@@ -47,7 +47,7 @@ export interface PrepareSearchTermOptions {
    */
   getSearchTermCallback?: (term: string) => PreparedSearchTerm;
   /** Called when `getSearchTermCallback` returns an object — unusable for built-in search; the component warns. */
-  onObjectTerm?: (term: Record<string, unknown>) => void;
+  objectTermCallback?: (term: Record<string, unknown>) => void;
 }
 
 /**
@@ -63,7 +63,7 @@ export function prepareSearchTerm(term: string, opts: PrepareSearchTermOptions):
     if (prepared instanceof RegExp) return { kind: 'regex', re: statelessRegex(prepared) };
     if (prepared == null || prepared === '') return NO_SEARCH_TERM;
     if (typeof prepared !== 'string') {
-      opts.onObjectTerm?.(prepared);
+      opts.objectTermCallback?.(prepared);
       return NO_SEARCH_TERM;
     }
     return opts.match === 'regex' ? compiled(opts.regex, prepared) : { kind: 'text', text: prepared };

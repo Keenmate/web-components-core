@@ -1233,7 +1233,7 @@ have to re-implement the same rules to agree with it. The rules move here once, 
 
 - `getSearchTermCallback({ term, target, behavior, match })` → `PreparedSearchTerm`. For
   built-in search (`target: 'internal'`) a string is used as-is (not normalized again) and a
-  RegExp is matched raw (made stateless); an object is unusable there (`onObjectTerm`, the
+  RegExp is matched raw (made stateless); an object is unusable there (`objectTermCallback`, the
   component warns). For `target: 'callback'` anything goes.
 - `searchCallback(ctx)` — the consumer's engine (FlexSearch, a server).
   `SearchCallbackContext` = `{ term, signal, searchTerm, entries }`: the raw term, an
@@ -1320,13 +1320,13 @@ root / element the levels are appended to; the stylesheet is adopted into its ro
 `runAction(item, { triggerElement, sourceEvent })` (the component's wrapper over core
 `runAction()` — a leaf closes the menu first, then runs; a `shouldCloseOnClick: false`
 item runs and its level re-renders when the returned promise settles),
-`onClose(reason)` (`'action' | 'escape' | 'tab' | 'outside-click' | 'scroll' | 'blur' |
+`closeCallback(reason)` (`'action' | 'escape' | 'tab' | 'outside-click' | 'scroll' | 'blur' |
 'overlay' | 'api'`), `renderItem(item, el, ctx, resolved)` (fill-or-fall-through),
 `renderMenu(el, close)` (full custom content; core still positions + dismisses),
 `defaults` / `prepareItem` (built-in state / rewrite, every level), `placement`,
 `offset`, `cssClass`, `shouldFocusFirst`, `returnFocusTo`,
 `shouldCloseOnOutsideInteraction` (default `true`), `overlayGroup`, `loadingText`,
-`inheritThemeFrom`. No visible item → nothing rendered, a closed handle, no `onClose`.
+`inheritThemeFrom`. No visible item → nothing rendered, a closed handle, no `closeCallback`.
 
 **Decisions.** Icons are inserted as HTML (developer-supplied, like action buttons);
 label and shortcut are text. Items are `div[role=menuitem][tabindex=-1]` (not buttons —

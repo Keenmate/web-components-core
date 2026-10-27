@@ -514,7 +514,7 @@ export function openMenu<Ctx, A extends string = string>(
     if (hadFocus && !isPointerAway && opts.returnFocusTo?.isConnected) {
       opts.returnFocusTo.focus({ preventScroll: true });
     }
-    opts.onClose?.(reason);
+    opts.closeCallback?.(reason);
   }
 
   // ── Open ───────────────────────────────────────────────────────────────

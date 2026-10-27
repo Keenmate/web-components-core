@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`el.defer` → `el.shouldDefer`** (boolean `should*` prefix; the attribute stays
   `defer`). A subclass input with configKey `shouldDefer` owns the property.
+- **`/menu`: `OpenMenuOptions.onClose` → `closeCallback`; `/search`
+  `PrepareSearchTermOptions.onObjectTerm` → `objectTermCallback`** (`on*` is reserved for
+  event twins).
 - **`/menu`: `OpenMenuOptions.className` → `cssClass`** — the same name as the
   item-level `cssClass` (and `createTooltip`).
 - **`/positioning` option callbacks off the `on*` prefix** (`on*` is reserved for

@@ -432,7 +432,7 @@ const menu = openMenu(entries, ctx, {
   at: { x: e.clientX, y: e.clientY },  // or an element
   host: this.shadowRoot,                // where it renders (styles adopted there)
   runAction: (item, { triggerElement, sourceEvent }) => this.activate(item, triggerElement, sourceEvent),
-  onClose: (reason) => { /* sync your state */ },
+  closeCallback: (reason) => { /* sync your state */ },
   returnFocusTo: this.bodyEl,
   shouldFocusFirst: isOpenedFromKeyboard,
 });

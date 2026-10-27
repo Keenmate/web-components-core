@@ -8,7 +8,7 @@ export interface MenuPoint {
 }
 
 /**
- * Why a menu closed (the argument of {@link OpenMenuOptions.onClose}):
+ * Why a menu closed (the argument of {@link OpenMenuOptions.closeCallback}):
  * - `'action'` — a leaf item ran (and doesn't keep the menu open)
  * - `'escape'` — Escape on the root menu
  * - `'tab'` — Tab / Shift+Tab (focus leaves the menu)
@@ -47,7 +47,7 @@ export interface OpenMenuOptions<Ctx, A extends string = string> {
    */
   runAction?(item: MenuItem<Ctx, A>, invocation: MenuInvocation): unknown;
   /** Called once when the menu closes, with the reason. Not called when nothing was shown. */
-  onClose?(reason: MenuCloseReason): void;
+  closeCallback?(reason: MenuCloseReason): void;
   /**
    * Fill one item element yourself. Runs after the element got its classes /
    * ARIA / `data-*`; when you leave it empty the default content (icon, label,
