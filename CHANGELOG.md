@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — BREAKING (v2 naming unification)
+
+- **`/menu`: `OpenMenuOptions.className` → `cssClass`** — the same name as the
+  item-level `cssClass` (and `createTooltip`).
+
 ### Added — fieldset-aware disabled state (SPEC §6.4)
 
 - `BlissElement` implements **`formDisabledCallback`** once (form-associated

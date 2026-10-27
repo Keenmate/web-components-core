@@ -91,7 +91,7 @@ export function openMenu<Ctx, A extends string = string>(
     const el = document.createElement('div');
     el.className = isSubmenu ? `${BLOCK} ${BLOCK}--submenu` : BLOCK;
     if (isCustom && !isSubmenu) el.classList.add(`${BLOCK}--custom`);
-    addClasses(el, opts.className);
+    addClasses(el, opts.cssClass);
     if (!isCustom) el.setAttribute('role', 'menu');
     el.tabIndex = -1;
     return el;

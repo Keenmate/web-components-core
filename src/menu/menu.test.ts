@@ -123,8 +123,8 @@ describe('rendering', () => {
     expect(renderItem).toHaveBeenCalledTimes(3);
   });
 
-  it('adopts the stylesheet into the host root; extra className on every level', () => {
-    open([{ id: 's', text: 'S', children: [{ id: 's1', text: 'S1' }] }], { className: 'wtv-menu' });
+  it('adopts the stylesheet into the host root; extra cssClass on every level', () => {
+    open([{ id: 's', text: 'S', children: [{ id: 's1', text: 'S1' }] }], { cssClass: 'wtv-menu' });
     const adopted = (shadow as { adoptedStyleSheets?: CSSStyleSheet[] }).adoptedStyleSheets?.length ?? 0;
     expect(adopted + shadow.querySelectorAll('style').length).toBeGreaterThan(0);
     byId('s').click();

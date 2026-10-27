@@ -1323,7 +1323,7 @@ item runs and its level re-renders when the returned promise settles),
 'overlay' | 'api'`), `renderItem(item, el, ctx, resolved)` (fill-or-fall-through),
 `renderMenu(el, close)` (full custom content; core still positions + dismisses),
 `defaults` / `prepareItem` (built-in state / rewrite, every level), `placement`,
-`offset`, `className`, `shouldFocusFirst`, `returnFocusTo`,
+`offset`, `cssClass`, `shouldFocusFirst`, `returnFocusTo`,
 `shouldCloseOnOutsideInteraction` (default `true`), `overlayGroup`, `loadingText`,
 `inheritThemeFrom`. No visible item → nothing rendered, a closed handle, no `onClose`.
 

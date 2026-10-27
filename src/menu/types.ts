@@ -70,7 +70,7 @@ export interface OpenMenuOptions<Ctx, A extends string = string> {
   /** Root offset from `at`. Default `0` for a point, `4` for an element. */
   offset?: number | AnchorOffset;
   /** Extra classes on every menu level (root and submenus) — a component's scoping hook. */
-  className?: string;
+  cssClass?: string;
   /** Focus the first enabled item on open — use it when the menu was opened from the keyboard. Default `false`. */
   shouldFocusFirst?: boolean;
   /**
