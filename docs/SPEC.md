@@ -412,7 +412,9 @@ them.
   boolean property `el.shouldDefer` (the `shouldX` → `x` attribute rule). When it is present at the first connect, the build
   is **held**: no `reinit()`/`update()`, no `connect()`, no environment/theme
   subscriptions. Inputs keep staging into `config` (a held element flushes nothing —
-  like a detached one), so `whenSettled()` waits for the release; `flush()`,
+  like a detached one), so `whenSettled()` waits for the release — **intended**:
+  resolving while held would report "settled" with nothing built, breaking the
+  read-after-write contract (§12.7); release first, then await; `flush()`,
   `setAttributes()` and `batch()` stage but don't build. A pre-upgrade
   `el.shouldDefer = true` is applied as the `defer` attribute at the first connect.
 - **`release()`** — or removing `defer` — runs the first build now: one

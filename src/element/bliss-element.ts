@@ -516,7 +516,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * and `batch()` flush synchronously, so after either the element is already
    * settled. While the element is **detached**, pending changes are held (the
    * flush no-ops until connected), so the promise resolves on the next connect's
-   * flush — not before the change is actually applied.
+   * flush — not before the change is actually applied. The same holds while a
+   * `defer` gate holds the first build (SPEC §6.3): the promise resolves only once
+   * {@link release} (or removing `defer`) builds — by design, since resolving
+   * earlier would report "settled" with nothing built. Don't `await` it before
+   * releasing a deferred element (a test that does hangs); release first.
    */
   whenSettled(): Promise<void> {
     if (this.#isDestroyed || (!this.#pending && !this.#pendingReinit)) return Promise.resolve();
