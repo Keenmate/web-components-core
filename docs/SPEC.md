@@ -125,12 +125,39 @@ export interface InputDef<V = unknown> {
   /** other inputs this value also sets, in the same batch (§6.2). */
   getBatchValuesCallback?: (value: V, config: Readonly<Record<string, unknown>>) =>
     Record<string, unknown> | null | undefined;
+  /** live read-back for the property getter (§4.1). */
+  getLiveValue?(el: HTMLElement): V | undefined;
 }
 ```
 
 One converter per input owns **both** parsing (from an attribute string)
 and validation (of a JS-assigned value) — correctness lives in one place
 and can't drift across the three spots it used to.
+
+### 4.1 Live read-back (`getLiveValue`)
+
+Some inputs seed state the component then owns and changes: tree `nodes` the
+user edits, grid `items` after `addRow()`, multiselect `options` with added-new
+entries. Without help the generated getter returns the *assigned* snapshot, so
+`el.nodes` would be stale. An optional `getLiveValue(el)` on the row makes the
+**getter** return the live state:
+
+- Consulted only after the element's first successful `reinit()`; before that
+  (detached, `defer` holding, never connected) the getter returns the stored value.
+- Not while a write to that input is staged but not yet applied (`el.nodes = x;
+  el.nodes` returns `x` until the flush), nor after a `reinit()` threw (the
+  structure may be half-built) until a rebuild succeeds.
+- Returning `undefined` falls back to the stored value.
+- Read side only: the setter path (parse / validate / stage / batch /
+  `reinit()` / `update()`) is unchanged and `this.config[configKey]` keeps the
+  **assigned** value — a rebuild reads `config`, never the live getter.
+  Reflection (`shouldReflect`) reflects the assigned value too.
+- An `on: 'none'` input is never staged, so its getter goes live right after
+  assignment — the component must make `getLiveValue` see the new value (or
+  return `undefined`).
+- Declared with method syntax, so a row may type `el` as its own class
+  (`getLiveValue: (el: MyTree) => el.tree?.nodes`). A non-function value is
+  flagged by the table sanity check and ignored.
 
 ---
 

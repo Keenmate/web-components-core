@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `getLiveValue` live property getter (SPEC §4.1)
+
+- **`InputDef.getLiveValue(el)` — live property getter** (SPEC §4.1). For an input
+  whose state the component changes after assignment (tree nodes, grid rows,
+  added-new options), the generated getter returns `getLiveValue(el)` once the
+  element has built; it falls back to the stored value before the first build,
+  while that input's write is staged but not applied, after a failed `reinit()`,
+  and when the callback returns `undefined`. The setter path and `this.config`
+  (the assigned value) are unchanged. A non-function `getLiveValue` is flagged by
+  the input-table sanity check.
+
 ### Changed — BREAKING (v2 naming unification)
 
 - **`/search`: `SearchCallbackContext` has ONE term** — `term` is now the prepared

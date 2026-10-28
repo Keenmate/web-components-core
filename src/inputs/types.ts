@@ -76,6 +76,24 @@ export interface InputDef<V = unknown> {
     config: Readonly<Record<string, unknown>>,
   ) => Record<string, unknown> | null | undefined;
   /**
+   * Live read-back for the generated property GETTER (SPEC §4.1). For an input
+   * whose state the component itself changes after assignment (tree nodes the
+   * user edited, grid rows added, options added-new), the getter returns
+   * `getLiveValue(el)` instead of the assigned value — so `el.nodes` reads the
+   * live state, not a stale snapshot.
+   *
+   * Consulted only once the element has built (first successful `reinit()`),
+   * and not while an assignment to this input is staged but not yet applied
+   * (read-after-write returns what was just assigned until the flush), nor after
+   * a `reinit()` threw. Returning `undefined` falls back to the stored value.
+   *
+   * Read side only: the setter path (parse / validate / stage / batch /
+   * `reinit()` / `update()`) is unchanged, and `this.config[configKey]` keeps
+   * the ASSIGNED value. Method syntax, so a component may type `el` as its own
+   * class.
+   */
+  getLiveValue?(el: HTMLElement): V | undefined;
+  /**
    * Human description for docs / editor IntelliSense (the CEM tooling reads it —
    * SPEC §12.4). The table already carries the STRUCTURE (name, type, default);
    * this is the "extra help text" only a person can write. Ignored at runtime.

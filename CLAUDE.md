@@ -47,7 +47,11 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
 2. **The `Converter<V>` owns both parsing and validation.** One converter per
    input handles the attribute path (`fromAttribute`: raw string → validated
    `V`) *and* the property path (`validate`: is this JS-assigned value
-   acceptable?), plus optional reflection (`toAttribute`). Correctness lives in
+   acceptable?), plus optional reflection (`toAttribute`).
+   An optional `getLiveValue(el)` row field (SPEC §4.1) makes the generated
+   GETTER return live component state (after the first successful build, not
+   while that input's write is still staged; `undefined` → stored value);
+   setter path and `this.config` (the assigned value) are unchanged. Correctness lives in
    one place so it can't drift across the three spots it used to. The `to*`
    factory library (`toEnum`, `toInt`, `toFloat`, `toText`, `toBool`,
    `toBytes`, `toList`, `toCustom`, `toFunction`) sets both paths from the same

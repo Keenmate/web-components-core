@@ -140,6 +140,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * nothing schedules.
    */
   #hasFailedReinit = false;
+  /** A `reinit()` has succeeded at least once — `getLiveValue` getters read live state from now on. */
+  #hasBuilt = false;
   /** {@link destroy} ran — the element is inert for good (SPEC §6.5). */
   #isDestroyed = false;
   /** Cancels the pending post-disconnect removal check (see {@link removedCallback}); set only while one is scheduled. */
@@ -1117,6 +1119,9 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       if (def.shouldReflect && !def.attribute) {
         this.#warn(`invalid input table: "${def.configKey}" has shouldReflect:true but no attribute to reflect to`);
       }
+      if (def.getLiveValue !== undefined && typeof def.getLiveValue !== 'function') {
+        this.#warn(`invalid input table: "${def.configKey}" has a getLiveValue that is not a function; the getter returns the stored value`);
+      }
       if (def.shouldReflect && !def.converter?.toAttribute) {
         this.#warn(`invalid input table: "${def.configKey}" has shouldReflect:true but its converter has no toAttribute`);
       }
@@ -1177,7 +1182,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       Object.defineProperty(this, key, {
         configurable: true,
         enumerable: true,
-        get: () => this.#config[key],
+        get: typeof def.getLiveValue === 'function' ? () => this.#readLive(def) : () => this.#config[key],
         set: (value: unknown) => this.#setFromProperty(def, value),
       });
       // Re-apply through the setter. Only an ACCEPTED value is remembered so the
@@ -1211,6 +1216,21 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       });
       if (pre.had) (this as Record<string, unknown>)[prop] = pre.value;
     }
+  }
+
+  /**
+   * Getter for an input with `getLiveValue` (SPEC §4.1): the live state once the
+   * element has built, else the stored value. The stored (assigned) value wins
+   * while this input's write is staged but not applied yet, after a failed
+   * `reinit()`, and whenever `getLiveValue` returns `undefined`.
+   */
+  #readLive(def: InputDef): unknown {
+    const key = def.configKey;
+    if (!this.#hasBuilt || this.#hasFailedReinit || (this.#pending !== null && key in this.#pending)) {
+      return this.#config[key];
+    }
+    const live = def.getLiveValue!(this);
+    return live === undefined ? this.#config[key] : live;
   }
 
   /** Stage a JS-assigned value; `false` when the converter rejected it (warned, previous value kept). */
@@ -1336,6 +1356,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       this.#resolveSettled();
     }
     this.#hasFailedReinit = false;
+    if (reinit) this.#hasBuilt = true;
     this.#syncDisabled(reinit);
     // A rebuild that finally succeeded while connected activates what the failed one skipped.
     if (isRetry) this.#activate();
