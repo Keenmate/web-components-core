@@ -35,7 +35,7 @@ const BORDER_COLOR = 'var(--base-border-color, light-dark(#e0e0e0, #3d3d3d))';
 const MUTED_TEXT = 'var(--base-text-color-3, light-dark(#707070, #a3a3a3))';
 const ITEM_GAP = km('item-gap', '8px');
 const ITEM_PADDING = km('item-padding', '6px 12px');
-const DISABLED_OPACITY = km('disabled-opacity', 'var(--base-disabled-opacity, 0.5)');
+const DISABLED_OPACITY = km('disabled-opacity', 'var(--base-disabled-opacity, 0.65)');
 const DANGER_COLOR = km('danger-color', 'var(--base-danger-color, light-dark(#d13438, #f87c86))');
 const DIVIDER_COLOR = km('divider-color', BORDER_COLOR);
 

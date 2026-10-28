@@ -37,7 +37,7 @@
     { "name": "km-menu-item-padding", "category": "menu", "usage": "Item padding; also the loading row (default 6px 12px)" },
     { "name": "km-menu-hover-bg", "category": "menu", "usage": "Item hover / focus / open-submenu background (→ --base-hover-bg, default 8% of currentColor)" },
     { "name": "km-menu-hover-color", "category": "menu", "usage": "Item text colour on hover / focus / open submenu (default unchanged; danger and toggled items keep theirs)" },
-    { "name": "km-menu-disabled-opacity", "category": "menu", "usage": "Disabled item and loading row opacity (→ --base-disabled-opacity, default 0.5)" },
+    { "name": "km-menu-disabled-opacity", "category": "menu", "usage": "Disabled item and loading row opacity (→ --base-disabled-opacity, default 0.65)" },
     { "name": "km-menu-danger-color", "category": "menu", "usage": "Danger item text colour (→ --base-danger-color)" },
     { "name": "km-menu-danger-hover-bg", "category": "menu", "usage": "Danger item hover background (→ --base-danger-bg-subtle, default 10% of the danger colour)" },
     { "name": "km-menu-toggled-color", "category": "menu", "usage": "Toggled-on item colour (→ --base-accent-color, default #0078d4)" },

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — menu disabled fade follows the contract default
+
+- **`--km-menu-disabled-opacity` defaults to `0.65`** (was `0.5`): the fallback of
+  `var(--base-disabled-opacity, …)` now equals the contract's value, so a disabled menu item
+  looks the same with or without `@keenmate/base-css-variables`. The menu has no transitions or
+  animations (nothing to chain to `--base-duration-*`).
+
 ### Added — form validity API + `setFormatError()` (SPEC §6.6)
 
 - **`BlissElement` exposes constraint validation** for form-associated classes:
