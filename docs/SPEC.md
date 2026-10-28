@@ -523,6 +523,41 @@ rebuild, no `connect()`, no `ready`. Create a new element instead. The `ready`
 state is left as it was. `ElementInternals` can't be detached — a subclass that
 set a form value or custom states clears them in `destroyCallback()`.
 
+### 6.6 Form validity — `validity` / `checkValidity()` / `setFormatError()`
+
+A form-associated element (`static formAssociated = true`) gets the standard
+constraint-validation API from the base, read through `internals` — like `el.form`,
+the browser gives a form-associated custom element none of it for free:
+
+- `validity` (`ValidityState`), `validationMessage`, `willValidate`,
+  `checkValidity()`, `reportValidity()` — straight from `ElementInternals`
+  (`checkValidity()` fires the cancelable `invalid` event when invalid).
+- On a class that is NOT form-associated (or where `attachInternals` is
+  unavailable — SSR, older jsdom) they answer "no constraint": `validity`
+  `undefined`, `validationMessage` `''`, `willValidate` `false`,
+  `checkValidity()` / `reportValidity()` `true`. Internals are not attached for
+  them (`ElementInternals`' validity members throw `NotSupportedError` there).
+
+**`setFormatError(error, message?, anchor?)`** (protected) — the pattern for a
+value the component could not produce (e.g. a throwing `getValueFormatCallback`):
+
+- `error` non-null → `internals.setValidity({ customError: true }, message, anchor)`.
+  The message is `message`, else the error's own message (an `Error`'s `message`
+  or a string error), else `"The value is invalid."` — the platform rejects an
+  empty message for an invalid state. `anchor` (a shadow-including descendant,
+  e.g. the visible input) positions the browser's validation bubble; an anchor
+  the browser rejects is dropped with a warning (`UI` / `CORE:ELEMENT`).
+- `error` `null` → `internals.setValidity({})` — valid again. Clearing resets ALL
+  validity flags; a component with other constraints sets them through
+  `internals` itself.
+- No-op on a non-form-associated class.
+
+While invalid, the form refuses to submit (`invalid` fires instead of `submit`)
+unless `<form novalidate>`, and `:invalid` matches the host. Typical component
+flow: catch the callback's throw → log it at `error` → submit `''` →
+`setFormatError(err, label)` → emit a `*-error` event; the next successful
+format calls `setFormatError(null)`.
+
 ---
 
 ## 7. Fit check — all five components

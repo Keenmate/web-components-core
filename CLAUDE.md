@@ -115,6 +115,13 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    browser disables a form-associated host by its own `disabled` attribute (core
    warns on a non-reflecting one); `isFormDisabled` is fieldset-only.
 
+   **Form validity (SPEC §6.6):** a form-associated class gets `validity`,
+   `validationMessage`, `willValidate`, `checkValidity()`, `reportValidity()`
+   (via `internals`; "no constraint" answers when not form-associated). The
+   protected **`setFormatError(error | null, message?, anchor?)`** marks the host
+   invalid (`customError`) when a value can't be produced, `null` clears it —
+   blocks submit unless `<form novalidate>`.
+
    A DOM move (reorder/re-parent) fires `disconnect()`→`connect()` and
    **re-activates without rebuilding** (`reinit()` runs only on first connect or
    an `on:'reinit'` change) — so transient UI state survives. `connect()`/

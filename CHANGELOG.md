@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — form validity API + `setFormatError()` (SPEC §6.6)
+
+- **`BlissElement` exposes constraint validation** for form-associated classes:
+  `validity`, `validationMessage`, `willValidate`, `checkValidity()`,
+  `reportValidity()`, read through `ElementInternals`. A non-form-associated class
+  answers "no constraint" (`undefined` / `''` / `false` / `true` / `true`) without
+  attaching internals.
+- **Protected `setFormatError(error, message?, anchor?)`** — non-null marks the
+  host invalid (`setValidity({ customError: true }, message, anchor)`; message
+  falls back to the error's message, then a generic text; a rejected anchor is
+  dropped with a warning); `null` clears it. Blocks form submission unless
+  `<form novalidate>`. For a value a component can't produce (a throwing
+  `getValueFormatCallback`).
+
 ### Added — `getLiveValue` live property getter (SPEC §4.1)
 
 - **`InputDef.getLiveValue(el)` — live property getter** (SPEC §4.1). For an input

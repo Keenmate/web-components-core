@@ -876,6 +876,97 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     return this.internals?.form ?? null;
   }
 
+  // ── form validity (SPEC §6.6) ─────────────────────────────────────────────
+
+  /**
+   * {@link internals}, but only for a form-associated class (`static
+   * formAssociated = true`). The validity members of `ElementInternals` throw
+   * `NotSupportedError` on a non-form-associated element, so the public validity
+   * API reads through this and degrades to the "no constraint" answers instead.
+   */
+  get #formInternals(): ElementInternals | null {
+    const ctor = this.constructor as { formAssociated?: boolean };
+    return ctor.formAssociated === true ? this.internals : null;
+  }
+
+  /**
+   * The element's {@link ValidityState} — like a native control's `validity`.
+   * `undefined` when the class isn't form-associated (or internals are
+   * unavailable).
+   */
+  get validity(): ValidityState | undefined {
+    return this.#formInternals?.validity;
+  }
+
+  /** The validation message the element shows when invalid (`''` when valid / not form-associated). */
+  get validationMessage(): string {
+    return this.#formInternals?.validationMessage ?? '';
+  }
+
+  /** Whether the element is a candidate for constraint validation (`false` when not form-associated). */
+  get willValidate(): boolean {
+    return this.#formInternals?.willValidate ?? false;
+  }
+
+  /**
+   * Checks validity like a native control: returns `false` and fires a
+   * cancelable `invalid` event when invalid. Always `true` when the class isn't
+   * form-associated.
+   */
+  checkValidity(): boolean {
+    return this.#formInternals?.checkValidity() ?? true;
+  }
+
+  /**
+   * Like {@link checkValidity}, and additionally reports the problem to the user
+   * (the browser's validation bubble, anchored per {@link setFormatError}).
+   * Always `true` when the class isn't form-associated.
+   */
+  reportValidity(): boolean {
+    return this.#formInternals?.reportValidity() ?? true;
+  }
+
+  /**
+   * Marks the host invalid because its value could not be produced (e.g. a
+   * throwing `getValueFormatCallback`), or clears that state (SPEC §6.6).
+   *
+   * - `error` non-null → `internals.setValidity({ customError: true }, message,
+   *   anchor)`. The message is `message`, else the error's own message, else a
+   *   generic fallback (the platform rejects an empty message for an invalid
+   *   state). `anchor` (a shadow-including descendant) positions the browser's
+   *   validation bubble; an anchor the browser rejects is dropped with a warning.
+   * - `error` `null` → `internals.setValidity({})` — the element is valid again.
+   *
+   * The form then refuses to submit (unless `<form novalidate>`) and `:invalid`
+   * matches. No-op when the class isn't form-associated or internals are
+   * unavailable. Clearing resets ALL validity flags — a component tracking other
+   * constraints sets them through {@link internals} itself.
+   */
+  protected setFormatError(error: unknown | null, message?: string, anchor?: HTMLElement): void {
+    const internals = this.#formInternals;
+    if (!internals || typeof internals.setValidity !== 'function') return;
+    if (error === null || error === undefined) {
+      internals.setValidity({});
+      return;
+    }
+    const text =
+      message ||
+      (error instanceof Error && error.message) ||
+      (typeof error === 'string' && error) ||
+      'The value is invalid.';
+    if (!anchor) {
+      internals.setValidity({ customError: true }, text);
+      return;
+    }
+    try {
+      internals.setValidity({ customError: true }, text, anchor);
+    } catch (anchorError) {
+      // NotFoundError: the anchor isn't a shadow-including descendant of the host.
+      coreLog(this, 'UI', 'ELEMENT').warn('setFormatError: anchor rejected, validity set without it', anchorError);
+      internals.setValidity({ customError: true }, text);
+    }
+  }
+
   /**
    * Browser callback (form-associated elements only): the element's disabled
    * state flipped. The browser reports the COMBINED state — its own `disabled`
