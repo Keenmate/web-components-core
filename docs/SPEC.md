@@ -882,6 +882,9 @@ auto-registered while the rest did not. Core consolidates it:
   no-ops without `customElements`.
 - **Global logging switch** — `window.components.logging` (non-enumerable) drives
   every bundle on the page incl. `CORE` and later registrations; see §12.1.
+- **Page-wide loader hook** — `window.components.renderLoaderCallback`
+  (non-enumerable accessor) draws every component's loading states unless an
+  instance `renderLoadingCallback` is set; see §12.14.
 - **Live-instance registry** — `BlissElement` adds itself to a per-tag `Set` on
   connect and removes itself on disconnect (a DOM move re-tracks the same
   element, no duplicate). `getInstances(tag)` returns the live elements; the
@@ -1484,3 +1487,77 @@ colour. The full list (name, usage, `--base-*` fallback, default) ships as
 `./component-variables.manifest.json`); a unit test keeps it in sync with the
 stylesheet.
 
+
+### 12.14 Loader (loading states) — IMPLEMENTED (`src/dom/render-loader.ts`, main index)
+
+**The gap.** Every component drew its loading states its own way (treeview
+`isLoading` overlay, grid infinite-scroll row, multiselect / cp async search, drp
+summary, dropzone upload, editor pending indicator), so one page had several
+spinners and no single place to change them. Shadow DOM lets only custom properties
+in, so the look is a **token contract** (`--base-loader-icon` / `-rotate` /
+`-duration` / `-size`, base-css-variables) for single-colour mask loaders, plus
+**one render hook** for anything richer. No `<km-loader>` element.
+
+**API.** `renderLoader(host, containerElement, context, { label, prefix,
+renderLoadingCallback? }) → remove()`. Precedence, highest first:
+
+1. the **instance `renderLoadingCallback`** — same name in every component. Taken
+   from the option when the key is present (`null` = none), else from
+   `host.renderLoadingCallback` (the generated `BlissElement` property);
+2. the **page-wide `window.components.renderLoaderCallback`**;
+3. the **default** `<span class="<prefix>-loader" aria-hidden="true">`, drawn by
+   the component's CSS.
+
+Both hooks are `RenderLoaderCallback = (ctx: LoaderRenderContext) => void | (() => void)`
+with `ctx = { component (tag name), context, containerElement, element (host), label }`.
+`context` names the loading state per component (`'overlay' | 'row' | 'search' |
+'upload' | 'summary' | …`). The hook fills `containerElement`; an optional returned
+function is its cleanup. The container always gets `role="status"` + `aria-label`
+(`label` = the component's `labels.loading` / `labels.searching`; empty → no
+`aria-label`). `remove()` (idempotent) runs the cleanup, removes the nodes the render
+added (pre-existing children stay) and restores the container's previous `role` /
+`aria-label`. A throwing hook is logged (`UI` / `CORE:ELEMENT`, §12.1) and the
+default loader is drawn instead — a loading state is never blank.
+
+**Page hook.** `window.components.renderLoaderCallback` is a **non-enumerable**
+accessor (like `logging`, §12.3), published by `registerComponent()` and
+`renderLoader()`; its value lives on `globalThis[Symbol.for(...)]` so every bundled
+core copy shares it. A value the page assigned before any component loaded (a plain
+property) is adopted at publish time; a non-function reads as unset.
+
+```js
+window.components.renderLoaderCallback = ({ component, context, containerElement }) => {
+  containerElement.innerHTML = '<span class="my-dots"><i></i><i></i><i></i></span>';
+};
+```
+
+**CSS (component-owned).** Core ships no loader CSS — the default element carries
+the component prefix, so the component draws it (unlike the `km-menu`, which core
+renders and styles, §12.13). Every component copies the same drawing rule, with its
+`--<prefix>-loader-*` tokens chained to `--base-loader-*` (and listed in its
+manifest):
+
+```css
+:host {
+  --x-loader-icon: var(--base-loader-icon, url("data:image/svg+xml,…")); /* the contract's arc */
+  --x-loader-rotate: var(--base-loader-rotate, 1turn);
+  --x-loader-duration: var(--base-loader-duration, 0.8s);
+  --x-loader-size: var(--base-loader-size, 1.25em);
+}
+.x-loader {
+  display: inline-block;
+  inline-size: var(--x-loader-size); block-size: var(--x-loader-size);
+  mask: var(--x-loader-icon) center / contain no-repeat;
+  background: currentColor;
+  animation: x-loader-spin var(--x-loader-duration) linear infinite;
+}
+@keyframes x-loader-spin { to { transform: rotate(var(--x-loader-rotate)); } }
+```
+
+The four lines + keyframes are base-css-variables' drawing contract verbatim (its
+README → Loader); `display: inline-block` is only needed where the element is
+otherwise inline. The icon fallback is the contract's default data URI, so the
+loader draws without the contract loaded. `--x-loader-rotate: 0` = the SVG animates itself (it keeps its own speed under
+reduced motion — only rotating shapes slow, via `--base-loader-duration` 1.5s; the
+loader never stops). Mask data URIs fall under CSP `img-src`. Multi-colour loaders
+go through the render hook.

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — shared loader: `renderLoader()` + page-wide `renderLoaderCallback` (SPEC §12.14)
+
+- **`renderLoader(host, containerElement, context, { label, prefix, renderLoadingCallback? })`**
+  — the one way a component draws a loading state. Precedence: instance
+  `renderLoadingCallback` > page-wide `window.components.renderLoaderCallback` > default
+  `<span class="<prefix>-loader">`. The container always gets `role="status"` +
+  `aria-label` (the given label). Returns an idempotent remove function (runs the hook's
+  optional returned cleanup, removes the added nodes, restores `role` / `aria-label`). A
+  throwing hook is logged and the default loader is drawn.
+- **`window.components.renderLoaderCallback`** — typed (`RenderLoaderCallback`, ctx
+  `{ component, context, containerElement, element, label }`), a non-enumerable accessor
+  (enumerating `window.components` still yields tags only), shared across bundled core
+  copies; a value the page set earlier as a plain property is adopted.
+- Core ships no loader CSS: components copy the drawing rule (SPEC §12.14) using their
+  `--<prefix>-loader-*` tokens chained to base-css-variables' `--base-loader-*`.
+
 ### Changed — menu disabled fade follows the contract default
 
 - **`--km-menu-disabled-opacity` defaults to `0.65`** (was `0.5`): the fallback of

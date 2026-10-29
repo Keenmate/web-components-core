@@ -26,6 +26,10 @@ describe('registerComponent', () => {
     expect(entry.version()).toBe('1.2.3');
     expect(entry.config.author).toBe('KM');
     expect(customElements.get(tag)).toBe(El); // auto-defined
+    // The page-wide loader hook is published as a non-enumerable accessor (SPEC §12.14).
+    const desc = Object.getOwnPropertyDescriptor(window.components!, 'renderLoaderCallback');
+    expect(desc?.enumerable).toBe(false);
+    expect(Object.keys(window.components!).every((k) => k.includes('-'))).toBe(true);
   });
 
   it('shouldAutoDefine:false leaves the element undefined until register()', () => {

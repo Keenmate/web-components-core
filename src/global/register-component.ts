@@ -17,6 +17,7 @@ import { define } from '../element/define.js';
 import type { LoggerBundle, LogLevelDesc } from '../logging/create-loggers.js';
 import { attachLoggerBundle } from '../logging/logger-registry.js';
 import { publishGlobalLogging, type GlobalLoggingControls } from '../logging/global-logging.js';
+import { publishLoaderHook, type RenderLoaderCallback } from '../dom/render-loader.js';
 import { getInstances } from './instances.js';
 
 /** Build/package metadata surfaced for runtime introspection. Extra keys are allowed. */
@@ -64,12 +65,15 @@ export interface RegisterComponentOptions {
 
 /**
  * `window.components`: one entry per component tag, plus the NON-enumerable
- * page-wide `logging` switch (every bundle — components + CORE; tag names always
- * contain a hyphen, so it can't clash, and enumerating the object still yields
- * tags only).
+ * page-wide `logging` switch (every bundle — components + CORE) and the
+ * NON-enumerable page-wide `renderLoaderCallback` hook (SPEC §12.14). Tag names
+ * always contain a hyphen, so neither can clash, and enumerating the object
+ * still yields tags only.
  */
 export type ComponentsRegistry = Record<string, RegisteredComponent | undefined> & {
   readonly logging?: GlobalLoggingControls;
+  /** Page-wide loader look: draws every component's loading states unless an instance `renderLoadingCallback` is set. */
+  renderLoaderCallback?: RenderLoaderCallback;
 };
 
 declare global {
@@ -114,6 +118,7 @@ export function registerComponent<T extends HTMLElement = HTMLElement>(
   if (typeof window !== 'undefined') {
     (window.components ??= {})[tagName] = entry as RegisteredComponent;
     publishGlobalLogging(); // re-publish if the page replaced window.components
+    publishLoaderHook();
   }
   if (shouldAutoDefine) define(tagName, elementClass);
   return entry;

@@ -170,6 +170,12 @@ migration is tracked in `docs/interaction-model-plan.md`.
 The shared context / dropdown menu lives in `src/menu/` (subpath `/menu`, SPEC
 §12.13): `openMenu(entries, ctx, opts)` over `/actions` + `/positioning`.
 
+Loading states go through `renderLoader(host, container, context, { label, prefix })`
+(`src/dom/render-loader.ts`, main index, SPEC §12.14): instance `renderLoadingCallback`
+> page-wide `window.components.renderLoaderCallback` (non-enumerable accessor, state on
+`globalThis`) > default `<span class="<prefix>-loader">`. Core ships no loader CSS —
+components copy the drawing rule from §12.14.
+
 Per-module design notes live next to the code and load when working there:
 `src/logging/`, `src/cem/`, `src/testing/`, `src/positioning/`, `src/dom/`,
 `src/search/`, `src/menu/` (each has a `CLAUDE.md`).

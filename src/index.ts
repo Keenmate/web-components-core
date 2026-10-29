@@ -51,6 +51,9 @@ export { createMicrotaskScheduler } from './dom/microtask-scheduler.js';
 export type { MicrotaskScheduler } from './dom/microtask-scheduler.js';
 export { adoptStyles, createStyleSlot } from './dom/adopt-styles.js';
 export type { StyleSlot, StyleSlotOptions } from './dom/adopt-styles.js';
+// Shared loader (SPEC §12.14): instance renderLoadingCallback > window.components.renderLoaderCallback > <prefix>-loader span.
+export { renderLoader, publishLoaderHook } from './dom/render-loader.js';
+export type { LoaderRenderContext, RenderLoaderCallback, RenderLoaderOptions } from './dom/render-loader.js';
 export { extractConsumedCssVars, extractDeclaredCssVars, suggestCssVars, lintCssVars } from './dom/css-var-lint.js';
 export type { CssVarFinding } from './dom/css-var-lint.js';
 
