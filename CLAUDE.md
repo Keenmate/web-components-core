@@ -68,8 +68,9 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    the component context (`controller` from `createController()`, `element`,
    both non-enumerable, + `eventContext()` extras), calls the `on<Name>` twin
    **with the detail**, then dispatches the same object (SPEC §12.5). The input table is
-   **opt-in**: `web-grid` extends `BlissElement` for the SSR base + `emit`
-   only and keeps its config-object API.
+   **opt-in** (a class without `static inputs` gets only the SSR base + `emit`). Every
+   KeenMate component has one today; `web-grid` uses it for its scalar/enum flags and
+   keeps `columns` / `items` / callbacks as plain properties.
 
    A coalesced batch drives one of two subclass hooks (both no-op by default):
    - **`reinit()`** — full rebuild; called on first connect and whenever the
