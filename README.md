@@ -236,8 +236,8 @@ Rule of thumb: **class-only policy → `resolvePresentation(mode, env, map)`;
 width-aware → `classifyDevice(env)` + your own branch.** For the fullscreen tier,
 `lockBodyScroll()` and `observeKeyboardInset(panel)` handle page-scroll locking
 and keeping the sheet above the soft keyboard. See [SPEC §12.9](docs/SPEC.md) for
-the full rationale (why 600px, capability over width, the deprecated
-`resolveMobilePresentation`).
+the full rationale (why 600px, capability over width). The author-facing setting
+type is `Presentation` (`'auto' | 'floating' | 'modal' | 'fullscreen'`).
 
 ## Theme context (dark / light)
 

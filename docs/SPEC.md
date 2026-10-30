@@ -1201,8 +1201,10 @@ per-component *policy*:
   back per-class to `DEFAULT_PRESENTATION_MAP` (`mobile: 'fullscreen'`, `tablet`/
   `desktop: 'floating'` — what every overlay component does today); a forced mode
   is returned as-is. A component passes only the classes it overrides, e.g.
-  `{ tablet: 'modal' }`. The earlier binary `resolveMobilePresentation` is a
-  deprecated wrapper (default map; never `modal`), removed at 1.0.
+  `{ tablet: 'modal' }`. The author-facing setting type is `Presentation`
+  (`'auto' | ResolvedPresentation`) — components expose it as the `presentation`
+  input. (The rc06 `MobilePresentation` type and binary `resolveMobilePresentation`
+  were removed in rc15.)
 
 **Escape hatch — width (or anything) *within* a class.** The `map` is keyed by
 `DeviceClass` only, so it can't express "desktop, but under 800px show a modal" (a

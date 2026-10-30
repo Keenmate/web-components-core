@@ -1,14 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { TABLET_MIN_SHORT_SIDE, type EnvironmentSnapshot } from '../environment/environment.js';
 import {
-  resolveMobilePresentation,
   resolvePresentation,
   createPresentationContext,
   DEFAULT_PRESENTATION_MAP,
 } from './presentation.js';
 
 /**
- * The `mobile-presentation` resolver maps the author setting + the live
+ * The `presentation` resolver maps the author setting + the live
  * device/viewport environment to a floating/fullscreen mode. The key subtlety it
  * guards: `auto` keys off `isTouchPrimary` AND the *shorter* viewport dimension
  * (the Material `sw600dp` line), so a landscape phone (wide, but short side ~390)
@@ -45,55 +44,55 @@ const tablet = env({ isTouchPrimary: true, orientation: 'portrait', viewportWidt
 const sevenInchTablet = env({ isTouchPrimary: true, orientation: 'portrait', viewportWidth: 600, viewportHeight: 960 });
 const desktop = env({});
 
-describe('resolveMobilePresentation', () => {
+describe('resolvePresentation — default map', () => {
   describe("mode 'auto'", () => {
     it('→ fullscreen across the whole phone band: compact 360, mainstream 390, large 480', () => {
-      expect(resolveMobilePresentation('auto', compactPhone)).toBe('fullscreen');
-      expect(resolveMobilePresentation('auto', phonePortrait)).toBe('fullscreen');
-      expect(resolveMobilePresentation('auto', largePhonePortrait)).toBe('fullscreen');
+      expect(resolvePresentation('auto', compactPhone)).toBe('fullscreen');
+      expect(resolvePresentation('auto', phonePortrait)).toBe('fullscreen');
+      expect(resolvePresentation('auto', largePhonePortrait)).toBe('fullscreen');
     });
 
     it('→ fullscreen on a LANDSCAPE phone (short side still phone-sized, width lies)', () => {
-      expect(resolveMobilePresentation('auto', phoneLandscape)).toBe('fullscreen');
-      expect(resolveMobilePresentation('auto', proMaxLandscape)).toBe('fullscreen');
+      expect(resolvePresentation('auto', phoneLandscape)).toBe('fullscreen');
+      expect(resolvePresentation('auto', proMaxLandscape)).toBe('fullscreen');
     });
 
     it('→ floating on a tablet (touch-primary, but short side ≥ 600)', () => {
-      expect(resolveMobilePresentation('auto', tablet)).toBe('floating');
+      expect(resolvePresentation('auto', tablet)).toBe('floating');
     });
 
     it('→ floating on a 7" tablet at exactly the boundary (600 is a tablet)', () => {
-      expect(resolveMobilePresentation('auto', sevenInchTablet)).toBe('floating');
+      expect(resolvePresentation('auto', sevenInchTablet)).toBe('floating');
     });
 
     it('→ floating on an opened foldable (jumps to tablet width ~700+)', () => {
-      expect(resolveMobilePresentation('auto', foldOpen)).toBe('floating');
+      expect(resolvePresentation('auto', foldOpen)).toBe('floating');
     });
 
     it('→ floating on desktop (not touch-primary)', () => {
-      expect(resolveMobilePresentation('auto', desktop)).toBe('floating');
+      expect(resolvePresentation('auto', desktop)).toBe('floating');
     });
 
     it('respects the short-side boundary exactly (< 600 is a phone)', () => {
       const justUnder = env({ isTouchPrimary: true, viewportWidth: 900, viewportHeight: TABLET_MIN_SHORT_SIDE - 1 });
       const atBoundary = env({ isTouchPrimary: true, viewportWidth: 900, viewportHeight: TABLET_MIN_SHORT_SIDE });
-      expect(resolveMobilePresentation('auto', justUnder)).toBe('fullscreen');
-      expect(resolveMobilePresentation('auto', atBoundary)).toBe('floating');
+      expect(resolvePresentation('auto', justUnder)).toBe('fullscreen');
+      expect(resolvePresentation('auto', atBoundary)).toBe('floating');
     });
   });
 
   describe("mode 'floating'", () => {
     it('always floats, even on a phone', () => {
-      expect(resolveMobilePresentation('floating', phonePortrait)).toBe('floating');
-      expect(resolveMobilePresentation('floating', desktop)).toBe('floating');
+      expect(resolvePresentation('floating', phonePortrait)).toBe('floating');
+      expect(resolvePresentation('floating', desktop)).toBe('floating');
     });
   });
 
   describe("mode 'fullscreen'", () => {
     it('forces the overlay on ANY device, including desktop (preview/testing)', () => {
-      expect(resolveMobilePresentation('fullscreen', phonePortrait)).toBe('fullscreen');
-      expect(resolveMobilePresentation('fullscreen', tablet)).toBe('fullscreen');
-      expect(resolveMobilePresentation('fullscreen', desktop)).toBe('fullscreen');
+      expect(resolvePresentation('fullscreen', phonePortrait)).toBe('fullscreen');
+      expect(resolvePresentation('fullscreen', tablet)).toBe('fullscreen');
+      expect(resolvePresentation('fullscreen', desktop)).toBe('fullscreen');
     });
   });
 });

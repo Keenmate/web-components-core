@@ -100,8 +100,8 @@ export type { ColorScheme, ThemeMode, ThemeSource, ThemeListener, ObserveThemeCo
 // component that swaps a floating panel for a full-viewport sheet on phones.
 // classifyDevice() owns the shared device classification; resolvePresentation()
 // owns the (per-component overridable) class→presentation policy.
-export { resolvePresentation, resolveMobilePresentation, DEFAULT_PRESENTATION_MAP, createPresentationContext } from './overlay/presentation.js';
-export type { MobilePresentation, ResolvedPresentation, PresentationMap, PresentationContext } from './overlay/presentation.js';
+export { resolvePresentation, DEFAULT_PRESENTATION_MAP, createPresentationContext } from './overlay/presentation.js';
+export type { Presentation, ResolvedPresentation, PresentationMap, PresentationContext } from './overlay/presentation.js';
 export { lockBodyScroll } from './overlay/scroll-lock.js';
 export { observeKeyboardInset } from './overlay/keyboard-inset.js';
 // Cross-component "one overlay open at a time" coordination (framework-agnostic via a

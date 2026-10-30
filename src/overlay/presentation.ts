@@ -15,8 +15,8 @@
  */
 import { classifyDevice, type DeviceClass, type EnvironmentSnapshot } from '../environment/environment.js';
 
-/** The author-facing `mobile-presentation` attribute values (`auto` = decide from the device). */
-export type MobilePresentation = 'auto' | 'floating' | 'modal' | 'fullscreen';
+/** The author-facing `presentation` attribute values (`auto` = decide from the device). */
+export type Presentation = 'auto' | ResolvedPresentation;
 
 /** A concrete presentation a component renders (what its `setPresentation()` accepts). */
 export type ResolvedPresentation = 'floating' | 'modal' | 'fullscreen';
@@ -37,7 +37,7 @@ export const DEFAULT_PRESENTATION_MAP: Readonly<Record<DeviceClass, ResolvedPres
 };
 
 /**
- * Resolve a `mobile-presentation` setting + the current environment to a concrete
+ * Resolve a `presentation` setting + the current environment to a concrete
  * presentation. A forced mode (`floating`/`modal`/`fullscreen`) is returned as-is
  * (handy for previews/testing on any device); `auto` classifies the device
  * ({@link classifyDevice}) and looks it up in `map`, falling back per-class to
@@ -46,7 +46,7 @@ export const DEFAULT_PRESENTATION_MAP: Readonly<Record<DeviceClass, ResolvedPres
  * changes the tablet.
  */
 export function resolvePresentation(
-  mode: MobilePresentation,
+  mode: Presentation,
   env: EnvironmentSnapshot,
   map: PresentationMap = {},
 ): ResolvedPresentation {
@@ -83,17 +83,4 @@ export function createPresentationContext(presentation: ResolvedPresentation): P
     isFullscreen: presentation === 'fullscreen',
     isModal: presentation === 'modal',
   };
-}
-
-/**
- * @deprecated since 1.0.0-rc07 — use {@link resolvePresentation} (with
- * {@link classifyDevice}). This binary form is kept for the rc06 consumers and
- * will be removed at 1.0. Equivalent to `resolvePresentation` with the default
- * map: fullscreen on a phone, floating otherwise; it never returns `modal`.
- */
-export function resolveMobilePresentation(
-  mode: 'auto' | 'floating' | 'fullscreen',
-  env: EnvironmentSnapshot,
-): 'floating' | 'fullscreen' {
-  return resolvePresentation(mode, env) as 'floating' | 'fullscreen';
 }
