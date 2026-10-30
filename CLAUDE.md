@@ -122,6 +122,14 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    invalid (`customError`) when a value can't be produced, `null` clears it —
    blocks submit unless `<form novalidate>`.
 
+   **Responsive rules (SPEC §6.7), every component with an input table:**
+   `window.components.responsive*` (page, non-enumerable) → `window.components[tag].responsive*`
+   → instance attributes/properties → `el.responsive` (JSON attr) → `el.responsiveCallback`
+   (later wins, key by key; instance `null` = ignore page rules). `this.config` / getters =
+   EFFECTIVE, `ctx.config` = base (`#base`); overrides never reflect, never explicit
+   (persistent `#explicit` set). Diffed re-run on discrete env change / layer change / every
+   flush; applied before the first `reinit()`. Code: `src/element/responsive.ts`.
+
    A DOM move (reorder/re-parent) fires `disconnect()`→`connect()` and
    **re-activates without rebuilding** (`reinit()` runs only on first connect or
    an `on:'reinit'` change) — so transient UI state survives. `connect()`/

@@ -24,6 +24,9 @@ component generation and **breaking for component authors** (no aliases).
   API and `setFormatError()` for values a component can't produce.
 - **Shared loader and live getters.** `renderLoader()` with the page-wide
   `window.components.renderLoaderCallback`; `InputDef.getLiveValue` makes a property return live state.
+- **Responsive rules.** `window.components.responsive` / `[tag].responsive` / `el.responsive` (+ callbacks):
+  partial configs per device class with one precedence chain; breakpoints follow `--base-breakpoint-*`
+  (default mobile line 768). `MobilePresentation` → `Presentation`.
 - **Naming review.** `is/should/has` booleans, `*Callback` hooks, `on*` only for notifications
   (`shouldDefer`, `shouldReflect`, `isToggled`, `isRejected`, `km-` menu prefix …). Invalid attributes
   now warn and keep the previous value; the default log level is `warn`.
@@ -183,6 +186,10 @@ once every staged change has flushed and its `reinit()`/`update()` has run
 
 ## Environment & presentation (device / viewport / orientation)
 
+Width buckets (`env.breakpoint`) default to `mobile ≤ 768`, `tablet ≤ 1024`, `desktop` — the
+pure-css lines — and follow the base tokens `--base-breakpoint-mobile` / `--base-breakpoint-tablet`
+when the page defines them (read once); `configureBreakpoints()` overrides both.
+
 Components that swap a floating panel for a fullscreen sheet (or a modal) on
 smaller devices share one signal instead of each re-deriving "what is a phone."
 
@@ -238,6 +245,30 @@ width-aware → `classifyDevice(env)` + your own branch.** For the fullscreen ti
 and keeping the sheet above the soft keyboard. See [SPEC §12.9](docs/SPEC.md) for
 the full rationale (why 600px, capability over width). The author-facing setting
 type is `Presentation` (`'auto' | 'floating' | 'modal' | 'fullscreen'`).
+
+## Responsive rules (page / per-tag / instance)
+
+Apps tune what components do per device class in one place — no app-side
+`observeViewport` + "did it change" bookkeeping. Every `BlissElement` with an input
+table takes the same rules ([SPEC §6.7](docs/SPEC.md)):
+
+```js
+window.components.responsive = { mobile: { presentation: 'fullscreen' } };               // page-wide
+window.components['web-multiselect'].responsive = { tablet: { presentation: 'modal' } }; // per tag
+window.components['web-multiselect'].responsiveCallback = ({ deviceClass, env }) =>
+  deviceClass === 'mobile' && env.orientation === 'landscape' ? { actionsLayout: 'compact' } : undefined;
+el.responsive = { tablet: { presentation: 'floating' } };   // instance (also the JSON attribute `responsive`)
+el.responsiveCallback = (ctx) => null;                       // instance null = ignore the page rules
+```
+
+Precedence, key by key: global map → global callback → per-tag map → per-tag callback →
+**attributes / properties set on the element** → instance map → instance callback. An attribute on
+one element is never overridden by a page rule. `config` / the getters report the effective value;
+overrides never reflect to attributes, and a key a rule stops returning goes back to its base
+value. Rules re-run on device / breakpoint / orientation flips and rule changes, diffed, as one
+`update()`/`reinit()` batch; the first build already gets them. Set the page rules before the
+component scripts load if you like — `registerComponent()` adopts them. Types: `ResponsiveMap<C>`,
+`ResponsiveCallback<C>`, `ResponsiveContext<C>`.
 
 ## Theme context (dark / light)
 

@@ -558,6 +558,90 @@ flow: catch the callback's throw → log it at `error` → submit `''` →
 `setFormatError(err, label)` → emit a `*-error` event; the next successful
 format calls `setFormatError(null)`.
 
+### 6.7 Responsive rules — partial configs per device class (page / tag / instance)
+
+Components decide behaviour from the environment, but apps want to tune those
+decisions page-wide and per instance (e.g. "on a tablet, every multiselect opens
+as a modal"). Core provides ONE generic mechanism for every `BlissElement` with an
+input table — core-declared like `defer`, not a per-component table row. Components
+never detect the page shell; the shared link is the base-css-variables tokens
+(`--base-breakpoint-*`, §12.9).
+
+```js
+window.components.responsive          = { mobile: { … }, tablet: { … } };  // page-wide map: deviceClass → partial config
+window.components.responsiveCallback  = (ctx) => ({ … });                  // page-wide computed rule
+window.components['web-multiselect'].responsive         = { … };           // per tag
+window.components['web-multiselect'].responsiveCallback = (ctx) => ({ … });
+el.responsive = { tablet: { presentation: 'modal' } };   // also <x responsive='{"tablet":{…}}'>
+el.responsiveCallback = (ctx) => ({ … });
+```
+
+Types (main entry): `ResponsiveMap<C>` (`Partial<Record<DeviceClass, Partial<C> | null>>`),
+`ResponsiveContext<C>` (`{ env, deviceClass, breakpoint, element, component, config }` —
+`config` is the frozen **base** config), `ResponsiveCallback<C>`
+(`(ctx) => Partial<C> | null | undefined`). Maps are keyed by
+`classifyDevice(env)` (capability + short side, §12.9); a callback can branch on
+anything in the context (`breakpoint`, `env.orientation`, `env.viewportWidth`, …).
+
+**Precedence** (later wins, key by key):
+global map → global callback → per-tag map → per-tag callback → **instance
+attributes / properties** → instance map → instance callback. Page rules lose to
+anything set explicitly on the element; the element's own rules beat everything.
+An attribute written on one element is never overridden by a page rule.
+
+- `undefined` from a callback = nothing to add. `null` from an **instance** rule
+  (callback result, or the instance map's entry for the current class) = ignore every
+  page rule (the instance's own values still apply). A page-level `null` = `undefined`.
+- **Base vs effective.** `this.config` and the generated getters report the
+  EFFECTIVE config (what the component applies); `ctx.config` is the base (defaults
+  + attributes + properties + batch values). Responsive overrides **never reflect**
+  to attributes and never count as explicit. Assigning a property while a rule
+  overrides it updates the base — it becomes instance-explicit (beats page rules,
+  loses to instance rules). A key a rule stops returning goes back to its base value.
+- **Explicit tracking** is persistent per instance: attribute present or property
+  assigned (incl. `setAttributes()`); removing the attribute clears it (and resets
+  the input to its default, §6), handing the key back to the page rules. Batch
+  values (§6.2) are base but not explicit.
+- **Validation.** Every value goes through that input's converter (`validate`):
+  invalid → warn + skip that key. Unknown keys warn + skip in per-tag and instance
+  rules; in the page-wide (global) rules they are skipped silently (a page rule names
+  inputs only some components have). `responsive` / `responsiveCallback` /
+  `shouldDefer` are reserved (warn + skip). Warnings go through the element's `INIT`
+  logger, once per message per element. A throwing callback is logged (`error`) and
+  treated as `undefined`.
+- **Re-run** on a discrete environment change (the `environmentChanged` channel:
+  breakpoint / orientation / pointer / device class), on any layer changing (page
+  setters notify every connected element across bundled core copies; instance
+  setters re-run that element) and at every flush (callbacks see base changes). The
+  result is diffed (structural equality for plain objects / arrays); only changed keys
+  are staged — ONE batch through the normal pipeline (`update(partial)` /
+  `reinit()` per `on`; the partial carries effective values). Unchanged → nothing.
+- **First build** gets the rules: they are evaluated inside the first flush, before
+  `reinit()` (no flash of the desktop layout); a `defer`-held element gets them at
+  `release()`.
+- **Cost.** The environment is observed only while connected AND some layer is set.
+  Elements without an input table (web-grid's config-object API) skip the feature.
+- **Page entries.** `window.components.responsive` / `.responsiveCallback` are
+  non-enumerable accessors (like `logging` / `renderLoaderCallback`; tag enumeration
+  unaffected), their state shared across core copies via `Symbol.for`. Values the
+  page assigned as plain properties before any component loaded are adopted.
+  `registerComponent()` ADOPTS a pre-existing `window.components[tag]` object (keeps
+  the object, adds the registry members) and its `responsive` / `responsiveCallback`,
+  which become accessors that re-evaluate that tag's instances.
+- **Attribute.** `responsive` is always observed (JSON object; invalid JSON warns
+  and keeps the previous map; removing it clears the map). `responsiveCallback` is
+  property-only. A pre-upgrade assignment of either is kept. A subclass declaring its
+  own `responsive` attribute / configKey takes it over (same dedup as `dir` / `defer`).
+- SSR-safe: without `window` the page layers are empty unless set on the shared state.
+
+**Not defaults.** Responsive rules ≠ defaults: per-user preferences (e.g. from a DB)
+are a separate, later feature (`window.components.defaults`, with `/locale`) that
+will feed the BASE config (instance > per-tag defaults > global defaults > built-in);
+the rules above layer on top of whatever the base resolves to.
+
+Components export typed aliases over their config type, e.g.
+`type MultiselectResponsiveMap = ResponsiveMap<MultiselectConfig>`.
+
 ---
 
 ## 7. Fit check — all five components
@@ -1097,8 +1181,13 @@ wants fullscreen. The deciding fact is capability, not size.
 is a lazily-started, ref-counted singleton over `matchMedia` + a rAF-throttled
 `resize`; the shared listeners attach on the first subscriber and detach on the
 last. `getEnvironment()` is the synchronous companion read (for `reinit()` /
-`connect()`). `configureBreakpoints({ mobile: 640, tablet: 1024, desktop: Infinity })`
-redefines the width buckets globally. SSR-safe: no `window`/`matchMedia` → a
+`connect()`). The default width buckets are `{ mobile: 768, tablet: 1024, desktop:
+Infinity }` (pure-css `$mobile-breakpoint` / `$tablet-breakpoint`; was 640 before
+rc15). On the first browser snapshot the base tokens `--base-breakpoint-mobile` /
+`--base-breakpoint-tablet` (read from `getComputedStyle(document.documentElement)`,
+`768px` or unitless; absent / unparsable → the default) move those two lines, read
+once. `configureBreakpoints(map)` redefines the buckets globally and always wins
+over the tokens. SSR-safe: no `window`/`matchMedia` → a
 static desktop default + no-op unsubscribe. Detection is **feature-detection, not
 UA sniffing** — media queries are reliable AND already reactive.
 
@@ -1133,7 +1222,7 @@ cadence, because the two things a component asks the environment change at wildl
 different rates. `observeEnvironment` / `environmentChanged(env)` is the
 **discrete** channel: it fires only when a *category* field flips —
 `breakpoint`, `orientation`, `pointer`/`hasCoarsePointer`/`canHover`,
-`isTouchPrimary`. Raw `viewportWidth`/`viewportHeight` are **excluded from its
+`isTouchPrimary`, or the `classifyDevice()` class (rc15 — a foldable opening inside one width bucket). Raw `viewportWidth`/`viewportHeight` are **excluded from its
 equality gate** (`environmentEqual`), so a plain desktop drag-resize that crosses
 no breakpoint no longer wakes it — previously every 1px change passed the gate and
 fired the hook ~60×/s during a drag, on every subscribed component. The snapshot

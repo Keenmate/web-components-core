@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — responsive rules: page / per-tag / instance partial configs per device class (SPEC §6.7)
+
+- **Every `BlissElement` with an input table** takes responsive rules — partial configs keyed by
+  device class (`ResponsiveMap`) or computed by a callback (`ResponsiveCallback`, ctx
+  `{ env, deviceClass, breakpoint, element, component, config }`):
+  `window.components.responsive` / `.responsiveCallback` (page-wide, non-enumerable accessors shared
+  across bundled core copies), `window.components[tag].responsive` / `.responsiveCallback` (per tag),
+  `el.responsive` (+ JSON attribute `responsive`) / `el.responsiveCallback` (instance).
+- **Precedence**, key by key: global map → global callback → per-tag map → per-tag callback →
+  instance attributes/properties → instance map → instance callback. An instance `null` (callback
+  result or the map's class entry) ignores every page rule.
+- `this.config` and the property getters are the **effective** config; `ctx.config` is the base.
+  Overrides never reflect and never count as explicit; core now tracks "explicitly set" per instance
+  (attribute present / property assigned; removing the attribute clears it).
+- Values go through each input's converter (invalid → warn + skip); unknown / reserved keys warn
+  (silently skipped in the page-wide rules). A throwing callback is logged and ignored.
+- Re-run on discrete environment changes, any layer change and base changes; the result is diffed
+  and only changed keys are staged, as one batch (`update` / `reinit`). The first build already gets
+  the rules. The environment is observed only while some layer is set.
+- `registerComponent()` adopts a `window.components[tag]` object the page created before the script
+  loaded (keeps the object and its `responsive` / `responsiveCallback`).
+- Types `ResponsiveMap`, `ResponsiveContext`, `ResponsiveCallback` exported from the main entry.
+
+### Added — breakpoint lines from the base tokens
+
+- On the first browser snapshot the environment reads `--base-breakpoint-mobile` /
+  `--base-breakpoint-tablet` from the root element (`768px` or unitless; absent / unparsable → the
+  default). `configureBreakpoints()` still wins.
+- The discrete environment channel (`observeEnvironment` / `environmentChanged`) also fires when
+  `classifyDevice()` flips inside one width bucket (a foldable opening from 390 to 720 px).
+
+### Changed — BREAKING (responsive)
+
+- **Default breakpoints are `{ mobile: 768, tablet: 1024, desktop: Infinity }`** (was `mobile: 640`) —
+  the pure-css `$mobile-breakpoint` / `$tablet-breakpoint` lines. `classifyDevice()` (600 px short
+  side) is unchanged.
+- **`MobilePresentation` → `Presentation`** (`'auto' | ResolvedPresentation`), no alias. Components
+  rename their `mobile-presentation` input to `presentation`.
+- **`resolveMobilePresentation()` removed** — use `resolvePresentation(mode, env, map?)`.
+- `getBatchValuesCallback` receives the **base** config (no responsive overrides) as its second argument.
+
 ### Added — shared loader: `renderLoader()` + page-wide `renderLoaderCallback` (SPEC §12.14)
 
 - **`renderLoader(host, containerElement, context, { label, prefix, renderLoadingCallback? })`**
