@@ -16,7 +16,13 @@ import { deriveClearableKeys } from '../inputs/clearable.js';
 import { collectEngineConfig } from '../inputs/engine-config.js';
 import type { AttrReader, InputDef } from '../inputs/types.js';
 import { createMicrotaskScheduler, type MicrotaskScheduler } from '../dom/microtask-scheduler.js';
-import { observeEnvironment, observeViewport, type EnvironmentSnapshot } from '../environment/environment.js';
+import {
+  classifyDevice,
+  getEnvironment,
+  observeEnvironment,
+  observeViewport,
+  type EnvironmentSnapshot,
+} from '../environment/environment.js';
 import { observeElementSize, type ElementSize } from '../environment/element-size.js';
 import {
   observeThemeContext,
@@ -37,6 +43,18 @@ import {
   type EventMap,
   type NormalizedEventDef,
 } from './events.js';
+import {
+  hasPageRules,
+  isResponsiveMap,
+  onResponsiveChange,
+  readPageRules,
+  responsiveValueEqual,
+  RESPONSIVE_ATTRIBUTE,
+  RESPONSIVE_RESERVED_KEYS,
+  type ResponsiveCallback,
+  type ResponsiveContext,
+  type ResponsiveMap,
+} from './responsive.js';
 
 /**
  * Native event names that are `composed` — fired inside a shadow root they
@@ -86,13 +104,39 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     // `theme-source` (SPEC §12.10) so a component can read its theme from a chosen
     // element. Deduped in case a subclass declares either as an input attribute.
     // `defer` (SPEC §6.3) is the build gate every component gets.
-    for (const global of ['dir', THEME_SOURCE_ATTRIBUTE, DEFER_ATTRIBUTE]) {
+    // `responsive` (SPEC §6.7) is the instance responsive map as JSON.
+    for (const global of ['dir', THEME_SOURCE_ATTRIBUTE, DEFER_ATTRIBUTE, RESPONSIVE_ATTRIBUTE]) {
       if (!attrs.includes(global)) attrs.push(global);
     }
     return attrs;
   }
 
+  /** The EFFECTIVE config — {@link #base} with the responsive overrides applied (SPEC §6.7). */
   readonly #config: Record<string, unknown> = {};
+  /** The BASE config: defaults + attributes + properties + batch values, no responsive override. */
+  readonly #base: Record<string, unknown> = {};
+  /**
+   * configKeys set explicitly on this instance — attribute present or property
+   * assigned (persistent, unlike the per-batch {@link #explicitKeys}). Removing the
+   * attribute clears it. An explicit key beats the page responsive rules.
+   */
+  readonly #explicit = new Set<string>();
+  /** The instance responsive map (`el.responsive` / the `responsive` attribute). */
+  #responsiveMap?: ResponsiveMap;
+  /** The instance responsive callback (`el.responsiveCallback`). */
+  #responsiveCallback?: ResponsiveCallback;
+  /** Validated keys the instance rules (map → callback) returned at the last evaluation. */
+  #ruleInstance: Record<string, unknown> = {};
+  /** Validated keys the page rules (global → per-tag) returned at the last evaluation. */
+  #rulePage: Record<string, unknown> = {};
+  /** An instance rule returned `null` — the page rules are ignored. */
+  #isRuleOptOut = false;
+  /** Unsubscribe from page-rule change notifications; set while connected. */
+  #responsiveUnsub?: () => void;
+  /** Unsubscribe from the environment for the rules; set while connected AND some rule layer is set. */
+  #responsiveEnvUnsub?: () => void;
+  /** Responsive warnings already logged (each once per element). */
+  #responsiveWarned?: Set<string>;
   readonly #byConfigKey = new Map<string, InputDef>();
   readonly #byAttribute = new Map<string, InputDef>();
   #clearableKeys: ReadonlySet<string> = EMPTY_SET;
@@ -200,6 +244,12 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       const pre = this.#liftPreUpgrade('shouldDefer');
       if (pre.had) this.#preUpgradeDefer = !!pre.value;
     }
+    // Same for the instance responsive rules (SPEC §6.7).
+    for (const key of ['responsive', 'responsiveCallback'] as const) {
+      if (this.#byConfigKey.has(key)) continue;
+      const pre = this.#liftPreUpgrade(key);
+      if (pre.had) (this as unknown as Record<string, unknown>)[key] = pre.value;
+    }
   }
 
   // ── lifecycle ──────────────────────────────────────────────────────────
@@ -226,6 +276,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     // Before the first connect the gate is read at that connect, so nothing to do.
     if (name === DEFER_ATTRIBUTE && !this.#byAttribute.has(DEFER_ATTRIBUTE)) {
       if (raw === null && this.#connectedOnce) this.release();
+      return;
+    }
+    // Global `responsive` (SPEC §6.7): the instance responsive map as JSON.
+    if (name === RESPONSIVE_ATTRIBUTE && !this.#byAttribute.has(RESPONSIVE_ATTRIBUTE)) {
+      this.#setResponsiveFromAttribute(raw);
       return;
     }
     const def = this.#byAttribute.get(name);
@@ -257,6 +312,10 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       this.#restoreAttribute(def);
       return;
     }
+    // Persistent "explicitly set": attribute present; removing it hands the input
+    // back to its default AND to the page responsive rules (SPEC §6.7).
+    if (raw === null) this.#explicit.delete(def.configKey);
+    else this.#explicit.add(def.configKey);
     this.#stageExplicit(def, resolved);
   }
 
@@ -268,7 +327,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    */
   #restoreAttribute(def: InputDef): void {
     if (!def.shouldReflect) return;
-    if (this.#connectedOnce) this.#reflect(def, this.#config[def.configKey]);
+    if (this.#connectedOnce) this.#reflect(def, this.#base[def.configKey]);
     else (this.#deferredReflect ??= new Set()).add(def);
   }
 
@@ -284,6 +343,12 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     // Reconnected before the removal check ran → a DOM move, not a removal.
     this.#cancelRemovalCheck?.();
     this.#cancelRemovalCheck = undefined;
+    // Page responsive rules changing reach this element while it is connected.
+    if (this.#hasInputs() && !this.#responsiveUnsub) {
+      this.#responsiveUnsub = onResponsiveChange((tag) => {
+        if (tag === undefined || tag === this.localName) this.#refreshResponsive();
+      });
+    }
     if (!this.#connectedOnce) {
       // A pre-upgrade `el.shouldDefer = …` becomes the attribute now (the constructor may
       // not touch attributes); the gate is read by the flush below.
@@ -373,6 +438,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   disconnectedCallback(): void {
     if (this.#isDestroyed) return; // destroy() already stopped everything
     untrackInstance(this.localName, this);
+    this.#stopResponsive();
     this.#scheduleRemovalCheck();
     this.#deactivate();
   }
@@ -471,6 +537,49 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     return new Promise<void>((resolve) => this.#readyResolvers.push(resolve));
   }
 
+  // ── responsive rules (SPEC §6.7) ───────────────────────────────────────────
+
+  /**
+   * This instance's responsive map: partial configs keyed by device class
+   * (`mobile` / `tablet` / `desktop`), e.g. `{ tablet: { presentation: 'modal' } }`.
+   * Also the JSON attribute `responsive`. Instance rules beat everything else —
+   * the page rules and this element's own attributes/properties. A class entry of
+   * `null` ignores every page rule on that class. Overrides never reflect to
+   * attributes; `this.config` and the property getters report the effective value.
+   * `null` / `undefined` = no instance map.
+   */
+  get responsive(): ResponsiveMap | null {
+    return this.#responsiveMap ?? null;
+  }
+
+  set responsive(value: ResponsiveMap | null | undefined) {
+    if (value != null && !isResponsiveMap(value)) {
+      this.#warn('rejected invalid value for property "responsive" (an object keyed by device class, or null); keeping previous value', value);
+      return;
+    }
+    this.#responsiveMap = value ?? undefined;
+    this.#refreshResponsive();
+  }
+
+  /**
+   * This instance's computed responsive rule: `(ctx) => partial config`. Runs
+   * after {@link responsive} (wins key by key) on every environment flip, rule
+   * change and base-config change. `undefined` = nothing to add; `null` = ignore
+   * every page rule for this element. A throw is logged and treated as `undefined`.
+   */
+  get responsiveCallback(): ResponsiveCallback | null {
+    return this.#responsiveCallback ?? null;
+  }
+
+  set responsiveCallback(value: ResponsiveCallback | null | undefined) {
+    if (value != null && typeof value !== 'function') {
+      this.#warn('rejected invalid value for property "responsiveCallback" (a function, or null); keeping previous value', value);
+      return;
+    }
+    this.#responsiveCallback = value ?? undefined;
+    this.#refreshResponsive();
+  }
+
   // ── public batching API ─────────────────────────────────────────────────
 
   /** Apply many inputs (by `configKey` or attribute name) as ONE reinit/update. */
@@ -559,6 +668,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#hasFailedReinit = false;
     this.#resolveSettled();
     untrackInstance(this.localName, this);
+    this.#stopResponsive();
     try {
       this.#deactivate();
     } finally {
@@ -573,7 +683,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
 
   // ── subclass surface ─────────────────────────────────────────────────────
 
-  /** The current validated config. */
+  /**
+   * The current validated, EFFECTIVE config — the base config (defaults,
+   * attributes, properties) with the responsive overrides applied (SPEC §6.7).
+   * This is what a component applies.
+   */
   protected get config(): Readonly<Record<string, unknown>> {
     return this.#config;
   }
@@ -1186,6 +1300,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
         value = def.default;
       }
       this.#config[def.configKey] = value;
+      this.#base[def.configKey] = value;
       if (def.field) (this as Record<string, unknown>)[def.field] = value;
     }
   }
@@ -1331,6 +1446,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       this.#warn(`rejected invalid value for property "${def.configKey}"; keeping previous value`, value);
       return false;
     }
+    this.#explicit.add(def.configKey);
     this.#stageExplicit(def, resolved, true);
     return true;
   }
@@ -1361,7 +1477,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   #stageBatchValues(source: InputDef, value: unknown): void {
     let values: Record<string, unknown> | null | undefined;
     try {
-      values = source.getBatchValuesCallback!(value as never, this.#config);
+      values = source.getBatchValuesCallback!(value as never, this.#base);
     } catch (err) {
       this.#warn(`getBatchValuesCallback of "${source.configKey}" threw; no other inputs set`, err);
       return;
@@ -1395,13 +1511,204 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     }
   }
 
+  /** Stage a BASE write; the effective value is the base unless a responsive rule wins (SPEC §6.7). */
   #stage(resolved: Resolved): void {
-    this.#config[resolved.configKey] = resolved.value;
-    if (resolved.field) (this as Record<string, unknown>)[resolved.field] = resolved.value;
+    this.#base[resolved.configKey] = resolved.value;
+    this.#stageEffective(resolved, this.#effectiveValue(resolved.configKey));
+  }
+
+  /** Write an effective value (getter / `config` / field) and queue it per the input's `on`. */
+  #stageEffective(resolved: Pick<Resolved, 'configKey' | 'field' | 'on'>, value: unknown): void {
+    this.#config[resolved.configKey] = value;
+    if (resolved.field) (this as Record<string, unknown>)[resolved.field] = value;
     if (resolved.on === 'none') return; // store only
     if (resolved.on === 'reinit') this.#pendingReinit = true;
-    (this.#pending ??= {})[resolved.configKey] = resolved.value;
+    (this.#pending ??= {})[resolved.configKey] = value;
     this.#scheduler.schedule(this.#boundFlush);
+  }
+
+  // ── responsive internals (SPEC §6.7) ──────────────────────────────────────
+
+  /** Responsive rules apply only to elements with an input table (nothing to set otherwise). */
+  #hasInputs(): boolean {
+    return this.#byConfigKey.size > 0;
+  }
+
+  /**
+   * The effective value of `key`: instance rule > explicit instance value > page
+   * rule (unless an instance rule opted out) > base.
+   */
+  #effectiveValue(key: string): unknown {
+    if (key in this.#ruleInstance) return this.#ruleInstance[key];
+    if (!this.#explicit.has(key) && !this.#isRuleOptOut && key in this.#rulePage) return this.#rulePage[key];
+    return this.#base[key];
+  }
+
+  /** Log a responsive problem once per element. */
+  #warnResponsiveOnce(message: string, ...detail: unknown[]): void {
+    const warned = (this.#responsiveWarned ??= new Set());
+    if (warned.has(message)) return;
+    warned.add(message);
+    this.#warn(message, ...detail);
+  }
+
+  /** The `responsive` attribute (JSON) → the instance map; invalid JSON warns and keeps the previous map. */
+  #setResponsiveFromAttribute(raw: string | null): void {
+    if (raw === null || raw.trim() === '') {
+      this.responsive = null;
+      return;
+    }
+    let parsed: unknown;
+    let isValid = true;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      isValid = false;
+    }
+    if (!isValid || (parsed !== null && !isResponsiveMap(parsed))) {
+      this.#warn(`rejected invalid value for attribute ${RESPONSIVE_ATTRIBUTE}="${raw}" (a JSON object keyed by device class); keeping previous value`);
+      return;
+    }
+    this.responsive = parsed as ResponsiveMap | null;
+  }
+
+  /**
+   * Merge one rule result into `out`: each key validated by its input's converter;
+   * unknown / reserved / invalid keys warn and are skipped. Returns `true` when the
+   * result is `null` (the instance opt-out signal; the caller decides if it counts).
+   * Unknown keys from the GLOBAL page layers are skipped silently — a page-wide rule
+   * legitimately names inputs only some components have.
+   */
+  #mergeRule(result: unknown, label: string, out: Record<string, unknown>, isGlobal = false): boolean {
+    if (result === null) return true;
+    if (result === undefined) return false;
+    if (!isResponsiveMap(result)) {
+      this.#warnResponsiveOnce(`${label} returned a non-object; ignored`, result);
+      return false;
+    }
+    for (const [key, value] of Object.entries(result)) {
+      if (value === undefined) continue;
+      if (RESPONSIVE_RESERVED_KEYS.has(key)) {
+        this.#warnResponsiveOnce(`${label}: reserved key "${key}" skipped`);
+        continue;
+      }
+      const def = this.#byConfigKey.get(key);
+      if (!def) {
+        if (!isGlobal) this.#warnResponsiveOnce(`${label}: unknown key "${key}" skipped`);
+        continue;
+      }
+      if (!resolveFromProperty(def, value)) {
+        this.#warnResponsiveOnce(`${label}: invalid value for "${key}" skipped`, value);
+        continue;
+      }
+      out[key] = value;
+    }
+    return false;
+  }
+
+  /** Call a rule callback; a throw is logged and counts as `undefined`. */
+  #runRuleCallback(callback: ResponsiveCallback, ctx: ResponsiveContext, label: string): unknown {
+    try {
+      return callback(ctx);
+    } catch (error) {
+      coreLog(this, 'INIT', 'ELEMENT').error(`${label} threw; ignored`, error);
+      return undefined;
+    }
+  }
+
+  /**
+   * Re-evaluate every responsive layer (SPEC §6.7) and stage the keys whose
+   * EFFECTIVE value changed — one batch through the normal pipeline (update /
+   * reinit per `on`), never reflected, never explicit. Unchanged result → nothing
+   * staged. Runs on an environment flip, a rule change (instance or page), and at
+   * every flush (base changes re-run the callbacks; the first build gets the rules).
+   */
+  #refreshResponsive(): void {
+    if (this.#isDestroyed || !this.#hasInputs()) return;
+    const tag = this.localName;
+    const page = readPageRules(tag);
+    const hasAny = !!(this.#responsiveMap || this.#responsiveCallback) || hasPageRules(page);
+    const hadOverrides = Object.keys(this.#ruleInstance).length > 0 || Object.keys(this.#rulePage).length > 0;
+    this.#syncResponsiveEnv(hasAny);
+    if (!hasAny && !hadOverrides) return;
+
+    const instance: Record<string, unknown> = {};
+    const pageOut: Record<string, unknown> = {};
+    let isOptOut = false;
+    if (hasAny) {
+      const env = getEnvironment();
+      const deviceClass = classifyDevice(env);
+      const ctx: ResponsiveContext = {
+        env,
+        deviceClass,
+        breakpoint: env.breakpoint,
+        element: this,
+        component: tag,
+        config: Object.freeze({ ...this.#base }),
+      };
+      // Instance layers first (they decide the opt-out): map → callback.
+      if (this.#responsiveMap) {
+        const label = `<${tag}> responsive.${deviceClass}`;
+        if (this.#mergeRule(this.#responsiveMap[deviceClass], label, instance)) isOptOut = true;
+      }
+      if (this.#responsiveCallback) {
+        const label = `<${tag}> responsiveCallback`;
+        if (this.#mergeRule(this.#runRuleCallback(this.#responsiveCallback, ctx, label), label, instance)) isOptOut = true;
+      }
+      if (!isOptOut) {
+        // Page layers, later wins: global map → global callback → per-tag map → per-tag callback.
+        // A page-level `null` is the same as `undefined`.
+        if (page.globalMap) {
+          this.#mergeRule(page.globalMap[deviceClass], `window.components.responsive.${deviceClass}`, pageOut, true);
+        }
+        if (page.globalCallback) {
+          const label = 'window.components.responsiveCallback';
+          this.#mergeRule(this.#runRuleCallback(page.globalCallback, ctx, label), label, pageOut, true);
+        }
+        if (page.tagMap) {
+          this.#mergeRule(page.tagMap[deviceClass], `window.components['${tag}'].responsive.${deviceClass}`, pageOut);
+        }
+        if (page.tagCallback) {
+          const label = `window.components['${tag}'].responsiveCallback`;
+          this.#mergeRule(this.#runRuleCallback(page.tagCallback, ctx, label), label, pageOut);
+        }
+      }
+    }
+
+    const keys = new Set([
+      ...Object.keys(this.#ruleInstance),
+      ...Object.keys(this.#rulePage),
+      ...Object.keys(instance),
+      ...Object.keys(pageOut),
+    ]);
+    this.#ruleInstance = instance;
+    this.#rulePage = pageOut;
+    this.#isRuleOptOut = isOptOut;
+    for (const key of keys) {
+      const def = this.#byConfigKey.get(key);
+      if (!def) continue;
+      const next = this.#effectiveValue(key);
+      if (responsiveValueEqual(next, this.#config[key])) continue;
+      this.#stageEffective({ configKey: key, field: def.field, on: def.on ?? 'update' }, next);
+    }
+  }
+
+  /** Observe the environment only while connected AND some rule layer is set (opt-in, no cost otherwise). */
+  #syncResponsiveEnv(hasAny: boolean): void {
+    if (hasAny && this.isConnected && !this.#isDestroyed) {
+      this.#responsiveEnvUnsub ??= observeEnvironment(() => this.#refreshResponsive(), { shouldFireImmediately: false });
+    } else if (this.#responsiveEnvUnsub) {
+      this.#responsiveEnvUnsub();
+      this.#responsiveEnvUnsub = undefined;
+    }
+  }
+
+  /** Drop the page-rule and environment subscriptions (disconnect / destroy). */
+  #stopResponsive(): void {
+    this.#responsiveUnsub?.();
+    this.#responsiveUnsub = undefined;
+    this.#responsiveEnvUnsub?.();
+    this.#responsiveEnvUnsub = undefined;
   }
 
   /** Cancel any queued microtask and flush pending changes synchronously now. */
@@ -1421,15 +1728,21 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     if (!this.isConnected) return; // hold until connected
     if (this.#isHeld()) return; // hold until release() (SPEC §6.3)
     this.#isReleased = true; // building now — a later `defer` never re-holds
+    // Responsive rules (SPEC §6.7) see the batch's base changes; the first build gets them too.
+    // Whatever this stages is consumed right below, so the queued microtask is dropped.
+    this.#refreshResponsive();
+    this.#scheduler.cancel();
     const isRetry = this.#hasFailedReinit;
     const reinit = this.#pendingReinit || isRetry;
     const partial = this.#pending;
     this.#pendingReinit = false;
     this.#pending = null;
+    // The partial carries EFFECTIVE values (a base write under an instance rule keeps the rule's value).
+    if (partial) for (const key of Object.keys(partial)) partial[key] = this.#config[key];
     if (this.#deferredReflect) {
       // An input set explicitly since (markup attribute, property) keeps its own state.
       for (const def of this.#deferredReflect) {
-        if (!this.#explicitKeys?.has(def.configKey)) this.#reflect(def, this.#config[def.configKey]);
+        if (!this.#explicitKeys?.has(def.configKey)) this.#reflect(def, this.#base[def.configKey]);
       }
       this.#deferredReflect = null;
     }

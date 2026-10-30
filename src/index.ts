@@ -33,6 +33,8 @@ export { withComponentContext, COMPONENT_CONTEXT_KEYS } from './element/context.
 export type { ComponentContext, EmitDetail, WithoutComponentContext } from './element/context.js';
 export { runBeforeCallback, runBeforeCallbackEager, runBeforeCallbackSync } from './element/before-callback.js';
 export type { BeforeCallbackResult } from './element/before-callback.js';
+// Responsive rules (SPEC §6.7): page-wide / per-tag / instance partial configs per device class.
+export type { ResponsiveMap, ResponsiveContext, ResponsiveCallback } from './element/responsive.js';
 
 // Global registration (window.components) + live-instance registry (SPEC §12.3)
 export { registerComponent } from './global/register-component.js';

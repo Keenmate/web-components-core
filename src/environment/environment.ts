@@ -278,7 +278,7 @@ function computeSnapshot(): EnvironmentSnapshot {
 
 /**
  * Discrete equality: the *category* fields that change rarely (a bucket flip, a
- * rotation, plugging in a mouse). Raw `viewportWidth`/`viewportHeight` are
+ * rotation, plugging in a mouse, a {@link classifyDevice} class change). Raw `viewportWidth`/`viewportHeight` are
  * DELIBERATELY excluded — they change every frame during a drag-resize, and
  * routing that through `environmentChanged` fired a per-frame storm on every
  * component. The continuous size signal lives on its own throttled channel
@@ -292,7 +292,10 @@ function environmentEqual(a: EnvironmentSnapshot, b: EnvironmentSnapshot): boole
     a.canHover === b.canHover &&
     a.isTouchPrimary === b.isTouchPrimary &&
     a.orientation === b.orientation &&
-    a.breakpoint === b.breakpoint
+    a.breakpoint === b.breakpoint &&
+    // The device class is derived from the short side too (a foldable opening
+    // 390 → 720 px stays in the `mobile` width bucket but becomes a tablet).
+    classifyDevice(a) === classifyDevice(b)
   );
 }
 

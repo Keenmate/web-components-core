@@ -349,6 +349,18 @@ describe('observeViewport (continuous, throttled)', () => {
     unsub();
   });
 
+  it('wakes environmentChanged when the device class flips inside one width bucket (foldable opening)', () => {
+    installMatchMedia({ ...PHONE });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 844 });
+    setWidth(390);
+    const seen: string[] = [];
+    const unsub = observeEnvironment((env) => seen.push(`${env.breakpoint}/${classifyDevice(env)}`), { shouldFireImmediately: false });
+    fireResize(720); // still the `mobile` width bucket, but the short side is now ≥ 600
+    expect(seen).toEqual(['mobile/tablet']);
+    unsub();
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 768 });
+  });
+
   it('keeps the shared resize listener alive while either channel has a subscriber', () => {
     installMatchMedia({ ...DESKTOP });
     const vpSeen = vi.fn();
