@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc15] - 2026-10-30
+
 ### Added — shared loader: `renderLoader()` + page-wide `renderLoaderCallback` (SPEC §12.14)
 
 - **`renderLoader(host, containerElement, context, { label, prefix, renderLoadingCallback? })`**
