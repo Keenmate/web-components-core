@@ -1,15 +1,21 @@
 import { test, expect } from './fixtures';
 
-// Real-browser regressions for core behaviour jsdom can't reproduce. Each test
-// imports core straight from /src (the Vite dev server) on a blank example page.
+// Real-browser regressions for core behaviour jsdom can't reproduce:
+//   - el.form on a non-form-associated BlissElement is null (no throw, no internals attached);
+//   - one throwing environment listener (discrete + viewport channels) doesn't stop the others;
+//   - one throwing theme listener doesn't stop the others.
+// Each test builds its own elements against core (window.core, loaded from /src).
+//
+// Fixture: test/regressions.html
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/index.html');
+  await page.goto('/test/regressions.html');
+  await page.locator('body[data-ready]').waitFor({ state: 'attached' });
 });
 
 test('el.form is null on a BlissElement that is NOT form-associated (no throw, no internals)', async ({ page }) => {
   const result = await page.evaluate(async () => {
-    const { BlissElement, define } = await import('/src/index.ts');
+    const { BlissElement, define } = (window as any).core;
     class PlainEl extends BlissElement {}
     class FormEl extends BlissElement {
       static formAssociated = true;
@@ -52,7 +58,7 @@ test('el.form is null on a BlissElement that is NOT form-associated (no throw, n
 test('a throwing environment listener does not stop the others (discrete + viewport channels)', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.evaluate(async () => {
-    const { observeEnvironment, observeViewport } = await import('/src/index.ts');
+    const { observeEnvironment, observeViewport } = (window as any).core;
     const w = window as unknown as { seen: { discrete: string[]; viewport: number[] }; errors: string[] };
     w.seen = { discrete: [], viewport: [] };
     w.errors = [];
@@ -82,7 +88,7 @@ test('a throwing environment listener does not stop the others (discrete + viewp
 
 test('a throwing theme listener does not stop the others', async ({ page }) => {
   await page.evaluate(async () => {
-    const { observeThemeContext } = await import('/src/index.ts');
+    const { observeThemeContext } = (window as any).core;
     const w = window as unknown as { themes: (string | null)[] };
     w.themes = [];
     const a = document.createElement('div');

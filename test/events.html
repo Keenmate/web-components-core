@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test — events + before-callbacks (core §12.5)</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>emit() + twins + before-callbacks fixtures</h1>
+    <p>Targeted by <code>e2e/events.spec.ts</code>. Steps are recorded in <code>window.fx.log</code>.</p>
+
+    <div class="fixture">
+        <div class="fixture-label">light-DOM emitter inside a parent div</div>
+        <div id="parent"><fx-emitter id="emitter"></fx-emitter></div>
+    </div>
+
+    <div class="fixture">
+        <div class="fixture-label">emitter nested in another element's shadow root</div>
+        <fx-event-shell id="shell"></fx-event-shell>
+    </div>
+
+    <div class="fixture">
+        <div class="fixture-label">before-callbacks (rename: runBeforeCallback, select: runBeforeCallbackEager)</div>
+        <fx-guarded id="guarded"></fx-guarded>
+    </div>
+
+    <script type="module">
+        import '/test/interaction-fixtures.ts';
+        const fx = window.fx;
+
+        // ── emit(): twins + listeners ────────────────────────────────────
+        const el = document.getElementById('emitter');
+        const parent = document.getElementById('parent');
+        const shell = document.getElementById('shell');
+        window.shouldTwinThrow = false;
+        let twinDetail = null;
+
+        /** The last event a listener saw on el / the shell's shadow root, flattened for the spec. */
+        const inspect = (e) => {
+            const d = e.detail;
+            window.lastEvent = {
+                type: e.type,
+                bubbles: e.bubbles,
+                composed: e.composed,
+                keys: Object.keys(d),
+                json: JSON.stringify(d),
+                isElementTarget: d.element === e.target,
+                isController: d.controller === e.target.controller,
+                controllerCount: d.controller?.count,
+                isTwinDetail: d === twinDetail,
+            };
+        };
+
+        el.onPing = (detail) => {
+            twinDetail = detail;
+            fx.step('onPing twin');
+            if (window.shouldTwinThrow) throw new Error('fixture: onPing twin threw');
+        };
+        el.onPingWide = (detail) => {
+            twinDetail = detail;
+            fx.step('onPingWide twin');
+        };
+        for (const name of ['ping', 'ping-wide']) {
+            el.addEventListener(name, (e) => { fx.step('listener on el'); inspect(e); });
+            parent.addEventListener(name, () => fx.step('bubbled to parent div'));
+            shell.addEventListener(name, () => fx.step('listener on the outer host'));
+            document.addEventListener(name, () => fx.step('document listener'));
+        }
+        el.on('ping', () => fx.step('el.on() listener'));
+
+        await shell.whenReady();
+        const inner = shell.inner;
+        inner.onPing = () => fx.step('onPing twin (inner)');
+        inner.onPingWide = () => fx.step('onPingWide twin (inner)');
+        for (const name of ['ping', 'ping-wide']) {
+            shell.shadowRoot.addEventListener(name, (e) => { fx.step("listener on the shell's shadow root"); inspect(e); });
+        }
+
+        // ── before-callbacks ─────────────────────────────────────────────
+        const guarded = document.getElementById('guarded');
+        guarded.addEventListener('item-rename', () => fx.step('item-rename event'));
+        guarded.addEventListener('item-select', () => fx.step('item-select event'));
+
+        await el.whenReady();
+        await guarded.whenReady();
+        document.body.dataset.ready = '';
+    </script>
+</body>
+</html>

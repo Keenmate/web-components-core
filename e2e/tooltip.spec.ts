@@ -93,3 +93,15 @@ test('tooltip shows on keyboard focus and hides on blur (no cursor involved)', a
   await trigger.blur();
   await expect(page.locator('.focus-tt')).toHaveCount(0);
 });
+
+test("a BlissElement-owned tooltip shows on hover and rebuilds when its on:'reinit' input changes", async ({ page }) => {
+  const host = page.locator('#host-card');
+  await host.hover();
+  await expect(page.locator('.host-tt.is-visible')).toHaveText('A core tooltip', { timeout: 2000 });
+
+  await page.mouse.move(0, 0);
+  await expect(page.locator('.host-tt')).toHaveCount(0);
+  await host.evaluate((el) => el.setAttribute('tooltip-text', 'Reconfigured!'));
+  await host.hover();
+  await expect(page.locator('.host-tt.is-visible')).toHaveText('Reconfigured!', { timeout: 2000 });
+});

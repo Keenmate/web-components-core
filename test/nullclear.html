@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test — null-clear engine config (SPEC §6.1)</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>null-clear fixture</h1>
+    <p>Targeted by <code>e2e/nullclear.spec.ts</code>. <code>&lt;fx-nullclear&gt;</code> drives a stub engine with an <code>!== undefined</code> guard; <code>el.lastReceived</code> is the config the engine got.</p>
+
+    <div class="fixture">
+        <div class="fixture-label">preserve mode (engineConfig, nulls kept)</div>
+        <fx-nullclear id="preserve"></fx-nullclear>
+    </div>
+    <div class="fixture">
+        <div class="fixture-label">strip mode (the old delete-null loop layered on top)</div>
+        <fx-nullclear id="strip" assemble-mode="strip"></fx-nullclear>
+    </div>
+
+    <script type="module">
+        import { BlissElement, define, toText } from '/src/index.ts';
+
+        const DEFAULT_CLASS = 'focus-default';
+
+        /** Stub engine: absent/undefined keys are skipped; present-with-null clears to the built-in default. */
+        class StubEngine {
+            #cls = null;
+            updateProps(updates) {
+                if (updates.focusedNodeClass !== undefined) this.#cls = updates.focusedNodeClass;
+                return this.#cls ?? DEFAULT_CLASS;
+            }
+        }
+
+        class FxNullclear extends BlissElement {
+            static inputs = [
+                { configKey: 'focusedNodeClass', attribute: 'focused-node-class', converter: toText({ isNullable: true }), on: 'update' },
+            ];
+            #engine;
+            lastReceived = null;
+            #drive(partial) {
+                const cfg = this.engineConfig([]);
+                Object.assign(cfg, partial);
+                if (this.getAttribute('assemble-mode') === 'strip') {
+                    for (const k of Object.keys(cfg)) if (cfg[k] === null) delete cfg[k];
+                }
+                this.lastReceived = cfg;
+                this.dataset.applied = this.#engine.updateProps(cfg);
+            }
+            reinit() {
+                this.#engine = new StubEngine();
+                this.#drive({});
+            }
+            update(partial) { this.#drive(partial); }
+        }
+        define('fx-nullclear', FxNullclear);
+        await Promise.all([...document.querySelectorAll('fx-nullclear')].map((el) => el.whenReady()));
+        document.body.dataset.ready = '';
+    </script>
+</body>
+</html>

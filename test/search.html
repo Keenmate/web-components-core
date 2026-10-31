@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test — /search helpers (core)</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>/search fixture</h1>
+    <p>Targeted by <code>e2e/search.spec.ts</code>. <code>window.runSearch(opts)</code> filters + highlights <code>PLACES</code> into <code>#results</code> like a component's built-in search; the module is on <code>window.search</code>.</p>
+
+    <div class="fixture">
+        <div class="fixture-label">results</div>
+        <ul id="results" class="fixture-log"></ul>
+    </div>
+
+    <script type="module">
+        import * as search from '/src/search/index.ts';
+        const { createRegexCompiler, findHighlightRanges, matchesSearchTerm, normalizeSearchText, prepareSearchTerm, wrapRanges } = search;
+        window.search = search;
+
+        const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        window.escapeHtml = escapeHtml;
+
+        const PLACES = [
+            'Praha', 'Brno', 'České Budějovice', 'Český Krumlov', 'Ústí nad Labem', 'Ústí nad Orlicí',
+            'Nové Město nad Metují', 'Nový Jičín', 'Zli\u0301n (NFD)', 'Kraków', 'Łódź', 'Straße des 17. Juni',
+        ];
+        const regex = createRegexCompiler(); // one per "instance": keeps the last valid pattern
+        window.stats = { prepared: 0 };
+
+        /**
+         * Built-in search over PLACES: prepare the term, match each item (prepared value passed
+         * LAZILY so the spec can see when normalization is skipped), highlight hits into #results.
+         * `prepare: 'parts'` installs a getSearchTermCallback that builds a separator-insensitive regex.
+         */
+        window.runSearch = ({ term, behavior = 'normalized', match = 'contains', prepare, items = PLACES }) => {
+            const getSearchTermCallback = prepare === 'parts'
+                ? (t) => {
+                    const parts = t.split(/[^a-z0-9]+/i).filter(Boolean);
+                    return parts.length ? new RegExp(parts.join('[^a-z0-9]*'), 'i') : null;
+                }
+                : undefined;
+            const active = prepareSearchTerm(term, { behavior, match, regex, getSearchTermCallback });
+            const ul = document.getElementById('results');
+            const hits = [];
+            ul.innerHTML = items.map((label) => {
+                const prepared = () => { window.stats.prepared++; return normalizeSearchText(label, behavior); };
+                if (!matchesSearchTerm(active, match, prepared, label)) return '';
+                hits.push(label);
+                const r = findHighlightRanges(label, active, { behavior, match });
+                return `<li>${wrapRanges(r.text, r.ranges, { escape: escapeHtml })}</li>`;
+            }).join('');
+            return { kind: active.kind, hits };
+        };
+        document.body.dataset.ready = '';
+    </script>
+</body>
+</html>

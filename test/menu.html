@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test — /menu openMenu (core §12.13)</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+    <style>
+        /* The public page-wide layer (on :root), toggled by the spec. */
+        :root.fx-menu-theme {
+            --km-menu-bg: #fffbeb;
+            --km-menu-hover-bg: #fde68a;
+            --km-menu-border-radius: 12px;
+        }
+        /* Per-instance layer: <fx-files> maps --fx-menu-bg onto --_km-menu-bg. */
+        fx-files.fx-instance-theme {
+            --fx-menu-bg: #ecfeff;
+            --fx-menu-hover-bg: #a5f3fc;
+        }
+        fx-files { max-width: 360px; }
+    </style>
+</head>
+<body>
+    <h1>/menu context + dropdown fixture</h1>
+    <p>Targeted by <code>e2e/menu.spec.ts</code>. Steps are recorded in <code>window.fx.log</code>. The page never scrolls (an open menu closes on any scroll).</p>
+
+    <div class="fixture">
+        <div class="fixture-label">files: right-click / Shift+F10 a row; "Actions" dropdown</div>
+        <fx-files id="files"></fx-files>
+    </div>
+
+    <script type="module">
+        import '/test/interaction-fixtures.ts';
+        const fx = window.fx;
+        const el = document.getElementById('files');
+        window.shouldVetoDelete = false;
+
+        el.beforeActionCallback = (d) => {
+            fx.step('beforeActionCallback', String(d.action));
+            return window.shouldVetoDelete && d.action === 'delete' ? false : undefined;
+        };
+        el.onAction = (d) => fx.step('onAction twin', `source=${d.source}`);
+        el.addEventListener('action', (e) =>
+            fx.step('action event', JSON.stringify({ id: e.detail.id ?? null, action: e.detail.action, source: e.detail.source })));
+
+        await el.whenReady();
+        document.body.dataset.ready = '';
+    </script>
+</body>
+</html>

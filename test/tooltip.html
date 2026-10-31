@@ -23,6 +23,7 @@
         #follow-delay { left: 200px; top: 300px; width: 320px; height: 100px; }
         #basic        { left: 200px; top: 480px; width: 140px; height: 44px; }
         #focus-basic  { left: 200px; top: 560px; width: 140px; height: 44px; }
+        #host-card    { left: 200px; top: 640px; width: 180px; height: 44px; }
 
         .tt {
             position: fixed;
@@ -55,8 +56,27 @@
     <!-- keyboard-focus tooltip (no cursor). -->
     <button class="trigger" id="focus-basic">focus</button>
 
+    <!-- a BlissElement that owns its tooltip: built in connect(), rebuilt on an on:'reinit' input. -->
+    <fx-tooltip-host class="trigger" id="host-card" tooltip-text="A core tooltip">component trigger</fx-tooltip-host>
+
     <script type="module">
         import { createTooltip } from '/src/positioning/index.ts';
+        import { BlissElement, define, toText } from '/src/index.ts';
+
+        class FxTooltipHost extends BlissElement {
+            static inputs = [
+                { configKey: 'tooltipText', attribute: 'tooltip-text', converter: toText({ default: 'tip' }), on: 'reinit' },
+            ];
+            #tip;
+            #rebuild() {
+                this.#tip?.destroy();
+                this.#tip = createTooltip({ trigger: this, content: this.config.tooltipText, cssClass: 'tt host-tt', placement: 'top' });
+            }
+            reinit() { if (this.#tip) this.#rebuild(); }
+            connect() { this.#rebuild(); }
+            disconnect() { this.#tip?.destroy(); this.#tip = undefined; }
+        }
+        define('fx-tooltip-host', FxTooltipHost);
 
         createTooltip({
             trigger: document.getElementById('follow-delay'),

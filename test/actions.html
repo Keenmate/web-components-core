@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test — /actions runAction (core §12.12)</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>/actions toolbar fixture</h1>
+    <p>Targeted by <code>e2e/actions.spec.ts</code>. Steps are recorded in <code>window.fx.log</code>.</p>
+
+    <div class="fixture">
+        <div class="fixture-label">toolbar: add / reset / hello / bold (toggle) / fail / secret (hidden) + a markup button</div>
+        <fx-toolbar id="bar">
+            <button type="button" data-action="custom" data-id="from-markup" data-row="42">Markup button</button>
+        </fx-toolbar>
+    </div>
+
+    <script type="module">
+        import '/test/interaction-fixtures.ts';
+        const fx = window.fx;
+        const el = document.getElementById('bar');
+        const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+        let isBold = false;
+        window.shouldClickThrow = false;
+
+        const onClick = (extra) => (d) => {
+            fx.step('item onClick', `count ${d.count}`);
+            extra?.(d);
+        };
+        el.items = [
+            { action: 'add', text: '+1', onClick: onClick() },
+            { action: 'reset', text: 'Reset' },
+            { id: 'hello', text: 'Say hello', onClick: onClick(() => {
+                if (window.shouldClickThrow) throw new Error('fixture: onClick threw');
+            }) },
+            { id: 'bold', text: 'Bold', getIsToggledCallback: () => isBold, onClick: onClick(() => { isBold = !isBold; }) },
+            { action: 'fail', text: 'Broken built-in', isDanger: true },
+            { id: 'secret', text: 'Hidden', isVisible: false },
+        ];
+
+        const beforeHooks = {
+            unset: null,
+            undefined: () => undefined,
+            false: () => false,
+            async: async () => { await wait(600); },
+        };
+        /** Pick what beforeActionCallback does; the wrapper logs the call + the trigger's aria-busy. */
+        window.setBeforeMode = (mode) => {
+            const fn = beforeHooks[mode];
+            el.beforeActionCallback = fn && ((d) => {
+                fx.step('beforeActionCallback', `busy=${d.triggerElement?.getAttribute('aria-busy')}`);
+                return fn(d);
+            });
+        };
+
+        el.onAction = (d) => fx.step('onAction twin', `source=${d.source}`);
+        el.addEventListener('action', (e) => {
+            const d = e.detail;
+            fx.step('action event', JSON.stringify({ id: d.id ?? null, source: d.source, dataset: d.dataset, countAtClick: d.count, countNow: el.count }));
+        });
+
+        await el.whenReady();
+        document.body.dataset.ready = '';
+    </script>
+</body>
+</html>

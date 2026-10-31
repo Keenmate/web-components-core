@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test — anchor() (core /positioning)</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+    <style>
+        #ref { margin: 40px 0 0 200px; width: 160px; height: 40px; background: #e0e7ff; border: 1px solid #6366f1; }
+        .fx-float { background: #111827; color: #fff; padding: 4px 8px; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>anchor() fixture</h1>
+    <p>Targeted by <code>e2e/anchor.spec.ts</code>. <code>window.rebuild(opts)</code> re-anchors the box with new options.</p>
+
+    <div class="fixture">
+        <div class="fixture-label">reference + a body-level floating box</div>
+        <div id="ref">reference</div>
+    </div>
+
+    <script type="module">
+        import { anchor } from '/src/positioning/index.ts';
+
+        const ref = document.getElementById('ref');
+        const floating = document.createElement('div');
+        floating.className = 'fx-float';
+        floating.textContent = 'anchored floating box';
+        document.body.appendChild(floating);
+
+        let handle;
+        window.rebuild = (opts) => {
+            handle?.destroy();
+            handle = anchor(floating, ref, opts);
+        };
+        window.rebuild({ placement: 'bottom', offset: 8 });
+        document.body.dataset.ready = '';
+    </script>
+</body>
+</html>
