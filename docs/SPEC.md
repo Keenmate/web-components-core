@@ -1100,8 +1100,13 @@ the optional `description` / `deprecated` fields on each row.
   the element is already settled after them); loose property assignment coalesces
   on a microtask (so `el.x = …; await el.whenSettled()` awaits it). While
   detached, pending changes are held, so the promise resolves on the next
-  connect's flush. This replaces the flaky bare-`await Promise.resolve()` guess
-  in tests AND gives consumers a deterministic read-after-write point.
+  connect's flush; while a `defer` gate holds the first build it resolves on
+  `release()` (§6.3 — "settled" means built, so release first, then await). This
+  replaces the flaky bare-`await Promise.resolve()` guess in tests AND gives
+  consumers a deterministic read-after-write point. Its users are mainly tests;
+  app code needs it only to read back rendered state (shadow DOM, layout, live
+  getters) right after a write — the coalesced flush runs before paint, and
+  imperative methods `flush()` themselves.
 - **`@keenmate/web-components-core/testing`** — runner-agnostic DOM fixtures
   (pure DOM, zero deps, so they work under vitest+jsdom or a real browser):
   `mount(html|element)` (+ tracked `cleanup()`), `mountBeforeUpgrade()` (exercise

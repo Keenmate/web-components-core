@@ -219,8 +219,12 @@ exception is revoked — they're silenced by `disableLogging()` like everything 
 `BlissElement.whenSettled(): Promise<void>` (in **core**, not just tests)
 resolves after the pending flush's `reinit()`/`update()` runs — immediately when
 nothing is pending, after the microtask for loose assignments, already-settled
-after `setAttributes()`/`batch()`, on next connect for detached changes. It's the
-deterministic read-after-write signal. Its synchronous sibling is `flush()` —
+after `setAttributes()`/`batch()`, on next connect for detached changes, on
+`release()` for a deferred element (by design — "settled" means built; release
+first, then await). It's the deterministic read-after-write signal — mainly for
+tests; app code needs it only to read back rendered state (shadow DOM, layout,
+live getters) right after a write, since the coalesced flush runs before paint
+and imperative methods `flush()` themselves (`whenReady()` = first build). Its synchronous sibling is `flush()` —
 applies pending writes *now* (runs `reinit()`/`update()` before returning), the
 escape hatch for **imperative methods**: call `this.flush()` at the top of a
 method that reads/mutates live state so `el.prop = x; el.method()` keeps working

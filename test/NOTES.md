@@ -33,7 +33,7 @@ later listener from hearing the change — other components' responsive rules / 
 
 ---
 
-## 3. `whenSettled()` doesn't resolve while an element is deferred — OPEN (docs or behaviour)
+## 3. `whenSettled()` doesn't resolve while an element is deferred — DECIDED: intended, documented
 
 **Where:** the defer gate (SPEC §6.3) + `whenSettled()` (§12.7).
 
@@ -43,8 +43,10 @@ after `release()`). Consistent with "resolves after the pending flush runs", but
 the cases (immediate, microtask, `setAttributes`/`batch`, next connect for detached) without the
 deferred one, so code awaiting `whenSettled()` on a deferred element waits indefinitely.
 
-**Options:** document it in §12.7 ("…on `release()` for a deferred element"), or make it resolve
-immediately while deferred. `e2e/lifecycle.spec.ts` waits a frame instead.
+**Decision (2026-10-31):** keep it — already "intended" in SPEC §6.3 and the JSDoc; now also in the
+§12.7 summary and CLAUDE.md. No caller in any repo awaits it while held (the only one is core's own
+unit test pinning the behaviour); app code doesn't call it at all. Release first, then await;
+`e2e/lifecycle.spec.ts` waits a frame while held.
 
 ---
 
