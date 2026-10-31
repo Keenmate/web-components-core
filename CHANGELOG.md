@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `removedCallback`, `destroy()`, throwing hooks) and `RS · Environment & responsive rules` (live
   device class / breakpoint, discrete vs continuous channels, `resolvePresentation`, responsive maps
   and callbacks with the full precedence chain), each on real `BlissElement` demo elements with e2e.
+- **More example pages** — `IA · Events & interaction` (`emit()` + `on<Name>` twins, before-callbacks,
+  `/actions` with the `runAction` order, `/menu` context / dropdown menus with keyboard and theming),
+  `FO · Forms` (form association, `isDisabled` vs `<fieldset disabled>`, validity API +
+  `setFormatError`) and `PG · Page-wide controls` (`window.components` registry, logging, the shared
+  loader hook, style injection).
 
 ## [1.0.0-rc15] - 2026-10-31
 
