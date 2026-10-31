@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reactive inputs — web-components-core</title>
+    <style>
+        .in-table td, .in-table th { vertical-align: middle; }
+        .in-table input[type="text"], .in-table select { width: 9rem; }
+        .in-table button { font-size: .8rem; padding: .2rem .5rem; }
+        .in-table .val { font-family: ui-monospace, 'Courier New', monospace; font-size: .82rem; white-space: nowrap; }
+        .in-table .val.flash { background: color-mix(in srgb, #facc15 35%, transparent); }
+        .log-panel .warn { color: #b45309; }
+        .log-panel--dark .warn { color: #fcd34d; }
+        .log-panel .ok { color: #15803d; }
+        .log-panel--dark .ok { color: #86efac; }
+        .log-panel .hook { color: #7c3aed; }
+        .log-panel--dark .hook { color: #c4b5fd; }
+        .log-panel .muted-line { opacity: .65; }
+        .log-panel > div { white-space: pre-wrap; }
+        .counters { display: flex; gap: .6rem; flex-wrap: wrap; margin: .6rem 0; }
+        .demo-row { display: grid; grid-template-columns: minmax(16rem, 1fr) minmax(18rem, 1.3fr); gap: 1rem; align-items: start; }
+        @media (max-width: 800px) { .demo-row { grid-template-columns: 1fr; } }
+        .btn-col { display: flex; flex-direction: column; gap: .4rem; align-items: flex-start; }
+        #in04-sandbox { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="back-link">← Back to Examples</a>
+            <h1>Reactive inputs</h1>
+            <p class="subtitle">Core's headline: every public input of a <code>BlissElement</code> — attribute, property
+                or callback — is ONE row of a <code>static inputs</code> table. Its converter parses the attribute
+                <em>and</em> validates the property, so both entry points share one pipeline:
+                parse/validate → stage → coalesce → <code>reinit()</code> or <code>update(partial)</code>.
+                See <strong>SPEC §4–§6, §12.7</strong> and <code>docs/reactivity-and-batching.md</code>.</p>
+        </header>
+
+        <!-- ============================================================= -->
+        <!-- IN01 · One input table                                        -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>IN01 · One input table, two entry points</h2>
+            <p>
+                <code>&lt;core-demo-inputs&gt;</code> declares six inputs, one per converter type. Write each one as an
+                <strong>attribute</strong> (<code>setAttribute</code>) or as a <strong>property</strong>
+                (<code>el.x = …</code>) — both land in the same validated value, and both re-render the chip.
+                Rows with <code>shouldReflect: true</code> write a property assignment back to the attribute
+                (<code>limit</code> doesn't reflect — compare). <strong>Removing an attribute</strong> resets the input to its
+                <code>default</code> (absent == default). <code>formatLabelCallback</code> is a property-only callback input
+                (<code>toFunction()</code>; <code>null</code> clears it).
+            </p>
+            <div class="demo-area">
+                <core-demo-inputs id="in01-el"></core-demo-inputs>
+                <table class="reference-table in-table" style="margin-top:1rem">
+                    <thead><tr><th>configKey</th><th>attribute</th><th>converter</th><th>write</th><th><code>el[configKey]</code></th><th><code>getAttribute()</code></th></tr></thead>
+                    <tbody id="in01-rows"></tbody>
+                </table>
+                <label class="demo-label" style="margin-top:1rem">Write log:</label>
+                <div class="log-panel" id="in01-log"></div>
+            </div>
+            <div class="code-block"><pre>import { BlissElement, define, toBool, toEnum, toFunction, toInt, toList, toText } from '@keenmate/web-components-core';
+
+class CoreDemoInputs extends BlissElement {
+  static inputs = [
+    { configKey: 'label',     attribute: 'label',   converter: toText({ default: 'Inbox' }),                  shouldReflect: true },
+    { configKey: 'count',     attribute: 'count',   converter: toInt({ min: 0, max: 10, default: 3 }),       shouldReflect: true },
+    { configKey: 'limit',     attribute: 'limit',   converter: toInt({ min: 1, max: 100, default: 50 }) },   // not reflected
+    { configKey: 'isCompact', attribute: 'compact', converter: toBool('presence'),                           shouldReflect: true },
+    { configKey: 'tone',      attribute: 'tone',    converter: toEnum(['info', 'success', 'warning'], { default: 'info' }), shouldReflect: true },
+    { configKey: 'tags',      attribute: 'tags',    converter: toList({ default: ['mail', 'work'] }),        shouldReflect: true },
+    { configKey: 'formatLabelCallback', converter: toFunction(), default: null },               // property-only
+  ];
+  reinit() { this.#render(); }          // reads the merged this.config
+  update() { this.#render(); }          // on defaults to 'update'
+}
+define('core-demo-inputs', CoreDemoInputs);
+
+el.setAttribute('count', '7');   // fromAttribute('7') → 7
+el.count = 7;                    // validate(7) → ok → reflected: count="7"
+el.removeAttribute('count');     // → default 3</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- IN02 · Invalid values                                         -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>IN02 · Invalid values: warn, keep the previous value</h2>
+            <p>
+                One rule on both paths: a value the converter rejects <strong>warns and keeps the previous value</strong>
+                (the default before any valid one). On the attribute path the converter flags a bad string through
+                <code>fromAttribute</code>'s <code>reportInvalid</code> argument; a <strong>reflected</strong> input then writes
+                its current value back, so the DOM shows what the element really uses — a non-reflected one leaves your
+                markup alone. Warnings go through the element's logger (<code>[CORE:ELEMENT] tag#id</code>, default level
+                <code>warn</code>); the log below captures them from the console.
+            </p>
+            <div class="demo-row">
+                <div>
+                    <core-demo-inputs id="in02-el" count="5"></core-demo-inputs>
+                    <div class="btn-col" style="margin-top:1rem" id="in02-buttons">
+                        <button data-op="attr-count-abc"><code>setAttribute('count', 'abc')</code> — reflected</button>
+                        <button data-op="attr-count-42"><code>setAttribute('count', '42')</code> — out of range</button>
+                        <button data-op="attr-limit-abc"><code>setAttribute('limit', 'abc')</code> — not reflected</button>
+                        <button data-op="attr-tone-purple"><code>setAttribute('tone', 'purple')</code></button>
+                        <button data-op="prop-count-99"><code>el.count = 99</code></button>
+                        <button data-op="prop-tone-purple"><code>el.tone = 'purple'</code></button>
+                        <button data-op="prop-tags-string"><code>el.tags = 'a,b'</code> — not an array</button>
+                        <button data-op="prop-label-empty"><code>el.label = ''</code></button>
+                        <button data-op="attr-count-8"><code>setAttribute('count', '8')</code> — valid</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="demo-label">Warnings + resulting state:</label>
+                    <div class="log-panel log-panel--dark" id="in02-log" style="--log-max-height: 360px"></div>
+                </div>
+            </div>
+            <div class="code-block"><pre>// A custom converter reports a bad attribute string the same way the to* factories do:
+const toPercent = toCustom((raw, reportInvalid) =&gt; {
+  if (raw === null) return 100;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n &lt; 0 || n &gt; 100) reportInvalid?.('expected 0..100');
+  return n;                     // ignored when reported invalid — the previous value stays
+}, { validate: (v) =&gt; typeof v === 'number' &amp;&amp; v &gt;= 0 &amp;&amp; v &lt;= 100, toAttribute: String });
+
+el.setAttribute('count', 'abc'); // warn · count stays 5 · reflected → attribute rewritten to "5"
+el.count = 99;                   // warn · count stays 5 (max: 10)</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- IN03 · update vs reinit                                       -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>IN03 · <code>update(partial)</code> vs <code>reinit()</code></h2>
+            <p>
+                Reactivity is declared per row with <code>on</code>. <code>'update'</code> inputs reach
+                <code>update(partial)</code> with <em>just the changed keys</em>; <code>'reinit'</code> inputs trigger a full
+                <code>reinit()</code> that rebuilds from the merged <code>this.config</code> (watch the <em>build #</em>
+                stamp); <code>'none'</code> inputs are stored only. A <strong>mixed batch</strong> runs <code>reinit()</code>
+                alone — the rebuild absorbs the update keys, so no partial is sent.
+            </p>
+            <div class="demo-row">
+                <div>
+                    <core-demo-reactivity id="in03-el"></core-demo-reactivity>
+                    <div class="counters">
+                        <span class="pill" id="in03-reinits">reinit() × 0</span>
+                        <span class="pill" id="in03-updates">update() × 0</span>
+                    </div>
+                    <div class="controls">
+                        <label><code>caption</code> <small>(update)</small>
+                            <input type="text" id="in03-caption" value="Quarterly" style="width:8rem"></label>
+                        <button id="in03-caption-set">el.caption =</button>
+                    </div>
+                    <div class="controls">
+                        <label><code>accent</code> <small>(update)</small>
+                            <select id="in03-accent"><option>blue</option><option>green</option><option>red</option></select></label>
+                        <label><code>layout</code> <small>(reinit)</small>
+                            <select id="in03-layout"><option>list</option><option>grid</option></select></label>
+                    </div>
+                    <div class="controls">
+                        <label><code>page-size</code> <small>(reinit)</small>
+                            <input type="number" id="in03-pagesize" value="4" min="1" max="12" style="width:4rem"></label>
+                        <label><code>note</code> <small>(none)</small>
+                            <input type="text" id="in03-note" value="draft" style="width:6rem"></label>
+                        <button id="in03-note-set">el.note =</button>
+                    </div>
+                    <div class="controls">
+                        <button id="in03-two-updates">2 update keys, one batch</button>
+                        <button id="in03-mixed">Mixed batch (update + reinit key)</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="demo-label">Hook calls:</label>
+                    <div class="log-panel log-panel--dark" id="in03-log" style="--log-max-height: 360px"></div>
+                </div>
+            </div>
+            <div class="code-block"><pre>static inputs = [
+  { configKey: 'caption',  attribute: 'caption',   converter: toText({ default: 'Report' }), on: 'update' },
+  { configKey: 'accent',   attribute: 'accent',    converter: toEnum(['blue', 'green', 'red'], { default: 'blue' }), on: 'update' },
+  { configKey: 'layout',   attribute: 'layout',    converter: toEnum(['list', 'grid'], { default: 'list' }), on: 'reinit' },
+  { configKey: 'pageSize', attribute: 'page-size', converter: toInt({ min: 1, max: 12, default: 4 }), on: 'reinit' },
+  { configKey: 'note',     attribute: 'note',      converter: toText(), on: 'none' },
+];
+reinit()        { /* rebuild everything from this.config */ }
+update(partial) { /* patch only partial's keys — e.g. { caption: 'Quarterly' } */ }
+
+el.setAttributes({ caption: 'Mixed', layout: 'grid' });  // → reinit() only, no update partial</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- IN04 · Batching                                               -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>IN04 · Batching, <code>whenSettled()</code> and <code>flush()</code></h2>
+            <p>
+                Loose property assignments in the same synchronous block <strong>coalesce on a microtask</strong> into one
+                flush — nothing has run right after the writes; <code>await el.whenSettled()</code> is the deterministic
+                read-after-write signal. Assignments split across ticks are one flush each. <code>setAttributes({…})</code>
+                and <code>batch(fn)</code> make the batch explicit and flush <em>synchronously</em>. An imperative method that
+                reads live state calls <code>this.flush()</code> first, so <code>el.x = …; el.method()</code> works without an
+                <code>await</code>. Configuring a <strong>detached</strong> element and appending it builds once.
+            </p>
+            <div class="demo-row">
+                <div>
+                    <core-demo-reactivity id="in04-el"></core-demo-reactivity>
+                    <div class="btn-col" style="margin-top:1rem">
+                        <button id="in04-loose">3 loose writes, same tick</button>
+                        <button id="in04-ticks">3 writes across ticks</button>
+                        <button id="in04-setattrs"><code>setAttributes({…})</code></button>
+                        <button id="in04-batch"><code>batch(() =&gt; {…})</code></button>
+                        <button id="in04-settled"><code>await whenSettled()</code> before reading</button>
+                        <button id="in04-flush">Imperative method: without vs with <code>flush()</code></button>
+                        <button id="in04-builds">Builds: in-DOM-then-configure vs detached-then-append</button>
+                    </div>
+                    <div id="in04-sandbox"></div>
+                </div>
+                <div>
+                    <label class="demo-label">What happened:</label>
+                    <div class="log-panel log-panel--dark" id="in04-log" style="--log-max-height: 420px"></div>
+                </div>
+            </div>
+            <div class="code-block"><pre>el.caption = 'A'; el.accent = 'green'; el.caption = 'B';
+// nothing has run yet — one microtask flush is queued
+await el.whenSettled();                 // → ONE update({ caption: 'B', accent: 'green' })
+
+el.setAttributes({ caption: 'C', 'page-size': 6 });   // configKey or attribute name; flushed now
+el.batch(() =&gt; { el.caption = 'D'; el.accent = 'red'; });  // one flush, synchronous
+
+// Inside the component — imperative methods flush first:
+readRendered() { this.flush(); return { ...this.#rendered }; }
+el.pageSize = 8; el.readRendered().pageSize;          // 8, no await needed
+
+// Pay for the build once: configure detached, then append
+const fresh = document.createElement('core-demo-reactivity');
+fresh.setAttributes({ layout: 'grid', pageSize: 8 });
+document.body.append(fresh);            // ONE reinit() with the full config</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- IN05 · Presets & live getters                                 -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>IN05 · Presets (<code>getBatchValuesCallback</code>) &amp; live getters (<code>getLiveValue</code>)</h2>
+            <p>
+                A row's <code>getBatchValuesCallback(value, config)</code> returns other inputs to set <strong>in the same
+                batch</strong> — so <code>mode</code> sets <code>editTrigger</code> + <code>hasGridLines</code> and the component
+                sees ONE <code>update</code> with all three keys. Each returned value goes through its own converter and
+                reflects. An input set <strong>explicitly</strong> in the same batch wins over the preset. A row's
+                <code>getLiveValue(el)</code> makes the property <em>getter</em> return live component state: add rows inside
+                the component and <code>el.items</code> reports them, while <code>this.config.items</code> keeps the assigned
+                array. Right after an assignment (still staged) the getter returns what you just assigned.
+            </p>
+            <div class="demo-row">
+                <div>
+                    <core-demo-presets id="in05-el"></core-demo-presets>
+                    <div class="controls" style="margin-top:1rem">
+                        <label><code>el.mode =</code>
+                            <select id="in05-mode"><option>simple</option><option>excel</option><option>custom</option></select></label>
+                    </div>
+                    <div class="btn-col">
+                        <button id="in05-explicit"><code>setAttributes({ mode: 'excel', editTrigger: 'none' })</code></button>
+                        <button id="in05-assign"><code>el.items = ['Alpha', 'Beta']</code></button>
+                        <button id="in05-staged">Assign, then read <code>el.items</code> immediately</button>
+                    </div>
+                    <table class="reference-table in-table" style="margin-top:1rem">
+                        <tbody id="in05-state"></tbody>
+                    </table>
+                </div>
+                <div>
+                    <label class="demo-label">Hook calls / reads:</label>
+                    <div class="log-panel log-panel--dark" id="in05-log" style="--log-max-height: 420px"></div>
+                </div>
+            </div>
+            <div class="code-block"><pre>static inputs = [
+  { configKey: 'mode', attribute: 'mode', converter: toEnum(['simple', 'excel', 'custom'], { default: 'simple' }),
+    shouldReflect: true,
+    getBatchValuesCallback: (mode) =&gt; ({
+      simple: { editTrigger: 'click',    hasGridLines: false },
+      excel:  { editTrigger: 'dblclick', hasGridLines: true },
+    })[mode] ?? null },                                   // null / {} → set nothing else
+  { configKey: 'editTrigger',  attribute: 'edit-trigger', converter: toEnum(['click', 'dblclick', 'none']), shouldReflect: true },
+  { configKey: 'hasGridLines', attribute: 'grid-lines',   converter: toBool('presence'), shouldReflect: true },
+  { configKey: 'items', converter: toObjectArray(), default: [], on: 'reinit',
+    getLiveValue: (el) =&gt; el.liveRows },                 // undefined → falls back to the stored value
+];
+
+el.mode = 'excel';                  // → ONE update({ mode, editTrigger: 'dblclick', hasGridLines: true })
+el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrigger wins</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- IN06 · API summary                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>IN06 · API summary</h2>
+            <table class="reference-table">
+                <thead><tr><th>API</th><th>What it does</th></tr></thead>
+                <tbody>
+                    <tr><td><code>static inputs: InputDef[]</code></td><td>The opt-in input table. Each row: <code>configKey</code>, optional kebab <code>attribute</code>, <code>converter</code>, <code>default</code>, <code>on</code>, <code>shouldReflect</code>, <code>getBatchValuesCallback</code>, <code>getLiveValue</code>, doc-only <code>description</code> / <code>type</code> / <code>deprecated</code>. Sanity-checked once per class (warns on duplicates, reflect without attribute / <code>toAttribute</code>).</td></tr>
+                    <tr><td><code>Converter&lt;V&gt;</code></td><td><code>fromAttribute(raw, el, attr, reportInvalid)</code> (attribute path), <code>validate(value)</code> (property path), optional <code>toAttribute(value)</code> (reflection).</td></tr>
+                    <tr><td><code>toText</code> · <code>toInt</code> · <code>toFloat</code> · <code>toBool</code> · <code>toEnum</code> · <code>toList</code> · <code>toBytes</code></td><td>Scalar / list converters; one set of options drives both paths.</td></tr>
+                    <tr><td><code>toValue</code> · <code>toObject</code> · <code>toObjectArray</code> · <code>toFunction</code> · <code>toCustom</code></td><td>Rich values (JSON on the attribute path), callbacks (property-only, <code>null</code> clears), bespoke parsers.</td></tr>
+                    <tr><td><code>on: 'update' | 'reinit' | 'none'</code></td><td>What a change triggers (default <code>'update'</code>). A batch with any reinit key calls <code>reinit()</code> only.</td></tr>
+                    <tr><td><code>protected reinit()</code></td><td>Full rebuild from <code>this.config</code>: first connect + any batch changing an <code>on: 'reinit'</code> input.</td></tr>
+                    <tr><td><code>protected update(partial)</code></td><td>In-place patch with just the changed <code>on: 'update'</code> keys (no reinit key in the batch).</td></tr>
+                    <tr><td><code>protected config</code></td><td>The validated, effective config (defaults + attributes + properties + responsive overrides).</td></tr>
+                    <tr><td><code>setAttributes(values)</code></td><td>Apply many inputs (by <code>configKey</code> or attribute name) as one synchronous flush.</td></tr>
+                    <tr><td><code>batch(fn)</code></td><td>Run <code>fn</code>; coalesce its property writes into one synchronous flush.</td></tr>
+                    <tr><td><code>whenSettled(): Promise&lt;void&gt;</code></td><td>Resolves after the pending flush ran (immediately when nothing is pending; on next connect while detached).</td></tr>
+                    <tr><td><code>flush()</code></td><td>Apply pending writes now — call it at the top of imperative methods.</td></tr>
+                    <tr><td><code>getBatchValuesCallback(value, config)</code></td><td>Row field: other inputs to set in the same batch; explicit writes in that batch win; one level only.</td></tr>
+                    <tr><td><code>getLiveValue(el)</code></td><td>Row field: the getter returns live state after the first build (not while the write is staged); <code>undefined</code> → stored value. Setter and <code>this.config</code> unchanged.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- The demo web components (register <core-demo-inputs>, <core-demo-reactivity>, <core-demo-presets>). -->
+    <script type="module" src="examples-inputs-card.ts"></script>
+
+    <script type="module">
+        await customElements.whenDefined('core-demo-presets');
+
+        // ── shared helpers ───────────────────────────────────────────────────
+        const $ = (id) => document.getElementById(id);
+        const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+        const fmt = (v) => {
+            if (typeof v === 'function') return 'ƒ (callback)';
+            if (v === undefined) return 'undefined';
+            return JSON.stringify(v);
+        };
+        const fmtAttr = (v) => (v === null ? 'null (absent)' : JSON.stringify(v));
+        const fmtPartial = (p) => '{ ' + Object.entries(p).map(([k, v]) => `${k}: ${fmt(v)}`).join(', ') + ' }';
+        const log = (panel, html, cls = '') => {
+            const line = document.createElement('div');
+            if (cls) line.className = cls;
+            line.innerHTML = html;
+            panel.appendChild(line);
+            panel.scrollTop = panel.scrollHeight;
+            return line;
+        };
+        /** Run fn and collect the console.warn lines it produced (`%c` styling stripped). */
+        const captureWarnings = (fn) => {
+            const lines = [];
+            const original = console.warn;
+            console.warn = (...args) => {
+                original.apply(console, args);
+                const [first, ...rest] = args;
+                if (typeof first === 'string' && first.includes('%c')) {
+                    const cssCount = first.split('%c').length - 1;
+                    lines.push(`${first.replace(/%c/g, '')} ${rest[cssCount] ?? ''}`.trim());
+                } else lines.push(args.map(String).join(' '));
+            };
+            try { fn(); } finally { console.warn = original; }
+            return lines;
+        };
+        /** Record the `hook` events an element emits while `fn` (sync or async) runs. */
+        const recordHooks = async (el, fn) => {
+            const calls = [];
+            const onHook = (e) => calls.push(e.detail);
+            el.addEventListener('hook', onHook);
+            try { await fn(calls); } finally { el.removeEventListener('hook', onHook); }
+            return calls;
+        };
+        const describeHook = (d) => d.hook === 'reinit' ? 'reinit()' : `update(${fmtPartial(d.partial)})`;
+
+        // ── IN01 · one input table ───────────────────────────────────────────
+        const el1 = $('in01-el');
+        const log1 = $('in01-log');
+        const INPUTS = [
+            { key: 'label', attr: 'label', conv: "toText({ default: 'Inbox' })", control: 'text', value: 'Updates', toProp: (s) => s },
+            { key: 'count', attr: 'count', conv: 'toInt({ min: 0, max: 10, default: 3 })', control: 'text', value: '7', toProp: (s) => Number(s) },
+            { key: 'limit', attr: 'limit', conv: 'toInt({ min: 1, max: 100, default: 50 })', control: 'text', value: '20', toProp: (s) => Number(s), note: 'no reflect' },
+            { key: 'isCompact', attr: 'compact', conv: "toBool('presence')", control: 'select', options: ['true', 'false'], toProp: (s) => s === 'true', toAttr: (s) => (s === 'true' ? '' : null) },
+            { key: 'tone', attr: 'tone', conv: "toEnum(['info','success','warning'])", control: 'select', options: ['success', 'warning', 'info'], toProp: (s) => s },
+            { key: 'tags', attr: 'tags', conv: "toList({ default: ['mail','work'] })", control: 'text', value: 'urgent, q4', toProp: (s) => s.split(',').map((t) => t.trim()) },
+            { key: 'formatLabelCallback', attr: null, conv: 'toFunction()', control: 'callback' },
+        ];
+        const rows1 = $('in01-rows');
+        for (const def of INPUTS) {
+            const tr = document.createElement('tr');
+            tr.dataset.key = def.key;
+            let control;
+            if (def.control === 'text') control = `<input type="text" class="in-value" value="${esc(def.value)}">`;
+            else if (def.control === 'select') control = `<select class="in-value">${def.options.map((o) => `<option>${o}</option>`).join('')}</select>`;
+            else control = '';
+            const buttons = def.control === 'callback'
+                ? `<button data-act="cb-set">el.${def.key} = (l, c) =&gt; …</button> <button data-act="cb-clear">= null</button>`
+                : `<button data-act="attr">setAttribute</button> <button data-act="prop">el.${def.key} =</button> <button data-act="remove">removeAttribute</button>`;
+            tr.innerHTML = `<td><code>${def.key}</code>${def.note ? ` <small>(${def.note})</small>` : ''}</td>
+                <td>${def.attr ? `<code>${def.attr}</code>` : '<em>property-only</em>'}</td>
+                <td><code>${esc(def.conv)}</code></td>
+                <td style="white-space:nowrap">${control} ${buttons}</td>
+                <td class="val prop"></td><td class="val attr"></td>`;
+            rows1.appendChild(tr);
+        }
+        const render1 = (changedKey) => {
+            for (const tr of rows1.rows) {
+                const def = INPUTS.find((d) => d.key === tr.dataset.key);
+                const p = tr.querySelector('.prop');
+                const a = tr.querySelector('.attr');
+                p.textContent = fmt(el1[def.key]);
+                a.textContent = def.attr ? fmtAttr(el1.getAttribute(def.attr)) : '—';
+                p.classList.toggle('flash', def.key === changedKey);
+                a.classList.toggle('flash', def.key === changedKey);
+            }
+        };
+        rows1.addEventListener('click', async (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const tr = btn.closest('tr');
+            const def = INPUTS.find((d) => d.key === tr.dataset.key);
+            const raw = tr.querySelector('.in-value')?.value;
+            let op;
+            switch (btn.dataset.act) {
+                case 'attr': {
+                    const attrVal = def.toAttr ? def.toAttr(raw) : raw;
+                    if (attrVal === null) { el1.removeAttribute(def.attr); op = `removeAttribute('${def.attr}')`; }
+                    else { el1.setAttribute(def.attr, attrVal); op = `setAttribute('${def.attr}', ${JSON.stringify(attrVal)})`; }
+                    break;
+                }
+                case 'prop': { const v = def.toProp(raw); el1[def.key] = v; op = `el.${def.key} = ${fmt(v)}`; break; }
+                case 'remove': el1.removeAttribute(def.attr); op = `removeAttribute('${def.attr}')`; break;
+                case 'cb-set': el1.formatLabelCallback = (label, count) => `${label} (${count} new)`; op = 'el.formatLabelCallback = (label, count) => `${label} (${count} new)`'; break;
+                case 'cb-clear': el1.formatLabelCallback = null; op = 'el.formatLabelCallback = null'; break;
+            }
+            await el1.whenSettled();
+            render1(def.key);
+            log(log1, `<code>${esc(op)}</code> → el.${def.key} = <strong>${esc(fmt(el1[def.key]))}</strong>`
+                + (def.attr ? ` · attribute ${esc(fmtAttr(el1.getAttribute(def.attr)))}` : ''));
+        });
+        await el1.whenSettled();
+        render1();
+
+        // ── IN02 · invalid values ────────────────────────────────────────────
+        const el2 = $('in02-el');
+        const log2 = $('in02-log');
+        const OPS2 = {
+            'attr-count-abc': { code: "setAttribute('count', 'abc')", key: 'count', attr: 'count', run: () => el2.setAttribute('count', 'abc') },
+            'attr-count-42': { code: "setAttribute('count', '42')", key: 'count', attr: 'count', run: () => el2.setAttribute('count', '42') },
+            'attr-limit-abc': { code: "setAttribute('limit', 'abc')", key: 'limit', attr: 'limit', run: () => el2.setAttribute('limit', 'abc') },
+            'attr-tone-purple': { code: "setAttribute('tone', 'purple')", key: 'tone', attr: 'tone', run: () => el2.setAttribute('tone', 'purple') },
+            'prop-count-99': { code: 'el.count = 99', key: 'count', attr: 'count', run: () => { el2.count = 99; } },
+            'prop-tone-purple': { code: "el.tone = 'purple'", key: 'tone', attr: 'tone', run: () => { el2.tone = 'purple'; } },
+            'prop-tags-string': { code: "el.tags = 'a,b'", key: 'tags', attr: 'tags', run: () => { el2.tags = 'a,b'; } },
+            'prop-label-empty': { code: "el.label = ''", key: 'label', attr: 'label', run: () => { el2.label = ''; } },
+            'attr-count-8': { code: "setAttribute('count', '8')", key: 'count', attr: 'count', run: () => el2.setAttribute('count', '8') },
+        };
+        $('in02-buttons').addEventListener('click', async (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const op = OPS2[btn.dataset.op];
+            const before = el2[op.key];
+            const warnings = captureWarnings(op.run);
+            await el2.whenSettled();
+            log(log2, `› <code>${esc(op.code)}</code>`);
+            for (const w of warnings) log(log2, `  ⚠ ${esc(w)}`, 'warn in02-warning');
+            if (!warnings.length) log(log2, '  ✓ accepted (no warning)', 'ok');
+            log(log2, `  el.${op.key}: ${esc(fmt(before))} → <strong>${esc(fmt(el2[op.key]))}</strong> · attribute ${esc(fmtAttr(el2.getAttribute(op.attr)))}`, 'muted-line in02-result');
+        });
+
+        // ── IN03 · update vs reinit ──────────────────────────────────────────
+        const el3 = $('in03-el');
+        const log3 = $('in03-log');
+        const counters3 = () => {
+            $('in03-reinits').textContent = `reinit() × ${el3.reinitCount}`;
+            $('in03-updates').textContent = `update() × ${el3.updateCount}`;
+        };
+        el3.addEventListener('hook', (e) => log(log3, `◆ ${esc(describeHook(e.detail))}`, `hook in03-hook in03-${e.detail.hook}`));
+        log(log3, `◆ reinit()  <span class="muted-line">— first connect is always a full build</span>`, 'hook');
+        const run3 = async (code, fn) => {
+            log(log3, `› <code>${esc(code)}</code>`);
+            const calls = await recordHooks(el3, async () => { fn(); await el3.whenSettled(); });
+            if (!calls.length) log(log3, '  (no hook — stored only)', 'muted-line in03-none');
+            counters3();
+        };
+        $('in03-caption-set').addEventListener('click', () => {
+            const v = $('in03-caption').value;
+            run3(`el.caption = ${JSON.stringify(v)}`, () => { el3.caption = v; });
+        });
+        $('in03-accent').addEventListener('change', (e) => run3(`el.accent = '${e.target.value}'`, () => { el3.accent = e.target.value; }));
+        $('in03-layout').addEventListener('change', (e) => run3(`el.layout = '${e.target.value}'`, () => { el3.layout = e.target.value; }));
+        $('in03-pagesize').addEventListener('change', (e) => run3(`el.setAttribute('page-size', '${e.target.value}')`, () => el3.setAttribute('page-size', e.target.value)));
+        $('in03-note-set').addEventListener('click', () => {
+            const v = $('in03-note').value;
+            run3(`el.note = ${JSON.stringify(v)}`, () => { el3.note = v; });
+        });
+        let n3 = 0;
+        $('in03-two-updates').addEventListener('click', () => {
+            n3 += 1;
+            const accent = ['green', 'red', 'blue'][n3 % 3];
+            run3(`el.caption = 'Batch ${n3}'; el.accent = '${accent}'`, () => { el3.caption = `Batch ${n3}`; el3.accent = accent; });
+        });
+        $('in03-mixed').addEventListener('click', () => {
+            n3 += 1;
+            const layout = el3.layout === 'list' ? 'grid' : 'list';
+            run3(`el.setAttributes({ caption: 'Mixed ${n3}', layout: '${layout}' })`, () => el3.setAttributes({ caption: `Mixed ${n3}`, layout }));
+        });
+        counters3();
+
+        // ── IN04 · batching ──────────────────────────────────────────────────
+        const el4 = $('in04-el');
+        const log4 = $('in04-log');
+        const ACCENTS = ['blue', 'green', 'red'];
+        const nextAccent = () => ACCENTS[(ACCENTS.indexOf(el4.accent) + 1) % 3];
+        let n4 = 0;
+        const head4 = (title) => log(log4, `<strong>${esc(title)}</strong>`, 'in04-head');
+        const hooks4 = (calls, prefix = '  ') => {
+            for (const c of calls) log(log4, `${prefix}◆ ${esc(describeHook(c))}`, 'hook');
+        };
+        $('in04-loose').addEventListener('click', async () => {
+            n4 += 1;
+            head4('3 loose writes in one tick');
+            const accent = nextAccent();
+            const calls = await recordHooks(el4, async (calls) => {
+                el4.caption = `Loose ${n4}a`; el4.accent = accent; el4.caption = `Loose ${n4}b`;
+                log(log4, `  right after the writes: ${calls.length} hook calls`, 'in04-sync-count');
+                await el4.whenSettled();
+            });
+            log(log4, `  after await whenSettled(): <span class="in04-count">${calls.length}</span> hook call(s)`, 'ok');
+            hooks4(calls);
+        });
+        $('in04-ticks').addEventListener('click', async () => {
+            n4 += 1;
+            head4('3 writes, each in its own tick');
+            const calls = await recordHooks(el4, async () => {
+                el4.caption = `Tick ${n4}.1`; await el4.whenSettled();
+                el4.caption = `Tick ${n4}.2`; await el4.whenSettled();
+                el4.caption = `Tick ${n4}.3`; await el4.whenSettled();
+            });
+            log(log4, `  <span class="in04-count">${calls.length}</span> hook calls — one flush per tick`, 'ok');
+            hooks4(calls);
+        });
+        $('in04-setattrs').addEventListener('click', async () => {
+            n4 += 1;
+            head4("setAttributes({ caption, 'page-size' })");
+            const size = el4.pageSize === 6 ? 4 : 6;
+            const calls = await recordHooks(el4, (calls) => {
+                el4.setAttributes({ caption: `Set ${n4}`, 'page-size': size });
+                log(log4, `  synchronously after the call: <span class="in04-count">${calls.length}</span> hook call(s)`, 'ok');
+            });
+            hooks4(calls);
+        });
+        $('in04-batch').addEventListener('click', async () => {
+            n4 += 1;
+            head4('batch(() => { caption; accent })');
+            const accent = nextAccent();
+            const calls = await recordHooks(el4, (calls) => {
+                el4.batch(() => { el4.caption = `Batch ${n4}`; el4.accent = accent; });
+                log(log4, `  synchronously after the call: <span class="in04-count">${calls.length}</span> hook call(s)`, 'ok');
+            });
+            hooks4(calls);
+        });
+        $('in04-settled').addEventListener('click', async () => {
+            head4('el.layout = …; await el.whenSettled()');
+            const layout = el4.layout === 'list' ? 'grid' : 'list';
+            el4.layout = layout;
+            log(log4, `  rendered layout right after the write: ${esc(el4.readRenderedWithoutFlush().layout)}`);
+            await el4.whenSettled();
+            log(log4, `  after await whenSettled(): <span class="in04-settled-layout">${esc(el4.readRenderedWithoutFlush().layout)}</span>`, 'ok');
+        });
+        $('in04-flush').addEventListener('click', () => {
+            head4('el.pageSize = …; el.method()');
+            const a = el4.pageSize >= 11 ? 3 : el4.pageSize + 1;
+            el4.pageSize = a;
+            const stale = el4.readRenderedWithoutFlush().pageSize;
+            log(log4, `  el.pageSize = ${a}; el.readRenderedWithoutFlush().pageSize → <span class="in04-stale">${stale}</span> (stale)`, 'warn');
+            const b = a >= 11 ? 3 : a + 1;
+            el4.pageSize = b;
+            const fresh = el4.readRendered().pageSize;
+            log(log4, `  el.pageSize = ${b}; el.readRendered().pageSize → <span class="in04-fresh">${fresh}</span> (this.flush() first)`, 'ok');
+        });
+        $('in04-builds').addEventListener('click', async () => {
+            head4('How many reinit() builds?');
+            const sandbox = $('in04-sandbox');
+            sandbox.replaceChildren();
+            const inDom = document.createElement('core-demo-reactivity');
+            sandbox.append(inDom);                       // builds with defaults
+            inDom.layout = 'grid'; inDom.pageSize = 8;   // + one batch
+            await inDom.whenSettled();
+            log(log4, `  append, then configure: <span class="in04-builds-indom">${inDom.reinitCount}</span> reinit() (defaults + your batch)`, 'warn');
+            const detached = document.createElement('core-demo-reactivity');
+            detached.layout = 'grid'; detached.pageSize = 8;   // held while detached
+            sandbox.append(detached);
+            log(log4, `  configure detached, then append: <span class="in04-builds-detached">${detached.reinitCount}</span> reinit() (full config)`, 'ok');
+            sandbox.replaceChildren();
+        });
+
+        // ── IN05 · presets & live getters ────────────────────────────────────
+        const el5 = $('in05-el');
+        const log5 = $('in05-log');
+        const state5 = () => {
+            const rows = [
+                ['el.mode', fmt(el5.mode), fmtAttr(el5.getAttribute('mode'))],
+                ['el.editTrigger', fmt(el5.editTrigger), fmtAttr(el5.getAttribute('edit-trigger'))],
+                ['el.hasGridLines', fmt(el5.hasGridLines), fmtAttr(el5.getAttribute('grid-lines'))],
+                ['el.items (live getter)', fmt(el5.items), '—'],
+                ['this.config.items (assigned)', fmt(el5.assignedItems), '—'],
+            ];
+            $('in05-state').innerHTML = '<tr><th>read</th><th>value</th><th>attribute</th></tr>'
+                + rows.map(([k, v, a]) => `<tr data-read="${esc(k)}"><td><code>${esc(k)}</code></td><td class="val">${esc(v)}</td><td class="val">${esc(a)}</td></tr>`).join('');
+        };
+        el5.addEventListener('hook', (e) => log(log5, `◆ ${esc(describeHook(e.detail))}`, `hook in05-hook in05-${e.detail.hook}`));
+        $('in05-mode').addEventListener('change', async (e) => {
+            log(log5, `› <code>el.mode = '${esc(e.target.value)}'</code>`);
+            el5.mode = e.target.value;
+            await el5.whenSettled();
+            state5();
+        });
+        $('in05-explicit').addEventListener('click', () => {
+            log(log5, "› <code>el.setAttributes({ mode: 'excel', editTrigger: 'none' })</code>");
+            el5.setAttributes({ mode: 'excel', editTrigger: 'none' });
+            $('in05-mode').value = 'excel';
+            state5();
+        });
+        $('in05-assign').addEventListener('click', async () => {
+            log(log5, "› <code>el.items = ['Alpha', 'Beta']</code>");
+            el5.items = ['Alpha', 'Beta'];
+            await el5.whenSettled();
+            state5();
+        });
+        $('in05-staged').addEventListener('click', async () => {
+            log(log5, "› <code>el.items = ['Fresh']; el.items</code>");
+            el5.items = ['Fresh'];
+            log(log5, `  read while staged → <span class="in05-staged-read">${esc(fmt(el5.items))}</span> (what you just assigned)`, 'ok');
+            await el5.whenSettled();
+            state5();
+        });
+        // The component's own "+ Add row" button lives in its shadow DOM; the click is composed.
+        el5.addEventListener('click', (e) => {
+            if (!e.composedPath().some((n) => n.classList?.contains('add-row'))) return;
+            log(log5, `  component added a row → el.items has ${el5.items.length}, this.config.items still ${el5.assignedItems.length}`, 'muted-line');
+            state5();
+        });
+        await el5.whenSettled();
+        state5();
+    </script>
+
+</body>
+</html>
