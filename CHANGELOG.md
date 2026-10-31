@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc15] - 2026-10-31
+
 ### Added — responsive rules: page / per-tag / instance partial configs per device class / breakpoint (SPEC §6.7)
 
 - **Every `BlissElement` with an input table** takes responsive rules — partial configs in a map
