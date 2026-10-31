@@ -3,7 +3,7 @@ import { BlissElement } from './bliss-element.js';
 import { define } from './define.js';
 import { toBool, toEnum, toInt, toObject, toText } from '../inputs/converters.js';
 import type { InputDef } from '../inputs/types.js';
-import { __resetEnvironment } from '../environment/environment.js';
+import { __resetEnvironment, __viewportSubscriberCount } from '../environment/environment.js';
 import { registerComponent } from '../global/register-component.js';
 import { __resetResponsive, type ResponsiveCallback, type ResponsiveContext, type ResponsiveMap } from './responsive.js';
 
@@ -392,6 +392,79 @@ describe('responsive rules — environment re-run + diffing', () => {
     document.body.appendChild(el);
     expect(el.calls).toEqual(['reinit']);
     expect(el.seenAtReinit.columns).toBe(7);
+  });
+});
+
+describe('responsive rules — continuous width (callbacks only)', () => {
+  // Drive the rAF-coalesced resize handler synchronously and the viewport throttle via fake timers.
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  function resize(width: number): void {
+    setViewport(width, 800);
+    window.dispatchEvent(new Event('resize'));
+    vi.advanceTimersByTime(50);
+  }
+
+  it('a callback re-runs on a width change inside one breakpoint bucket', async () => {
+    const el = make();
+    el.responsiveCallback = (ctx) => (ctx.env.viewportWidth <= 1200 ? { columns: 3 } : undefined);
+    await el.whenSettled();
+    expect(el.columns).toBe(2);
+    resize(1100); // still the `desktop` bucket and device class — no discrete change
+    expect(el.columns).toBe(3);
+    resize(1250);
+    expect(el.columns).toBe(2);
+  });
+
+  it('a page-level callback follows the width too', () => {
+    registerComponent(TAG, RespElement as unknown as CustomElementConstructor, { config: { name: 'x', version: '1' }, shouldAutoDefine: false });
+    const el = make();
+    comps()[TAG].responsiveCallback = (ctx: ResponsiveContext) => (ctx.env.viewportWidth <= 1200 ? { label: 'narrow' } : undefined);
+    expect(el.label).toBe('x');
+    resize(1100);
+    expect(el.label).toBe('narrow');
+  });
+
+  it('a map-only element does not subscribe to the continuous channel', () => {
+    const el = make();
+    el.responsive = { mobile: { columns: 1 } };
+    expect(__viewportSubscriberCount()).toBe(0);
+    el.responsiveCallback = () => undefined;
+    expect(__viewportSubscriberCount()).toBe(1);
+    el.responsiveCallback = null;
+    expect(__viewportSubscriberCount()).toBe(0);
+    el.responsiveCallback = () => undefined;
+    el.remove();
+    expect(__viewportSubscriberCount()).toBe(0);
+    document.body.appendChild(el);
+    expect(__viewportSubscriberCount()).toBe(1);
+  });
+
+  it('no update when the callback result is unchanged across width changes', async () => {
+    const el = make();
+    let runs = 0;
+    el.responsiveCallback = (ctx) => {
+      runs++;
+      return ctx.env.viewportWidth <= 600 ? { columns: 1 } : { label: 'wide' };
+    };
+    await el.whenSettled();
+    el.calls.length = 0;
+    const before = runs;
+    resize(1100);
+    resize(900);
+    await el.whenSettled();
+    expect(runs).toBeGreaterThan(before);
+    expect(el.calls).toEqual([]);
   });
 });
 

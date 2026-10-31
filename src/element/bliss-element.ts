@@ -135,6 +135,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   #responsiveUnsub?: () => void;
   /** Unsubscribe from the environment for the rules; set while connected AND some rule layer is set. */
   #responsiveEnvUnsub?: () => void;
+  /**
+   * Unsubscribe from the CONTINUOUS viewport channel; set while connected AND some
+   * callback layer applies (a callback may read `env.viewportWidth`; maps can't).
+   */
+  #responsiveViewportUnsub?: () => void;
   /** Responsive warnings already logged (each once per element). */
   #responsiveWarned?: Set<string>;
   readonly #byConfigKey = new Map<string, InputDef>();
@@ -563,8 +568,9 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
 
   /**
    * This instance's computed responsive rule: `(ctx) => partial config`. Runs
-   * after {@link responsive} (wins key by key) on every environment flip, rule
-   * change and base-config change. `undefined` = nothing to add; `null` = ignore
+   * after {@link responsive} (wins key by key) on every environment flip, every
+   * (throttled) viewport-size change, rule change and base-config change — so
+   * `ctx.env.viewportWidth <= 600` re-evaluates between breakpoint lines. `undefined` = nothing to add; `null` = ignore
    * every page rule for this element. A throw is logged and treated as `undefined`.
    */
   get responsiveCallback(): ResponsiveCallback | null {
@@ -1620,7 +1626,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * Re-evaluate every responsive layer (SPEC §6.7) and stage the keys whose
    * EFFECTIVE value changed — one batch through the normal pipeline (update /
    * reinit per `on`), never reflected, never explicit. Unchanged result → nothing
-   * staged. Runs on an environment flip, a rule change (instance or page), and at
+   * staged. Runs on an environment flip (plus continuous width changes while a
+   * callback layer applies), a rule change (instance or page), and at
    * every flush (base changes re-run the callbacks; the first build gets the rules).
    */
   #refreshResponsive(): void {
@@ -1628,8 +1635,9 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     const tag = this.localName;
     const page = readPageRules(tag);
     const hasAny = !!(this.#responsiveMap || this.#responsiveCallback) || hasPageRules(page);
+    const hasCallback = !!(this.#responsiveCallback || page.globalCallback || page.tagCallback);
     const hadOverrides = Object.keys(this.#ruleInstance).length > 0 || Object.keys(this.#rulePage).length > 0;
-    this.#syncResponsiveEnv(hasAny);
+    this.#syncResponsiveEnv(hasAny, hasCallback);
     if (!hasAny && !hadOverrides) return;
 
     const instance: Record<string, unknown> = {};
@@ -1693,13 +1701,26 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     }
   }
 
-  /** Observe the environment only while connected AND some rule layer is set (opt-in, no cost otherwise). */
-  #syncResponsiveEnv(hasAny: boolean): void {
-    if (hasAny && this.isConnected && !this.#isDestroyed) {
+  /**
+   * Observe the environment only while connected AND some rule layer is set (opt-in,
+   * no cost otherwise): the discrete channel for any layer, plus the continuous
+   * viewport channel (throttled) while a CALLBACK layer applies — a callback may
+   * test `env.viewportWidth`, which moves between breakpoint lines. Maps are keyed
+   * by device class, so they stay on the discrete channel only.
+   */
+  #syncResponsiveEnv(hasAny: boolean, hasCallback: boolean): void {
+    const isLive = this.isConnected && !this.#isDestroyed;
+    if (hasAny && isLive) {
       this.#responsiveEnvUnsub ??= observeEnvironment(() => this.#refreshResponsive(), { shouldFireImmediately: false });
     } else if (this.#responsiveEnvUnsub) {
       this.#responsiveEnvUnsub();
       this.#responsiveEnvUnsub = undefined;
+    }
+    if (hasCallback && isLive) {
+      this.#responsiveViewportUnsub ??= observeViewport(() => this.#refreshResponsive(), { shouldFireImmediately: false });
+    } else if (this.#responsiveViewportUnsub) {
+      this.#responsiveViewportUnsub();
+      this.#responsiveViewportUnsub = undefined;
     }
   }
 
@@ -1709,6 +1730,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#responsiveUnsub = undefined;
     this.#responsiveEnvUnsub?.();
     this.#responsiveEnvUnsub = undefined;
+    this.#responsiveViewportUnsub?.();
+    this.#responsiveViewportUnsub = undefined;
   }
 
   /** Cancel any queued microtask and flush pending changes synchronously now. */

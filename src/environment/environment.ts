@@ -499,6 +499,11 @@ export function classifyDevice(env: EnvironmentSnapshot): DeviceClass {
   return shortSide < TABLET_MIN_SHORT_SIDE ? 'mobile' : 'tablet';
 }
 
+/** Test-only: the number of live subscribers on the continuous viewport channel. */
+export function __viewportSubscriberCount(): number {
+  return viewportSubscribers.size;
+}
+
 /** Test-only: detach listeners and reset breakpoints + cache to defaults. */
 export function __resetEnvironment(): void {
   subscribers.clear();
