@@ -31,6 +31,7 @@
 import { createFrameScheduler } from '../dom/frame-scheduler.js';
 import { once } from '../dom/once.js';
 import { createThrottle } from '../dom/throttle.js';
+import { coreLog } from '../logging/element-logger.js';
 
 /** The primary pointing device: `coarse` = touch/stylus, `fine` = mouse/trackpad. */
 export type PointerType = 'coarse' | 'fine' | 'none';
@@ -315,10 +316,25 @@ function recompute(): void {
   const prev = current;
   current = next;
   if (!prev || !environmentEqual(prev, next)) {
-    for (const listener of [...subscribers]) listener(next);
+    notifyAll(subscribers, next);
   }
   if (viewportSubscribers.size > 0 && (!prev || !viewportEqual(prev, next))) {
     viewportThrottle.schedule();
+  }
+}
+
+/**
+ * Call every listener of one channel. A throwing listener is logged and skipped,
+ * so it can't keep the rest of the page (other components' responsive rules)
+ * from hearing the change.
+ */
+function notifyAll(channel: Set<EnvironmentListener>, snapshot: EnvironmentSnapshot): void {
+  for (const listener of [...channel]) {
+    try {
+      listener(snapshot);
+    } catch (error) {
+      coreLog(null, 'UI', 'ELEMENT').error('environment listener threw', error);
+    }
   }
 }
 
@@ -326,7 +342,7 @@ function recompute(): void {
 function fireViewport(): void {
   const snap = current;
   if (!snap) return;
-  for (const listener of [...viewportSubscribers]) listener(snap);
+  notifyAll(viewportSubscribers, snap);
 }
 
 /**

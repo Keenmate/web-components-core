@@ -7,27 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Internal
-
-- **Example pages and e2e run on the shared devkit** — `@keenmate/web-components-devkit` (dev
-  dependency only) serves the example pages and drives Playwright: dev server on port 15000 (core's
-  registry block; was 12400, web-commandpalette's), `npm run build:examples` builds a static site into
-  `dist-examples/`, and every page gets the kit's light / dark / auto theme switch, chapter nav and
-  copy-link buttons. The private `examples-shared.css`, `examples-chapter-nav.js` and
-  `examples-copy-link.js` are gone. The package build is unchanged (`npm run build`, tsc); plain
-  `vite build` is refused so it can't wipe `dist/`. Nothing new ships in the tarball.
-- **New example pages for the core itself** — `IN · Reactive inputs` (input table, converters,
-  invalid values, reflection, update vs reinit, batching, `whenSettled()` / `flush()`, presets, live
-  getters), `LC · Lifecycle` (reinit / connect / ready, `defer` + `release()`, DOM moves,
-  `removedCallback`, `destroy()`, throwing hooks) and `RS · Environment & responsive rules` (live
-  device class / breakpoint, discrete vs continuous channels, `resolvePresentation`, responsive maps
-  and callbacks with the full precedence chain), each on real `BlissElement` demo elements with e2e.
-- **More example pages** — `IA · Events & interaction` (`emit()` + `on<Name>` twins, before-callbacks,
-  `/actions` with the `runAction` order, `/menu` context / dropdown menus with keyboard and theming),
-  `FO · Forms` (form association, `isDisabled` vs `<fieldset disabled>`, validity API +
-  `setFormatError`) and `PG · Page-wide controls` (`window.components` registry, logging, the shared
-  loader hook, style injection).
-
 ## [1.0.0-rc15] - 2026-10-31
 
 ### Added — responsive rules: page / per-tag / instance partial configs per device class / breakpoint (SPEC §6.7)
@@ -416,6 +395,14 @@ Attributes, events and CSS are unchanged — only the JS API of components built
 
 ### Fixed
 
+- **`el.form` no longer throws on an element that isn't form-associated.** A real browser throws
+  reading `ElementInternals.form` there ("not a form-associated custom element"; jsdom doesn't); the
+  getter now returns `null` without touching (or attaching) internals, like the validity members.
+- **A throwing environment / theme listener no longer stops the others.** `observeEnvironment`,
+  `observeViewport` and `observeThemeContext` log the error (`CORE:ELEMENT` / `CORE:THEME`) and keep
+  notifying, so one bad callback can't freeze other components' responsive rules or theme.
+- The `OpenMenuOptions.runAction` doc comment gave the wrong order; it's `beforeActionCallback` →
+  `onClick` → built-in → `action` event, like `runAction()`.
 - **`toEnum({ shouldNullOnInvalid: true })` without a `default` accepts `null` on the property
   path.** `null` is that input's unset value, but only removing the attribute cleared it —
   `el.x = null` was rejected with a warning and kept the old value. Now both clear it (and a
@@ -471,6 +458,27 @@ Attributes, events and CSS are unchanged — only the JS API of components built
   / `composedClosest`, now used by theme, anchor and containing-block).
 - Docs: `loglevel` is vendored (`src/logging/log-core.ts`), not a dependency — CLAUDE.md,
   the logging notes, SPEC §12.1 and the README said otherwise.
+
+### Internal — example pages on the shared devkit
+
+- **Example pages and e2e run on the shared devkit** — `@keenmate/web-components-devkit` (dev
+  dependency only) serves the example pages and drives Playwright: dev server on port 15000 (core's
+  registry block; was 12400, web-commandpalette's), `npm run build:examples` builds a static site into
+  `dist-examples/`, and every page gets the kit's light / dark / auto theme switch, chapter nav and
+  copy-link buttons. The private `examples-shared.css`, `examples-chapter-nav.js` and
+  `examples-copy-link.js` are gone. The package build is unchanged (`npm run build`, tsc); plain
+  `vite build` is refused so it can't wipe `dist/`. Nothing new ships in the tarball.
+- **New example pages for the core itself** — `IN · Reactive inputs` (input table, converters,
+  invalid values, reflection, update vs reinit, batching, `whenSettled()` / `flush()`, presets, live
+  getters), `LC · Lifecycle` (reinit / connect / ready, `defer` + `release()`, DOM moves,
+  `removedCallback`, `destroy()`, throwing hooks) and `RS · Environment & responsive rules` (live
+  device class / breakpoint, discrete vs continuous channels, `resolvePresentation`, responsive maps
+  and callbacks with the full precedence chain), each on real `BlissElement` demo elements with e2e.
+- **More example pages** — `IA · Events & interaction` (`emit()` + `on<Name>` twins, before-callbacks,
+  `/actions` with the `runAction` order, `/menu` context / dropdown menus with keyboard and theming),
+  `FO · Forms` (form association, `isDisabled` vs `<fieldset disabled>`, validity API +
+  `setFormatError`) and `PG · Page-wide controls` (`window.components` registry, logging, the shared
+  loader hook, style injection).
 
 ## [1.0.0-rc14] - 2026-10-22
 

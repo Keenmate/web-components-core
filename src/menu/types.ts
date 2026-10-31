@@ -40,8 +40,8 @@ export interface OpenMenuOptions<Ctx, A extends string = string> {
   host: ShadowRoot | HTMLElement;
   /**
    * Run an activated leaf item — normally the component's wrapper over core
-   * `runAction()` (`beforeActionCallback` → `onClick` → `action` event →
-   * built-in), building the detail from `ctx` + the invocation. A leaf closes
+   * `runAction()` (`beforeActionCallback` → `onClick` → built-in → `action`
+   * event), building the detail from `ctx` + the invocation. A leaf closes
    * the menu first (unless `shouldCloseOnClick: false`), then runs; a keep-open
    * item runs, and its menu level re-renders once the returned promise settles.
    */

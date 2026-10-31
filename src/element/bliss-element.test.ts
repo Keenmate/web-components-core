@@ -679,6 +679,21 @@ describe('BlissElement form association', () => {
     el.remove();
   });
 
+  it('form is null on a class that is NOT form-associated, without touching internals', () => {
+    // A real browser throws reading internals.form on a non-form-associated element
+    // (jsdom doesn't) — so the getter must not read it, nor attach internals at all.
+    class PlainEl extends BlissElement {}
+    define('test-plain-form-el', PlainEl);
+    const el = new PlainEl();
+    const spy = vi.spyOn(el, 'attachInternals');
+    const form = document.createElement('form');
+    form.appendChild(el);
+    document.body.appendChild(form);
+    expect(el.form).toBeNull();
+    expect(spy).not.toHaveBeenCalled();
+    form.remove();
+  });
+
   it('degrades to null when attachInternals is unavailable (SSR / older jsdom)', () => {
     const el = new FormEl();
     Object.defineProperty(el, 'attachInternals', { value: undefined, configurable: true });

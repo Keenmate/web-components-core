@@ -233,6 +233,24 @@ describe('observeEnvironment', () => {
     unsub();
   });
 
+  it('a throwing listener is logged and the others still hear the change', () => {
+    const media = installMatchMedia({ ...PHONE });
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const seen: string[] = [];
+    const unsubBad = observeEnvironment(() => {
+      throw new Error('boom');
+    }, { shouldFireImmediately: false });
+    const unsubGood = observeEnvironment((env) => seen.push(env.orientation), { shouldFireImmediately: false });
+
+    media.set({ '(orientation: portrait)': false });
+    expect(() => media.fire('(orientation: portrait)')).not.toThrow();
+    expect(seen).toEqual(['landscape']);
+    expect(error.mock.calls.flat().join(' ')).toContain('environment listener threw');
+    unsubBad();
+    unsubGood();
+    error.mockRestore();
+  });
+
   it('detaches media listeners when the last subscriber leaves', () => {
     const media = installMatchMedia({ ...DESKTOP });
     const a = observeEnvironment(() => {});
@@ -312,6 +330,22 @@ describe('observeViewport (continuous, throttled)', () => {
     fireResize(1100);
     expect(seen).toEqual([1200, 1100]); // leading-edge fire, no timer wait
     unsub();
+  });
+
+  it('a throwing viewport listener is logged and the others still fire', () => {
+    installMatchMedia({ ...DESKTOP });
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const seen: number[] = [];
+    const unsubBad = observeViewport(() => {
+      throw new Error('boom');
+    }, { shouldFireImmediately: false });
+    const unsubGood = observeViewport((env) => seen.push(env.viewportWidth), { shouldFireImmediately: false });
+    expect(() => fireResize(1100)).not.toThrow();
+    expect(seen).toEqual([1100]);
+    expect(error.mock.calls.flat().join(' ')).toContain('environment listener threw');
+    unsubBad();
+    unsubGood();
+    error.mockRestore();
   });
 
   it('throttles a resize burst to one leading + one trailing notify', () => {

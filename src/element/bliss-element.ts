@@ -996,9 +996,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * frameworks that route form changes by reading `target.form` (e.g. Phoenix
    * LiveView's `phx-change` delegation) depend on it. Unlike `closest('form')`,
    * `ElementInternals.form` honours shadow-DOM boundaries and `form=` association.
+   * Always `null` for a class that isn't form-associated (the browser throws when
+   * reading `internals.form` there, so it isn't touched).
    */
   get form(): HTMLFormElement | null {
-    return this.internals?.form ?? null;
+    return this.#formInternals?.form ?? null;
   }
 
   // ── form validity (SPEC §6.6) ─────────────────────────────────────────────

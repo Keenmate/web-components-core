@@ -115,6 +115,18 @@ describe('page detection', () => {
     expect(seen).toEqual(['dark', null, 'dark']);
   });
 
+  it('a throwing listener is logged and the others still hear the flip', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    observeThemeContext(host(), undefined, (scheme) => {
+      if (scheme === 'dark') throw new Error('boom');
+    });
+    const { seen } = record(host());
+    html().classList.add('dark');
+    await tick();
+    expect(seen).toEqual([null, 'dark']);
+    expect(error.mock.calls.flat().join(' ')).toContain('theme listener threw');
+  });
+
   it('uses ONE observer for every page subscriber (detect once, reuse)', () => {
     const observers = countObservers();
     const subs = Array.from({ length: 50 }, () => record(host()));

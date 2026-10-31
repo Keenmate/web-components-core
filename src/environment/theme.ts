@@ -144,7 +144,12 @@ function deliver(sub: Subscriber): void {
   const next = effective(sub);
   if (next === sub.last) return;
   sub.last = next;
-  sub.listener(next);
+  // A throwing listener is logged and skipped — the other subscribers still hear the flip.
+  try {
+    sub.listener(next);
+  } catch (error) {
+    coreLog(null, 'UI', 'THEME').error('theme listener threw', error);
+  }
 }
 
 /** Every subscriber whose result depends on `watch` (the page affects all). */
