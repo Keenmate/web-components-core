@@ -199,6 +199,16 @@ window.components.logging.getCategories();          // ['CORE:ELEMENT', …, 'PG
                     <label><input type="radio" name="pg03-inst" value="throw"> throws</label>
                 </div>
             </div>
+            <div class="note info">
+                <div class="note-title">What "throws" simulates</div>
+                A broken app hook — e.g. B's <code>renderLoadingCallback</code> calls a spinner library that didn't load,
+                or looks up an element that isn't there. Core catches the error, logs
+                <code>renderLoadingCallback threw — drawing the default loader</code>, removes anything the hook managed to
+                add, and draws its <strong>default</strong> spinner, keeping <code>role="status"</code> + the label, so the
+                user still sees (and a screen reader still announces) that B is loading. Note it falls back to the
+                default, <strong>not</strong> to the page hook: only the highest hook that's set runs, so with "page hook"
+                ticked, A shows the dots while B shows the default spinner.
+            </div>
             <div class="demo-area">
                 <div class="pg-stage" id="pg03-stage"></div>
                 <div class="readout" id="pg03-readout"></div>
