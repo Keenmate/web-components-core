@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lifecycle — web-components-core</title>
+    <style>
+        .lc-stage { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-start; min-height: 5.5rem; }
+        .lc-box { flex: 1 1 16rem; min-height: 6rem; padding: .7rem; border-radius: 10px;
+                  border: 2px dashed light-dark(#cbd5e1, #475569); display: flex; gap: .6rem; flex-wrap: wrap; align-items: flex-start; }
+        .lc-box-title { flex-basis: 100%; font: 600 .75rem ui-monospace, monospace; color: light-dark(#64748b, #94a3b8); }
+        .lc-chip { padding: .45rem .7rem; border-radius: 8px; background: light-dark(#f1f5f9, #334155); font: 500 .85rem system-ui; }
+        .lc-parked { font: .8rem ui-monospace, monospace; color: light-dark(#64748b, #94a3b8); }
+
+        /* The ready hooks, styled from the PAGE: attribute + :state(). */
+        core-demo-lifecycle[ready] { outline: 2px solid #22c55e; outline-offset: 2px; border-radius: 10px; }
+        core-demo-lifecycle:state(ready) { box-shadow: 0 0 0 6px light-dark(#dcfce7, #14532d); border-radius: 10px; }
+
+        .lc-state { font: .8rem ui-monospace, 'Courier New', monospace; margin-top: .8rem; padding: .45rem .7rem;
+                    border-radius: 8px; background: light-dark(#f8fafc, #0f172a); border: 1px solid light-dark(#e2e8f0, #334155); }
+        .lc-state b { color: light-dark(#0369a1, #7dd3fc); font-weight: 600; }
+
+        .lc-timeline { list-style: none; margin: .8rem 0 0; padding: .6rem .8rem; max-height: 19rem; overflow: auto;
+                       font: .8rem/1.55 ui-monospace, 'Courier New', monospace; border-radius: 10px;
+                       background: #0f172a; color: #e2e8f0; }
+        .lc-timeline:empty::before { content: 'Timeline — press a button above.'; color: #64748b; }
+        .lc-timeline li { display: flex; gap: .6rem; white-space: pre-wrap; }
+        .lc-timeline .seq { color: #64748b; min-width: 2.2rem; text-align: right; }
+        .lc-timeline .t { color: #64748b; min-width: 4.6rem; text-align: right; font-variant-numeric: tabular-nums; }
+        .lc-timeline .el { color: #94a3b8; min-width: 4.2rem; }
+        .lc-timeline .what { font-weight: 700; }
+        .lc-timeline .detail { color: #94a3b8; }
+        .lc-timeline li[data-kind="action"] { color: #fde68a; margin-top: .35rem; }
+        .lc-timeline li[data-kind="action"]:first-child { margin-top: 0; }
+        .lc-timeline li[data-kind="note"] { color: #94a3b8; font-style: italic; }
+        .lc-timeline li[data-kind="hook"] .what { color: #7dd3fc; }
+        .lc-timeline li[data-kind="event"] .what { color: #86efac; }
+        .lc-timeline li[data-kind="error"] .what { color: #fca5a5; }
+        .lc-timeline-head { display: flex; justify-content: flex-end; margin-top: .5rem; }
+        .lc-timeline-head button { font-size: .75rem; }
+        .api-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+        .api-table th, .api-table td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid light-dark(#e2e8f0, #334155); vertical-align: top; }
+        .api-table code { white-space: nowrap; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="back-link">← Back to Examples</a>
+            <h1>Lifecycle</h1>
+            <p class="subtitle">How a <code>BlissElement</code> is built once and activated many times:
+                <code>reinit()</code> / <code>update()</code> for structure, <code>connect()</code> /
+                <code>disconnect()</code> for live resources, the <code>defer</code> gate and the <code>ready</code>
+                signal (SPEC §6.3), <code>removedCallback()</code>, <code>destroy()</code> (SPEC §6.5) and what
+                happens when a hook throws. Every demo uses <code>&lt;core-demo-lifecycle&gt;</code>, a small
+                element that reports each hook into the timeline under it (sequence number, then milliseconds since
+                the button press).</p>
+        </header>
+
+        <!-- ============================================================= -->
+        <!-- LC01 · Build once, activate many                              -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>LC01 · Build once, activate many</h2>
+            <p>
+                On first connect the base runs <code>reinit()</code> (the full build, from the merged
+                <code>this.config</code>), then <code>connect()</code> (start listeners, observers, timers). On the
+                <strong>microtask</strong> after that, the first build is announced as ready: the host gets the
+                <code>ready</code> attribute and <code>:state(ready)</code>, the <code>ready</code> event fires
+                (its <code>onReady</code> twin is called with the same detail), <code>isReady</code> flips to
+                <code>true</code> and <code>whenReady()</code> resolves. It's a microtask, not an animation frame,
+                so a listener added on the line after <code>append()</code> still catches it, and a hidden tab
+                doesn't hold it back. Later changes go through the input table: a change to an
+                <code>on:'reinit'</code> input (<code>label</code>) rebuilds, a change to an
+                <code>on:'update'</code> input (<code>accent</code>) is patched in place, and in a mixed batch the
+                rebuild wins. <code>ready</code> is only ever announced once per element.
+            </p>
+            <div class="controls">
+                <button id="lc01-create">Create + append</button>
+                <button id="lc01-label">label → rebuild (<code>reinit</code>)</button>
+                <button id="lc01-accent">accent → patch (<code>update</code>)</button>
+                <button id="lc01-both">both in one <code>batch()</code></button>
+            </div>
+            <div class="demo-area">
+                <div class="lc-stage" id="lc01-stage"></div>
+                <div class="lc-state" id="lc01-state"></div>
+                <ol class="lc-timeline" id="lc01-log"></ol>
+            </div>
+            <div class="code-block"><pre>const el = document.createElement('core-demo-lifecycle');
+el.addEventListener('ready', (e) =&gt; log('ready event', e.detail.element === el));
+el.onReady = (detail) =&gt; log('onReady twin');      // same detail object as the event
+el.whenReady().then(() =&gt; log('whenReady() resolved'));
+stage.append(el);            // reinit() → connect()   (synchronously, inside append)
+el.isReady;                  // false — ready is announced on the next microtask
+await Promise.resolve();
+el.isReady;                  // true; el.hasAttribute('ready'); el.matches(':state(ready)')
+
+el.label = 'Renamed';        // on:'reinit' → reinit() on the coalescing microtask
+el.accent = 'green';         // on:'update' → update({ accent: 'green' })
+el.batch(() =&gt; { el.label = 'B'; el.accent = 'amber'; });   // one reinit(), no update()</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- LC02 · defer / release()                                      -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>LC02 · <code>defer</code> / <code>release()</code></h2>
+            <p>
+                Every component has a <code>defer</code> attribute (property <code>shouldDefer</code>). When it is
+                set as the element first connects, the first build is held: no <code>reinit()</code>, no
+                <code>update()</code>, no <code>connect()</code>. Inputs, callbacks and listeners set in the meantime
+                just pile up. <code>release()</code>, or removing the <code>defer</code> attribute, then builds
+                <strong>once</strong> with all of them in place. The order is defer → release → reinit → connect →
+                ready. The gate is latched: once the first build has run, setting <code>defer</code> again holds
+                nothing. While the gate is closed, <code>whenSettled()</code> stays pending until the release, so
+                release first and await after.
+            </p>
+            <div class="controls">
+                <button id="lc02-create">Create with <code>shouldDefer = true</code> + append</button>
+                <button id="lc02-label">set label</button>
+                <button id="lc02-accent">set accent</button>
+                <button id="lc02-release"><code>release()</code></button>
+                <button id="lc02-remove-defer"><code>removeAttribute('defer')</code></button>
+                <button id="lc02-redefer"><code>shouldDefer = true</code> again, then set label</button>
+            </div>
+            <div class="demo-area">
+                <div class="lc-stage" id="lc02-stage"></div>
+                <div class="lc-state" id="lc02-state"></div>
+                <ol class="lc-timeline" id="lc02-log"></ol>
+            </div>
+            <div class="code-block"><pre>&lt;!-- markup: hold the first build until the app has configured it --&gt;
+&lt;core-demo-lifecycle id="card" defer&gt;&lt;/core-demo-lifecycle&gt;
+
+const el = document.getElementById('card');   // or: el.shouldDefer = true before append
+el.label = 'Configured while held';            // stored — no reinit() yet
+el.accent = 'amber';                           // stored — no update() either
+el.release();                                  // ONE reinit() with both, then connect(), then ready
+// el.removeAttribute('defer') does the same
+el.shouldDefer = true;                         // latched: no effect after the first build</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- LC03 · DOM moves                                              -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>LC03 · DOM moves keep transient state</h2>
+            <p>
+                Reordering or re-parenting an element fires <code>disconnect()</code> → <code>connect()</code>
+                and re-activates it <strong>without rebuilding</strong>. <code>reinit()</code> only runs on first
+                connect or when an <code>on:'reinit'</code> input changes, so UI state that lives in the shadow DOM
+                survives. Type something into the card and click its counter, then move it around. Config changed
+                while the element is detached is held, and on reconnect it is applied <em>before</em>
+                <code>connect()</code>. That counts as a real rebuild, so the typed text resets.
+            </p>
+            <div class="controls">
+                <button id="lc03-move">Move to the other box</button>
+                <button id="lc03-reorder">Reorder (swap with neighbour)</button>
+                <button id="lc03-detach">Detach</button>
+                <button id="lc03-detached-label">Change label while detached</button>
+                <button id="lc03-attach">Re-attach</button>
+            </div>
+            <div class="demo-area">
+                <div class="lc-stage">
+                    <div class="lc-box" id="lc03-box-a"><span class="lc-box-title">box A</span><span class="lc-chip" id="lc03-neighbour">neighbour</span></div>
+                    <div class="lc-box" id="lc03-box-b"><span class="lc-box-title">box B</span></div>
+                </div>
+                <div class="lc-state" id="lc03-state"></div>
+                <ol class="lc-timeline" id="lc03-log"></ol>
+            </div>
+            <div class="code-block"><pre>boxB.append(el);                 // disconnect() → connect()   — no reinit(), state kept
+boxA.insertBefore(el, neighbour); // reorder: the same
+
+el.remove();
+el.label = 'Changed while detached';  // held (whenSettled() resolves on the next connect)
+boxA.append(el);                  // reinit() (the held change) → connect()</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- LC04 · removedCallback()                                      -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>LC04 · <code>removedCallback()</code>: removed, not moved</h2>
+            <p>
+                <code>disconnect()</code> can't tell a move from a removal. <code>removedCallback()</code> can: it
+                fires after <code>disconnect()</code> only if the element is <strong>still detached at the next
+                animation frame</strong> (a macrotask when there is no rAF or the tab is hidden). A synchronous move,
+                where disconnect and connect happen in the same task, cancels the check and never fires it. It's
+                opt-in: the base schedules the check only for classes that override the hook (the demo card does).
+                Use it for work that should survive a move but not a removal, such as aborting uploads. Re-adding
+                afterwards is a fresh activation: <code>connect()</code> runs as usual, with no forced
+                <code>reinit()</code>.
+            </p>
+            <div class="controls">
+                <button id="lc04-sync">Synchronous move (remove + re-add in one task)</button>
+                <button id="lc04-remove"><code>el.remove()</code></button>
+                <button id="lc04-readd">Re-add</button>
+            </div>
+            <div class="demo-area">
+                <div class="lc-stage" id="lc04-stage"></div>
+                <div class="lc-state" id="lc04-state"></div>
+                <ol class="lc-timeline" id="lc04-log"></ol>
+            </div>
+            <div class="code-block"><pre>class MyElement extends BlissElement {
+  protected override removedCallback(): void {   // overriding it = opting in
+    this.uploads.abortAll();                     // really gone, not just moved
+  }
+}
+
+stage.removeChild(el); stage.append(el);   // same task → disconnect(), connect(); removedCallback never fires
+el.remove();                               // disconnect() … next frame: removedCallback()</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- LC05 · destroy()                                              -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>LC05 · <code>destroy()</code></h2>
+            <p>
+                <code>destroy()</code> is the public final teardown. It runs <code>disconnect()</code> if the
+                element is active, cancels a pending flush and the removal check, then calls the protected
+                <code>destroyCallback()</code> hook, where a component releases what <code>reinit()</code> built.
+                <code>isDestroyed</code> becomes <code>true</code>, and calling <code>destroy()</code> again does
+                nothing. From then on the element is inert. Input writes are still stored but never applied
+                (<code>whenSettled()</code> resolves at once), and re-inserting it into the DOM logs a warning
+                (open the console) and never rebuilds. The <code>ready</code> state stays as it was. If you need it
+                back, create a new element.
+            </p>
+            <div class="controls">
+                <button id="lc05-do-destroy"><code>destroy()</code></button>
+                <button id="lc05-destroy-again"><code>destroy()</code> again</button>
+                <button id="lc05-label">set label</button>
+                <button id="lc05-reinsert">Remove + re-insert</button>
+                <button id="lc05-new">Create a new element</button>
+            </div>
+            <div class="demo-area">
+                <div class="lc-stage" id="lc05-stage"></div>
+                <div class="lc-state" id="lc05-state"></div>
+                <ol class="lc-timeline" id="lc05-log"></ol>
+            </div>
+            <div class="code-block"><pre>el.destroy();       // disconnect() → destroyCallback()
+el.isDestroyed;     // true
+el.destroy();       // idempotent — no hooks run
+el.label = 'x';     // stored (el.label === 'x'), never reaches reinit()
+stage.append(el);   // console warning: "&lt;core-demo-lifecycle&gt; was destroyed — reconnecting it does nothing …"</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- LC06 · Hook errors                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>LC06 · A throwing hook doesn't wedge the element</h2>
+            <p>
+                An error thrown by a hook is rethrown to whoever flushed: the caller of
+                <code>batch()</code> / <code>setAttributes()</code> / <code>flush()</code>, or the browser's error
+                reporting for a flush inside <code>connectedCallback</code>. The element still recovers.
+                <code>whenSettled()</code> waiters resolve anyway, a failed <code>reinit()</code> is owed and
+                retried on the next flush (any change, or a plain <code>flush()</code>; the owed rebuild beats an
+                <code>update()</code>), and <code>connect()</code> only runs once a build has succeeded, so a
+                structure that never got built is never activated. Arm the toggle, then trigger a rebuild.
+            </p>
+            <div class="controls">
+                <label><input type="checkbox" id="lc06-arm"> throw on next <code>reinit()</code></label>
+                <button id="lc06-label">label → <code>batch()</code> (reinit)</button>
+                <button id="lc06-accent">accent → <code>batch()</code> (update-level)</button>
+                <button id="lc06-flush"><code>el.flush()</code></button>
+                <button id="lc06-fresh">Create a fresh element with the throw armed</button>
+            </div>
+            <div class="demo-area">
+                <div class="lc-stage" id="lc06-stage"></div>
+                <div class="lc-state" id="lc06-state"></div>
+                <ol class="lc-timeline" id="lc06-log"></ol>
+            </div>
+            <div class="code-block"><pre>el.shouldThrowNextReinit = true;   // demo knob: the next reinit() throws once
+try {
+  el.batch(() =&gt; { el.label = 'Will fail'; });   // reinit() throws → rethrown here
+} catch (err) { /* the old structure stays; el.label === 'Will fail' */ }
+el.flush();                         // nothing pending, but the failed reinit() is owed → retried
+
+// A failed FIRST build: no connect(), no ready — until a later flush succeeds
+fresh.shouldThrowNextReinit = true;
+stage.append(fresh);   // reinit() throws (reported to window 'error'), connect() skipped
+fresh.flush();         // reinit() → connect() → ready</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- LC07 · API summary                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>LC07 · API summary</h2>
+            <table class="api-table">
+                <thead><tr><th>Member</th><th>Kind</th><th>When / what</th></tr></thead>
+                <tbody>
+                    <tr><td><code>reinit()</code></td><td>protected hook</td><td>Full build. Runs on first connect and whenever a batch changes an <code>on:'reinit'</code> input. Reads <code>this.config</code> and gets no partial.</td></tr>
+                    <tr><td><code>update(partial)</code></td><td>protected hook</td><td>In-place patch with the changed <code>on:'update'</code> keys. Runs only when the batch has no reinit-level change.</td></tr>
+                    <tr><td><code>connect()</code></td><td>protected hook</td><td>Every connect, after any <code>reinit()</code>/<code>update()</code>, and only once a build has succeeded. Start live resources here.</td></tr>
+                    <tr><td><code>disconnect()</code></td><td>protected hook</td><td>Every disconnect (only if <code>connect()</code> ran). Stop what <code>connect()</code> started; keep the structure.</td></tr>
+                    <tr><td><code>removedCallback()</code></td><td>protected hook, opt-in</td><td>After <code>disconnect()</code>, when the element is still detached at the next frame (macrotask fallback). Never fires on a synchronous move.</td></tr>
+                    <tr><td><code>destroyCallback()</code></td><td>protected hook</td><td>Called once by <code>destroy()</code>, after <code>disconnect()</code>. Release engines, stores and in-flight work.</td></tr>
+                    <tr><td><code>destroy()</code></td><td>method</td><td>Final teardown. Idempotent; the element is inert afterwards and a reconnect warns.</td></tr>
+                    <tr><td><code>isDestroyed</code></td><td>getter</td><td><code>true</code> after <code>destroy()</code>.</td></tr>
+                    <tr><td><code>defer</code> / <code>shouldDefer</code></td><td>attribute / property</td><td>Holds the first build while set at first connect. Latched after the first build.</td></tr>
+                    <tr><td><code>release()</code></td><td>method</td><td>Opens the <code>defer</code> gate: one build with everything set so far (at the next connect when detached). Removing <code>defer</code> does the same.</td></tr>
+                    <tr><td><code>ready</code> attribute, <code>:state(ready)</code></td><td>host state</td><td>Set on the microtask after the first build + <code>connect()</code>. Once per element.</td></tr>
+                    <tr><td><code>ready</code> event / <code>onReady</code></td><td>event + twin</td><td>Fired at the same moment. The twin is called with the detail, then the event is dispatched (bubbles, not composed).</td></tr>
+                    <tr><td><code>isReady</code> / <code>whenReady()</code></td><td>getter / method</td><td>Flag and promise for the same moment. <code>whenReady()</code> never rejects: a failing first build keeps it pending.</td></tr>
+                    <tr><td><code>whenSettled()</code> / <code>flush()</code></td><td>methods</td><td>Await the pending flush, or apply it synchronously now. <code>flush()</code> also retries an owed failed <code>reinit()</code>.</td></tr>
+                    <tr><td><code>batch(fn)</code> / <code>setAttributes(obj)</code></td><td>methods</td><td>Coalesce several writes into one synchronous flush. A throwing hook is rethrown to the caller.</td></tr>
+                </tbody>
+            </table>
+            <div class="note">
+                <div class="note-title">Keep connect() and disconnect() balanced</div>
+                They can run many times per element (every DOM move), so whatever <code>connect()</code> starts,
+                <code>disconnect()</code> must stop. Never tear structure down in <code>disconnect()</code>: the
+                shadow DOM survives a move, and <code>reinit()</code> won't run again just because the element
+                was reconnected.
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { setHookSink } from '/examples-lifecycle-card.ts';
+
+        // ── timeline plumbing ────────────────────────────────────────────────
+        const timelines = new Map();
+        class Timeline {
+            constructor(id) {
+                this.id = id;
+                this.list = document.getElementById(`${id}-log`);
+                this.seq = 0;
+                this.t0 = performance.now();
+                timelines.set(id, this);
+            }
+            add(kind, el, what, detail = '') {
+                const li = document.createElement('li');
+                li.dataset.kind = kind;
+                if (kind === 'hook' || kind === 'event' || kind === 'error') li.dataset.hook = what;
+                if (el) li.dataset.el = el.id;
+                const ms = (performance.now() - this.t0).toFixed(1);
+                const cells = [
+                    ['seq', `#${++this.seq}`],
+                    ['t', kind === 'action' ? '' : `+${ms}ms`],
+                    ['el', el ? el.id : ''],
+                    ['what', kind === 'hook' ? `${what}()` : what],
+                    ['detail', detail],
+                ];
+                for (const [cls, text] of cells) {
+                    const span = document.createElement('span');
+                    span.className = cls;
+                    span.textContent = text;
+                    li.append(span);
+                }
+                this.list.append(li);
+                this.list.scrollTop = this.list.scrollHeight;
+            }
+            action(text) {
+                this.t0 = performance.now();
+                this.add('action', null, `▶ ${text}`);
+            }
+            note(text, el = null) { this.add('note', el, text); }
+            event(el, what, detail) { this.add('event', el, what, detail); }
+            error(el, what, detail) { this.add('error', el, what, detail); }
+        }
+
+        setHookSink((el, hook, detail) => {
+            const tl = timelines.get(el.dataset.log);
+            if (!tl) return;
+            if (hook === 'reinit-threw') tl.error(el, 'reinit() threw', detail);
+            else tl.add('hook', el, hook, detail);
+        });
+
+        let counter = 0;
+        /** Create a card wired to a timeline: ready event + onReady twin + whenReady(). */
+        function makeCard(tl, attrs = {}) {
+            const el = document.createElement('core-demo-lifecycle');
+            el.id = `${tl.id}-${++counter}`;
+            el.dataset.log = tl.id;
+            for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+            el.addEventListener('ready', (e) => tl.event(el, 'ready event', `detail.element === el: ${e.detail?.element === el}`));
+            el.onReady = () => tl.event(el, 'onReady twin', 'called with the detail');
+            el.whenReady().then(() => tl.event(el, 'whenReady()', 'resolved'));
+            return el;
+        }
+
+        function matchesReady(el) {
+            try { return el.matches(':state(ready)'); } catch { return 'n/a'; }
+        }
+        function stateLine(el, extra = '') {
+            if (!el) return 'no element';
+            return `<b>isReady</b> ${el.isReady} · <b>[ready]</b> ${el.hasAttribute('ready')} · <b>:state(ready)</b> ${matchesReady(el)}`
+                + ` · <b>isDestroyed</b> ${el.isDestroyed} · <b>isConnected</b> ${el.isConnected}`
+                + ` · <b>label</b> "${el.label}" · <b>accent</b> ${el.accent}${extra}`;
+        }
+
+        /** Run a button handler: action marker, the sync part, a "returned" note, then refresh the readout. */
+        function bind(id, tl, fn, refresh) {
+            document.getElementById(id).addEventListener('click', () => {
+                tl.action(document.getElementById(id).textContent.trim());
+                fn();
+                tl.note('— handler returned (sync part done) —');
+                refresh();
+                // After the microtask (ready, coalesced writes) and a frame (removedCallback).
+                queueMicrotask(refresh);
+                requestAnimationFrame(() => requestAnimationFrame(refresh));
+            });
+        }
+        const labels = ['Rebuilt', 'Renamed', 'Fresh label', 'Another one'];
+        let li = 0;
+        const nextLabel = () => labels[li++ % labels.length];
+        const nextAccent = (el) => ({ blue: 'green', green: 'amber', amber: 'blue' })[el.accent];
+
+        // ── LC01 · build once, activate many ─────────────────────────────────
+        {
+            const tl = new Timeline('lc01');
+            const stage = document.getElementById('lc01-stage');
+            const state = document.getElementById('lc01-state');
+            let el = null;
+            const refresh = () => { state.innerHTML = stateLine(el); };
+            bind('lc01-create', tl, () => {
+                stage.replaceChildren();
+                el = makeCard(tl);
+                stage.append(el);
+                tl.note(`after append (sync): isReady = ${el.isReady}`, el);
+                const cur = el;
+                Promise.resolve().then(() => tl.note(`one microtask later: isReady = ${cur.isReady}`, cur));
+            }, refresh);
+            bind('lc01-label', tl, () => { if (el) el.label = nextLabel(); }, refresh);
+            bind('lc01-accent', tl, () => { if (el) el.accent = nextAccent(el); }, refresh);
+            bind('lc01-both', tl, () => {
+                if (el) el.batch(() => { el.label = nextLabel(); el.accent = nextAccent(el); });
+            }, refresh);
+            refresh();
+        }
+
+        // ── LC02 · defer / release() ─────────────────────────────────────────
+        {
+            const tl = new Timeline('lc02');
+            const stage = document.getElementById('lc02-stage');
+            const state = document.getElementById('lc02-state');
+            let el = null;
+            const refresh = () => { state.innerHTML = stateLine(el, el ? ` · <b>shouldDefer</b> ${el.shouldDefer}` : ''); };
+            bind('lc02-create', tl, () => {
+                stage.replaceChildren();
+                el = makeCard(tl);
+                el.shouldDefer = true;
+                stage.append(el);
+                tl.note('appended with defer — nothing built', el);
+            }, refresh);
+            bind('lc02-label', tl, () => {
+                if (!el) return;
+                el.label = `Configured ${nextLabel()}`;
+                tl.note(`el.label = "${el.label}"`, el);
+            }, refresh);
+            bind('lc02-accent', tl, () => {
+                if (!el) return;
+                el.accent = nextAccent(el);
+                tl.note(`el.accent = "${el.accent}"`, el);
+            }, refresh);
+            bind('lc02-release', tl, () => el?.release(), refresh);
+            bind('lc02-remove-defer', tl, () => el?.removeAttribute('defer'), refresh);
+            bind('lc02-redefer', tl, () => {
+                if (!el) return;
+                el.shouldDefer = true;
+                el.batch(() => { el.label = nextLabel(); });
+            }, refresh);
+            refresh();
+        }
+
+        // ── LC03 · DOM moves ─────────────────────────────────────────────────
+        {
+            const tl = new Timeline('lc03');
+            const boxA = document.getElementById('lc03-box-a');
+            const boxB = document.getElementById('lc03-box-b');
+            const neighbour = document.getElementById('lc03-neighbour');
+            const state = document.getElementById('lc03-state');
+            const el = makeCard(tl, { label: 'Move me' });
+            const transient = () => {
+                const root = el.shadowRoot;
+                if (!root) return '';
+                const text = root.querySelector('.lc-text')?.value ?? '';
+                const clicks = root.querySelector('.lc-click')?.textContent ?? '';
+                return ` · <b>typed</b> "${text}" · <b>${clicks}</b> · <b>builds</b> ${el.builds} · <b>connects</b> ${el.connects}`;
+            };
+            const refresh = () => { state.innerHTML = stateLine(el, transient()); };
+            boxA.insertBefore(el, neighbour);
+            el.shadowRoot?.addEventListener('input', refresh);
+            el.shadowRoot?.addEventListener('click', () => queueMicrotask(refresh));
+            bind('lc03-move', tl, () => {
+                (el.parentElement === boxA ? boxB : boxA).append(el);
+            }, refresh);
+            bind('lc03-reorder', tl, () => {
+                // Exactly one move of the card: before the neighbour, or after it if already there.
+                const isBefore = el.parentElement === boxA && el.nextElementSibling === neighbour;
+                boxA.insertBefore(el, isBefore ? neighbour.nextSibling : neighbour);
+            }, refresh);
+            bind('lc03-detach', tl, () => el.remove(), refresh);
+            bind('lc03-detached-label', tl, () => {
+                if (el.isConnected) {
+                    tl.note('detach it first', el);
+                    return;
+                }
+                el.label = `Changed while detached`;
+                tl.note(`el.label = "${el.label}" — held until reconnect`, el);
+            }, refresh);
+            bind('lc03-attach', tl, () => { if (!el.isConnected) boxA.append(el); }, refresh);
+            refresh();
+            // Rebuilds replace the shadow content; keep the readout listeners on the (persistent) shadow root.
+        }
+
+        // ── LC04 · removedCallback() ─────────────────────────────────────────
+        {
+            const tl = new Timeline('lc04');
+            const stage = document.getElementById('lc04-stage');
+            const state = document.getElementById('lc04-state');
+            const el = makeCard(tl, { label: 'Remove me' });
+            const refresh = () => { state.innerHTML = stateLine(el); };
+            stage.append(el);
+            bind('lc04-sync', tl, () => {
+                if (!el.isConnected) stage.append(el);
+                stage.removeChild(el);
+                stage.append(el);
+            }, refresh);
+            bind('lc04-remove', tl, () => el.remove(), refresh);
+            bind('lc04-readd', tl, () => { if (!el.isConnected) stage.append(el); }, refresh);
+            refresh();
+        }
+
+        // ── LC05 · destroy() ─────────────────────────────────────────────────
+        {
+            const tl = new Timeline('lc05');
+            const stage = document.getElementById('lc05-stage');
+            const state = document.getElementById('lc05-state');
+            let el = null;
+            const refresh = () => { state.innerHTML = stateLine(el); };
+            const create = () => {
+                stage.replaceChildren();
+                el = makeCard(tl, { label: 'Destroy me' });
+                stage.append(el);
+            };
+            create();
+            bind('lc05-do-destroy', tl, () => el.destroy(), refresh);
+            bind('lc05-destroy-again', tl, () => {
+                const before = tl.seq;
+                el.destroy();
+                tl.note(tl.seq === before ? 'no hooks ran' : 'hooks ran', el);
+            }, refresh);
+            bind('lc05-label', tl, () => {
+                el.label = nextLabel();
+                tl.note(`el.label = "${el.label}"`, el);
+                el.whenSettled().then(() => tl.note('whenSettled() resolved', el));
+            }, refresh);
+            bind('lc05-reinsert', tl, () => {
+                el.remove();
+                stage.append(el);
+                if (el.isDestroyed) tl.note('re-inserted — no hooks (see the console warning)', el);
+            }, refresh);
+            bind('lc05-new', tl, create, refresh);
+            refresh();
+        }
+
+        // ── LC06 · hook errors ───────────────────────────────────────────────
+        {
+            const tl = new Timeline('lc06');
+            const stage = document.getElementById('lc06-stage');
+            const state = document.getElementById('lc06-state');
+            const arm = document.getElementById('lc06-arm');
+            let el = makeCard(tl, { label: 'Fragile' });
+            const refresh = () => {
+                arm.checked = el.shouldThrowNextReinit;
+                state.innerHTML = stateLine(el, ` · <b>builds</b> ${el.builds} · <b>connects</b> ${el.connects}`);
+            };
+            stage.append(el);
+            arm.addEventListener('change', () => { el.shouldThrowNextReinit = arm.checked; });
+            // A flush inside connectedCallback can't throw to the appender — the browser
+            // reports it to window 'error' instead.
+            window.addEventListener('error', (e) => {
+                if (!String(e.message).includes('demo: reinit() failed')) return;
+                e.preventDefault();
+                tl.error(el, 'window error', e.message);
+            });
+            const guarded = (fn) => () => {
+                try {
+                    fn();
+                } catch (err) {
+                    tl.error(el, 'caught', `${err.message} — rethrown to the caller`);
+                }
+            };
+            bind('lc06-label', tl, guarded(() => el.batch(() => { el.label = nextLabel(); })), refresh);
+            bind('lc06-accent', tl, guarded(() => el.batch(() => { el.accent = nextAccent(el); })), refresh);
+            bind('lc06-flush', tl, guarded(() => el.flush()), refresh);
+            bind('lc06-fresh', tl, () => {
+                stage.replaceChildren();
+                el = makeCard(tl, { label: 'Fresh, armed' });
+                el.shouldThrowNextReinit = true;
+                stage.append(el);
+                tl.note(`after append: connects = ${el.connects}, isReady pending — try el.flush()`, el);
+            }, refresh);
+            refresh();
+        }
+    </script>
+</body>
+</html>
