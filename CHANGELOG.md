@@ -23,9 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (attribute present / property assigned; removing the attribute clears it).
 - Values go through each input's converter (invalid → warn + skip); unknown / reserved keys warn
   (silently skipped in the page-wide rules). A throwing callback is logged and ignored.
-- Re-run on discrete environment changes, any layer change and base changes; the result is diffed
-  and only changed keys are staged, as one batch (`update` / `reinit`). The first build already gets
-  the rules. The environment is observed only while some layer is set.
+- Re-run on discrete environment changes, any layer change and base changes; while any CALLBACK layer
+  applies also on continuous viewport-size changes (`observeViewport`, throttled), so
+  `ctx.env.viewportWidth <= 600` re-evaluates between breakpoint lines (maps stay discrete-only — their
+  keys are the device class: a mouse device is `desktop` at any width). The result is diffed and only
+  changed keys are staged, as one batch (`update` / `reinit`). The first build already gets the
+  rules. The environment is observed only while some layer is set (the viewport channel only while a
+  callback layer is).
 - `registerComponent()` adopts a `window.components[tag]` object the page created before the script
   loaded (keeps the object and its `responsive` / `responsiveCallback`).
 - Types `ResponsiveMap`, `ResponsiveContext`, `ResponsiveCallback` exported from the main entry.

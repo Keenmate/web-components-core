@@ -129,7 +129,8 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    (later wins, key by key; instance `null` = ignore page rules). `this.config` / getters =
    EFFECTIVE, `ctx.config` = base (`#base`); overrides never reflect, never explicit
    (persistent `#explicit` set). Diffed re-run on discrete env change / layer change / every
-   flush; applied before the first `reinit()`. Code: `src/element/responsive.ts`.
+   flush, + the continuous `observeViewport` channel while a callback layer applies (maps =
+   device class only); applied before the first `reinit()`. Code: `src/element/responsive.ts`.
 
    A DOM move (reorder/re-parent) fires `disconnect()`→`connect()` and
    **re-activates without rebuilding** (`reinit()` runs only on first connect or

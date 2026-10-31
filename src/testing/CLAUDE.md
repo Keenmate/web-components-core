@@ -7,3 +7,9 @@ DOM fixtures (pure DOM, **zero deps**): `mount`/`cleanup`, `mountBeforeUpgrade`
 of the input-model core).
 
 `BlissElement.whenSettled()` / `flush()` are documented in the root `CLAUDE.md`.
+
+Playwright + device classes (SPEC §12.7 note): `isMobile: true` on a page WITHOUT
+`<meta name="viewport">` reports `innerWidth` 980 → `classifyDevice` = `tablet`. For
+`mobile`, emulate touch (`hasTouch: true`) or a device profile on a page WITH the
+meta tag. A narrow viewport without touch is still `desktop` (width rules need a
+`responsiveCallback`).

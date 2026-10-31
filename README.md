@@ -265,8 +265,11 @@ Precedence, key by key: global map → global callback → per-tag map → per-t
 **attributes / properties set on the element** → instance map → instance callback. An attribute on
 one element is never overridden by a page rule. `config` / the getters report the effective value;
 overrides never reflect to attributes, and a key a rule stops returning goes back to its base
-value. Rules re-run on device / breakpoint / orientation flips and rule changes, diffed, as one
-`update()`/`reinit()` batch; the first build already gets them. Set the page rules before the
+value. Map keys are the **device class** (`classifyDevice`: a mouse device is `desktop` at any
+width — a narrowed desktop window never matches `mobile`); width rules go in a callback via
+`ctx.breakpoint` / `ctx.env.viewportWidth` (`(ctx) => ctx.env.viewportWidth <= 600 ? { … } : undefined`).
+Rules re-run on device / breakpoint / orientation flips and rule changes — callbacks also on every
+(throttled) viewport-size change — diffed, as one `update()`/`reinit()` batch; the first build already gets them. Set the page rules before the
 component scripts load if you like — `registerComponent()` adopts them. Types: `ResponsiveMap<C>`,
 `ResponsiveCallback<C>`, `ResponsiveContext<C>`.
 

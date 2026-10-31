@@ -579,9 +579,15 @@ el.responsiveCallback = (ctx) => ({ … });
 Types (main entry): `ResponsiveMap<C>` (`Partial<Record<DeviceClass, Partial<C> | null>>`),
 `ResponsiveContext<C>` (`{ env, deviceClass, breakpoint, element, component, config }` —
 `config` is the frozen **base** config), `ResponsiveCallback<C>`
-(`(ctx) => Partial<C> | null | undefined`). Maps are keyed by
-`classifyDevice(env)` (capability + short side, §12.9); a callback can branch on
-anything in the context (`breakpoint`, `env.orientation`, `env.viewportWidth`, …).
+(`(ctx) => Partial<C> | null | undefined`).
+
+**Map keys are DEVICE CLASS, not width.** A map is keyed by `classifyDevice(env)`
+(capability + short side, §12.9): a mouse / trackpad device is `desktop` at **any**
+width — a narrowed desktop window never matches `mobile` or `tablet`; only a
+touch-primary device is `mobile` (short side < 600) or `tablet`. Width rules belong
+in a **callback**, which can branch on anything in the context — `ctx.breakpoint`
+(the width bucket from the `--base-breakpoint-*` lines), `ctx.env.viewportWidth`,
+`env.orientation`, … e.g. `(ctx) => ctx.env.viewportWidth <= 600 ? { … } : undefined`.
 
 **Precedence** (later wins, key by key):
 global map → global callback → per-tag map → per-tag callback → **instance
@@ -610,7 +616,11 @@ An attribute written on one element is never overridden by a page rule.
   logger, once per message per element. A throwing callback is logged (`error`) and
   treated as `undefined`.
 - **Re-run** on a discrete environment change (the `environmentChanged` channel:
-  breakpoint / orientation / pointer / device class), on any layer changing (page
+  breakpoint / orientation / pointer / device class), on every continuous viewport-size
+  change (the `observeViewport` channel, throttled ≈30 ms) **while any callback layer
+  (global / per-tag / instance) applies** to the element — so `env.viewportWidth <= 600`
+  re-evaluates between breakpoint lines; maps stay on the discrete channel only (a map
+  can't see the width), on any layer changing (page
   setters notify every connected element across bundled core copies; instance
   setters re-run that element) and at every flush (callbacks see base changes). The
   result is diffed (structural equality for plain objects / arrays); only changed keys
@@ -619,7 +629,9 @@ An attribute written on one element is never overridden by a page rule.
 - **First build** gets the rules: they are evaluated inside the first flush, before
   `reinit()` (no flash of the desktop layout); a `defer`-held element gets them at
   `release()`.
-- **Cost.** The environment is observed only while connected AND some layer is set.
+- **Cost.** The environment is observed only while connected AND some layer is set;
+  the continuous viewport channel only while a callback layer is set (subscribed /
+  unsubscribed as callback layers come and go, and on disconnect).
   Elements without an input table (web-grid's config-object API) skip the feature.
 - **Page entries.** `window.components.responsive` / `.responsiveCallback` are
   non-enumerable accessors (like `logging` / `renderLoaderCallback`; tag enumeration
@@ -1060,6 +1072,15 @@ the optional `description` / `deprecated` fields on each row.
 The Playwright + a11y/contrast fixtures the original §12.4 note mentioned are
 **deferred** — they need a real-browser toolchain and belong closer to a
 design-system/theming package than the input-model core.
+
+**Emulating device classes in Playwright (responsive rules §6.7, `classifyDevice`).**
+`isMobile: true` on a page **without** `<meta name="viewport" content="width=device-width">`
+reports `innerWidth` 980 (the legacy layout viewport) → the short side is ≥ 600, so the
+device classifies as `tablet`, not `mobile`. To test `mobile`, emulate touch
+(`hasTouch: true`, so `pointer: coarse` matches) or use a device profile
+(`devices['iPhone 13']`) on a page that HAS the viewport meta tag. A merely narrow
+`viewport` without touch stays `desktop` (capability over width) — width-driven rules
+need a `responsiveCallback`.
 
 ### 12.8 Style injection — IMPLEMENTED (`src/dom/adopt-styles.ts`)
 
