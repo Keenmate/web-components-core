@@ -12,6 +12,12 @@ definition — the stock analyzer only knows `customElements.define()` — so it
 `customElement`/`tagName` and adds the `custom-element-definition` export.
 `toEnum` types resolve through `as const` and shared members-consts (e.g. a
 hoisted `const PLACEMENTS = […] as const`), not just inline array literals.
+Core-declared inputs (not table rows) are added by the plugin via
+`withCoreDeclared()` (`core-declared.ts`): `defer`/`shouldDefer`,
+`theme-source`/`themeSource`, the `ready` event on every table-driven class;
+`responsive` + `responsiveCallback` only with a `static inputs` table
+(`ExtractedClass.hasInputTable`). Own declarations of the same name win. Keep
+`CORE_DECLARED_INPUTS` in sync when core adds a global attribute/property.
 **Source-of-truth split (SPEC §8 amendment):** the table +
 converter give the *structure* (attr↔prop, type, default, `shouldReflect`, enum
 members); the optional `description`/`deprecated` fields on each `InputDef` /

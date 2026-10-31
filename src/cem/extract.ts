@@ -49,6 +49,8 @@ export interface ExtractedEvent {
 
 export interface ExtractedClass {
   name: string;
+  /** The class declares a `static inputs` table (not just `static events`). */
+  hasInputTable: boolean;
   attributes: ExtractedAttribute[];
   members: ExtractedMember[];
   events: ExtractedEvent[];
@@ -328,7 +330,7 @@ export function extractBlissClass(ts: TS, cls: TsNamespace.ClassDeclaration, sf:
     }
   }
 
-  return { name: cls.name.text, attributes, members, events };
+  return { name: cls.name.text, hasInputTable: !!inputsInit, attributes, members, events };
 }
 
 /**

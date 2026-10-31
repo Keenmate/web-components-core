@@ -34,6 +34,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   loaded (keeps the object and its `responsive` / `responsiveCallback`).
 - Types `ResponsiveMap`, `ResponsiveContext`, `ResponsiveCallback` exported from the main entry.
 
+### Added — CEM: core-declared inputs in every manifest (SPEC §12.6)
+
+- `blissInputsPlugin()` now adds the inputs core declares on every element — attribute `defer` ↔
+  `shouldDefer`, `theme-source` ↔ `themeSource`, the `ready` event, and (classes with an input table)
+  attribute `responsive` ↔ `responsive` + property `responsiveCallback` — with type and description,
+  so custom-elements.json / web-types / VS Code data list them. A component's own declaration of the
+  same name wins. Exported: `withCoreDeclared`, `CORE_DECLARED_INPUTS`, `CORE_DECLARED_EVENTS`;
+  `ExtractedClass.hasInputTable`.
+
 ### Added — breakpoint lines from the base tokens
 
 - On the first browser snapshot the environment reads `--base-breakpoint-mobile` /

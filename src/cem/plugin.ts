@@ -13,6 +13,7 @@
  * avoid a hard dependency on the analyzer's internal types.
  */
 import { extractBlissClass, parseRegisterComponentCall, type ExtractedClass } from './extract.js';
+import { withCoreDeclared } from './core-declared.js';
 
 /** Minimal shape of a CEM class-like declaration this plugin augments. */
 interface CemDeclaration {
@@ -91,7 +92,9 @@ export function blissInputsPlugin(): CemPlugin {
       if (reg) registrations.set(reg.className, reg.tagName);
       if (!tsApi.isClassDeclaration(n)) return;
       const meta = extractBlissClass(tsApi, n, n.getSourceFile());
-      if (meta) extracted.set(meta.name, meta);
+      // Core-declared inputs / events (defer, theme-source, responsive, ready) are
+      // not table rows — add them so every manifest documents them.
+      if (meta) extracted.set(meta.name, withCoreDeclared(meta));
     },
 
     moduleLinkPhase({ moduleDoc }) {

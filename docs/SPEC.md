@@ -1030,7 +1030,14 @@ recognizes — so without help the manifest would be empty.
 - **`blissInputsPlugin()`** — an analyzer plugin. In `analyzePhase` it extracts
   each table-driven class; in `moduleLinkPhase` it merges the results into the
   manifest's class declaration (augments, never replaces, the analyzer's own
-  analysis).
+  analysis). It also adds the **core-declared** surface every `BlissElement` has
+  but no table row describes (`withCoreDeclared`, `CORE_DECLARED_INPUTS` /
+  `CORE_DECLARED_EVENTS`): attribute `defer` ↔ `shouldDefer`, `theme-source` ↔
+  `themeSource` and the `ready` event on every table-driven class, plus attribute
+  `responsive` ↔ `responsive` and the property `responsiveCallback` on classes with
+  an input table (§6.7) — attribute + property + type + description, so
+  custom-elements.json / web-types / VS Code data list them. A class that declares
+  the same name itself keeps its own entry.
 - **`extractBlissClass(ts, classNode, sourceFile)`** — the pure, unit-tested
   core. From each `InputDef` row it derives an `attribute` (kebab, with
   `fieldName` back-link) and a `field` member: **type** from the converter
