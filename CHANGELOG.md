@@ -479,6 +479,10 @@ Attributes, events and CSS are unchanged — only the JS API of components built
   `FO · Forms` (form association, `isDisabled` vs `<fieldset disabled>`, validity API +
   `setFormatError`) and `PG · Page-wide controls` (`window.components` registry, logging, the shared
   loader hook, style injection).
+- **e2e runs on dedicated fixture pages** — every spec targets a minimal page under `test/` (styled by
+  `test/test-fixtures.css`, no example chrome, test-only elements), never the example pages; the only
+  exception is `e2e/examples.spec.ts`, a smoke test of the example site. `test/COVERAGE.md` maps each
+  behaviour to its spec + fixture, `test/NOTES.md` records what testing turned up.
 
 ## [1.0.0-rc14] - 2026-10-22
 
