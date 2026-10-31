@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Internal
+
+- **Example pages and e2e run on the shared devkit** — `@keenmate/web-components-devkit` (dev
+  dependency only) serves the example pages and drives Playwright: dev server on port 15000 (core's
+  registry block; was 12400, web-commandpalette's), `npm run build:examples` builds a static site into
+  `dist-examples/`, and every page gets the kit's light / dark / auto theme switch, chapter nav and
+  copy-link buttons. The private `examples-shared.css`, `examples-chapter-nav.js` and
+  `examples-copy-link.js` are gone. The package build is unchanged (`npm run build`, tsc); plain
+  `vite build` is refused so it can't wipe `dist/`. Nothing new ships in the tarball.
+
 ## [1.0.0-rc15] - 2026-10-31
 
 ### Added — responsive rules: page / per-tag / instance partial configs per device class / breakpoint (SPEC §6.7)
