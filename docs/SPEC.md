@@ -558,7 +558,7 @@ flow: catch the callback's throw → log it at `error` → submit `''` →
 `setFormatError(err, label)` → emit a `*-error` event; the next successful
 format calls `setFormatError(null)`.
 
-### 6.7 Responsive rules — partial configs per device class (page / tag / instance)
+### 6.7 Responsive rules — partial configs per device class / breakpoint (page / tag / instance)
 
 Components decide behaviour from the environment, but apps want to tune those
 decisions page-wide and per instance (e.g. "on a tablet, every multiselect opens
@@ -568,26 +568,59 @@ never detect the page shell; the shared link is the base-css-variables tokens
 (`--base-breakpoint-*`, §12.9).
 
 ```js
-window.components.responsive          = { mobile: { … }, tablet: { … } };  // page-wide map: deviceClass → partial config
+window.components.responsive          = { device: { mobile: { … } }, breakpoint: { mobile: { … } } };  // page-wide map
 window.components.responsiveCallback  = (ctx) => ({ … });                  // page-wide computed rule
 window.components['web-multiselect'].responsive         = { … };           // per tag
 window.components['web-multiselect'].responsiveCallback = (ctx) => ({ … });
-el.responsive = { tablet: { presentation: 'modal' } };   // also <x responsive='{"tablet":{…}}'>
+el.responsive = { device: { tablet: { presentation: 'modal' } } };   // also <x responsive='{"breakpoint":{"mobile":{…}}}'>
 el.responsiveCallback = (ctx) => ({ … });
 ```
 
-Types (main entry): `ResponsiveMap<C>` (`Partial<Record<DeviceClass, Partial<C> | null>>`),
+Types (main entry): `ResponsiveMap<C>`, `ResponsiveMapAxis` (`'device' | 'breakpoint'`),
 `ResponsiveContext<C>` (`{ env, deviceClass, breakpoint, element, component, config }` —
 `config` is the frozen **base** config), `ResponsiveCallback<C>`
 (`(ctx) => Partial<C> | null | undefined`).
 
-**Map keys are DEVICE CLASS, not width.** A map is keyed by `classifyDevice(env)`
-(capability + short side, §12.9): a mouse / trackpad device is `desktop` at **any**
-width — a narrowed desktop window never matches `mobile` or `tablet`; only a
-touch-primary device is `mobile` (short side < 600) or `tablet`. Width rules belong
-in a **callback**, which can branch on anything in the context — `ctx.breakpoint`
-(the width bucket from the `--base-breakpoint-*` lines), `ctx.env.viewportWidth`,
-`env.orientation`, … e.g. `(ctx) => ctx.env.viewportWidth <= 600 ? { … } : undefined`.
+**A map has two explicit axes:**
+
+```ts
+type ResponsiveMap<C> = {
+  device?:     Partial<Record<DeviceClass, Partial<C> | null>>;  // classifyDevice: capability first, then short side
+  breakpoint?: Partial<Record<string, Partial<C> | null>>;       // env.breakpoint: window-width buckets (768 / 1024 lines)
+};
+```
+
+- `device` is keyed by `classifyDevice(env)` (capability + short side, §12.9): a
+  mouse / trackpad device is `desktop` at **any** width; only a touch-primary device
+  is `mobile` (short side < 600) or `tablet`.
+- `breakpoint` is keyed by the width bucket (`env.breakpoint`, the
+  `--base-breakpoint-*` lines / `configureBreakpoints()`): a narrowed desktop window
+  is `mobile` below 768 px.
+- Within one map the **breakpoint entry applies first, then the device entry over
+  it** — device wins on the same key. Then that level's callback over the map (the
+  precedence order below is unchanged).
+- Any other top-level key (e.g. the pre-rc15 device-keyed `{ mobile: … }`) warns
+  once per element (`INIT` logger) and is ignored; a non-object axis likewise.
+
+```js
+window.components['web-treeview'].responsive = {
+  device:     { mobile: { shouldAlignNodeIcons: false }, tablet: { shouldAlignNodeIcons: true } },
+  breakpoint: { mobile: { shouldAlignNodeIcons: false } },
+};
+// own widths / combinations → callback
+window.components['web-treeview'].responsiveCallback = ({ deviceClass, env }) =>
+  deviceClass === 'desktop' && env.viewportWidth < 600 ? { shouldAlignNodeIcons: false } : undefined;
+```
+
+| Situation | deviceClass | breakpoint | Result |
+|---|---|---|---|
+| Phone (390 × 844, touch) | `mobile` | `mobile` | `device.mobile` → `false` |
+| Desktop window narrowed to 700 px | `desktop` | `mobile` | no `device.desktop` → `breakpoint.mobile` → `false` |
+| iPad portrait (768 × 1024, touch) | `tablet` | `mobile` | `breakpoint.mobile` says `false`, `device.tablet` beats it → `true` |
+| Desktop narrowed to 550 px | `desktop` | `mobile` | map → `false`; the callback also says `false` |
+
+Rules on your own widths or combinations (`ctx.env.viewportWidth`, orientation,
+device class AND width, …) belong in a **callback**.
 
 **Precedence** (later wins, key by key):
 global map → global callback → per-tag map → per-tag callback → **instance
@@ -596,7 +629,7 @@ anything set explicitly on the element; the element's own rules beat everything.
 An attribute written on one element is never overridden by a page rule.
 
 - `undefined` from a callback = nothing to add. `null` from an **instance** rule
-  (callback result, or the instance map's entry for the current class) = ignore every
+  (callback result, or the instance map's current entry on either axis) = ignore every
   page rule (the instance's own values still apply). A page-level `null` = `undefined`.
 - **Base vs effective.** `this.config` and the generated getters report the
   EFFECTIVE config (what the component applies); `ctx.config` is the base (defaults
@@ -619,8 +652,9 @@ An attribute written on one element is never overridden by a page rule.
   breakpoint / orientation / pointer / device class), on every continuous viewport-size
   change (the `observeViewport` channel, throttled ≈30 ms) **while any callback layer
   (global / per-tag / instance) applies** to the element — so `env.viewportWidth <= 600`
-  re-evaluates between breakpoint lines; maps stay on the discrete channel only (a map
-  can't see the width), on any layer changing (page
+  re-evaluates between breakpoint lines; maps stay on the discrete channel only (device
+  class and breakpoint are both discrete — a breakpoint-only map flips when a desktop
+  window is resized across a line), on any layer changing (page
   setters notify every connected element across bundled core copies; instance
   setters re-run that element) and at every flush (callbacks see base changes). The
   result is diffed (structural equality for plain objects / arrays); only changed keys
@@ -1087,7 +1121,7 @@ device classifies as `tablet`, not `mobile`. To test `mobile`, emulate touch
 (`hasTouch: true`, so `pointer: coarse` matches) or use a device profile
 (`devices['iPhone 13']`) on a page that HAS the viewport meta tag. A merely narrow
 `viewport` without touch stays `desktop` (capability over width) — width-driven rules
-need a `responsiveCallback`.
+go on the map's `breakpoint` axis (or a `responsiveCallback`).
 
 ### 12.8 Style injection — IMPLEMENTED (`src/dom/adopt-styles.ts`)
 

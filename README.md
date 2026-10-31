@@ -25,7 +25,7 @@ component generation and **breaking for component authors** (no aliases).
 - **Shared loader and live getters.** `renderLoader()` with the page-wide
   `window.components.renderLoaderCallback`; `InputDef.getLiveValue` makes a property return live state.
 - **Responsive rules.** `window.components.responsive` / `[tag].responsive` / `el.responsive` (+ callbacks):
-  partial configs per device class with one precedence chain; breakpoints follow `--base-breakpoint-*`
+  partial configs on two axes (`device` class / width `breakpoint`) with one precedence chain; breakpoints follow `--base-breakpoint-*`
   (default mobile line 768). `MobilePresentation` → `Presentation`.
 - **Naming review.** `is/should/has` booleans, `*Callback` hooks, `on*` only for notifications
   (`shouldDefer`, `shouldReflect`, `isToggled`, `isRejected`, `km-` menu prefix …). Invalid attributes
@@ -248,30 +248,47 @@ type is `Presentation` (`'auto' | 'floating' | 'modal' | 'fullscreen'`).
 
 ## Responsive rules (page / per-tag / instance)
 
-Apps tune what components do per device class in one place — no app-side
+Apps tune what components do per device class / width bucket in one place — no app-side
 `observeViewport` + "did it change" bookkeeping. Every `BlissElement` with an input
 table takes the same rules ([SPEC §6.7](docs/SPEC.md)):
 
 ```js
-window.components.responsive = { mobile: { presentation: 'fullscreen' } };               // page-wide
-window.components['web-multiselect'].responsive = { tablet: { presentation: 'modal' } }; // per tag
-window.components['web-multiselect'].responsiveCallback = ({ deviceClass, env }) =>
-  deviceClass === 'mobile' && env.orientation === 'landscape' ? { actionsLayout: 'compact' } : undefined;
-el.responsive = { tablet: { presentation: 'floating' } };   // instance (also the JSON attribute `responsive`)
-el.responsiveCallback = (ctx) => null;                       // instance null = ignore the page rules
+window.components['web-treeview'].responsive = {
+  device:     { mobile: { shouldAlignNodeIcons: false }, tablet: { shouldAlignNodeIcons: true } },
+  breakpoint: { mobile: { shouldAlignNodeIcons: false } },
+};
+// own widths / combinations → callback
+window.components['web-treeview'].responsiveCallback = ({ deviceClass, env }) =>
+  deviceClass === 'desktop' && env.viewportWidth < 600 ? { shouldAlignNodeIcons: false } : undefined;
+
+window.components.responsive = { device: { mobile: { presentation: 'fullscreen' } } };  // page-wide
+el.responsive = { breakpoint: { mobile: { presentation: 'modal' } } };  // instance (also the JSON attribute)
+el.responsiveCallback = (ctx) => null;                                   // instance null = ignore the page rules
 ```
+
+A map has two axes: `device` (keyed by `classifyDevice` — capability first, then the short side; a
+mouse device is `desktop` at any width) and `breakpoint` (keyed by the window-width bucket, the
+768 / 1024 lines). Within one map the breakpoint entry applies first and the device entry over it —
+**device wins** on the same key:
+
+| Situation | deviceClass | breakpoint | `shouldAlignNodeIcons` |
+|---|---|---|---|
+| Phone | `mobile` | `mobile` | `false` — from `device.mobile` |
+| Desktop window narrowed below 768 px | `desktop` | `mobile` | `false` — from `breakpoint.mobile` |
+| iPad portrait (768 wide) | `tablet` | `mobile` | `true` — `device.tablet` beats `breakpoint.mobile` |
+
+Any other top-level map key (the old `{ mobile: … }` shape) warns once and is ignored.
 
 Precedence, key by key: global map → global callback → per-tag map → per-tag callback →
 **attributes / properties set on the element** → instance map → instance callback. An attribute on
 one element is never overridden by a page rule. `config` / the getters report the effective value;
 overrides never reflect to attributes, and a key a rule stops returning goes back to its base
-value. Map keys are the **device class** (`classifyDevice`: a mouse device is `desktop` at any
-width — a narrowed desktop window never matches `mobile`); width rules go in a callback via
-`ctx.breakpoint` / `ctx.env.viewportWidth` (`(ctx) => ctx.env.viewportWidth <= 600 ? { … } : undefined`).
+value. Own widths or combinations go in a callback (`ctx.deviceClass`, `ctx.breakpoint`,
+`ctx.env.viewportWidth`, …).
 Rules re-run on device / breakpoint / orientation flips and rule changes — callbacks also on every
 (throttled) viewport-size change — diffed, as one `update()`/`reinit()` batch; the first build already gets them. Set the page rules before the
 component scripts load if you like — `registerComponent()` adopts them. Types: `ResponsiveMap<C>`,
-`ResponsiveCallback<C>`, `ResponsiveContext<C>`.
+`ResponsiveMapAxis`, `ResponsiveCallback<C>`, `ResponsiveContext<C>`.
 
 ## Theme context (dark / light)
 

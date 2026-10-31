@@ -7,17 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added — responsive rules: page / per-tag / instance partial configs per device class (SPEC §6.7)
+### Added — responsive rules: page / per-tag / instance partial configs per device class / breakpoint (SPEC §6.7)
 
-- **Every `BlissElement` with an input table** takes responsive rules — partial configs keyed by
-  device class (`ResponsiveMap`) or computed by a callback (`ResponsiveCallback`, ctx
+- **Every `BlissElement` with an input table** takes responsive rules — partial configs in a map
+  with two explicit axes, `{ device?: { <deviceClass>: … }, breakpoint?: { <breakpoint>: … } }`
+  (`ResponsiveMap`), or computed by a callback (`ResponsiveCallback`, ctx
   `{ env, deviceClass, breakpoint, element, component, config }`):
   `window.components.responsive` / `.responsiveCallback` (page-wide, non-enumerable accessors shared
   across bundled core copies), `window.components[tag].responsive` / `.responsiveCallback` (per tag),
-  `el.responsive` (+ JSON attribute `responsive`) / `el.responsiveCallback` (instance).
+  `el.responsive` (+ JSON attribute `responsive='{"breakpoint":{"mobile":{…}}}'`) / `el.responsiveCallback` (instance).
+- **Map axes.** `device` is keyed by `classifyDevice` (capability first, then the short side — a mouse
+  device is `desktop` at any width); `breakpoint` by the window-width bucket (768 / 1024 lines). Within
+  one map the breakpoint entry applies first, the device entry over it (device wins on the same key) —
+  e.g. iPad portrait (`tablet`, 768 wide = `mobile` bucket) takes `device.tablet` over
+  `breakpoint.mobile`; a desktop window narrowed below 768 takes `breakpoint.mobile`. Any other
+  top-level key (a device-keyed `{ mobile: … }` map) warns once per element and is ignored.
 - **Precedence**, key by key: global map → global callback → per-tag map → per-tag callback →
   instance attributes/properties → instance map → instance callback. An instance `null` (callback
-  result or the map's class entry) ignores every page rule.
+  result or the map's current entry on either axis) ignores every page rule.
 - `this.config` and the property getters are the **effective** config; `ctx.config` is the base.
   Overrides never reflect and never count as explicit; core now tracks "explicitly set" per instance
   (attribute present / property assigned; removing the attribute clears it).
@@ -25,14 +32,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (silently skipped in the page-wide rules). A throwing callback is logged and ignored.
 - Re-run on discrete environment changes, any layer change and base changes; while any CALLBACK layer
   applies also on continuous viewport-size changes (`observeViewport`, throttled), so
-  `ctx.env.viewportWidth <= 600` re-evaluates between breakpoint lines (maps stay discrete-only — their
-  keys are the device class: a mouse device is `desktop` at any width). The result is diffed and only
+  `ctx.env.viewportWidth <= 600` re-evaluates between breakpoint lines (maps stay on the discrete channel —
+  device class and breakpoint are both discrete, so a breakpoint-only map flips when a desktop window
+  is resized across a line). The result is diffed and only
   changed keys are staged, as one batch (`update` / `reinit`). The first build already gets the
   rules. The environment is observed only while some layer is set (the viewport channel only while a
   callback layer is).
 - `registerComponent()` adopts a `window.components[tag]` object the page created before the script
   loaded (keeps the object and its `responsive` / `responsiveCallback`).
-- Types `ResponsiveMap`, `ResponsiveContext`, `ResponsiveCallback` exported from the main entry.
+- Types `ResponsiveMap`, `ResponsiveMapAxis`, `ResponsiveContext`, `ResponsiveCallback` exported from the main entry.
 
 ### Added — CEM: core-declared inputs in every manifest (SPEC §12.6)
 
