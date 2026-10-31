@@ -26,7 +26,7 @@ const DEFER_DESCRIPTION =
 const THEME_SOURCE_DESCRIPTION =
   "Where this element reads its theme from instead of the page (core, SPEC §12.10): a CSS selector (nearest matching ancestor, else the first match), `'closest'` (the nearest ancestor carrying a theme signal), or (property only) an `Element`. Unset = the page.";
 const RESPONSIVE_DESCRIPTION =
-  "Instance responsive rules (core, SPEC §6.7): partial configs keyed by DEVICE CLASS (`mobile` / `tablet` / `desktop` — a mouse device is `desktop` at any width), as an object or a JSON attribute, e.g. `{\"tablet\":{\"presentation\":\"modal\"}}`. Beats page rules (`window.components.responsive*`) and values set on the element; never reflects. An entry of `null` ignores the page rules on that class.";
+  "Instance responsive rules (core, SPEC §6.7): partial configs on two axes — `device` (keyed by device class `mobile` / `tablet` / `desktop`; a mouse device is `desktop` at any width) and `breakpoint` (keyed by the window-width bucket); the breakpoint entry applies first, the device entry over it (device wins). An object or a JSON attribute, e.g. `{\"device\":{\"tablet\":{\"presentation\":\"modal\"}},\"breakpoint\":{\"mobile\":{…}}}`. Beats page rules (`window.components.responsive*`) and values set on the element; never reflects. An entry of `null` ignores the page rules while it matches.";
 const RESPONSIVE_CALLBACK_DESCRIPTION =
   'Instance computed responsive rule (core, SPEC §6.7): `(ctx) => partial config | null | undefined`, ctx `{ env, deviceClass, breakpoint, element, component, config }` (`config` = base). Runs after `responsive` (wins key by key); re-runs on environment flips, throttled viewport-width changes, rule and config changes. `null` ignores every page rule.';
 

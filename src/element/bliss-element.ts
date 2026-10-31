@@ -47,6 +47,7 @@ import {
   hasPageRules,
   isResponsiveMap,
   onResponsiveChange,
+  RESPONSIVE_MAP_AXES,
   readPageRules,
   responsiveValueEqual,
   RESPONSIVE_ATTRIBUTE,
@@ -54,6 +55,7 @@ import {
   type ResponsiveCallback,
   type ResponsiveContext,
   type ResponsiveMap,
+  type ResponsiveMapAxis,
 } from './responsive.js';
 
 /**
@@ -545,11 +547,14 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   // ── responsive rules (SPEC §6.7) ───────────────────────────────────────────
 
   /**
-   * This instance's responsive map: partial configs keyed by device class
-   * (`mobile` / `tablet` / `desktop`), e.g. `{ tablet: { presentation: 'modal' } }`.
+   * This instance's responsive map: partial configs on two axes — `device`
+   * (keyed by `classifyDevice`: `mobile` / `tablet` / `desktop`) and `breakpoint`
+   * (keyed by the window-width bucket), e.g.
+   * `{ device: { tablet: { presentation: 'modal' } }, breakpoint: { mobile: { … } } }`.
+   * The breakpoint entry applies first, the device entry over it (device wins).
    * Also the JSON attribute `responsive`. Instance rules beat everything else —
-   * the page rules and this element's own attributes/properties. A class entry of
-   * `null` ignores every page rule on that class. Overrides never reflect to
+   * the page rules and this element's own attributes/properties. An entry of
+   * `null` (either axis) ignores every page rule while it matches. Overrides never reflect to
    * attributes; `this.config` and the property getters report the effective value.
    * `null` / `undefined` = no instance map.
    */
@@ -559,7 +564,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
 
   set responsive(value: ResponsiveMap | null | undefined) {
     if (value != null && !isResponsiveMap(value)) {
-      this.#warn('rejected invalid value for property "responsive" (an object keyed by device class, or null); keeping previous value', value);
+      this.#warn('rejected invalid value for property "responsive" (an object { device?, breakpoint? }, or null); keeping previous value', value);
       return;
     }
     this.#responsiveMap = value ?? undefined;
@@ -1572,7 +1577,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       isValid = false;
     }
     if (!isValid || (parsed !== null && !isResponsiveMap(parsed))) {
-      this.#warn(`rejected invalid value for attribute ${RESPONSIVE_ATTRIBUTE}="${raw}" (a JSON object keyed by device class); keeping previous value`);
+      this.#warn(`rejected invalid value for attribute ${RESPONSIVE_ATTRIBUTE}="${raw}" (a JSON object { "device"?, "breakpoint"? }); keeping previous value`);
       return;
     }
     this.responsive = parsed as ResponsiveMap | null;
@@ -1610,6 +1615,45 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       out[key] = value;
     }
     return false;
+  }
+
+  /**
+   * Merge one responsive map (SPEC §6.7) into `out`: the `breakpoint` entry
+   * (width bucket) first, then the `device` entry (`classifyDevice`) over it —
+   * device wins on the same key. Any other top-level key (e.g. the pre-rc15
+   * `{ mobile: … }` shape) warns once per element and is ignored; a non-object
+   * axis likewise. Returns `true` when either axis entry is `null` (the instance
+   * opt-out signal; the caller decides if it counts).
+   */
+  #mergeMap(
+    map: ResponsiveMap,
+    deviceClass: string,
+    breakpoint: string,
+    label: string,
+    out: Record<string, unknown>,
+    isGlobal = false,
+  ): boolean {
+    const unknown = Object.keys(map).filter((key) => !(RESPONSIVE_MAP_AXES as readonly string[]).includes(key));
+    if (unknown.length > 0) {
+      this.#warnResponsiveOnce(
+        `${label}: unknown top-level key(s) ${unknown.map((k) => `"${k}"`).join(', ')} ignored — a responsive map is { device?: { <deviceClass>: {…} }, breakpoint?: { <breakpoint>: {…} } }`,
+      );
+    }
+    let isNull = false;
+    const axes: Array<[ResponsiveMapAxis, string]> = [
+      ['breakpoint', breakpoint],
+      ['device', deviceClass],
+    ];
+    for (const [axis, key] of axes) {
+      const entries = map[axis];
+      if (entries == null) continue;
+      if (!isResponsiveMap(entries)) {
+        this.#warnResponsiveOnce(`${label}.${axis} must be an object; ignored`, entries);
+        continue;
+      }
+      if (this.#mergeRule((entries as Record<string, unknown>)[key], `${label}.${axis}.${key}`, out, isGlobal)) isNull = true;
+    }
+    return isNull;
   }
 
   /** Call a rule callback; a throw is logged and counts as `undefined`. */
@@ -1656,8 +1700,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       };
       // Instance layers first (they decide the opt-out): map → callback.
       if (this.#responsiveMap) {
-        const label = `<${tag}> responsive.${deviceClass}`;
-        if (this.#mergeRule(this.#responsiveMap[deviceClass], label, instance)) isOptOut = true;
+        if (this.#mergeMap(this.#responsiveMap, deviceClass, env.breakpoint, `<${tag}> responsive`, instance)) isOptOut = true;
       }
       if (this.#responsiveCallback) {
         const label = `<${tag}> responsiveCallback`;
@@ -1667,14 +1710,14 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
         // Page layers, later wins: global map → global callback → per-tag map → per-tag callback.
         // A page-level `null` is the same as `undefined`.
         if (page.globalMap) {
-          this.#mergeRule(page.globalMap[deviceClass], `window.components.responsive.${deviceClass}`, pageOut, true);
+          this.#mergeMap(page.globalMap, deviceClass, env.breakpoint, 'window.components.responsive', pageOut, true);
         }
         if (page.globalCallback) {
           const label = 'window.components.responsiveCallback';
           this.#mergeRule(this.#runRuleCallback(page.globalCallback, ctx, label), label, pageOut, true);
         }
         if (page.tagMap) {
-          this.#mergeRule(page.tagMap[deviceClass], `window.components['${tag}'].responsive.${deviceClass}`, pageOut);
+          this.#mergeMap(page.tagMap, deviceClass, env.breakpoint, `window.components['${tag}'].responsive`, pageOut);
         }
         if (page.tagCallback) {
           const label = `window.components['${tag}'].responsiveCallback`;
@@ -1706,7 +1749,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * no cost otherwise): the discrete channel for any layer, plus the continuous
    * viewport channel (throttled) while a CALLBACK layer applies — a callback may
    * test `env.viewportWidth`, which moves between breakpoint lines. Maps are keyed
-   * by device class, so they stay on the discrete channel only.
+   * by device class / breakpoint — both discrete — so they stay on the discrete channel.
    */
   #syncResponsiveEnv(hasAny: boolean, hasCallback: boolean): void {
     const isLive = this.isConnected && !this.#isDestroyed;

@@ -1,14 +1,14 @@
 /**
  * Responsive rules (SPEC §6.7) — page-wide, per-tag and per-instance partial
- * configs keyed by device class (or computed by a callback), layered on top of a
+ * configs keyed by device class and/or breakpoint (or computed by a callback), layered on top of a
  * component's BASE config by {@link BlissElement}. One generic mechanism for every
  * component, so an app tunes "what a component does on a phone" in one place:
  *
  * ```js
- * window.components.responsive = { mobile: { presentation: 'fullscreen' } };
+ * window.components.responsive = { device: { mobile: { presentation: 'fullscreen' } } };
  * window.components.responsiveCallback = (ctx) => (ctx.env.orientation === 'landscape' ? { … } : undefined);
- * window.components['web-multiselect'].responsive = { tablet: { presentation: 'modal' } };
- * el.responsive = { tablet: { presentation: 'floating' } };      // also <x responsive='{"tablet":{…}}'>
+ * window.components['web-multiselect'].responsive = { breakpoint: { tablet: { presentation: 'modal' } } };
+ * el.responsive = { device: { tablet: { presentation: 'floating' } } };   // also <x responsive='{"device":{"tablet":{…}}}'>
  * el.responsiveCallback = (ctx) => ({ … });
  * ```
  *
@@ -21,8 +21,25 @@
 import type { DeviceClass, EnvironmentSnapshot } from '../environment/environment.js';
 import { coreLog } from '../logging/element-logger.js';
 
-/** Partial configs keyed by device class — the declarative form of a responsive rule. */
-export type ResponsiveMap<C = Record<string, unknown>> = Partial<Record<DeviceClass, Partial<C> | null>>;
+/**
+ * The declarative form of a responsive rule — partial configs on two explicit axes:
+ * - `device` — keyed by `classifyDevice(env)` (capability first, then the short side);
+ * - `breakpoint` — keyed by `env.breakpoint` (window-width buckets, 768 / 1024 lines).
+ *
+ * Within one map the `breakpoint` entry applies first, then the `device` entry over
+ * it (device wins on the same key). A `null` entry in an INSTANCE map = ignore every
+ * page rule for this element; in a page map it means nothing.
+ */
+export type ResponsiveMap<C = Record<string, unknown>> = {
+  device?: Partial<Record<DeviceClass, Partial<C> | null>>;
+  breakpoint?: Partial<Record<string, Partial<C> | null>>;
+};
+
+/** The top-level keys of a {@link ResponsiveMap}. */
+export type ResponsiveMapAxis = 'device' | 'breakpoint';
+
+/** Allowed top-level keys of a {@link ResponsiveMap}, in merge order (later wins). */
+export const RESPONSIVE_MAP_AXES: readonly ResponsiveMapAxis[] = ['breakpoint', 'device'];
 
 /** What a {@link ResponsiveCallback} receives. */
 export interface ResponsiveContext<C = Record<string, unknown>> {
@@ -121,7 +138,7 @@ function defineRuleAccessors(
   const preCallback = adopt(CALLBACK_KEY);
   const setMap = (value: unknown): void => {
     if (value != null && !isResponsiveMap(value)) {
-      coreLog(undefined, 'INIT', 'ELEMENT').warn(`${label}.responsive must be an object keyed by device class (or null); keeping previous value`, value);
+      coreLog(undefined, 'INIT', 'ELEMENT').warn(`${label}.responsive must be an object { device?, breakpoint? } (or null); keeping previous value`, value);
       return;
     }
     store.setMap(value ?? undefined);

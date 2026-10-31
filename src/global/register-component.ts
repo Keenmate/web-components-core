@@ -60,7 +60,7 @@ export interface RegisteredComponent<T extends HTMLElement = HTMLElement> {
   /** The live, connected instances of this tag — the per-instance handles. */
   getInstances(): T[];
   /**
-   * Per-tag responsive map (SPEC §6.7): partial configs keyed by device class,
+   * Per-tag responsive map (SPEC §6.7): partial configs by `device` class and/or `breakpoint`,
    * applied to every instance of this tag (beats the page-wide rules, loses to
    * anything set on the instance). Assigning re-evaluates the live instances.
    */

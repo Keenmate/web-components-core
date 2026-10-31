@@ -142,7 +142,7 @@ describe('responsive rules — first build + basics', () => {
   it('the first build already gets the rule (no flash of the desktop layout)', () => {
     device('mobile');
     comps(); // ensure window.components exists
-    window.components!.responsive = { mobile: { presentation: 'fullscreen', columns: 1 } };
+    window.components!.responsive = { device: { mobile: { presentation: 'fullscreen', columns: 1 } } };
     const el = make();
     expect(el.calls).toEqual(['reinit']);
     expect(el.seenAtReinit.presentation).toBe('fullscreen');
@@ -154,7 +154,7 @@ describe('responsive rules — first build + basics', () => {
     device('mobile');
     window.components = window.components ?? {};
     const el = make(`<${TAG} defer></${TAG}>`);
-    el.responsive = { mobile: { columns: 1 } };
+    el.responsive = { device: { mobile: { columns: 1 } } };
     expect(el.calls).toEqual([]);
     el.release();
     expect(el.calls).toEqual(['reinit']);
@@ -163,7 +163,7 @@ describe('responsive rules — first build + basics', () => {
 
   it('overrides never reflect to attributes and never count as explicit', () => {
     const el = make(`<${TAG}></${TAG}>`);
-    el.responsive = { desktop: { presentation: 'modal' } };
+    el.responsive = { device: { desktop: { presentation: 'modal' } } };
     expect(el.presentation).toBe('modal');
     expect(el.hasAttribute('presentation')).toBe(false);
     el.responsive = null;
@@ -178,13 +178,13 @@ describe('responsive rules — precedence', () => {
     const set = (k: string) => el.label;
     void set;
 
-    window.components!.responsive = { desktop: { label: 'global-map' } };
+    window.components!.responsive = { device: { desktop: { label: 'global-map' } } };
     expect(el.label).toBe('global-map');
 
     window.components!.responsiveCallback = () => ({ label: 'global-cb' });
     expect(el.label).toBe('global-cb');
 
-    comps()[TAG].responsive = { desktop: { label: 'tag-map' } };
+    comps()[TAG].responsive = { device: { desktop: { label: 'tag-map' } } };
     expect(el.label).toBe('tag-map');
 
     comps()[TAG].responsiveCallback = () => ({ label: 'tag-cb' });
@@ -193,7 +193,7 @@ describe('responsive rules — precedence', () => {
     el.setAttribute('label', 'explicit');
     expect(el.label).toBe('explicit'); // an attribute on the element beats every page rule
 
-    el.responsive = { desktop: { label: 'instance-map' } };
+    el.responsive = { device: { desktop: { label: 'instance-map' } } };
     expect(el.label).toBe('instance-map');
 
     el.responsiveCallback = () => ({ label: 'instance-cb' });
@@ -219,27 +219,27 @@ describe('responsive rules — precedence', () => {
 
   it('merges key by key across layers', () => {
     window.components = window.components ?? {};
-    window.components.responsive = { desktop: { label: 'g', isCompact: true } };
+    window.components.responsive = { device: { desktop: { label: 'g', isCompact: true } } };
     const el = make();
-    el.responsive = { desktop: { label: 'i' } };
+    el.responsive = { device: { desktop: { label: 'i' } } };
     expect(el.label).toBe('i');
     expect(el.isCompact).toBe(true);
   });
 
   it('a property assigned while a page rule overrides it becomes explicit and wins', () => {
     window.components = window.components ?? {};
-    window.components.responsive = { desktop: { columns: 3 } };
+    window.components.responsive = { device: { desktop: { columns: 3 } } };
     const el = make();
     expect(el.columns).toBe(3);
     el.columns = 4;
     expect(el.columns).toBe(4);
-    window.components.responsive = { desktop: { columns: 5 } };
+    window.components.responsive = { device: { desktop: { columns: 5 } } };
     expect(el.columns).toBe(4); // still explicit
   });
 
   it('a property assigned while an instance rule overrides it updates the base only', () => {
     const el = make();
-    el.responsive = { desktop: { columns: 3 } };
+    el.responsive = { device: { desktop: { columns: 3 } } };
     const seen: Array<Readonly<Record<string, unknown>>> = [];
     el.responsiveCallback = (ctx) => {
       seen.push(ctx.config);
@@ -257,7 +257,7 @@ describe('responsive rules — precedence', () => {
 describe('responsive rules — null opt-out', () => {
   beforeEach(() => {
     window.components = window.components ?? {};
-    window.components.responsive = { desktop: { label: 'page', isCompact: true } };
+    window.components.responsive = { device: { desktop: { label: 'page', isCompact: true } } };
   });
 
   it('an instance callback returning null ignores every page rule', () => {
@@ -270,13 +270,13 @@ describe('responsive rules — null opt-out', () => {
 
   it('an instance map entry of null ignores the page rules on that class', () => {
     const el = make();
-    el.responsive = { desktop: null, mobile: { label: 'm' } };
+    el.responsive = { device: { desktop: null, mobile: { label: 'm' } } };
     expect(el.label).toBe('x');
   });
 
   it('an instance null still applies the instance map values', () => {
     const el = make();
-    el.responsive = { desktop: { label: 'own' } };
+    el.responsive = { device: { desktop: { label: 'own' } } };
     el.responsiveCallback = () => null;
     expect(el.label).toBe('own');
     expect(el.isCompact).toBe(false);
@@ -290,7 +290,7 @@ describe('responsive rules — null opt-out', () => {
 });
 
 describe('responsive rules — environment re-run + diffing', () => {
-  const map: ResponsiveMap = { mobile: { presentation: 'fullscreen' }, tablet: { presentation: 'modal' } };
+  const map: ResponsiveMap = { device: { mobile: { presentation: 'fullscreen' }, tablet: { presentation: 'modal' } } };
 
   it('re-runs on a device flip and stages only the changed keys in one batch', async () => {
     const el = make();
@@ -337,7 +337,7 @@ describe('responsive rules — environment re-run + diffing', () => {
 
   it('a reinit-level key triggers reinit, not update', async () => {
     const el = make();
-    el.responsive = { mobile: { columns: 1 } };
+    el.responsive = { device: { mobile: { columns: 1 } } };
     await el.whenSettled();
     el.calls.length = 0;
     device('mobile');
@@ -387,7 +387,7 @@ describe('responsive rules — environment re-run + diffing', () => {
   it('config changed while detached is applied on reconnect', () => {
     const el = make();
     el.remove();
-    el.responsive = { desktop: { columns: 7 } };
+    el.responsive = { device: { desktop: { columns: 7 } } };
     el.calls.length = 0;
     document.body.appendChild(el);
     expect(el.calls).toEqual(['reinit']);
@@ -437,7 +437,7 @@ describe('responsive rules — continuous width (callbacks only)', () => {
 
   it('a map-only element does not subscribe to the continuous channel', () => {
     const el = make();
-    el.responsive = { mobile: { columns: 1 } };
+    el.responsive = { device: { mobile: { columns: 1 } } };
     expect(__viewportSubscriberCount()).toBe(0);
     el.responsiveCallback = () => undefined;
     expect(__viewportSubscriberCount()).toBe(1);
@@ -448,6 +448,22 @@ describe('responsive rules — continuous width (callbacks only)', () => {
     expect(__viewportSubscriberCount()).toBe(0);
     document.body.appendChild(el);
     expect(__viewportSubscriberCount()).toBe(1);
+  });
+
+  it('a breakpoint-only map flips when a desktop window is resized across a line (discrete channel)', async () => {
+    const el = make();
+    el.responsive = { breakpoint: { mobile: { columns: 1 }, tablet: { columns: 3 } } };
+    expect(__viewportSubscriberCount()).toBe(0); // maps stay on the discrete channel
+    expect(el.columns).toBe(2); // 1280 = desktop bucket
+    resize(900);
+    await el.whenSettled();
+    expect(el.columns).toBe(3);
+    resize(700);
+    await el.whenSettled();
+    expect(el.columns).toBe(1);
+    resize(1280);
+    await el.whenSettled();
+    expect(el.columns).toBe(2);
   });
 
   it('no update when the callback result is unchanged across width changes', async () => {
@@ -468,13 +484,88 @@ describe('responsive rules — continuous width (callbacks only)', () => {
   });
 });
 
+describe('responsive rules — map axes (device / breakpoint)', () => {
+  it('device beats breakpoint on the same key; other keys merge', () => {
+    device('tablet'); // iPad portrait: device `tablet`, 768 wide = the `mobile` width bucket
+    const el = make();
+    el.responsive = {
+      breakpoint: { mobile: { columns: 1, label: 'bp' } },
+      device: { tablet: { columns: 3 } },
+    };
+    expect(el.columns).toBe(3);
+    expect(el.label).toBe('bp');
+  });
+
+  it('phone → device entry; desktop narrowed → breakpoint entry (the docs example)', () => {
+    const el = make();
+    el.responsive = {
+      device: { mobile: { isCompact: true }, tablet: { label: 'tablet' } },
+      breakpoint: { mobile: { label: 'narrow' } },
+    };
+    expect(el.isCompact).toBe(false);
+    expect(el.label).toBe('x');
+    device('mobile');
+    expect(el.isCompact).toBe(true);
+    expect(el.label).toBe('narrow');
+    device('tablet');
+    expect(el.isCompact).toBe(false);
+    expect(el.label).toBe('tablet');
+  });
+
+  it('page maps use the same axes, breakpoint then device inside each layer', () => {
+    device('mobile');
+    window.components = window.components ?? {};
+    window.components.responsive = { breakpoint: { mobile: { label: 'g-bp', columns: 1 } }, device: { mobile: { label: 'g-dev' } } };
+    const el = make();
+    expect(el.label).toBe('g-dev');
+    expect(el.columns).toBe(1);
+  });
+
+  it('an instance null on the breakpoint axis ignores the page rules', () => {
+    window.components = window.components ?? {};
+    window.components.responsive = { device: { desktop: { label: 'page' } } };
+    const el = make();
+    expect(el.label).toBe('page');
+    el.responsive = { breakpoint: { desktop: null } };
+    expect(el.label).toBe('x');
+  });
+
+  it('the old device-keyed shape warns once per element and is ignored', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const el = make();
+    el.responsive = { desktop: { label: 'old' } } as never;
+    expect(el.label).toBe('x');
+    el.label = 'y';
+    await el.whenSettled();
+    const hits = warn.mock.calls.map((c) => c.join(' ')).filter((t) => t.includes('unknown top-level key(s) "desktop"'));
+    expect(hits).toHaveLength(1);
+  });
+
+  it('the old shape in a page map warns too and is ignored', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    window.components = window.components ?? {};
+    window.components.responsive = { desktop: { label: 'old' } } as never;
+    const el = make();
+    expect(el.label).toBe('x');
+    expect(warn.mock.calls.map((c) => c.join(' ')).join('\n')).toMatch(/window\.components\.responsive: unknown top-level key\(s\) "desktop"/);
+  });
+
+  it('a non-object axis warns and is ignored', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const el = make();
+    el.responsive = { device: 'mobile', breakpoint: { desktop: { label: 'bp' } } } as never;
+    expect(el.label).toBe('bp');
+    expect(warn.mock.calls.map((c) => c.join(' ')).join('\n')).toMatch(/responsive\.device must be an object/);
+  });
+});
+
 describe('responsive rules — validation', () => {
   it('invalid values, unknown keys and reserved keys warn and are skipped', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const el = make();
-    el.responsive = {
+    el.responsive = { device: {
       desktop: { presentation: 'nope', bogus: 1, responsive: {}, shouldDefer: true, label: 'ok' } as never,
-    };
+    } };
     expect(el.presentation).toBe('auto');
     expect(el.label).toBe('ok');
     const text = warn.mock.calls.map((c) => c.join(' ')).join('\n');
@@ -487,7 +578,7 @@ describe('responsive rules — validation', () => {
   it('unknown keys in the page-wide (global) rules are skipped silently', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     window.components = window.components ?? {};
-    window.components.responsive = { desktop: { someOtherComponentsKey: 1, label: 'g' } as never };
+    window.components.responsive = { device: { desktop: { someOtherComponentsKey: 1, label: 'g' } as never } };
     const el = make();
     expect(el.label).toBe('g');
     expect(warn).not.toHaveBeenCalled();
@@ -496,7 +587,7 @@ describe('responsive rules — validation', () => {
   it('a throwing callback is logged and treated as undefined', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const el = make();
-    el.responsive = { desktop: { label: 'map' } };
+    el.responsive = { device: { desktop: { label: 'map' } } };
     el.responsiveCallback = () => {
       throw new Error('boom');
     };
@@ -507,10 +598,10 @@ describe('responsive rules — validation', () => {
   it('rejects a non-object responsive / non-function responsiveCallback', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const el = make();
-    el.responsive = { desktop: { label: 'a' } };
+    el.responsive = { device: { desktop: { label: 'a' } } };
     el.responsive = 'nope' as never;
     el.responsiveCallback = 42 as never;
-    expect(el.responsive).toEqual({ desktop: { label: 'a' } });
+    expect(el.responsive).toEqual({ device: { desktop: { label: 'a' } } });
     expect(el.responsiveCallback).toBeNull();
     expect(warn).toHaveBeenCalledTimes(2);
   });
@@ -518,16 +609,21 @@ describe('responsive rules — validation', () => {
 
 describe('responsive rules — attribute + pre-upgrade', () => {
   it('reads the responsive attribute as JSON; removing it clears the map', () => {
-    const el = make(`<${TAG} responsive='{"desktop":{"label":"attr"}}'></${TAG}>`);
+    const el = make(`<${TAG} responsive='{"device":{"desktop":{"label":"attr"}}}'></${TAG}>`);
     expect(el.label).toBe('attr');
-    expect(el.responsive).toEqual({ desktop: { label: 'attr' } });
+    expect(el.responsive).toEqual({ device: { desktop: { label: 'attr' } } });
     el.removeAttribute('responsive');
     expect(el.label).toBe('x');
   });
 
+  it('a breakpoint-axis JSON attribute works', () => {
+    const el = make(`<${TAG} responsive='{"breakpoint":{"desktop":{"label":"bp-attr"}}}'></${TAG}>`);
+    expect(el.label).toBe('bp-attr');
+  });
+
   it('invalid JSON warns and keeps the previous map', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const el = make(`<${TAG} responsive='{"desktop":{"label":"attr"}}'></${TAG}>`);
+    const el = make(`<${TAG} responsive='{"device":{"desktop":{"label":"attr"}}}'></${TAG}>`);
     el.setAttribute('responsive', '{nope');
     expect(el.label).toBe('attr');
     expect(warn).toHaveBeenCalled();
@@ -537,7 +633,7 @@ describe('responsive rules — attribute + pre-upgrade', () => {
     const tag = 'resp-late-element';
     const el = document.createElement(tag) as Resp;
     const cb: ResponsiveCallback = () => ({ label: 'cb' });
-    (el as unknown as Record<string, unknown>).responsive = { desktop: { isCompact: true } };
+    (el as unknown as Record<string, unknown>).responsive = { device: { desktop: { isCompact: true } } };
     (el as unknown as Record<string, unknown>).responsiveCallback = cb;
     document.body.appendChild(el);
     class Late extends RespElement {}
@@ -551,15 +647,15 @@ describe('responsive rules — attribute + pre-upgrade', () => {
 describe('responsive rules — page registry', () => {
   it('window.components.responsive / responsiveCallback are non-enumerable', () => {
     registerComponent(TAG, RespElement as unknown as CustomElementConstructor, { config: { name: 'x', version: '1' }, shouldAutoDefine: false });
-    window.components!.responsive = { desktop: {} };
+    window.components!.responsive = { device: { desktop: {} } };
     window.components!.responsiveCallback = () => undefined;
     expect(Object.keys(window.components!)).toEqual([TAG]);
   });
 
   it('adopts plain values the page set before core loaded (global + per-tag), keeping the entry object', () => {
     // A fresh page: the page script ran before any component bundle.
-    const pageEntry = { responsive: { desktop: { label: 'tag-early' } } };
-    window.components = { responsive: { desktop: { isCompact: true } }, [TAG]: pageEntry } as never;
+    const pageEntry = { responsive: { device: { desktop: { label: 'tag-early' } } } };
+    window.components = { responsive: { device: { desktop: { isCompact: true } } }, [TAG]: pageEntry } as never;
     const entry = registerComponent(TAG, RespElement as unknown as CustomElementConstructor, {
       config: { name: 'x', version: '1' },
       shouldAutoDefine: false,
@@ -578,12 +674,12 @@ describe('responsive rules — page registry', () => {
     const b = make();
     a.calls.length = 0;
     b.calls.length = 0;
-    comps()[TAG].responsive = { desktop: { label: 'L', isCompact: true } };
+    comps()[TAG].responsive = { device: { desktop: { label: 'L', isCompact: true } } };
     await a.whenSettled();
     await b.whenSettled();
     expect(a.calls).toEqual(['update:isCompact,label']);
     expect(b.calls).toEqual(['update:isCompact,label']);
-    comps()[TAG].responsive = { desktop: { label: 'L', isCompact: true } }; // same result
+    comps()[TAG].responsive = { device: { desktop: { label: 'L', isCompact: true } } }; // same result
     await Promise.resolve();
     expect(a.calls).toHaveLength(1);
   });
@@ -593,7 +689,7 @@ describe('responsive rules — page registry', () => {
     define('resp-other-element', Other as unknown as CustomElementConstructor);
     registerComponent(TAG, RespElement as unknown as CustomElementConstructor, { config: { name: 'x', version: '1' }, shouldAutoDefine: false });
     const other = make(`<resp-other-element></resp-other-element>`);
-    comps()[TAG].responsive = { desktop: { label: 'mine' } };
+    comps()[TAG].responsive = { device: { desktop: { label: 'mine' } } };
     expect(other.label).toBe('x');
   });
 });
