@@ -9,5 +9,7 @@ dist/
 /blob-report/
 /playwright/.cache/
 
-# Examples site build (npm run build:examples)
-/dist-examples/
+# Examples site build (npm run build:examples) + per-developer make overrides (kmwc)
+# kmwc
+dist-examples/
+.makefile.env

@@ -88,6 +88,15 @@
     "theme": {
       "accentColor": "#667eea",
       "accentEndColor": "#764ba2"
+    },
+    "analytics": {
+      "plausibleSiteId": "pa-afV_BL6-TQHO6eCUUmxRx"
+    },
+    "sync": {
+      "skippedFiles": [
+        "Makefile",
+        "CLAUDE.md"
+      ]
     }
   }
 }
