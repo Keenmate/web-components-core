@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test — BlissElement lifecycle (build once, activate many; defer; destroy)</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>Lifecycle fixture</h1>
+    <p>Targeted by <code>e2e/lifecycle.spec.ts</code> — reinit → connect → ready order, defer / release, DOM moves, removedCallback, destroy, a throwing reinit.</p>
+
+    <div class="fixture">
+        <div class="fixture-label">#stage — the spec creates fx-lifecycle cards here</div>
+        <div id="stage"></div>
+    </div>
+
+    <div class="fixture">
+        <div class="fixture-label">#box-a / #box-b — move targets (#neighbour is a sibling in box A)</div>
+        <div class="fixture-controls">
+            <div id="box-a">box A <span id="neighbour">neighbour</span></div>
+            <div id="box-b">box B</div>
+        </div>
+    </div>
+
+    <div class="fixture">
+        <div class="fixture-label">hook log (window.lc)</div>
+        <pre id="log" class="fixture-log"></pre>
+    </div>
+
+    <script type="module">
+        import { cards, lc, makeCard } from '/test/lifecycle-fixtures.ts';
+        window.lc = lc;
+        window.makeCard = makeCard;
+        window.cards = cards;
+        document.body.dataset.ready = '';
+    </script>
+</body>
+</html>

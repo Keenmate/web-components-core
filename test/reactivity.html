@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test — reactivity (update / reinit / none, batching, presets, live getters)</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>Reactivity fixture</h1>
+    <p>Targeted by <code>e2e/reactivity.spec.ts</code> — update vs reinit vs none, coalescing, setAttributes / batch, whenSettled / flush, detached configure, getBatchValuesCallback presets, getLiveValue.</p>
+
+    <div class="fixture">
+        <div class="fixture-label">#hooks — fx-reactivity (update vs reinit)</div>
+        <fx-reactivity id="hooks"></fx-reactivity>
+    </div>
+
+    <div class="fixture">
+        <div class="fixture-label">#batching — fx-reactivity (coalescing, whenSettled, flush)</div>
+        <fx-reactivity id="batching"></fx-reactivity>
+    </div>
+
+    <div class="fixture">
+        <div class="fixture-label">#sandbox — scratch container for the detached-configure check</div>
+        <div id="sandbox"></div>
+    </div>
+
+    <div class="fixture">
+        <div class="fixture-label">#presets — fx-presets (getBatchValuesCallback, getLiveValue)</div>
+        <fx-presets id="presets"></fx-presets>
+    </div>
+
+    <script type="module">
+        import { recordHooks } from '/test/reactivity-fixtures.ts';
+        window.recordHooks = recordHooks;
+        await Promise.all([...document.querySelectorAll('fx-reactivity, fx-presets')].map((el) => el.whenSettled()));
+        document.body.dataset.ready = '';
+    </script>
+</body>
+</html>
