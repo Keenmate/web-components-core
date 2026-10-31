@@ -10,7 +10,7 @@ test.describe('examples index', () => {
   test('renders a card per registered page and a version badge', async ({ page }) => {
     await page.goto('/index.html');
     // Rendered by the devkit's renderExamplesIndex() from the page registry.
-    await expect(page.locator('.kmwc-index__card')).toHaveCount(6);
+    await expect(page.locator('.kmwc-index__card')).toHaveCount(9);
     await expect(page.locator('[data-kmwc-version]')).toHaveText(/^v\d/);
     // The XXYY chapter codes lead the card titles.
     await expect(page.locator('.kmwc-index__card-title', { hasText: /^TT · Tooltips/ })).toBeVisible();

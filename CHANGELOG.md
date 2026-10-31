@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   copy-link buttons. The private `examples-shared.css`, `examples-chapter-nav.js` and
   `examples-copy-link.js` are gone. The package build is unchanged (`npm run build`, tsc); plain
   `vite build` is refused so it can't wipe `dist/`. Nothing new ships in the tarball.
+- **New example pages for the core itself** — `IN · Reactive inputs` (input table, converters,
+  invalid values, reflection, update vs reinit, batching, `whenSettled()` / `flush()`, presets, live
+  getters), `LC · Lifecycle` (reinit / connect / ready, `defer` + `release()`, DOM moves,
+  `removedCallback`, `destroy()`, throwing hooks) and `RS · Environment & responsive rules` (live
+  device class / breakpoint, discrete vs continuous channels, `resolvePresentation`, responsive maps
+  and callbacks with the full precedence chain), each on real `BlissElement` demo elements with e2e.
 
 ## [1.0.0-rc15] - 2026-10-31
 
