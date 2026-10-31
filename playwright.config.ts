@@ -8,11 +8,12 @@ import { definePlaywrightConfig, devices } from '@keenmate/web-components-devkit
  * layout + a real `@floating-ui/dom` in a real browser. jsdom has no layout, so
  * the unit suite (vitest, mocked floating-ui) can only assert *which* reference
  * a helper anchors to; proving the tooltip actually lands where it should needs
- * a browser. That is what this suite is for. e2e/examples.spec.ts also smoke-tests
- * the human-facing example pages.
+ * a browser. That is what this suite is for.
  *
- * Specs live in e2e/ and drive fixture pages under test/*.html plus the root
- * examples-*.html pages, served by the vite dev server. baseURL and the
+ * Specs live in e2e/ and drive dedicated minimal fixture pages under test/*.html
+ * (never the example pages — see test/COVERAGE.md); the one exception is
+ * e2e/examples.spec.ts, a smoke test of the example site. Served by the vite dev
+ * server. baseURL and the
  * `npm run dev` web server come from package.json#kmwc.ports.dev (the devkit preset).
  *
  * Commands:
