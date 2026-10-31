@@ -1,4 +1,4 @@
-.PHONY: help setup dev kill-port build typecheck test test-e2e test-e2e-ui test-e2e-headed test-e2e-install verify package publish publish-rc publish-dry clean clean-dist check-version update-deps
+.PHONY: help setup dev build-examples preview-examples kill-port build typecheck test test-e2e test-e2e-ui test-e2e-headed test-e2e-install verify package publish publish-rc publish-dry clean clean-dist check-version update-deps
 
 help: ## Show this help message
 	@echo "Available targets:"
@@ -9,14 +9,21 @@ setup: ## Install dependencies and prepare project
 	npm install
 	@echo "Setup complete"
 
-dev: ## Start the vite dev server (manual example site, port 12400)
+dev: ## Start the vite dev server (example pages, port 15000 - package.json#kmwc.ports.dev)
 	@echo "Starting development server..."
 	@rm -rf node_modules/.vite
 	npm run dev
 
-# Free the vite dev-server ports. Vite starts at 12400 and hops to the next free
-# port when one is busy, so a stale run can hold any of 12400-12405. Kills whatever
-# is LISTENING on those ports, covering both IPv4 and IPv6 (vite binds [::1] too).
+build-examples: ## Build the static examples site (vite --mode examples -> dist-examples/)
+	npm run build:examples
+
+preview-examples: ## Serve the built examples site (port 15001)
+	npm run preview:examples
+
+# Free core's own dev-server ports: 15000 (dev) and 15001 (examples preview), the
+# registry block in web-components/components.json. The devkit preset runs vite with
+# strictPort, so it never hops to a neighbouring port (and never onto another repo's).
+# Kills whatever is LISTENING on those ports, covering both IPv4 and IPv6 (vite binds [::1] too).
 # On Windows a one-line PowerShell call does the work: Get-NetTCPConnection lists both
 # IPv4 and IPv6 listeners, and Stop-Process kills each owning PID. Recipes here default
 # to Git Bash (sh), so the recipe stays in sh and shells out to powershell rather than
@@ -24,14 +31,14 @@ dev: ## Start the vite dev server (manual example site, port 12400)
 # grep/awk-based help target). `$$_` escapes make's `$`, and the command is single-quoted
 # so sh doesn't expand `$_` (its own last-arg variable) before PowerShell — PowerShell must
 # receive a literal `$_` pipeline variable.
-kill-port: ## Free the vite dev-server ports (12400-12405)
-	@echo "Freeing ports 12400-12405..."
+kill-port: ## Free core's vite ports (15000 dev, 15001 preview)
+	@echo "Freeing ports 15000-15001..."
 ifeq ($(OS),Windows_NT)
-	-@powershell -NoProfile -Command '12400..12405 | ForEach-Object { Get-NetTCPConnection -LocalPort $$_ -State Listen -ErrorAction SilentlyContinue } | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $$_ -Force -ErrorAction SilentlyContinue }'
+	-@powershell -NoProfile -Command '15000..15001 | ForEach-Object { Get-NetTCPConnection -LocalPort $$_ -State Listen -ErrorAction SilentlyContinue } | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $$_ -Force -ErrorAction SilentlyContinue }'
 else
-	-@for p in 12400 12401 12402 12403 12404 12405; do lsof -ti tcp:$$p | xargs -r kill -9; done
+	-@for p in 15000 15001; do lsof -ti tcp:$$p | xargs -r kill -9; done
 endif
-	@echo "Ports 12400-12405 are free"
+	@echo "Ports 15000-15001 are free"
 
 build: ## Build for production (tsc -> dist: ESM + .d.ts)
 	@echo "Building for production..."

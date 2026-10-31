@@ -1,0 +1,78 @@
+/* =============================================================================
+   POSITIONING DEMO SURFACES — page code for the /positioning example pages
+   (examples-tooltip / -popover / -anchor) and the <tooltip-card> demo component.
+   Everything else (layout, cards, controls, chapter nav, copy-link, theme
+   switch) comes from the devkit examples kit; these rules read its --kmwc-*
+   tokens so they follow the light / dark switch.
+   The tooltip helper adds role="tooltip" + the cssClass; the visible class
+   defaults to `is-visible`. Panels are portaled to <body> by createPopover.
+   ============================================================================= */
+
+/* A trigger chip the examples hover/click to drive a helper; the <tooltip-card>
+   demo component shares the look. */
+.pos-trigger,
+tooltip-card {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.1rem;
+    min-width: 7rem;
+    background: var(--kmwc-accent-light-bg);
+    border: 1px solid var(--kmwc-accent-color);
+    border-radius: 10px;
+    color: var(--kmwc-text-color-1);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: default;
+    user-select: none;
+}
+tooltip-card { min-width: 11rem; }
+.pos-trigger:focus-visible,
+tooltip-card:focus-visible {
+    outline: 2px solid var(--kmwc-accent-color);
+    outline-offset: 2px;
+}
+
+/* Tooltip bubble (createTooltip({ cssClass: 'demo-tt' })). Fixed-positioned by
+   the helper; starts hidden and fades/rises in on `.is-visible`. */
+.demo-tt {
+    position: fixed;
+    top: 0;
+    left: 0;
+    background: var(--demo-tt-bg, #1a202c);
+    color: var(--demo-tt-fg, #fff);
+    padding: 0.4rem 0.65rem;
+    border-radius: var(--demo-tt-radius, 8px);
+    font-size: 0.8rem;
+    font-weight: 500;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    transform: translateY(2px);
+    transition: opacity 0.12s ease, transform 0.12s ease;
+    z-index: 1000;
+}
+.demo-tt.is-visible { opacity: 1; transform: translateY(0); }
+
+/* Popover panel (createPopover). Portaled to <body>, positioned by the helper. */
+.demo-panel {
+    background: var(--kmwc-main-bg);
+    border: 1px solid var(--kmwc-accent-color);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    box-shadow: 0 16px 40px var(--kmwc-shadow-color);
+    z-index: 1000;
+}
+.demo-panel p { margin: 0 0 0.5rem; color: var(--kmwc-text-color-2); }
+.demo-panel p:last-child { margin-bottom: 0; }
+
+/* A tall spacer so an example can push a trigger near the viewport edge to show
+   flip behaviour. */
+.edge-box {
+    height: 60vh;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 0.5rem;
+}

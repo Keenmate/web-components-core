@@ -19,6 +19,12 @@ next to the code they cover. Source uses explicit `.js` extensions on relative
 imports (moduleResolution `Bundler`) and `verbatimModuleSyntax` (type-only
 imports must use `import type`).
 
+Example pages (`index.html`, `examples-*.html`) and the Playwright suite run on the
+shared devkit (`@keenmate/web-components-devkit`, devDependency only):
+`npm run dev` → port 15000 (`package.json#kmwc`), `npm run build:examples` →
+`dist-examples/`. The package build stays `npm run build` (tsc) — plain
+`vite build` (the devkit's library mode) is refused in `vite.config.ts`.
+
 One runtime dependency: **`@floating-ui/dom`** (the `/positioning` module,
 §12.2), imported only under `src/positioning/`, so it stays out of the base
 import graph. The logging engine is a vendored port of `loglevel`

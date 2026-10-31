@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Theme context — web-components-core</title>
-    <link rel="stylesheet" href="examples-shared.css">
     <style>
         .card-row { display: flex; gap: .8rem; flex-wrap: wrap; align-items: flex-start; }
         .stat { display: inline-block; font: 600 .85rem ui-monospace, 'Courier New', monospace; background: #0f172a;
@@ -69,7 +68,8 @@
                 <code>&lt;html&gt;</code>: core reads it once (<code>data-theme</code>, then <code>data-bs-theme</code>,
                 then <code>.dark</code> / <code>.light</code>; <code>&lt;html&gt;</code> before <code>&lt;body&gt;</code>),
                 caches it, and one shared observer re-detects only when a signal attribute changes. Add more cards — the
-                observer count doesn't move.
+                observer count doesn't move. The page's own theme switch (top right) sets the same
+                <code>data-theme</code> on <code>&lt;html&gt;</code>, so it drives these cards too.
             </p>
             <div class="controls">
                 <label>Signal on <code>&lt;html&gt;</code>:
@@ -78,7 +78,9 @@
                         <option value="class:dark">class="dark" (Tailwind)</option>
                         <option value="class:light">class="light"</option>
                         <option value="data-bs-theme:dark">data-bs-theme="dark" (Bootstrap 5.3)</option>
-                        <option value="data-theme:dark">data-theme="dark"</option>
+                        <option value="data-theme:light">data-theme="light" (page theme switch: ☀)</option>
+                        <option value="data-theme:dark">data-theme="dark" (page theme switch: ☾)</option>
+                        <option value="data-theme:auto">data-theme="auto" (page theme switch: ◐ → not a scheme → ignored)</option>
                         <option value="data-theme:corporate">data-theme="corporate" (not a scheme → ignored)</option>
                     </select>
                 </label>
@@ -273,9 +275,21 @@ getThemeContext();      // the detected page scheme: 'dark' | 'light' | null
                 e.target.value ? `<div id="panel" data-bs-theme="${e.target.value}">` : '<div id="panel">';
         });
 
+        // The examples kit's theme switch writes data-theme on <html> too — keep the
+        // select showing whatever signal is actually there. (attributeFilter has no
+        // data-bs-theme, so this observer isn't counted as a theme observer above.)
+        function syncPageSignal() {
+            const theme = html.getAttribute('data-theme');
+            const select = $('page-signal');
+            if (theme && select.querySelector(`option[value="data-theme:${theme}"]`)) select.value = `data-theme:${theme}`;
+            else if (!theme && select.value.startsWith('data-theme:')) select.value = '';
+            setTimeout(refreshStats);
+        }
+        new MutationObserver(syncPageSignal).observe(html, { attributes: true, attributeFilter: ['data-theme'] });
+        syncPageSignal();
+
         customElements.whenDefined('theme-card').then(refreshStats);
     </script>
 
-    <script type="module" src="examples-chapter-nav.js"></script>
 </body>
 </html>

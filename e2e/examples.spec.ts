@@ -9,10 +9,24 @@ import { test, expect } from './fixtures';
 test.describe('examples index', () => {
   test('renders a card per registered page and a version badge', async ({ page }) => {
     await page.goto('/index.html');
-    await expect(page.locator('.card-link')).toHaveCount(6);
-    await expect(page.locator('#version-badge')).toHaveText(/^v\d/);
-    // The XXYY chapter codes show on the cards.
-    await expect(page.locator('.card-code', { hasText: 'TT' })).toBeVisible();
+    // Rendered by the devkit's renderExamplesIndex() from the page registry.
+    await expect(page.locator('.kmwc-index__card')).toHaveCount(6);
+    await expect(page.locator('[data-kmwc-version]')).toHaveText(/^v\d/);
+    // The XXYY chapter codes lead the card titles.
+    await expect(page.locator('.kmwc-index__card-title', { hasText: /^TT · Tooltips/ })).toBeVisible();
+  });
+});
+
+test.describe('examples kit', () => {
+  test('example pages get the devkit chapter nav, copy-links and theme switch', async ({ page }) => {
+    await page.goto('/examples-tooltip.html');
+    await expect(page.locator('.kmwc-chapter-nav')).toHaveCount(1);
+    await expect(page.locator('.card h2 .kmwc-copy-link').first()).toBeAttached();
+    const themeSwitch = page.locator('.kmwc-theme-switch');
+    await expect(themeSwitch).toBeVisible();
+    const before = await page.evaluate(() => document.documentElement.dataset.theme);
+    await themeSwitch.click();
+    expect(await page.evaluate(() => document.documentElement.dataset.theme)).not.toBe(before);
   });
 });
 
