@@ -191,11 +191,11 @@ el.isDisabled = true;       // reflects disabled="" → still disabled → no se
                         <div class="fo-buttons"><button type="submit" id="fo03-nv-submit">Submit</button></div>
                         <div class="readout" id="fo03-nv-readout"></div>
                     </form>
-                    <div class="fo-form">
-                        <span class="fo-form-title">not form-associated</span>
+                    <form class="fo-form" id="do-fo03-plain-form" action="#">
+                        <span class="fo-form-title">not form-associated (inside a &lt;form&gt;)</span>
                         <core-demo-plain id="demo-fo03-plain"></core-demo-plain>
                         <div class="readout" id="fo03-plain-readout"></div>
-                    </div>
+                    </form>
                 </div>
                 <label class="demo-label" style="margin-top:1rem">Log (the buttons act on the left field):</label>
                 <div class="log-panel" id="fo03-log"></div>
@@ -215,7 +215,8 @@ el.validity.customError;   // true
 el.validationMessage;      // '"abc" is not a whole number'
 el.matches(':invalid');    // true
 form.requestSubmit();      // 'invalid' fires on el, no 'submit' (a novalidate form submits)
-plain.validity;            // undefined — plain.checkValidity() === true, plain.willValidate === false</pre></div>
+plain.validity;            // undefined — plain.checkValidity() === true, plain.willValidate === false
+plain.form;                // null — even inside a &lt;form&gt;: no association without formAssociated</pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -229,7 +230,7 @@ plain.validity;            // undefined — plain.checkValidity() === true, plai
                     <tbody>
                         <tr><td><code>static formAssociated = true</code></td><td>class opt-in</td><td>Makes the host a form-associated element; enables everything below.</td></tr>
                         <tr><td><code>internals</code></td><td>protected getter</td><td>The element's <code>ElementInternals</code>, attached lazily and memoized (<code>null</code> where unavailable). Never call <code>attachInternals()</code> yourself.</td></tr>
-                        <tr><td><code>form</code></td><td>getter</td><td>The associated <code>&lt;form&gt;</code> or <code>null</code> — honours <code>form="id"</code> and shadow boundaries.</td></tr>
+                        <tr><td><code>form</code></td><td>getter</td><td>The associated <code>&lt;form&gt;</code> or <code>null</code> — honours <code>form="id"</code> and shadow boundaries. Always <code>null</code> when not form-associated (even inside a <code>&lt;form&gt;</code>).</td></tr>
                         <tr><td><code>formDisabledCallback(isDisabled)</code></td><td>browser callback</td><td>Implemented once by core: records the browser's combined state, flushes pending writes, fires <code>disabledChanged</code> on a flip. Don't override.</td></tr>
                         <tr><td><code>isDisabled</code> / <code>disabled</code></td><td>input / attribute</td><td>The component's own disabled flag. Must have <code>shouldReflect: true</code> (warned otherwise).</td></tr>
                         <tr><td><code>isFormDisabled</code></td><td>protected getter</td><td>Disabled by an ancestor <code>&lt;fieldset disabled&gt;</code> only (outside its first <code>&lt;legend&gt;</code>).</td></tr>
@@ -370,7 +371,9 @@ plain.validity;            // undefined — plain.checkValidity() === true, plai
                 `<b>validationMessage</b> ${esc(JSON.stringify(f.validationMessage))}`,
                 `<b>willValidate</b> ${f.willValidate} · <b>:invalid</b> ${f.matches(':invalid')}`,
                 f.hiddenInput ? `<b>hidden value</b> ${esc(JSON.stringify(f.hiddenInput.value))}` : `<b>checkValidity()</b> ${f.checkValidity()} · <b>reportValidity()</b> ${f.reportValidity()}`,
-            ].join('\n');
+                // Not form-associated: el.form is null even inside a <form> (closest('form') still finds it).
+                f.hiddenInput ? null : `<b>form</b> ${v(f.form)} · <b>closest('form')</b> #${f.closest('form')?.id}`,
+            ].filter(Boolean).join('\n');
             const render = () => {
                 $('fo03-readout').innerHTML = readout(el);
                 $('fo03-nv-readout').innerHTML = readout(nv);

@@ -74,6 +74,8 @@ test('FO03: setFormatError blocks submit unless novalidate; messages; null clear
   await expect(page.locator('#fo03-plain-readout')).toContainText('validity.valid undefined');
   await expect(page.locator('#fo03-plain-readout')).toContainText('willValidate false');
   await expect(page.locator('#fo03-plain-readout')).toContainText('checkValidity() true · reportValidity() true');
+  // Not form-associated, inside a <form>: el.form is null (a real browser used to throw here).
+  await expect(page.locator('#fo03-plain-readout')).toContainText("form null · closest('form') #do-fo03-plain-form");
 
   await page.locator('#demo-fo03-el .inner').fill('abc');
   await expect(readout).toContainText('validity.valid false · customError true');
