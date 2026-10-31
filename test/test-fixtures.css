@@ -1,0 +1,59 @@
+/*
+ * Styling for the e2e test fixture pages in test/.
+ *
+ * Deliberately minimal — no example chrome (the devkit kit is NOT injected under
+ * test/). Just enough to lay out the fixture elements so the Playwright specs can
+ * interact with them. Dev-server-only; never built into the examples site or the
+ * package.
+ */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 16px;
+    font: 14px/1.4 system-ui, -apple-system, sans-serif;
+    color: #1a1a1a;
+}
+
+h1 {
+    font-size: 18px;
+    margin: 0 0 4px;
+}
+
+p {
+    margin: 4px 0 12px;
+    color: #555;
+}
+
+.fixture {
+    margin-bottom: 24px;
+}
+
+.fixture-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b7280;
+    margin-bottom: 6px;
+}
+
+.fixture-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+/* A plain text sink a fixture writes to (hook order, event logs, readouts). */
+.fixture-log {
+    font: 12px/1.4 ui-monospace, monospace;
+    white-space: pre-wrap;
+    min-height: 1.4em;
+    padding: 4px 6px;
+    background: #f3f4f6;
+}
