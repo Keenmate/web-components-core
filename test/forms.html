@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test — form association, disabled, validity (SPEC §6.4 / §6.6)</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>Forms</h1>
+    <p>Fixture for <code>e2e/forms.spec.ts</code> — el.form, light-DOM submission, reset, disabled, setFormatError.</p>
+
+    <div class="fixture">
+        <div class="fixture-label">FO01 — association</div>
+        <form id="f1" action="#">
+            <fx-field id="f1-in" name="qty" value="3"></fx-field>
+            <input name="note" value="hi">
+            <div class="fixture-controls">
+                <button type="submit" id="f1-submit">submit</button>
+                <button type="reset" id="f1-reset">reset</button>
+            </div>
+        </form>
+        <fx-field id="f1-out" name="extra" value="7" form="f1"></fx-field>
+    </div>
+
+    <div class="fixture">
+        <div class="fixture-label">FO02 — disabled</div>
+        <form id="f2" action="#">
+            <fieldset id="f2-fs">
+                <fx-field id="f2-el" name="qty" value="2"></fx-field>
+            </fieldset>
+        </form>
+    </div>
+
+    <div class="fixture">
+        <div class="fixture-label">FO03 — validity</div>
+        <form id="f3" action="#">
+            <fx-field id="f3-el" name="qty" value="5"></fx-field>
+            <button type="submit" id="f3-submit">submit</button>
+        </form>
+        <form id="f3-nv" action="#" novalidate>
+            <fx-field id="f3-nvel" name="qty" value="5"></fx-field>
+            <button type="submit" id="f3-nv-submit">submit (novalidate)</button>
+        </form>
+        <form id="f3-plain-form" action="#">
+            <fx-plain id="f3-plain"></fx-plain>
+        </form>
+    </div>
+
+    <div class="fixture">
+        <div class="fixture-label">event log</div>
+        <div class="fixture-log" id="log"></div>
+    </div>
+
+    <script type="module">
+        import { BlissElement, define, toBool } from '/src/index.ts';
+        import { captureConsole } from '/test/capture-console.ts';
+        import '/test/forms-fixtures.ts';
+
+        /** Every submit / invalid / change event, in order (mirrored to #log). */
+        const events = [];
+        const record = (line) => {
+            events.push(line);
+            document.getElementById('log').textContent = events.join('\n');
+        };
+        const entries = (form) => JSON.stringify([...new FormData(form)]);
+        for (const form of document.forms) {
+            form.addEventListener('submit', (e) => { e.preventDefault(); record(`submit #${form.id} ${entries(form)}`); });
+            form.addEventListener('change', (e) => record(`change #${e.target.id} in #${form.id} · target.form #${e.target.form?.id}`));
+        }
+        // The outside field's change doesn't bubble into the <form> — listen on it directly.
+        document.getElementById('f1-out').addEventListener('change', (e) => record(`change #${e.target.id} outside · target.form #${e.target.form?.id}`));
+        for (const el of document.querySelectorAll('fx-field')) {
+            el.addEventListener('invalid', () => record(`invalid #${el.id} "${el.validationMessage}"`));
+        }
+
+        // A form-associated class whose isDisabled does NOT reflect — core warns, once per class.
+        class BadDisabledField extends BlissElement {
+            static formAssociated = true;
+            static inputs = [{ configKey: 'isDisabled', attribute: 'disabled', converter: toBool('presence') }];
+        }
+        define('fx-bad-disabled', BadDisabledField);
+        const createBad = () => captureConsole(() => document.createElement('fx-bad-disabled'))
+            .filter((l) => l.level === 'warn').map((l) => l.text);
+
+        await customElements.whenDefined('fx-field');
+        window.fx = { events, entries, captureConsole, createBad };
+        document.body.dataset.ready = 'true';
+    </script>
+</body>
+</html>

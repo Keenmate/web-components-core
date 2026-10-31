@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test — environment (core /environment)</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>Environment</h1>
+    <p>Fixture for <code>e2e/responsive.spec.ts</code> — snapshot, discrete vs continuous channels, breakpoints, presentation.</p>
+
+    <div class="fixture">
+        <div class="fixture-label">channel counts</div>
+        <div class="fixture-log" id="env-log"></div>
+    </div>
+
+    <script type="module">
+        import {
+            getEnvironment, observeEnvironment, observeViewport, classifyDevice, configureBreakpoints, resolvePresentation,
+        } from '/src/index.ts';
+
+        const counts = { discrete: 0, continuous: 0 };
+        const paint = () => {
+            const env = getEnvironment();
+            document.getElementById('env-log').textContent =
+                `discrete ${counts.discrete} · continuous ${counts.continuous} · ${classifyDevice(env)} / ${env.breakpoint} · ${env.viewportWidth}px`;
+        };
+        observeEnvironment(() => { counts.discrete += 1; paint(); }, { shouldFireImmediately: false });
+        observeViewport(() => { counts.continuous += 1; paint(); }, { shouldFireImmediately: false });
+
+        /** Live snapshot reduced to what the spec asserts on. */
+        const snapshot = () => {
+            const env = getEnvironment();
+            return { device: classifyDevice(env), breakpoint: env.breakpoint, isTouchPrimary: env.isTouchPrimary, width: env.viewportWidth };
+        };
+        // Simulated snapshots: pure inputs to classifyDevice / resolvePresentation.
+        const touch = { pointer: 'coarse', hasCoarsePointer: true, canHover: false, isTouchPrimary: true };
+        const mouse = { pointer: 'fine', hasCoarsePointer: false, canHover: true, isTouchPrimary: false };
+        const SIMS = {
+            'phone-portrait': [390, 844, touch],
+            'phone-landscape': [844, 390, touch],
+            'ipad-portrait': [768, 1024, touch],
+            'desktop-narrowed': [700, 900, mouse],
+            'desktop': [1440, 900, mouse],
+        };
+        const sim = (name) => {
+            const [w, h, cap] = SIMS[name];
+            return { ...getEnvironment(), ...cap, viewportWidth: w, viewportHeight: h, orientation: h >= w ? 'portrait' : 'landscape' };
+        };
+        const resetBreakpoints = () => configureBreakpoints({ mobile: 768, tablet: 1024, desktop: Infinity });
+
+        paint();
+        window.fx = { counts, snapshot, sim, classifyDevice, resolvePresentation, getEnvironment, configureBreakpoints, resetBreakpoints };
+        document.body.dataset.ready = 'true';
+    </script>
+</body>
+</html>

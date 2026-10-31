@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test — page-wide controls (window.components, logging, loader, styles)</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+    <script>
+        // Runs BEFORE any module: pre-create a registry entry; registerComponent() must ADOPT it.
+        window.components = window.components || {};
+        window.components['fx-pg-early'] = { note: 'set before core loaded' };
+        window.__earlyEntry = window.components['fx-pg-early'];
+    </script>
+</head>
+<body>
+    <h1>Page-wide controls</h1>
+    <p>Fixture for <code>e2e/page.spec.ts</code> — registry, logging routing, loader precedence, style injection.</p>
+
+    <div class="fixture">
+        <div class="fixture-label">registry stage</div>
+        <div id="stage">
+            <fx-pg id="pg-a" label="A" tone="info"></fx-pg>
+            <fx-pg id="pg-b" label="B"></fx-pg>
+            <fx-pg-early id="pg-early"></fx-pg-early>
+        </div>
+    </div>
+
+    <div class="fixture">
+        <div class="fixture-label">loader stage</div>
+        <div id="loaders">
+            <fx-pg id="pg-load-a" label="load A"></fx-pg>
+            <fx-pg id="pg-load-b" label="load B"></fx-pg>
+        </div>
+    </div>
+
+    <div class="fixture">
+        <div class="fixture-label">hook log</div>
+        <div class="fixture-log" id="log"></div>
+    </div>
+
+    <script type="module">
+        import { getRegisteredTags, getInstances, coreLogging, LOG_LEVELS } from '/src/index.ts';
+        import { captureConsole } from '/test/capture-console.ts';
+        import { fxLogging } from '/test/page-wide-fixtures.ts';
+
+        await customElements.whenDefined('fx-pg');
+
+        /** Hook calls (page / instance loader hooks, cleanups), in order (mirrored to #log). */
+        const hookLog = [];
+        const record = (line) => {
+            hookLog.push(line);
+            document.getElementById('log').textContent = hookLog.join('\n');
+        };
+
+        const levelName = (n) => Object.keys(LOG_LEVELS).find((k) => LOG_LEVELS[k] === n)?.toLowerCase() ?? String(n);
+        const levels = () => ({
+            FXPG: Object.fromEntries(fxLogging.LOGGING_CATEGORIES.map((c) => [c, levelName(fxLogging.loggers[c].getLevel())])),
+            CORE: Object.fromEntries(coreLogging.LOGGING_CATEGORIES.map((c) => [c, levelName(coreLogging.loggers[c].getLevel())])),
+        });
+
+        const loaderHooks = {
+            page: ({ component, context, containerElement, label }) => {
+                record(`page hook ${component} ${context} ${label}`);
+                const m = document.createElement('span');
+                m.dataset.hook = 'page';
+                containerElement.append(m);
+            },
+            bar: ({ containerElement }) => {
+                const m = document.createElement('span');
+                m.dataset.hook = 'instance';
+                containerElement.append(m);
+                const timer = setInterval(() => {}, 100);
+                return () => { clearInterval(timer); record('instance cleanup'); };
+            },
+            throw: () => { throw new Error('test: hook failed'); },
+        };
+        /** Who drew el's current loader: 'instance' | 'page' | 'default' | null (not loading). */
+        const drawnBy = (el) => {
+            const s = el.statusElement;
+            if (!s || !el.isLoading) return null;
+            if (s.querySelector('[data-hook="instance"]')) return 'instance';
+            if (s.querySelector('[data-hook="page"]')) return 'page';
+            if (s.querySelector('.fxpg-loader')) return 'default';
+            return '?';
+        };
+        const loaderState = (el) => {
+            const s = el.statusElement;
+            return { isLoading: el.isLoading, drawnBy: drawnBy(el), role: s.getAttribute('role'), ariaLabel: s.getAttribute('aria-label'), children: s.childNodes.length };
+        };
+
+        const ids = (list) => list.map((e) => e.id);
+        window.fx = { captureConsole, levels, getRegisteredTags, getInstances, ids, loaderHooks, loaderState, hookLog };
+        document.body.dataset.ready = 'true';
+    </script>
+</body>
+</html>

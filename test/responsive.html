@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test — responsive rules (SPEC §6.7)</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>Responsive rules</h1>
+    <p>Fixture for <code>e2e/responsive.spec.ts</code> — instance map axes, layer precedence, callback re-runs.</p>
+
+    <div class="fixture">
+        <div class="fixture-label">map — breakpoint + device axes</div>
+        <fx-rs-map id="rs-map" responsive='{"breakpoint":{"mobile":{"layout":"stack","columns":1},"tablet":{"columns":2}},"device":{"tablet":{"layout":"grid","columns":2,"presentation":"modal"},"mobile":{"presentation":"fullscreen"}}}'></fx-rs-map>
+    </div>
+
+    <div class="fixture">
+        <div class="fixture-label">layers — precedence</div>
+        <fx-rs-layers id="rs-layers"></fx-rs-layers>
+    </div>
+
+    <div class="fixture">
+        <div class="fixture-label">callback — custom width</div>
+        <fx-rs-callback id="rs-cb"></fx-rs-callback>
+    </div>
+
+    <script type="module">
+        import { getEnvironment, classifyDevice, resolvePresentation } from '/src/index.ts';
+        import '/test/responsive-fixtures.ts';
+
+        await customElements.whenDefined('fx-rs-layers');
+        const map = document.getElementById('rs-map');
+        // Base probe: records ctx.config (the BASE config), contributes nothing.
+        const probe = { base: null };
+        map.responsiveCallback = (ctx) => { probe.base = { ...ctx.config }; return undefined; };
+        await map.whenSettled();
+
+        const snapshot = () => {
+            const env = getEnvironment();
+            return { device: classifyDevice(env), breakpoint: env.breakpoint, isTouchPrimary: env.isTouchPrimary, width: env.viewportWidth };
+        };
+        window.fx = { getEnvironment, classifyDevice, resolvePresentation, snapshot, probe };
+        document.body.dataset.ready = 'true';
+    </script>
+</body>
+</html>
