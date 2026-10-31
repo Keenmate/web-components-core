@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forms — web-components-core</title>
+    <style>
+        .fo-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+        .fo-form { display: grid; gap: .8rem; padding: .9rem; border-radius: 10px; min-width: 0;
+                   border: 2px dashed light-dark(#cbd5e1, #475569); }
+        .fo-form-title { font: 600 .75rem ui-monospace, monospace; color: light-dark(#64748b, #94a3b8); }
+        .fo-form fieldset { border: 1px solid light-dark(#cbd5e1, #475569); border-radius: 8px; padding: .6rem .8rem; margin: 0; min-width: 0; }
+        .fo-form fieldset[disabled] { background: light-dark(#f1f5f9, #1e293b); }
+        .fo-native { display: grid; gap: .25rem; font: 500 .85rem system-ui, sans-serif; }
+        .fo-native input { font: inherit; padding: .35rem .5rem; border-radius: 6px; border: 1px solid light-dark(#94a3b8, #475569); }
+        .fo-buttons { display: flex; gap: .5rem; flex-wrap: wrap; }
+        .fo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1rem; align-items: start; }
+        .readout { font: .8rem/1.6 ui-monospace, 'Courier New', monospace; margin-top: .8rem; padding: .5rem .75rem;
+                   border-radius: 8px; background: light-dark(#f8fafc, #0f172a); border: 1px solid light-dark(#e2e8f0, #334155);
+                   overflow-x: auto; white-space: pre; }
+        .readout b { color: light-dark(#0369a1, #7dd3fc); font-weight: 600; }
+        .log-panel > div { white-space: pre-wrap; }
+        .log-panel .warn { color: #b45309; }
+        .log-panel .ok { color: #15803d; }
+        .log-panel .hook { color: #7c3aed; }
+        .log-panel .act { opacity: .7; margin-top: .3rem; }
+        .table-scroll { overflow-x: auto; max-width: 100%; }
+        .code-block pre { max-width: 100%; overflow-x: auto; }
+        /* Native pseudo-classes match a form-associated host — page CSS needs nothing from core. */
+        core-demo-field:invalid { outline: 2px solid #dc2626; outline-offset: 3px; border-radius: 8px; }
+        core-demo-field:disabled { opacity: .8; }
+        core-demo-field:not(:defined) { visibility: hidden; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="back-link">← Back to Examples</a>
+            <h1>Forms</h1>
+            <p class="subtitle">What a form-associated <code>BlissElement</code> (<code>static formAssociated = true</code>)
+                gets from core: <code>el.form</code> and the protected <code>internals</code>, the disabled state
+                (the reflected <code>isDisabled</code> input + <code>&lt;fieldset disabled&gt;</code>, SPEC §6.4) and the
+                constraint-validation API with <code>setFormatError()</code> (SPEC §6.6). The demos use
+                <code>&lt;core-demo-field&gt;</code>, a small quantity field that follows the KeenMate submission
+                convention: its value is submitted by a <strong>light-DOM hidden <code>&lt;input&gt;</code></strong> it
+                renders as its own child — the host never calls <code>internals.setFormValue()</code>.</p>
+        </header>
+
+        <!-- ============================================================= -->
+        <!-- FO01 · Form association & el.form                             -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>FO01 · Form association and <code>el.form</code></h2>
+            <p>
+                A form-associated custom element takes part in its form, but unlike a native control it gets
+                <strong>no</strong> <code>.form</code> property for free: the browser keeps the association inside
+                <code>ElementInternals</code>. Core re-exposes it as <code>el.form</code> (read through the lazily
+                attached, protected <code>internals</code> — a subclass must never call <code>attachInternals()</code>
+                itself). Unlike <code>closest('form')</code>, it honours the <code>form="id"</code> attribute, so
+                <code>event.target.form</code> resolves for frameworks that route by it (Phoenix LiveView's
+                <code>phx-change</code>). The submitted data comes from the hidden <code>&lt;input name&gt;</code> each
+                field renders in its light DOM; the field outside the form copies its <code>form</code> attribute onto
+                that input (component code). Core implements no <code>formResetCallback</code> — the demo field has its
+                own, returning to its <code>value</code> attribute like a native input.
+            </p>
+            <div class="demo-area">
+                <div class="fo-row">
+                    <form class="fo-form" id="do-fo01-form" action="#">
+                        <span class="fo-form-title">&lt;form id="do-fo01-form"&gt;</span>
+                        <core-demo-field id="demo-fo01-in" name="qty" value="3" label="Quantity (inside the form)"></core-demo-field>
+                        <label class="fo-native">Native note <input name="note" value="hi"></label>
+                        <div class="fo-buttons">
+                            <button type="submit" id="fo01-submit">Submit (prevented → FormData)</button>
+                            <button type="reset" id="fo01-reset">Reset</button>
+                        </div>
+                    </form>
+                    <div class="fo-form">
+                        <span class="fo-form-title">outside the form, form="do-fo01-form"</span>
+                        <core-demo-field id="demo-fo01-out" name="extra" value="7" label="Extra (outside)" form="do-fo01-form"></core-demo-field>
+                    </div>
+                </div>
+                <div class="readout" id="fo01-readout"></div>
+                <label class="demo-label" style="margin-top:1rem">Log (submit, reset, delegated <code>change</code>):</label>
+                <div class="log-panel" id="fo01-log"></div>
+            </div>
+            <div class="code-block"><pre>class CoreDemoField extends BlissElement {
+  static formAssociated = true;               // el.form, formDisabledCallback, validity API
+  reinit() {
+    this.#hidden ??= Object.assign(document.createElement('input'), { type: 'hidden' });
+    this.#hidden.name = this.config.name;     // the light-DOM input is what the form submits
+    this.append(this.#hidden);
+  }
+  formResetCallback() {                       // the component's own — core has none
+    this.value = this.getAttribute('value') ?? '';
+  }
+}
+
+el.form;                                      // &lt;form id="do-fo01-form"&gt; — also via form="do-fo01-form"
+el.closest('form');                           // null for the outside field
+form.addEventListener('change', (e) =&gt; e.target.form);   // resolves like a native input
+[...new FormData(form)];                      // [['qty','3'], ['note','hi'], ['extra','7']]</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- FO02 · Disabled                                               -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>FO02 · Disabled: <code>isDisabled</code> and <code>&lt;fieldset disabled&gt;</code></h2>
+            <p>
+                Two sources disable a form-associated host, and core merges them once in
+                <code>formDisabledCallback</code> (components don't implement it). The <code>isDisabled</code> input
+                (attribute <code>disabled</code>) <strong>must reflect</strong>: the browser treats the host's own
+                <code>disabled</code> attribute as disabling it, so a non-reflecting input set back to
+                <code>false</code> by property would leave the element disabled — the input-table check warns about that.
+                A disabled ancestor <code>&lt;fieldset&gt;</code> is the other source. It never writes
+                <code>el.isDisabled</code>; the protected <code>isFormDisabled</code> reports the fieldset side only, and
+                <code>isEffectivelyDisabled</code> (input OR fieldset) is the state to apply. Read it in
+                <code>reinit()</code>, and apply flips in the <code>disabledChanged(isDisabled)</code> hook, which fires only
+                when the effective state actually changes on a built element (not for a rebuild). The native
+                <code>:disabled</code> pseudo-class matches either way. Note that the demo disables its light-DOM hidden
+                input itself in that hook: the host's own <code>disabled</code> attribute doesn't disable children.
+            </p>
+            <div class="controls">
+                <button id="fo02-prop">toggle <code>el.isDisabled</code></button>
+                <button id="fo02-attr">toggle the <code>disabled</code> attribute</button>
+                <button id="fo02-fs">toggle <code>fieldset.disabled</code></button>
+                <button id="fo02-bad">construct a class with a non-reflecting <code>disabled</code> input</button>
+            </div>
+            <div class="demo-area">
+                <form class="fo-form" id="do-fo02-form" action="#">
+                    <fieldset id="do-fo02-fs">
+                        <legend>Shipping (fieldset)</legend>
+                        <core-demo-field id="demo-fo02-el" name="qty" value="2" label="Quantity"></core-demo-field>
+                    </fieldset>
+                </form>
+                <div class="readout" id="fo02-readout"></div>
+                <label class="demo-label" style="margin-top:1rem">Hook log:</label>
+                <div class="log-panel" id="fo02-log"></div>
+            </div>
+            <div class="code-block"><pre>static inputs = [
+  { configKey: 'isDisabled', attribute: 'disabled', converter: toBool('presence'),
+    default: false, shouldReflect: true },             // must reflect (SPEC §6.4)
+];
+reinit()  { this.#applyDisabled(this.isEffectivelyDisabled); }   // input OR fieldset
+update(p) { /* ignore p.isDisabled */ }
+disabledChanged(isDisabled) { this.#applyDisabled(isDisabled); } // flips on a built element
+
+fieldset.disabled = true;   // el.isDisabled stays false; isFormDisabled true → disabledChanged(true)
+el.isDisabled = true;       // reflects disabled="" → still disabled → no second disabledChanged</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- FO03 · Validity                                               -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>FO03 · Validity and <code>setFormatError()</code></h2>
+            <p>
+                A form-associated class gets the standard constraint-validation API, read through
+                <code>internals</code>: <code>validity</code>, <code>validationMessage</code>, <code>willValidate</code>,
+                <code>checkValidity()</code> (fires the cancelable <code>invalid</code> event when invalid) and
+                <code>reportValidity()</code> (also shows the browser's bubble). The protected
+                <code>setFormatError(error, message?, anchor?)</code> marks the host invalid (<code>customError</code>)
+                when the component could not produce a value. The message is <code>message</code>, else the error's own
+                message, else <code>"The value is invalid."</code>; <code>anchor</code>, a descendant such as the visible
+                input, positions the bubble (an anchor the browser rejects is dropped with a warning). <code>null</code>
+                clears it, and clears <em>all</em> validity flags. While invalid, <code>:invalid</code> matches and the form
+                fires <code>invalid</code> instead of <code>submit</code> — unless it is <code>&lt;form novalidate&gt;</code>.
+                Type something that isn't a whole number (<code>abc</code>) into either field, then submit both.
+            </p>
+            <div class="controls">
+                <button id="fo03-check"><code>checkValidity()</code></button>
+                <button id="fo03-report"><code>reportValidity()</code></button>
+                <button id="fo03-err"><code>setFormatError(new Error('boom'))</code></button>
+                <button id="fo03-str"><code>setFormatError('string error')</code></button>
+                <button id="fo03-msg"><code>setFormatError(err, 'Custom message')</code></button>
+                <button id="fo03-obj"><code>setFormatError({})</code></button>
+                <button id="fo03-foreign">anchor outside the host</button>
+                <button id="fo03-null"><code>setFormatError(null)</code></button>
+            </div>
+            <div class="demo-area">
+                <div class="fo-grid">
+                    <form class="fo-form" id="do-fo03-form" action="#">
+                        <span class="fo-form-title">&lt;form&gt; (validates)</span>
+                        <core-demo-field id="demo-fo03-el" name="qty" value="5" label="Quantity"></core-demo-field>
+                        <div class="fo-buttons"><button type="submit" id="fo03-submit">Submit</button></div>
+                        <div class="readout" id="fo03-readout"></div>
+                    </form>
+                    <form class="fo-form" id="do-fo03-nv" action="#" novalidate>
+                        <span class="fo-form-title">&lt;form novalidate&gt;</span>
+                        <core-demo-field id="demo-fo03-nvel" name="qty" value="5" label="Quantity"></core-demo-field>
+                        <div class="fo-buttons"><button type="submit" id="fo03-nv-submit">Submit</button></div>
+                        <div class="readout" id="fo03-nv-readout"></div>
+                    </form>
+                    <div class="fo-form">
+                        <span class="fo-form-title">not form-associated</span>
+                        <core-demo-plain id="demo-fo03-plain"></core-demo-plain>
+                        <div class="readout" id="fo03-plain-readout"></div>
+                    </div>
+                </div>
+                <label class="demo-label" style="margin-top:1rem">Log (the buttons act on the left field):</label>
+                <div class="log-panel" id="fo03-log"></div>
+            </div>
+            <div class="code-block"><pre>#produceValue() {
+  const raw = this.config.value.trim();
+  if (raw === '' || /^-?\d+$/.test(raw)) {
+    this.#hidden.value = raw;
+    this.setFormatError(null);                     // valid again
+  } else {
+    this.#hidden.value = '';                       // submit '' — never a half-parsed value
+    this.setFormatError(new Error(`"${raw}" is not a whole number`), undefined, this.#input);
+  }
+}
+
+el.validity.customError;   // true
+el.validationMessage;      // '"abc" is not a whole number'
+el.matches(':invalid');    // true
+form.requestSubmit();      // 'invalid' fires on el, no 'submit' (a novalidate form submits)
+plain.validity;            // undefined — plain.checkValidity() === true, plain.willValidate === false</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- FO04 · API summary                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>FO04 · API summary</h2>
+            <div class="table-scroll">
+                <table class="reference-table">
+                    <thead><tr><th>Member</th><th>Kind</th><th>What it does</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>static formAssociated = true</code></td><td>class opt-in</td><td>Makes the host a form-associated element; enables everything below.</td></tr>
+                        <tr><td><code>internals</code></td><td>protected getter</td><td>The element's <code>ElementInternals</code>, attached lazily and memoized (<code>null</code> where unavailable). Never call <code>attachInternals()</code> yourself.</td></tr>
+                        <tr><td><code>form</code></td><td>getter</td><td>The associated <code>&lt;form&gt;</code> or <code>null</code> — honours <code>form="id"</code> and shadow boundaries.</td></tr>
+                        <tr><td><code>formDisabledCallback(isDisabled)</code></td><td>browser callback</td><td>Implemented once by core: records the browser's combined state, flushes pending writes, fires <code>disabledChanged</code> on a flip. Don't override.</td></tr>
+                        <tr><td><code>isDisabled</code> / <code>disabled</code></td><td>input / attribute</td><td>The component's own disabled flag. Must have <code>shouldReflect: true</code> (warned otherwise).</td></tr>
+                        <tr><td><code>isFormDisabled</code></td><td>protected getter</td><td>Disabled by an ancestor <code>&lt;fieldset disabled&gt;</code> only (outside its first <code>&lt;legend&gt;</code>).</td></tr>
+                        <tr><td><code>isEffectivelyDisabled</code></td><td>protected getter</td><td><code>isDisabled || isFormDisabled</code> — read it in <code>reinit()</code>.</td></tr>
+                        <tr><td><code>disabledChanged(isDisabled)</code></td><td>protected hook</td><td>The effective state flipped on a built element (input or fieldset). Not called for a rebuild or before the first build.</td></tr>
+                        <tr><td><code>validity</code> · <code>validationMessage</code> · <code>willValidate</code></td><td>getters</td><td>From <code>internals</code>; "no constraint" answers (<code>undefined</code> / <code>''</code> / <code>false</code>) when not form-associated.</td></tr>
+                        <tr><td><code>checkValidity()</code> · <code>reportValidity()</code></td><td>methods</td><td>Like a native control (<code>invalid</code> event; the bubble for <code>reportValidity</code>). <code>true</code> when not form-associated.</td></tr>
+                        <tr><td><code>setFormatError(error | null, message?, anchor?)</code></td><td>protected method</td><td>Non-null → <code>customError</code> with the resolved message (anchor positions the bubble); <code>null</code> → valid (clears all flags). No-op when not form-associated.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="note">
+                <div class="note-title">What core leaves to the component</div>
+                Submission (KeenMate components render light-DOM hidden inputs named by <code>name</code>, with a
+                <code>value-format</code>, rather than <code>internals.setFormValue()</code>), <code>formResetCallback</code>,
+                <code>formStateRestoreCallback</code>, and any validity constraint other than the format error (set through
+                <code>internals</code> directly — <code>setFormatError(null)</code> clears every flag).
+            </div>
+        </div>
+    </div>
+
+    <!-- The demo web components (<core-demo-field>, <core-demo-plain>). -->
+    <script type="module" src="examples-forms-card.ts"></script>
+
+    <script type="module">
+        import { BlissElement, define, toBool } from '/src/index.ts';
+        await customElements.whenDefined('core-demo-field');
+        await customElements.whenDefined('core-demo-plain');
+
+        const $ = (id) => document.getElementById(id);
+        const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+        const log = (panel, text, cls = '') => {
+            const line = document.createElement('div');
+            if (cls) line.className = cls;
+            line.textContent = text;
+            panel.appendChild(line);
+            panel.scrollTop = panel.scrollHeight;
+        };
+        const fmtEntries = (form) => JSON.stringify([...new FormData(form)]);
+        /** Run fn and collect the console.warn lines it produced (`%c` styling stripped). */
+        const captureWarnings = (fn) => {
+            const lines = [];
+            const original = console.warn;
+            console.warn = (...args) => {
+                original.apply(console, args);
+                const [first, ...rest] = args;
+                if (typeof first === 'string' && first.includes('%c')) {
+                    const cssCount = first.split('%c').length - 1;
+                    lines.push(`${first.replace(/%c/g, '')} ${rest.slice(cssCount).map(String).join(' ')}`.trim());
+                } else lines.push(args.map(String).join(' '));
+            };
+            try { fn(); } finally { console.warn = original; }
+            return lines;
+        };
+
+        // ── FO01 · form association ──────────────────────────────────────────
+        {
+            const form = $('do-fo01-form');
+            const inEl = $('demo-fo01-in');
+            const outEl = $('demo-fo01-out');
+            const panel = $('fo01-log');
+            const line = (el) => `${el.id.padEnd(16)} <b>form</b> ${el.form ? '#' + el.form.id : 'null'} · <b>closest('form')</b> ${el.closest('form') ? '#' + el.closest('form').id : 'null'}`
+                + (el.hiddenInput ? ` · <b>hidden</b> name="${esc(el.hiddenInput.name)}" value="${esc(el.hiddenInput.value)}"` : '');
+            const render = () => {
+                $('fo01-readout').innerHTML = [inEl, outEl].map(line).join('\n');
+            };
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                log(panel, `submit → FormData ${fmtEntries(form)}`, 'ok');
+            });
+            form.addEventListener('reset', () => log(panel, 'reset event', 'act'));
+            form.addEventListener('change', (e) => {
+                log(panel, `change on <${e.target.localName}> · e.target.form === form: ${e.target.form === form}`);
+            });
+            // The outside field's change doesn't bubble into the form element — listen on it directly.
+            outEl.addEventListener('change', (e) => log(panel, `change on #${e.target.id} (outside) · e.target.form === form: ${e.target.form === form}`));
+            for (const el of [inEl, outEl]) {
+                el.addEventListener('field-log', (e) => {
+                    if (e.detail.kind === 'formResetCallback') log(panel, `${el.id}: formResetCallback() ${e.detail.text}`, 'hook');
+                    render();
+                });
+            }
+            render();
+        }
+
+        // ── FO02 · disabled ──────────────────────────────────────────────────
+        {
+            const el = $('demo-fo02-el');
+            const fs = $('do-fo02-fs');
+            const form = $('do-fo02-form');
+            const panel = $('fo02-log');
+            const render = () => {
+                const d = el.debugDisabled;
+                $('fo02-readout').innerHTML = [
+                    `<b>el.isDisabled</b> ${el.isDisabled} · <b>[disabled]</b> ${el.hasAttribute('disabled')} · <b>fieldset.disabled</b> ${fs.disabled}`,
+                    `<b>isFormDisabled</b> ${d.isFormDisabled} · <b>isEffectivelyDisabled</b> ${d.isEffectivelyDisabled} · <b>:disabled</b> ${el.matches(':disabled')}`,
+                    `<b>hidden input disabled</b> ${el.hiddenInput?.disabled} · <b>FormData</b> ${fmtEntries(form)}`,
+                ].join('\n');
+            };
+            el.addEventListener('field-log', (e) => {
+                if (e.detail.kind === 'disabledChanged') log(panel, `disabledChanged${e.detail.text}`, 'hook');
+                render();
+            });
+            const act = (id, text, fn) => $(id).addEventListener('click', async () => {
+                log(panel, `▶ ${text()}`, 'act');
+                fn();
+                await el.whenSettled();
+                render();
+            });
+            act('fo02-prop', () => `el.isDisabled = ${!el.isDisabled}`, () => { el.isDisabled = !el.isDisabled; });
+            act('fo02-attr', () => (el.hasAttribute('disabled') ? "removeAttribute('disabled')" : "setAttribute('disabled', '')"),
+                () => el.toggleAttribute('disabled'));
+            act('fo02-fs', () => `fieldset.disabled = ${!fs.disabled}`, () => { fs.disabled = !fs.disabled; });
+
+            class BadDisabledField extends BlissElement {
+                static formAssociated = true;
+                static inputs = [{ configKey: 'isDisabled', attribute: 'disabled', converter: toBool('presence') }]; // no shouldReflect
+            }
+            $('fo02-bad').addEventListener('click', () => {
+                define('core-demo-bad-disabled', BadDisabledField);
+                log(panel, '▶ document.createElement(\'core-demo-bad-disabled\')', 'act');
+                const lines = captureWarnings(() => document.createElement('core-demo-bad-disabled'));
+                if (lines.length === 0) log(panel, '(no warning — the table is checked once per class)');
+                for (const l of lines) log(panel, l, 'warn');
+            });
+            render();
+        }
+
+        // ── FO03 · validity ──────────────────────────────────────────────────
+        {
+            const el = $('demo-fo03-el');
+            const nv = $('demo-fo03-nvel');
+            const plain = $('demo-fo03-plain');
+            const panel = $('fo03-log');
+            const v = (x) => (x === undefined ? 'undefined' : JSON.stringify(x));
+            const readout = (f) => [
+                `<b>validity.valid</b> ${v(f.validity?.valid)} · <b>customError</b> ${v(f.validity?.customError)}`,
+                `<b>validationMessage</b> ${esc(JSON.stringify(f.validationMessage))}`,
+                `<b>willValidate</b> ${f.willValidate} · <b>:invalid</b> ${f.matches(':invalid')}`,
+                f.hiddenInput ? `<b>hidden value</b> ${esc(JSON.stringify(f.hiddenInput.value))}` : `<b>checkValidity()</b> ${f.checkValidity()} · <b>reportValidity()</b> ${f.reportValidity()}`,
+            ].join('\n');
+            const render = () => {
+                $('fo03-readout').innerHTML = readout(el);
+                $('fo03-nv-readout').innerHTML = readout(nv);
+                $('fo03-plain-readout').innerHTML = readout(plain);
+            };
+            for (const f of [el, nv]) {
+                f.addEventListener('field-log', (e) => {
+                    if (e.detail.kind === 'setFormatError') log(panel, `#${f.id}: setFormatError ${e.detail.text}`, 'hook');
+                    render();
+                });
+                f.addEventListener('invalid', () => log(panel, `'invalid' event on #${f.id} — "${f.validationMessage}"`, 'warn'));
+                f.form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    log(panel, `'submit' on #${f.form.id} → FormData ${fmtEntries(f.form)}`, 'ok');
+                });
+            }
+            const act = (id, text, fn) => $(id).addEventListener('click', () => {
+                log(panel, `▶ ${text}`, 'act');
+                fn();
+                render();
+            });
+            act('fo03-check', 'el.checkValidity()', () => log(panel, `→ ${el.checkValidity()}`));
+            act('fo03-report', 'el.reportValidity()', () => log(panel, `→ ${el.reportValidity()}`));
+            act('fo03-err', "setFormatError(new Error('boom'))", () => el.demoSetFormatError(new Error('boom')));
+            act('fo03-str', "setFormatError('string error')", () => el.demoSetFormatError('string error'));
+            act('fo03-msg', "setFormatError(new Error('boom'), 'Custom message')", () => el.demoSetFormatError(new Error('boom'), 'Custom message'));
+            act('fo03-obj', 'setFormatError({}) — no message anywhere', () => el.demoSetFormatError({}));
+            act('fo03-foreign', "setFormatError(new Error('boom'), undefined, document.body)", () => {
+                const lines = captureWarnings(() => el.demoSetFormatError(new Error('boom'), undefined, 'foreign'));
+                for (const l of lines) log(panel, l, 'warn');
+            });
+            act('fo03-null', 'setFormatError(null)', () => el.demoSetFormatError(null));
+            render();
+        }
+    </script>
+</body>
+</html>
