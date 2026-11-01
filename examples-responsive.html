@@ -6,7 +6,6 @@
     <title>Environment &amp; responsive rules — web-components-core</title>
     <style>
         /* kit gap: a .grid item holding a wide <pre> / table must be allowed to shrink (min-width: auto blows the track out on a phone) */
-        .grid > * { min-width: 0; }
         /* kit gap: a .log-panel fed by textContent keeps its line breaks + shows a placeholder while empty */
         .log-panel { white-space: pre-wrap; }
         .log-panel:empty::before { content: '(nothing yet)'; color: var(--kmwc-text-color-3); }
