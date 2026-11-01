@@ -67,7 +67,7 @@
     "@floating-ui/dom": "^1.8.0"
   },
   "devDependencies": {
-    "@keenmate/web-components-devkit": "^1.0.0-rc02",
+    "@keenmate/web-components-devkit": "^1.0.0-rc03",
     "@playwright/test": "^1.60.0",
     "jsdom": "^24.1.0",
     "typescript": "^5.5.0",
