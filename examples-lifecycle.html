@@ -29,7 +29,7 @@
         .lc-timeline .t { color: #64748b; min-width: 4.6rem; text-align: right; font-variant-numeric: tabular-nums; }
         .lc-timeline .el { color: #94a3b8; min-width: 4.2rem; }
         .lc-timeline .what { font-weight: 700; }
-        .lc-timeline .detail { color: #94a3b8; }
+        .lc-timeline .detail { color: #94a3b8; min-width: 0; overflow-wrap: anywhere; }
         .lc-timeline li[data-kind="action"] { color: #fde68a; margin-top: .35rem; }
         .lc-timeline li[data-kind="action"]:first-child { margin-top: 0; }
         .lc-timeline li[data-kind="note"] { color: #94a3b8; font-style: italic; }
@@ -38,9 +38,6 @@
         .lc-timeline li[data-kind="error"] .what { color: #fca5a5; }
         .lc-timeline-head { display: flex; justify-content: flex-end; margin-top: .5rem; }
         .lc-timeline-head button { font-size: .75rem; }
-        .api-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
-        .api-table th, .api-table td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid light-dark(#e2e8f0, #334155); vertical-align: top; }
-        .api-table code { white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -287,7 +284,7 @@ fresh.flush();         // reinit() → connect() → ready</pre></div>
         <!-- ============================================================= -->
         <div class="card">
             <h2>LC07 · API summary</h2>
-            <table class="api-table">
+            <table class="reference-table">
                 <thead><tr><th>Member</th><th>Kind</th><th>When / what</th></tr></thead>
                 <tbody>
                     <tr><td><code>reinit()</code></td><td>protected hook</td><td>Full build. Runs on first connect and whenever a batch changes an <code>on:'reinit'</code> input. Reads <code>this.config</code> and gets no partial.</td></tr>

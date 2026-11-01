@@ -40,9 +40,6 @@
         .ia-timeline-head button { font-size: .75rem; }
 
         .ia-scroll { overflow-x: auto; max-width: 100%; }
-        .api-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
-        .api-table th, .api-table td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid light-dark(#e2e8f0, #334155); vertical-align: top; }
-        .api-table code { white-space: nowrap; }
 
         /* IA04 · page-wide menu theme (the public --km-menu-* layer, on :root) */
         :root.ia-menu-theme {
@@ -280,7 +277,7 @@ await runAction({
                 <ol class="ia-timeline ia-timeline--grow" id="demo-ia04-log"></ol>
             </div>
             <div class="ia-scroll">
-                <table class="api-table" style="margin-top:1rem">
+                <table class="reference-table" style="margin-top:1rem">
                     <thead><tr><th>Key (while a menu is open)</th><th>Does</th></tr></thead>
                     <tbody>
                         <tr><td><kbd>↓</kbd> / <kbd>↑</kbd></td><td>Next / previous enabled item, wrapping. Disabled items and dividers are skipped.</td></tr>
@@ -332,7 +329,7 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
         <div class="card">
             <h2>IA05 · API summary</h2>
             <div class="ia-scroll">
-            <table class="api-table">
+            <table class="reference-table">
                 <thead><tr><th>Member</th><th>Where</th><th>What</th></tr></thead>
                 <tbody>
                     <tr><td><code>static events</code></td><td><code>BlissElement</code></td><td>The outward notifications: a bare name or an <code>EventDef</code> (<code>name</code>, <code>property</code> / <code>false</code>, <code>bubbles</code>, <code>composed</code>, <code>cancelable</code>, <code>description</code>, <code>deprecated</code>). Each installs an <code>on&lt;Name&gt;</code> twin. <code>ready</code> is always there.</td></tr>

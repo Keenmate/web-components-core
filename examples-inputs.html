@@ -21,6 +21,7 @@
         .counters { display: flex; gap: .6rem; flex-wrap: wrap; margin: .6rem 0; }
         .demo-row { display: grid; grid-template-columns: minmax(16rem, 1fr) minmax(18rem, 1.3fr); gap: 1rem; align-items: start; }
         @media (max-width: 800px) { .demo-row { grid-template-columns: 1fr; } }
+        .demo-row > * { min-width: 0; } /* long logs / code scroll or wrap inside, never widen the page */
         .btn-col { display: flex; flex-direction: column; gap: .4rem; align-items: flex-start; }
         #in04-sandbox { display: none; }
 
