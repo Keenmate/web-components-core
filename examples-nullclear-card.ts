@@ -61,11 +61,13 @@ export class NullclearCard extends BlissElement {
     root.innerHTML = `
       <style>
         .nc-list { display: grid; gap: .4rem; }
-        .nc-row { padding: .55rem .8rem; border-radius: 8px; background: #f1f5f9; font: 500 .95rem system-ui; }
+        /* Page tokens (--kmwc-*) inherit into the shadow root, so the rows follow light / dark. */
+        .nc-row { padding: .55rem .8rem; border-radius: var(--kmwc-radius-sm, 6px); font-size: .95rem; font-weight: 500;
+                  background: var(--kmwc-elevated-bg, #f1f5f9); color: var(--kmwc-text-color-1, inherit); }
         .nc-focused { position: relative; }
-        .nc-focus-default { box-shadow: inset 3px 0 0 #3b82f6; background: #eff6ff; }
-        .ring-gold { box-shadow: inset 3px 0 0 #d97706; background: #fffbeb; }
-        .ring-red  { box-shadow: inset 3px 0 0 #dc2626; background: #fef2f2; }
+        .nc-focus-default { box-shadow: inset 3px 0 0 #3b82f6; background: color-mix(in srgb, #3b82f6 12%, transparent); }
+        .ring-gold { box-shadow: inset 3px 0 0 #d97706; background: color-mix(in srgb, #d97706 12%, transparent); }
+        .ring-red  { box-shadow: inset 3px 0 0 #dc2626; background: color-mix(in srgb, #dc2626 12%, transparent); }
       </style>
       <div class="nc-list">
         <div class="nc-row">Row 1</div>

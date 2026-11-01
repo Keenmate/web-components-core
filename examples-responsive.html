@@ -5,29 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Environment &amp; responsive rules — web-components-core</title>
     <style>
-        .readout { font-family: ui-monospace, 'Courier New', monospace; font-size: .85rem;
-                   background: #0f172a; color: #e2e8f0; border-radius: 10px; padding: .9rem 1.1rem; margin-top: .8rem; overflow-x: auto; }
-        .readout b { color: #7dd3fc; font-weight: 600; }
-        .log { font-family: ui-monospace, 'Courier New', monospace; font-size: .78rem; background: #0f172a; color: #cbd5e1;
-               border-radius: 10px; padding: .7rem .9rem; margin-top: .8rem; max-height: 11rem; overflow-y: auto; white-space: pre-wrap; }
-        .log:empty::before { content: '(nothing yet)'; color: #64748b; }
-        .rs-table { border-collapse: collapse; width: 100%; font-size: .88rem; margin-top: .8rem; display: block; overflow-x: auto; }
-        .rs-table > thead, .rs-table > tbody { width: 100%; }
-        .readout, .log, .code-block pre { max-width: 100%; }
-        .controls input[type="number"] { max-width: 6rem; }
-        .rs-table th, .rs-table td { border: 1px solid #cbd5e1; padding: .35rem .55rem; text-align: left; vertical-align: top; }
-        .rs-table th { background: #f1f5f9; color: #0f172a; }
-        .rs-table code { font-size: .82rem; }
-        .rs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; align-items: start; }
-        .counter { display: inline-block; min-width: 2.2rem; padding: .1rem .45rem; border-radius: 6px; background: #e0f2fe; color: #075985;
-                   font: 700 .9rem ui-monospace, monospace; text-align: center; }
+        /* kit gap: a .grid item holding a wide <pre> / table must be allowed to shrink (min-width: auto blows the track out on a phone) */
+        .grid > * { min-width: 0; }
+        /* kit gap: a .log-panel fed by textContent keeps its line breaks + shows a placeholder while empty */
+        .log-panel { white-space: pre-wrap; }
+        .log-panel:empty::before { content: '(nothing yet)'; color: var(--kmwc-text-color-3); }
+        /* kit gap: a vertical list of checkbox / radio options (one per line, with a rank chip) */
         .layer-list { display: grid; gap: .35rem; }
-        .layer-list label { display: flex; gap: .5rem; align-items: baseline; }
-        .layer-list .rank { font: 700 .75rem ui-monospace, monospace; color: #64748b; min-width: 1.4rem; }
-        .ok { color: #16a34a; font-weight: 700; }
-        .bad { color: #dc2626; font-weight: 700; }
-        .helper-tag { font-size: .72rem; font-weight: 700; color: #92400e; background: #fef3c7; border-radius: 4px; padding: .05rem .35rem; }
-        textarea.json { width: 100%; min-height: 7.5rem; font: .8rem ui-monospace, monospace; }
+        .layer-list > label { display: flex; gap: .5rem; align-items: baseline; }
+        .layer-list span { min-width: 0; }
+        .layer-list code { overflow-wrap: anywhere; }
+        textarea.json { width: 100%; min-height: 7.5rem; font-family: var(--kmwc-mono-font-family); font-size: .8rem; }
         core-demo-rs-map, core-demo-rs-layers, core-demo-rs-callback { max-width: 26rem; }
     </style>
 </head>
@@ -65,35 +53,36 @@
                 window edge: the continuous counter runs, the discrete one moves only when you cross a line.
             </p>
             <div class="demo-area">
-                <div class="rs-grid">
-                    <div>
-                        <label class="demo-label">Live snapshot</label>
-                        <div class="readout" id="env-out"></div>
+                <div class="grid" style="--grid-min: 16rem; --grid-gap: 1rem">
+                    <div class="output">
+                        <div class="output-label">Live snapshot</div>
+                        <pre id="env-out"></pre>
                     </div>
                     <div>
-                        <label class="demo-label">Channels</label>
-                        <div class="readout">
-                            observeEnvironment (discrete): <span class="counter" id="disc-count">0</span><br>
-                            observeViewport (continuous): <span class="counter" id="cont-count">0</span>
+                        <div class="output">
+                            <div class="output-label">Channels</div>
+                            <pre>observeEnvironment (discrete): <span class="pill" id="disc-count">0</span><br>observeViewport (continuous): <span class="pill" id="cont-count">0</span></pre>
                         </div>
-                        <label class="demo-label" style="margin-top:.8rem">Discrete-channel log</label>
-                        <div class="log" id="disc-log"></div>
+                        <div class="output">
+                            <div class="output-label">Discrete-channel log</div>
+                            <div class="log-panel" id="disc-log"></div>
+                        </div>
                     </div>
                 </div>
-                <label class="demo-label" style="margin-top:1rem">Breakpoint lines (<code>configureBreakpoints</code> — global, affects every section)</label>
+                <label class="demo-label mt-1">Breakpoint lines (<code>configureBreakpoints</code> — global, affects every section)</label>
                 <div class="controls">
                     <label>mobile ≤ <input type="number" id="bp-mobile" style="width:6rem"> px</label>
                     <label>tablet ≤ <input type="number" id="bp-tablet" style="width:6rem"> px</label>
                     <button id="bp-apply">Apply</button>
                     <button id="bp-reset">Reset to tokens / defaults</button>
-                    <span id="bp-tokens" style="color:#64748b;font-size:.85rem"></span>
+                    <span id="bp-tokens" class="muted"></span>
                 </div>
-                <label class="demo-label" style="margin-top:1rem">Same rules, simulated snapshots <span class="helper-tag">demo helper</span></label>
-                <table class="rs-table" id="sim-table">
+                <label class="demo-label mt-1">Same rules, simulated snapshots <span class="pill pill--warn">demo helper</span></label>
+                <table class="table-full table-bordered" id="sim-table">
                     <thead><tr><th>Device</th><th>Viewport</th><th>isTouchPrimary</th><th>classifyDevice</th><th>breakpoint</th></tr></thead>
                     <tbody></tbody>
                 </table>
-                <div class="note" style="margin-top:1rem">
+                <div class="note">
                     <div class="note-title">The iPad-portrait case</div>
                     An iPad in portrait is 768 × 1024 and touch-primary: its short side (768) is ≥ 600, so it is a
                     <code>tablet</code> — but 768 is inside the <code>mobile</code> width bucket. That is why responsive
@@ -134,8 +123,8 @@ configureBreakpoints({ mobile: 640, tablet: 1100, desktop: Infinity });         
                 <label>map.tablet <select class="rp-map" data-cls="tablet"><option value="">(default)</option><option>floating</option><option selected>modal</option><option>fullscreen</option></select></label>
                 <label>map.desktop <select class="rp-map" data-cls="desktop"><option value="">(default)</option><option>floating</option><option>modal</option><option>fullscreen</option></select></label>
             </div>
-            <div class="readout" id="rp-call"></div>
-            <table class="rs-table" id="rp-table">
+            <div class="output"><pre id="rp-call"></pre></div>
+            <table class="table-full table-bordered" id="rp-table">
                 <thead><tr><th>Environment</th><th>classifyDevice</th><th>resolvePresentation</th></tr></thead>
                 <tbody></tbody>
             </table>
@@ -163,7 +152,7 @@ protected override environmentChanged(env) {
                 <code>desktop</code> entry) the base shows through; narrow the window under 768&nbsp;px and the map takes
                 over again — a key a rule stops returning goes back to its base value.
             </p>
-            <div class="rs-grid">
+            <div class="grid" style="--grid-min: 16rem; --grid-gap: 1rem">
                 <div class="demo-area">
                     <core-demo-rs-map id="rs-map" responsive='{"breakpoint":{"mobile":{"layout":"stack","columns":1},"tablet":{"columns":2}},"device":{"tablet":{"layout":"grid","columns":2,"presentation":"modal"},"mobile":{"presentation":"fullscreen"}}}'></core-demo-rs-map>
                 </div>
@@ -179,14 +168,16 @@ protected override environmentChanged(env) {
                     </div>
                 </div>
             </div>
-            <table class="rs-table" id="map-table">
+            <table class="table-full table-bordered" id="map-table">
                 <thead><tr><th>key</th><th>base (<code>ctx.config</code>)</th><th>effective (<code>el[key]</code>)</th><th>attribute</th></tr></thead>
                 <tbody></tbody>
             </table>
-            <div class="readout" id="map-env"></div>
-            <label class="demo-label" style="margin-top:.8rem">Hook log (<code>config-applied</code> events)</label>
-            <div class="log" id="map-log"></div>
-            <p style="color:#64748b;font-size:.85rem;margin-top:.6rem">
+            <div class="output"><pre id="map-env"></pre></div>
+            <div class="output">
+                <div class="output-label">Hook log (<code>config-applied</code> events)</div>
+                <div class="log-panel" id="map-log"></div>
+            </div>
+            <p class="muted">
                 The <em>base</em> column is read by a probe <code>el.responsiveCallback</code> that only records
                 <code>ctx.config</code> and returns <code>undefined</code> (= nothing to add) — so it changes no value.
             </p>
@@ -215,20 +206,20 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
                 the key falls back to the next one, or the base. Every map below lists all device classes, so it
                 applies at any size.
             </p>
-            <div class="rs-grid">
+            <div class="grid" style="--grid-min: 16rem; --grid-gap: 1rem">
                 <div class="layer-list" id="layers">
-                    <label><span class="rank">1</span><input type="checkbox" id="l-global-map"> <span><code>window.components.responsive</code> → accent amber, density compact, label, badge</span></label>
-                    <label><span class="rank">2</span><input type="checkbox" id="l-global-cb"> <span><code>window.components.responsiveCallback</code> → accent teal, label</span></label>
-                    <label><span class="rank">3</span><input type="checkbox" id="l-tag-map"> <span><code>window.components['core-demo-rs-layers'].responsive</code> → density spacious, label</span></label>
-                    <label><span class="rank">4</span><input type="checkbox" id="l-tag-cb"> <span><code>…['core-demo-rs-layers'].responsiveCallback</code> → label</span></label>
-                    <label><span class="rank">5</span><input type="checkbox" id="l-attr"> <span>instance attribute <code>accent="rose"</code> (explicit)</span></label>
-                    <label><span class="rank">6</span><input type="checkbox" id="l-inst-map"> <span>instance <code>responsive</code> JSON attribute → label</span></label>
-                    <div><span class="rank">7</span> instance <code>el.responsiveCallback</code>:
-                        <label style="display:inline"><input type="radio" name="l-inst-cb" value="off" checked> off</label>
-                        <label style="display:inline"><input type="radio" name="l-inst-cb" value="partial"> → badge</label>
-                        <label style="display:inline"><input type="radio" name="l-inst-cb" value="null"> → <code>null</code> (opt out)</label>
+                    <label><span class="pill">1</span><input type="checkbox" id="l-global-map"> <span><code>window.components.responsive</code> → accent amber, density compact, label, badge</span></label>
+                    <label><span class="pill">2</span><input type="checkbox" id="l-global-cb"> <span><code>window.components.responsiveCallback</code> → accent teal, label</span></label>
+                    <label><span class="pill">3</span><input type="checkbox" id="l-tag-map"> <span><code>window.components['core-demo-rs-layers'].responsive</code> → density spacious, label</span></label>
+                    <label><span class="pill">4</span><input type="checkbox" id="l-tag-cb"> <span><code>…['core-demo-rs-layers'].responsiveCallback</code> → label</span></label>
+                    <label><span class="pill">5</span><input type="checkbox" id="l-attr"> <span>instance attribute <code>accent="rose"</code> (explicit)</span></label>
+                    <label><span class="pill">6</span><input type="checkbox" id="l-inst-map"> <span>instance <code>responsive</code> JSON attribute → label</span></label>
+                    <div><span class="pill">7</span> instance <code>el.responsiveCallback</code>:
+                        <label><input type="radio" name="l-inst-cb" value="off" checked> off</label>
+                        <label><input type="radio" name="l-inst-cb" value="partial"> → badge</label>
+                        <label><input type="radio" name="l-inst-cb" value="null"> → <code>null</code> (opt out)</label>
                     </div>
-                    <div class="controls" style="margin-top:.4rem">
+                    <div class="controls">
                         <button id="l-all">All on</button>
                         <button id="l-reset">Reset all layers</button>
                     </div>
@@ -237,13 +228,15 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
                     <core-demo-rs-layers id="rs-layers"></core-demo-rs-layers>
                 </div>
             </div>
-            <table class="rs-table" id="layers-table">
-                <thead><tr><th>key</th><th>effective (<code>el[key]</code>)</th><th>attribute</th><th>which layer won <span class="helper-tag">demo helper</span></th><th>helper = actual</th></tr></thead>
+            <table class="table-full table-bordered" id="layers-table">
+                <thead><tr><th>key</th><th>effective (<code>el[key]</code>)</th><th>attribute</th><th>which layer won <span class="pill pill--warn">demo helper</span></th><th>helper = actual</th></tr></thead>
                 <tbody></tbody>
             </table>
-            <label class="demo-label" style="margin-top:.8rem">Hook log</label>
-            <div class="log" id="layers-log"></div>
-            <p style="color:#64748b;font-size:.85rem;margin-top:.6rem">
+            <div class="output">
+                <div class="output-label">Hook log</div>
+                <div class="log-panel" id="layers-log"></div>
+            </div>
+            <p class="muted">
                 The “which layer won” column is computed by this page (a re-statement of the documented precedence), not
                 by core; the last column checks it against the value the element actually reports.
             </p>
@@ -262,7 +255,7 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
                 between breakpoint lines. The result is diffed: the callback runs on every (throttled) size change, but
                 <code>update()</code> only fires when the returned values actually change.
             </p>
-            <div class="rs-grid">
+            <div class="grid" style="--grid-min: 16rem; --grid-gap: 1rem">
                 <div class="demo-area">
                     <core-demo-rs-callback id="rs-cb"></core-demo-rs-callback>
                 </div>
@@ -272,11 +265,13 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
                         <label>2 cols below <input type="number" id="cb-two" value="900" style="width:6rem"> px</label>
                         <button id="cb-apply">Reassign callback</button>
                     </div>
-                    <div class="readout" id="cb-out"></div>
+                    <div class="output"><pre id="cb-out"></pre></div>
                 </div>
             </div>
-            <label class="demo-label" style="margin-top:.8rem">Hook log</label>
-            <div class="log" id="cb-log"></div>
+            <div class="output">
+                <div class="output-label">Hook log</div>
+                <div class="log-panel" id="cb-log"></div>
+            </div>
             <div class="code-block"><pre id="cb-code"></pre></div>
         </div>
 
@@ -285,7 +280,7 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
         <!-- ============================================================= -->
         <div class="card">
             <h2>RS06 · API summary</h2>
-            <table class="rs-table">
+            <table class="reference-table">
                 <thead><tr><th>API</th><th>What it does</th></tr></thead>
                 <tbody>
                     <tr><td><code>getEnvironment()</code></td><td>Synchronous <code>EnvironmentSnapshot</code>: <code>pointer</code>, <code>hasCoarsePointer</code>, <code>canHover</code>, <code>isTouchPrimary</code>, <code>orientation</code>, <code>viewportWidth</code>/<code>Height</code>, <code>breakpoint</code>, <code>os</code>, <code>isApple</code>, <code>isAndroid</code>.</td></tr>
@@ -301,7 +296,7 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
                     <tr><td>Types</td><td><code>ResponsiveMap&lt;C&gt;</code>, <code>ResponsiveMapAxis</code>, <code>ResponsiveContext&lt;C&gt;</code>, <code>ResponsiveCallback&lt;C&gt;</code>, <code>EnvironmentSnapshot</code>, <code>DeviceClass</code>, <code>Presentation</code>, <code>ResolvedPresentation</code>, <code>PresentationMap</code>.</td></tr>
                 </tbody>
             </table>
-            <div class="note" style="margin-top:1rem">
+            <div class="note">
                 <div class="note-title">Rules of the road</div>
                 Precedence: global map → global callback → per-tag map → per-tag callback → instance attributes /
                 properties → instance map → instance callback. Values are validated by each input's converter (invalid →
@@ -513,7 +508,7 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
                 const ok = predicted === actual;
                 return `<tr data-key="${k}"><td><code>${k}</code></td><td class="eff">${show(actual)}</td>`
                     + `<td class="attr">${show(layersCard.getAttribute(k) ?? undefined)}</td><td class="winner">${layer}</td>`
-                    + `<td class="check ${ok ? 'ok' : 'bad'}">${ok ? '✓' : `✗ expected ${show(predicted)}`}</td></tr>`;
+                    + `<td class="check"><span class="pill ${ok ? 'pill--ok' : 'pill--err'}">${ok ? '✓' : `✗ expected ${show(predicted)}`}</span></td></tr>`;
             }).join('');
         }
         function renderLayersCode(s) {
@@ -568,7 +563,7 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
             const env = getEnvironment();
             $('cb-out').innerHTML = [
                 `viewportWidth: <b id="cb-width">${env.viewportWidth}</b> (breakpoint ${env.breakpoint})`,
-                `callback runs: <span class="counter" id="cb-runs">${cbRuns}</span> · update() calls: <span class="counter" id="cb-updates">${cbCard.updateCount ?? 0}</span>`,
+                `callback runs: <span class="pill" id="cb-runs">${cbRuns}</span> · update() calls: <span class="pill" id="cb-updates">${cbCard.updateCount ?? 0}</span>`,
                 `last branch: <b id="cb-branch">${esc(cbBranch)}</b>`,
                 `effective: isCompact <b id="cb-compact-val">${cbCard.isCompact}</b> · cols <b id="cb-cols-val">${cbCard.cols}</b>`,
             ].join('<br>');

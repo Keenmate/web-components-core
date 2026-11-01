@@ -18,18 +18,20 @@
 import { BlissElement, define, registerComponent, toBool, toEnum, toInt, toText } from './src/index.js';
 import type { InputDef } from './src/index.js';
 
+// Page tokens (--kmwc-*) inherit into the shadow root, so the card follows light / dark.
 const STYLES = `
   :host { display: block; }
-  .rs { border: 1px solid #cbd5e1; border-left: 6px solid var(--rs-accent, #64748b); border-radius: 10px;
-        padding: var(--rs-pad, .7rem .9rem); font: 500 .9rem system-ui, sans-serif; background: #fff; color: #0f172a; }
+  .rs { border: 1px solid var(--kmwc-border-color, GrayText); border-left: 6px solid var(--rs-accent, #64748b);
+        border-radius: var(--kmwc-radius-md, 10px); padding: var(--rs-pad, .7rem .9rem); font-size: .9rem; font-weight: 500;
+        background: var(--kmwc-main-bg, Canvas); color: var(--kmwc-text-color-1, CanvasText); }
   .rs-title { font-weight: 700; margin-bottom: .35rem; }
-  .rs-kv { font: .8rem ui-monospace, 'Courier New', monospace; line-height: 1.55; }
-  .rs-kv b { color: #0369a1; }
+  .rs-kv { font: .8rem var(--kmwc-mono-font-family, ui-monospace, monospace); line-height: 1.55; }
+  .rs-kv b { color: var(--kmwc-info-color, #0369a1); }
   .rs-tiles { display: grid; gap: .35rem; margin-top: .5rem; grid-template-columns: repeat(var(--rs-cols, 3), minmax(0, 1fr)); }
   .rs-tiles.stack { grid-template-columns: 1fr; }
   .rs-tiles.list { display: flex; flex-direction: column; gap: .15rem; }
-  .rs-tile { background: #e0f2fe; border-radius: 6px; padding: .3rem .4rem; text-align: center; font-size: .78rem; }
-  .rs-hooks { margin-top: .4rem; font: .75rem ui-monospace, monospace; color: #64748b; }
+  .rs-tile { background: var(--kmwc-accent-light-bg, #e0f2fe); border-radius: var(--kmwc-radius-sm, 6px); padding: .3rem .4rem; text-align: center; font-size: .78rem; }
+  .rs-hooks { margin-top: .4rem; font: .75rem var(--kmwc-mono-font-family, ui-monospace, monospace); color: var(--kmwc-text-color-3, GrayText); }
 `;
 
 const ACCENTS: Record<string, string> = { slate: '#64748b', amber: '#d97706', teal: '#0d9488', rose: '#e11d48', violet: '#7c3aed' };

@@ -43,16 +43,17 @@ const SHARED_CSS = `
     --pgd-loader-duration: var(--base-loader-duration, 0.8s);
     --pgd-loader-size: var(--base-loader-size, 1.25em);
   }
-  .pg { min-width: 12rem; border-radius: 10px; padding: .6rem .8rem; font: 500 .88rem system-ui, sans-serif;
-        background: light-dark(#ffffff, #1e293b); color: light-dark(#0f172a, #e2e8f0);
-        border: 1px solid light-dark(#cbd5e1, #334155); border-left-width: 5px; }
-  .pg.tone-neutral { border-left-color: #94a3b8; }
-  .pg.tone-info    { border-left-color: #3b82f6; }
-  .pg.tone-success { border-left-color: #22c55e; }
+  /* Page tokens (--kmwc-*) inherit into the shadow root, so the card follows light / dark. */
+  .pg { min-width: 12rem; border-radius: var(--kmwc-radius-md, 10px); padding: .6rem .8rem; font-size: .88rem; font-weight: 500;
+        background: var(--kmwc-main-bg, Canvas); color: var(--kmwc-text-color-1, CanvasText);
+        border: 1px solid var(--kmwc-border-color, GrayText); border-left-width: 5px; }
+  .pg.tone-neutral { border-left-color: var(--kmwc-neutral-color, #94a3b8); }
+  .pg.tone-info    { border-left-color: var(--kmwc-info-color, #3b82f6); }
+  .pg.tone-success { border-left-color: var(--kmwc-success-color, #22c55e); }
   .pg-label { font-weight: 700; }
-  .pg-id { font: .72rem ui-monospace, monospace; color: light-dark(#64748b, #94a3b8); margin-left: .35rem; }
+  .pg-id { font: .72rem var(--kmwc-mono-font-family, ui-monospace, monospace); color: var(--kmwc-text-color-3, GrayText); margin-left: .35rem; }
   .pg-status { display: flex; align-items: center; gap: .4rem; min-height: 1.6rem; margin-top: .35rem;
-               color: light-dark(#0369a1, #7dd3fc); }
+               color: var(--kmwc-info-color, #0369a1); }
   /* SPEC §12.14 — the loader drawing rule every component copies (core ships no loader CSS). */
   .pgd-loader {
     display: inline-block;
@@ -150,8 +151,8 @@ export class CoreDemoPgEarly extends BlissElement {
 
   protected override reinit(): void {
     const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
-    root.innerHTML = `<style>:host{display:inline-block;padding:.45rem .7rem;border-radius:8px;font:500 .85rem system-ui;
-      background:light-dark(#dcfce7,#14532d);color:light-dark(#166534,#bbf7d0)}</style>upgraded · tone <b></b>`;
+    root.innerHTML = `<style>:host{display:inline-block;padding:.45rem .7rem;border-radius:var(--kmwc-radius-sm,6px);font-size:.85rem;font-weight:500;
+      background:color-mix(in srgb,var(--kmwc-success-color,#16a34a) 16%,transparent);color:var(--kmwc-success-color,#16a34a)}</style>upgraded · tone <b></b>`;
     this.update();
   }
 

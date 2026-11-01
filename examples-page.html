@@ -12,26 +12,20 @@
         window.__pgEarlyEntry = window.components['core-demo-pg-early'];
     </script>
     <style>
-        .pg-stage { display: flex; gap: .8rem; flex-wrap: wrap; align-items: flex-start; min-height: 3.5rem; }
-        .readout { font: .8rem/1.6 ui-monospace, 'Courier New', monospace; margin-top: .8rem; padding: .5rem .75rem;
-                   border-radius: 8px; background: light-dark(#f8fafc, #0f172a); border: 1px solid light-dark(#e2e8f0, #334155);
-                   overflow-x: auto; white-space: pre; max-width: 100%; }
-        .readout b { color: light-dark(#0369a1, #7dd3fc); font-weight: 600; }
+        /* kit gap: tones for lines in a .log-panel (log levels / action echo / ok) */
         .log-panel > div { white-space: pre-wrap; overflow-wrap: anywhere; }
-        .log-panel .lv-debug { color: #64748b; }
-        .log-panel .lv-info { color: #0369a1; }
-        .log-panel .lv-warn { color: #b45309; }
-        .log-panel .lv-error { color: #dc2626; }
-        .log-panel .act { opacity: .7; margin-top: .3rem; }
-        .log-panel .ok { color: #15803d; }
-        .table-scroll { overflow-x: auto; max-width: 100%; }
-        .code-block pre { max-width: 100%; overflow-x: auto; }
-        .ctl-group { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; margin: .35rem 0; }
-        .ctl-group label, .controls button { max-width: 100%; min-width: 0; }
-        .ctl-group label code, .controls button code { white-space: normal; overflow-wrap: anywhere; }
-        .ctl-group > .ctl-title { font: 600 .75rem ui-monospace, monospace; color: light-dark(#64748b, #94a3b8); min-width: 7.5rem; }
-        core-demo-pg-early:not(:defined) { display: inline-block; padding: .45rem .7rem; border-radius: 8px; font: .85rem system-ui;
-                                           border: 1px dashed light-dark(#94a3b8, #475569); color: light-dark(#64748b, #94a3b8); }
+        .log-panel .lv-debug { color: var(--kmwc-text-color-3); }
+        .log-panel .lv-info { color: var(--kmwc-info-color); }
+        .log-panel .lv-warn { color: var(--kmwc-warning-color); }
+        .log-panel .lv-error { color: var(--kmwc-danger-color); }
+        .log-panel .act { color: var(--kmwc-text-color-3); margin-top: .3rem; }
+        .log-panel .ok { color: var(--kmwc-success-color); }
+        /* kit gap: a long <code> button label in .controls wraps (rc03 does it for labels only) */
+        .controls button { max-width: 100%; }
+        .controls button code { white-space: normal; overflow-wrap: anywhere; }
+        /* Demo visual: the placeholder an element shows before its tag is defined. */
+        core-demo-pg-early:not(:defined) { display: inline-block; padding: .45rem .7rem; border-radius: var(--kmwc-radius-sm); font-size: .85rem;
+                                           border: 1px dashed var(--kmwc-border-color-strong); color: var(--kmwc-text-color-3); }
         core-demo-pg-early:not(:defined)::before { content: 'core-demo-pg-early — not defined yet'; }
     </style>
 </head>
@@ -75,12 +69,12 @@
                 <button id="pg01-register"><code>window.components['core-demo-pg-early'].register()</code></button>
             </div>
             <div class="demo-area">
-                <div class="pg-stage" id="pg01-stage">
+                <div class="field-row" id="pg01-stage">
                     <core-demo-pg id="demo-pg-a" label="Instance A" tone="info"></core-demo-pg>
                     <core-demo-pg id="demo-pg-b" label="Instance B"></core-demo-pg>
                     <core-demo-pg-early id="demo-pg-early"></core-demo-pg-early>
                 </div>
-                <div class="readout" id="pg01-readout"></div>
+                <div class="output"><pre id="pg01-readout"></pre></div>
             </div>
             <div class="code-block"><pre>&lt;script&gt;  // before any module
   window.components = { 'core-demo-pg-early': { note: 'set by the page before core loaded' } };
@@ -121,32 +115,34 @@ window.components['core-demo-pg-early'].register();  // customElements.define no
                 explicit <code>logger.setLevel(x)</code> writes <code>localStorage</code>. The log below captures the
                 console lines each button produced.
             </p>
-            <div class="controls" style="display:block">
-                <div class="ctl-group"><span class="ctl-title">emit</span>
+            <div>
+                <div class="controls"><strong class="muted">emit</strong>
                     <button id="pg02-sample-a">A.logSample()</button>
                     <button id="pg02-sample-b">B.logSample()</button>
                     <button id="pg02-core-a">A: <code>tone="nope"</code> (core INIT warning)</button>
                     <button id="pg02-core-early">early: <code>tone="nope"</code> (CORE fallback)</button>
                 </div>
-                <div class="ctl-group"><span class="ctl-title">page-wide</span>
+                <div class="controls"><strong class="muted">page-wide</strong>
                     <button id="pg02-g-enable"><code>logging.enableLogging()</code></button>
                     <button id="pg02-g-info"><code>logging.setLogLevel('info')</code></button>
                     <button id="pg02-g-disable"><code>logging.disableLogging()</code></button>
                     <button id="pg02-g-warn"><code>logging.setLogLevel('warn')</code></button>
                 </div>
-                <div class="ctl-group"><span class="ctl-title">per tag</span>
+                <div class="controls"><strong class="muted">per tag</strong>
                     <button id="pg02-t-error"><code>['core-demo-pg'].logging.setLogLevel('error')</code></button>
                     <button id="pg02-t-cat"><code>setCategoryLevel('PGDEMO:DATA', 'debug')</code></button>
                 </div>
-                <div class="ctl-group"><span class="ctl-title">per instance</span>
+                <div class="controls"><strong class="muted">per instance</strong>
                     <button id="pg02-i-enable"><code>A.enableLogging('debug')</code></button>
                     <button id="pg02-i-disable"><code>A.disableLogging()</code></button>
                 </div>
             </div>
             <div class="demo-area">
-                <div class="readout" id="pg02-readout"></div>
-                <label class="demo-label" style="margin-top:1rem">Captured console lines:</label>
-                <div class="log-panel" id="pg02-log"></div>
+                <div class="output"><pre id="pg02-readout"></pre></div>
+                <div class="output">
+                    <div class="output-label">Captured console lines:</div>
+                    <div class="log-panel" id="pg02-log"></div>
+                </div>
             </div>
             <div class="code-block"><pre>const pgLogging = createLoggers('PGDEMO');          // INIT / DATA / UI, each at 'warn'
 class CoreDemoPg extends BlissElement {
@@ -185,15 +181,15 @@ window.components.logging.getCategories();          // ['CORE:ELEMENT', …, 'PG
                 non-enumerable accessor shared by every bundled core copy; a plain value assigned before any component
                 loaded is adopted.
             </p>
-            <div class="controls" style="display:block">
-                <div class="ctl-group"><span class="ctl-title">loading</span>
+            <div>
+                <div class="controls"><strong class="muted">loading</strong>
                     <button id="pg03-start">start on A + B</button>
                     <button id="pg03-stop">stop (<code>remove()</code>)</button>
                 </div>
-                <div class="ctl-group"><span class="ctl-title">page hook</span>
+                <div class="controls"><strong class="muted">page hook</strong>
                     <label><input type="checkbox" id="pg03-page"> <code>window.components.renderLoaderCallback</code> = dots</label>
                 </div>
-                <div class="ctl-group"><span class="ctl-title">B's instance hook</span>
+                <div class="controls"><strong class="muted">B's instance hook</strong>
                     <label><input type="radio" name="pg03-inst" value="none" checked> none</label>
                     <label><input type="radio" name="pg03-inst" value="bar"> progress bar (with cleanup)</label>
                     <label><input type="radio" name="pg03-inst" value="throw"> throws</label>
@@ -210,10 +206,12 @@ window.components.logging.getCategories();          // ['CORE:ELEMENT', …, 'PG
                 ticked, A shows the dots while B shows the default spinner.
             </div>
             <div class="demo-area">
-                <div class="pg-stage" id="pg03-stage"></div>
-                <div class="readout" id="pg03-readout"></div>
-                <label class="demo-label" style="margin-top:1rem">Log:</label>
-                <div class="log-panel" id="pg03-log"></div>
+                <div class="field-row" id="pg03-stage"></div>
+                <div class="output"><pre id="pg03-readout"></pre></div>
+                <div class="output">
+                    <div class="output-label">Log:</div>
+                    <div class="log-panel" id="pg03-log"></div>
+                </div>
             </div>
             <div class="code-block"><pre>// component side
 startLoading() { this.#remove = renderLoader(this, this.statusEl, 'overlay', { label: 'Loading…', prefix: 'pgd' }); }
@@ -253,7 +251,7 @@ window.components.renderLoaderCallback = null;     // a non-function reads as un
                 <button id="pg04-null">A.customStylesCallback = null</button>
             </div>
             <div class="demo-area">
-                <div class="readout" id="pg04-readout"></div>
+                <div class="output"><pre id="pg04-readout"></pre></div>
             </div>
             <div class="code-block"><pre>reinit() {
   const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
@@ -272,25 +270,23 @@ a.shadowRoot.querySelectorAll('style.pgd-custom').length;                    // 
         <!-- ============================================================= -->
         <div class="card">
             <h2>PG05 · API summary</h2>
-            <div class="table-scroll">
-                <table class="reference-table">
-                    <thead><tr><th>API</th><th>What it does</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>registerComponent(tag, Class, { config, logging?, shouldAutoDefine? })</code></td><td>Publishes <code>window.components[tag]</code> (adopting an existing entry), defines the element (unless <code>shouldAutoDefine: false</code>), wires the bundle to instance loggers. Returns the entry.</td></tr>
-                        <tr><td><code>entry.version()</code> · <code>config</code> · <code>logging</code> · <code>register()</code> · <code>getInstances()</code></td><td>Build metadata, the bundle's controls (<code>enableLogging</code> / <code>disableLogging</code> / <code>setLogLevel</code> / <code>setCategoryLevel</code> / <code>getCategories</code>), idempotent define, live instances. Plus per-tag <code>responsive</code> / <code>responsiveCallback</code> (SPEC §6.7).</td></tr>
-                        <tr><td><code>getInstances(tag)</code> · <code>getRegisteredTags()</code></td><td>Connected elements of a tag (connection order); tags with at least one connected instance.</td></tr>
-                        <tr><td><code>createLoggers(namespace, categories?)</code></td><td>A <code>LoggerBundle</code>: <code>loggers</code>, <code>enableLogging(level = 'debug')</code>, <code>disableLogging()</code>, <code>setLogLevel()</code>, <code>setCategoryLevel()</code>, <code>forInstance()</code>. Default level <code>warn</code> (<code>DEFAULT_LOG_LEVEL</code>).</td></tr>
-                        <tr><td><code>this.log.&lt;CATEGORY&gt;</code></td><td>Protected instance loggers: <code>[NS:CAT] #id</code>; a tag with no bundle → <code>[CORE:ELEMENT] tag#id</code>.</td></tr>
-                        <tr><td><code>el.enableLogging(level?)</code> · <code>el.disableLogging()</code> · <code>el.isLoggingEnabled</code></td><td>Per-instance override, gated by the more verbose of it and the type level.</td></tr>
-                        <tr><td><code>window.components.logging</code> / <code>getGlobalLogging()</code></td><td>Page-wide <code>enableLogging</code> / <code>disableLogging</code> / <code>setLogLevel</code> / <code>getCategories</code> over every bundle, CORE included, and later ones. Non-enumerable; state on <code>globalThis</code>.</td></tr>
-                        <tr><td><code>coreLogging</code> · <code>CORE_LOG_CATEGORIES</code></td><td>Core's own bundle: <code>CORE:ELEMENT</code> / <code>ACTIONS</code> / <code>MENU</code> / <code>THEME</code>.</td></tr>
-                        <tr><td><code>renderLoader(host, container, context, { label, prefix, renderLoadingCallback? })</code></td><td>Draws a loading state (instance hook &gt; page hook &gt; default span) and returns an idempotent <code>remove()</code>.</td></tr>
-                        <tr><td><code>window.components.renderLoaderCallback</code></td><td>Page-wide loader hook (non-enumerable accessor; a non-function reads as unset).</td></tr>
-                        <tr><td><code>adoptStyles(root, ...css)</code></td><td>Shared, cached constructable sheets; deduplicated per root.</td></tr>
-                        <tr><td><code>createStyleSlot(root, { position?, cssClass? })</code></td><td>A replaceable per-instance <code>&lt;style&gt;</code>: <code>set(css)</code> / <code>clear()</code> / <code>destroy()</code>.</td></tr>
-                    </tbody>
-                </table>
-            </div>
+            <table class="reference-table">
+                <thead><tr><th>API</th><th>What it does</th></tr></thead>
+                <tbody>
+                    <tr><td><code>registerComponent(tag, Class, { config, logging?, shouldAutoDefine? })</code></td><td>Publishes <code>window.components[tag]</code> (adopting an existing entry), defines the element (unless <code>shouldAutoDefine: false</code>), wires the bundle to instance loggers. Returns the entry.</td></tr>
+                    <tr><td><code>entry.version()</code> · <code>config</code> · <code>logging</code> · <code>register()</code> · <code>getInstances()</code></td><td>Build metadata, the bundle's controls (<code>enableLogging</code> / <code>disableLogging</code> / <code>setLogLevel</code> / <code>setCategoryLevel</code> / <code>getCategories</code>), idempotent define, live instances. Plus per-tag <code>responsive</code> / <code>responsiveCallback</code> (SPEC §6.7).</td></tr>
+                    <tr><td><code>getInstances(tag)</code> · <code>getRegisteredTags()</code></td><td>Connected elements of a tag (connection order); tags with at least one connected instance.</td></tr>
+                    <tr><td><code>createLoggers(namespace, categories?)</code></td><td>A <code>LoggerBundle</code>: <code>loggers</code>, <code>enableLogging(level = 'debug')</code>, <code>disableLogging()</code>, <code>setLogLevel()</code>, <code>setCategoryLevel()</code>, <code>forInstance()</code>. Default level <code>warn</code> (<code>DEFAULT_LOG_LEVEL</code>).</td></tr>
+                    <tr><td><code>this.log.&lt;CATEGORY&gt;</code></td><td>Protected instance loggers: <code>[NS:CAT] #id</code>; a tag with no bundle → <code>[CORE:ELEMENT] tag#id</code>.</td></tr>
+                    <tr><td><code>el.enableLogging(level?)</code> · <code>el.disableLogging()</code> · <code>el.isLoggingEnabled</code></td><td>Per-instance override, gated by the more verbose of it and the type level.</td></tr>
+                    <tr><td><code>window.components.logging</code> / <code>getGlobalLogging()</code></td><td>Page-wide <code>enableLogging</code> / <code>disableLogging</code> / <code>setLogLevel</code> / <code>getCategories</code> over every bundle, CORE included, and later ones. Non-enumerable; state on <code>globalThis</code>.</td></tr>
+                    <tr><td><code>coreLogging</code> · <code>CORE_LOG_CATEGORIES</code></td><td>Core's own bundle: <code>CORE:ELEMENT</code> / <code>ACTIONS</code> / <code>MENU</code> / <code>THEME</code>.</td></tr>
+                    <tr><td><code>renderLoader(host, container, context, { label, prefix, renderLoadingCallback? })</code></td><td>Draws a loading state (instance hook &gt; page hook &gt; default span) and returns an idempotent <code>remove()</code>.</td></tr>
+                    <tr><td><code>window.components.renderLoaderCallback</code></td><td>Page-wide loader hook (non-enumerable accessor; a non-function reads as unset).</td></tr>
+                    <tr><td><code>adoptStyles(root, ...css)</code></td><td>Shared, cached constructable sheets; deduplicated per root.</td></tr>
+                    <tr><td><code>createStyleSlot(root, { position?, cssClass? })</code></td><td>A replaceable per-instance <code>&lt;style&gt;</code>: <code>set(css)</code> / <code>clear()</code> / <code>destroy()</code>.</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 

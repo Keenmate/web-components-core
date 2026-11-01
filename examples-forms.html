@@ -5,29 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Forms — web-components-core</title>
     <style>
-        .fo-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
-        .fo-form { display: grid; gap: .8rem; padding: .9rem; border-radius: 10px; min-width: 0;
-                   border: 2px dashed light-dark(#cbd5e1, #475569); }
-        .fo-form-title { font: 600 .75rem ui-monospace, monospace; color: light-dark(#64748b, #94a3b8); }
-        .fo-form fieldset { border: 1px solid light-dark(#cbd5e1, #475569); border-radius: 8px; padding: .6rem .8rem; margin: 0; min-width: 0; }
-        .fo-form fieldset[disabled] { background: light-dark(#f1f5f9, #1e293b); }
-        .fo-native { display: grid; gap: .25rem; font: 500 .85rem system-ui, sans-serif; }
-        .fo-native input { font: inherit; padding: .35rem .5rem; border-radius: 6px; border: 1px solid light-dark(#94a3b8, #475569); }
-        .fo-buttons { display: flex; gap: .5rem; flex-wrap: wrap; }
-        .fo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1rem; align-items: start; }
-        .readout { font: .8rem/1.6 ui-monospace, 'Courier New', monospace; margin-top: .8rem; padding: .5rem .75rem;
-                   border-radius: 8px; background: light-dark(#f8fafc, #0f172a); border: 1px solid light-dark(#e2e8f0, #334155);
-                   overflow-x: auto; white-space: pre; }
-        .readout b { color: light-dark(#0369a1, #7dd3fc); font-weight: 600; }
+        /* Demo visual: the dashed outline marks a form's boundary (inside vs outside the <form>). */
+        .fo-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: .8rem; margin: 0; padding: .9rem; min-width: 0;
+                   border: 2px dashed var(--kmwc-border-color-strong); border-radius: var(--kmwc-radius-md); }
+        /* kit gap: tones for lines in a .log-panel (warn / ok / hook / action echo) */
         .log-panel > div { white-space: pre-wrap; }
-        .log-panel .warn { color: #b45309; }
-        .log-panel .ok { color: #15803d; }
-        .log-panel .hook { color: #7c3aed; }
-        .log-panel .act { opacity: .7; margin-top: .3rem; }
-        .table-scroll { overflow-x: auto; max-width: 100%; }
-        .code-block pre { max-width: 100%; overflow-x: auto; }
+        .log-panel .warn { color: var(--kmwc-warning-color); }
+        .log-panel .ok { color: var(--kmwc-success-color); }
+        .log-panel .hook { color: var(--kmwc-info-color); }
+        .log-panel .act { color: var(--kmwc-text-color-3); margin-top: .3rem; }
         /* Native pseudo-classes match a form-associated host — page CSS needs nothing from core. */
-        core-demo-field:invalid { outline: 2px solid #dc2626; outline-offset: 3px; border-radius: 8px; }
+        core-demo-field:invalid { outline: 2px solid var(--kmwc-danger-color); outline-offset: 3px; border-radius: var(--kmwc-radius-sm); }
         core-demo-field:disabled { opacity: .8; }
         core-demo-field:not(:defined) { visibility: hidden; }
     </style>
@@ -64,24 +52,26 @@
                 own, returning to its <code>value</code> attribute like a native input.
             </p>
             <div class="demo-area">
-                <div class="fo-row">
+                <div class="grid" style="--grid-min: 17rem; --grid-gap: 1rem">
                     <form class="fo-form" id="do-fo01-form" action="#">
-                        <span class="fo-form-title">&lt;form id="do-fo01-form"&gt;</span>
+                        <span class="demo-label"><code>&lt;form id="do-fo01-form"&gt;</code></span>
                         <core-demo-field id="demo-fo01-in" name="qty" value="3" label="Quantity (inside the form)"></core-demo-field>
-                        <label class="fo-native">Native note <input name="note" value="hi"></label>
-                        <div class="fo-buttons">
+                        <div class="control-group"><label for="fo01-note">Native note</label><input id="fo01-note" name="note" value="hi"></div>
+                        <div class="field-row">
                             <button type="submit" id="fo01-submit">Submit (prevented → FormData)</button>
-                            <button type="reset" id="fo01-reset">Reset</button>
+                            <button type="reset" id="fo01-reset" class="btn-outline">Reset</button>
                         </div>
                     </form>
                     <div class="fo-form">
-                        <span class="fo-form-title">outside the form, form="do-fo01-form"</span>
+                        <span class="demo-label">outside the form, <code>form="do-fo01-form"</code></span>
                         <core-demo-field id="demo-fo01-out" name="extra" value="7" label="Extra (outside)" form="do-fo01-form"></core-demo-field>
                     </div>
                 </div>
-                <div class="readout" id="fo01-readout"></div>
-                <label class="demo-label" style="margin-top:1rem">Log (submit, reset, delegated <code>change</code>):</label>
-                <div class="log-panel" id="fo01-log"></div>
+                <div class="output"><pre id="fo01-readout"></pre></div>
+                <div class="output">
+                    <div class="output-label">Log (submit, reset, delegated <code>change</code>):</div>
+                    <div class="log-panel" id="fo01-log"></div>
+                </div>
             </div>
             <div class="code-block"><pre>class CoreDemoField extends BlissElement {
   static formAssociated = true;               // el.form, formDisabledCallback, validity API
@@ -133,9 +123,11 @@ form.addEventListener('change', (e) =&gt; e.target.form);   // resolves like a n
                         <core-demo-field id="demo-fo02-el" name="qty" value="2" label="Quantity"></core-demo-field>
                     </fieldset>
                 </form>
-                <div class="readout" id="fo02-readout"></div>
-                <label class="demo-label" style="margin-top:1rem">Hook log:</label>
-                <div class="log-panel" id="fo02-log"></div>
+                <div class="output"><pre id="fo02-readout"></pre></div>
+                <div class="output">
+                    <div class="output-label">Hook log:</div>
+                    <div class="log-panel" id="fo02-log"></div>
+                </div>
             </div>
             <div class="code-block"><pre>static inputs = [
   { configKey: 'isDisabled', attribute: 'disabled', converter: toBool('presence'),
@@ -178,27 +170,29 @@ el.isDisabled = true;       // reflects disabled="" → still disabled → no se
                 <button id="fo03-null"><code>setFormatError(null)</code></button>
             </div>
             <div class="demo-area">
-                <div class="fo-grid">
+                <div class="grid" style="--grid-min: 17rem; --grid-gap: 1rem">
                     <form class="fo-form" id="do-fo03-form" action="#">
-                        <span class="fo-form-title">&lt;form&gt; (validates)</span>
+                        <span class="demo-label"><code>&lt;form&gt;</code> (validates)</span>
                         <core-demo-field id="demo-fo03-el" name="qty" value="5" label="Quantity"></core-demo-field>
-                        <div class="fo-buttons"><button type="submit" id="fo03-submit">Submit</button></div>
-                        <div class="readout" id="fo03-readout"></div>
+                        <div class="field-row"><button type="submit" id="fo03-submit">Submit</button></div>
+                        <div class="output"><pre id="fo03-readout"></pre></div>
                     </form>
                     <form class="fo-form" id="do-fo03-nv" action="#" novalidate>
-                        <span class="fo-form-title">&lt;form novalidate&gt;</span>
+                        <span class="demo-label"><code>&lt;form novalidate&gt;</code></span>
                         <core-demo-field id="demo-fo03-nvel" name="qty" value="5" label="Quantity"></core-demo-field>
-                        <div class="fo-buttons"><button type="submit" id="fo03-nv-submit">Submit</button></div>
-                        <div class="readout" id="fo03-nv-readout"></div>
+                        <div class="field-row"><button type="submit" id="fo03-nv-submit">Submit</button></div>
+                        <div class="output"><pre id="fo03-nv-readout"></pre></div>
                     </form>
                     <form class="fo-form" id="do-fo03-plain-form" action="#">
-                        <span class="fo-form-title">not form-associated (inside a &lt;form&gt;)</span>
+                        <span class="demo-label">not form-associated (inside a <code>&lt;form&gt;</code>)</span>
                         <core-demo-plain id="demo-fo03-plain"></core-demo-plain>
-                        <div class="readout" id="fo03-plain-readout"></div>
+                        <div class="output"><pre id="fo03-plain-readout"></pre></div>
                     </form>
                 </div>
-                <label class="demo-label" style="margin-top:1rem">Log (the buttons act on the left field):</label>
-                <div class="log-panel" id="fo03-log"></div>
+                <div class="output">
+                    <div class="output-label">Log (the buttons act on the left field):</div>
+                    <div class="log-panel" id="fo03-log"></div>
+                </div>
             </div>
             <div class="code-block"><pre>#produceValue() {
   const raw = this.config.value.trim();
@@ -224,24 +218,22 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
         <!-- ============================================================= -->
         <div class="card">
             <h2>FO04 · API summary</h2>
-            <div class="table-scroll">
-                <table class="reference-table">
-                    <thead><tr><th>Member</th><th>Kind</th><th>What it does</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>static formAssociated = true</code></td><td>class opt-in</td><td>Makes the host a form-associated element; enables everything below.</td></tr>
-                        <tr><td><code>internals</code></td><td>protected getter</td><td>The element's <code>ElementInternals</code>, attached lazily and memoized (<code>null</code> where unavailable). Never call <code>attachInternals()</code> yourself.</td></tr>
-                        <tr><td><code>form</code></td><td>getter</td><td>The associated <code>&lt;form&gt;</code> or <code>null</code> — honours <code>form="id"</code> and shadow boundaries. Always <code>null</code> when not form-associated (even inside a <code>&lt;form&gt;</code>).</td></tr>
-                        <tr><td><code>formDisabledCallback(isDisabled)</code></td><td>browser callback</td><td>Implemented once by core: records the browser's combined state, flushes pending writes, fires <code>disabledChanged</code> on a flip. Don't override.</td></tr>
-                        <tr><td><code>isDisabled</code> / <code>disabled</code></td><td>input / attribute</td><td>The component's own disabled flag. Must have <code>shouldReflect: true</code> (warned otherwise).</td></tr>
-                        <tr><td><code>isFormDisabled</code></td><td>protected getter</td><td>Disabled by an ancestor <code>&lt;fieldset disabled&gt;</code> only (outside its first <code>&lt;legend&gt;</code>).</td></tr>
-                        <tr><td><code>isEffectivelyDisabled</code></td><td>protected getter</td><td><code>isDisabled || isFormDisabled</code> — read it in <code>reinit()</code>.</td></tr>
-                        <tr><td><code>disabledChanged(isDisabled)</code></td><td>protected hook</td><td>The effective state flipped on a built element (input or fieldset). Not called for a rebuild or before the first build.</td></tr>
-                        <tr><td><code>validity</code> · <code>validationMessage</code> · <code>willValidate</code></td><td>getters</td><td>From <code>internals</code>; "no constraint" answers (<code>undefined</code> / <code>''</code> / <code>false</code>) when not form-associated.</td></tr>
-                        <tr><td><code>checkValidity()</code> · <code>reportValidity()</code></td><td>methods</td><td>Like a native control (<code>invalid</code> event; the bubble for <code>reportValidity</code>). <code>true</code> when not form-associated.</td></tr>
-                        <tr><td><code>setFormatError(error | null, message?, anchor?)</code></td><td>protected method</td><td>Non-null → <code>customError</code> with the resolved message (anchor positions the bubble); <code>null</code> → valid (clears all flags). No-op when not form-associated.</td></tr>
-                    </tbody>
-                </table>
-            </div>
+            <table class="reference-table">
+                <thead><tr><th>Member</th><th>Kind</th><th>What it does</th></tr></thead>
+                <tbody>
+                    <tr><td><code>static formAssociated = true</code></td><td>class opt-in</td><td>Makes the host a form-associated element; enables everything below.</td></tr>
+                    <tr><td><code>internals</code></td><td>protected getter</td><td>The element's <code>ElementInternals</code>, attached lazily and memoized (<code>null</code> where unavailable). Never call <code>attachInternals()</code> yourself.</td></tr>
+                    <tr><td><code>form</code></td><td>getter</td><td>The associated <code>&lt;form&gt;</code> or <code>null</code> — honours <code>form="id"</code> and shadow boundaries. Always <code>null</code> when not form-associated (even inside a <code>&lt;form&gt;</code>).</td></tr>
+                    <tr><td><code>formDisabledCallback(isDisabled)</code></td><td>browser callback</td><td>Implemented once by core: records the browser's combined state, flushes pending writes, fires <code>disabledChanged</code> on a flip. Don't override.</td></tr>
+                    <tr><td><code>isDisabled</code> / <code>disabled</code></td><td>input / attribute</td><td>The component's own disabled flag. Must have <code>shouldReflect: true</code> (warned otherwise).</td></tr>
+                    <tr><td><code>isFormDisabled</code></td><td>protected getter</td><td>Disabled by an ancestor <code>&lt;fieldset disabled&gt;</code> only (outside its first <code>&lt;legend&gt;</code>).</td></tr>
+                    <tr><td><code>isEffectivelyDisabled</code></td><td>protected getter</td><td><code>isDisabled || isFormDisabled</code> — read it in <code>reinit()</code>.</td></tr>
+                    <tr><td><code>disabledChanged(isDisabled)</code></td><td>protected hook</td><td>The effective state flipped on a built element (input or fieldset). Not called for a rebuild or before the first build.</td></tr>
+                    <tr><td><code>validity</code> · <code>validationMessage</code> · <code>willValidate</code></td><td>getters</td><td>From <code>internals</code>; "no constraint" answers (<code>undefined</code> / <code>''</code> / <code>false</code>) when not form-associated.</td></tr>
+                    <tr><td><code>checkValidity()</code> · <code>reportValidity()</code></td><td>methods</td><td>Like a native control (<code>invalid</code> event; the bubble for <code>reportValidity</code>). <code>true</code> when not form-associated.</td></tr>
+                    <tr><td><code>setFormatError(error | null, message?, anchor?)</code></td><td>protected method</td><td>Non-null → <code>customError</code> with the resolved message (anchor positions the bubble); <code>null</code> → valid (clears all flags). No-op when not form-associated.</td></tr>
+                </tbody>
+            </table>
             <div class="note">
                 <div class="note-title">What core leaves to the component</div>
                 Submission (KeenMate components render light-DOM hidden inputs named by <code>name</code>, with a

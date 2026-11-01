@@ -30,15 +30,22 @@ export interface FieldLogDetail {
 
 type FieldEvents = { 'field-log': FieldLogDetail; change: { value: string } };
 
+// Page tokens (--kmwc-*) inherit into the shadow root, so the field matches the kit's native controls.
 const STYLES = `
   :host { display: inline-block; vertical-align: top; }
-  .f { display: grid; gap: .25rem; font: 500 .85rem system-ui, sans-serif; min-width: 12rem; }
-  .f input { font: inherit; padding: .35rem .5rem; border-radius: 6px; width: 100%; box-sizing: border-box;
-             border: 1px solid light-dark(#94a3b8, #475569); background: light-dark(#fff, #0f172a); color: inherit; }
-  .f input:disabled { opacity: .55; cursor: not-allowed; }
-  :host(:invalid) .f input { border-color: #dc2626; box-shadow: 0 0 0 2px color-mix(in srgb, #dc2626 25%, transparent); }
-  .f .hint { font: .72rem ui-monospace, monospace; color: light-dark(#64748b, #94a3b8); }
-  :host(:disabled) .f .lbl::after { content: ' (disabled)'; font-weight: 400; color: light-dark(#64748b, #94a3b8); }
+  .f { display: grid; gap: .25rem; font-size: .875rem; font-weight: 500; min-width: 12rem; color: var(--kmwc-text-color-1); }
+  .f input { font: inherit; font-weight: 400; min-height: var(--kmwc-control-height, 2.25rem); padding: 0 .75rem;
+             border-radius: var(--kmwc-radius-sm, 6px); width: 100%; box-sizing: border-box;
+             border: var(--kmwc-input-border, 1px solid #94a3b8); background: var(--kmwc-input-bg, Field);
+             color: var(--kmwc-input-color, inherit); }
+  .f input:hover { border: var(--kmwc-input-border-hover, 1px solid #94a3b8); }
+  .f input:focus { outline: none; border: var(--kmwc-input-border-focus, 1px solid Highlight);
+                   box-shadow: var(--kmwc-input-box-shadow-focus, none); }
+  .f input:disabled { opacity: var(--kmwc-disabled-opacity, .55); background: var(--kmwc-input-disabled-bg, transparent); cursor: not-allowed; }
+  :host(:invalid) .f input { border-color: var(--kmwc-danger-color, #dc2626);
+                             box-shadow: 0 0 0 2px color-mix(in srgb, var(--kmwc-danger-color, #dc2626) 25%, transparent); }
+  .f .hint { font: .72rem var(--kmwc-mono-font-family, ui-monospace, monospace); color: var(--kmwc-text-color-3); }
+  :host(:disabled) .f .lbl::after { content: ' (disabled)'; font-weight: 400; color: var(--kmwc-text-color-3); }
 `;
 
 export class CoreDemoField extends BlissElement<FieldEvents> {
@@ -166,8 +173,8 @@ export class CoreDemoPlain extends BlissElement {
 
   protected override reinit(): void {
     const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
-    root.innerHTML = `<style>:host{display:inline-block;padding:.4rem .7rem;border-radius:8px;
-      border:1px dashed light-dark(#94a3b8,#475569);font:500 .85rem system-ui}</style><span></span>`;
+    root.innerHTML = `<style>:host{display:inline-block;padding:.4rem .7rem;border-radius:var(--kmwc-radius-sm,6px);
+      border:1px dashed var(--kmwc-border-color-strong,#94a3b8);font-size:.875rem;font-weight:500}</style><span></span>`;
     root.querySelector('span')!.textContent = this.config.label as string;
   }
 }
