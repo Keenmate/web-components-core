@@ -60,8 +60,8 @@
                 </div>
                 <label class="demo-label mt-1">Breakpoint lines (<code>configureBreakpoints</code> — global, affects every section)</label>
                 <div class="controls">
-                    <label>mobile ≤ <input type="number" id="bp-mobile" style="width:6rem"> px</label>
-                    <label>tablet ≤ <input type="number" id="bp-tablet" style="width:6rem"> px</label>
+                    <label>mobile ≤ <input type="number" id="bp-mobile"> px</label>
+                    <label>tablet ≤ <input type="number" id="bp-tablet"> px</label>
                     <button id="bp-apply">Apply</button>
                     <button id="bp-reset">Reset to tokens / defaults</button>
                     <span id="bp-tokens" class="muted"></span>
@@ -252,8 +252,8 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
                 </div>
                 <div>
                     <div class="controls">
-                        <label>compact below <input type="number" id="cb-compact" value="600" style="width:6rem"> px</label>
-                        <label>2 cols below <input type="number" id="cb-two" value="900" style="width:6rem"> px</label>
+                        <label>compact below <input type="number" id="cb-compact" value="600"> px</label>
+                        <label>2 cols below <input type="number" id="cb-two" value="900"> px</label>
                         <button id="cb-apply">Reassign callback</button>
                     </div>
                     <div class="output"><pre id="cb-out"></pre></div>

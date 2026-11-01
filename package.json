@@ -67,7 +67,7 @@
     "@floating-ui/dom": "^1.8.0"
   },
   "devDependencies": {
-    "@keenmate/web-components-devkit": "^1.0.0-rc05",
+    "@keenmate/web-components-devkit": "^1.0.0-rc06",
     "@playwright/test": "^1.60.0",
     "jsdom": "^24.1.0",
     "typescript": "^5.5.0",
@@ -81,6 +81,8 @@
   "kmwc": {
     "title": "Web Components Core",
     "tagline": "The reactive input model + BlissElement base class shared across the KeenMate web components. A library, not a component: each page drives the helpers straight from src/ (no build step), with small demo elements showing the full BlissElement path. Nothing here ships in the published package.",
+    "library": false,
+    "cssVariables": false,
     "ports": {
       "dev": 15000,
       "image": 15010

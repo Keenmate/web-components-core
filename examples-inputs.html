@@ -83,11 +83,11 @@
             </p>
             <div class="demo-area">
                 <core-demo-inputs id="in01-el"></core-demo-inputs>
-                <table class="reference-table table-compact" style="margin-top:1rem">
+                <table class="reference-table table-compact mt-1">
                     <thead><tr><th>configKey</th><th>attribute</th><th>converter</th><th>write</th><th><code>el[configKey]</code></th><th><code>getAttribute()</code></th></tr></thead>
                     <tbody id="in01-rows"></tbody>
                 </table>
-                <label class="demo-label" style="margin-top:1rem">Write log:</label>
+                <label class="demo-label mt-1">Write log:</label>
                 <div class="log-panel" id="in01-log"></div>
             </div>
             <div class="code-block"><pre>import { BlissElement, define, toBool, toEnum, toFunction, toInt, toList, toText } from '@keenmate/web-components-core';
@@ -128,7 +128,7 @@ el.removeAttribute('count');     // → default 3</pre></div>
             <div class="grid-2">
                 <div>
                     <core-demo-inputs id="in02-el" count="5"></core-demo-inputs>
-                    <div class="controls" style="margin-top:1rem" id="in02-buttons">
+                    <div class="controls mt-1" id="in02-buttons">
                         <button data-op="attr-count-abc"><code>setAttribute('count', 'abc')</code> — reflected</button>
                         <button data-op="attr-count-42"><code>setAttribute('count', '42')</code> — out of range</button>
                         <button data-op="attr-limit-abc"><code>setAttribute('limit', 'abc')</code> — not reflected</button>
@@ -178,7 +178,7 @@ el.count = 99;                   // warn · count stays 5 (max: 10)</pre></div>
                     </div>
                     <div class="controls">
                         <label><code>caption</code> <small>(update)</small>
-                            <input type="text" id="in03-caption" value="Quarterly" style="width:8rem"></label>
+                            <input type="text" id="in03-caption" value="Quarterly" class="w-md"></label>
                         <button id="in03-caption-set">el.caption =</button>
                     </div>
                     <div class="controls">
@@ -189,9 +189,9 @@ el.count = 99;                   // warn · count stays 5 (max: 10)</pre></div>
                     </div>
                     <div class="controls">
                         <label><code>page-size</code> <small>(reinit)</small>
-                            <input type="number" id="in03-pagesize" value="4" min="1" max="12" style="width:4rem"></label>
+                            <input type="number" id="in03-pagesize" value="4" min="1" max="12" class="w-xs"></label>
                         <label><code>note</code> <small>(none)</small>
-                            <input type="text" id="in03-note" value="draft" style="width:6rem"></label>
+                            <input type="text" id="in03-note" value="draft" class="w-sm"></label>
                         <button id="in03-note-set">el.note =</button>
                     </div>
                     <div class="controls">
@@ -235,7 +235,7 @@ el.setAttributes({ caption: 'Mixed', layout: 'grid' });  // → reinit() only, n
             <div class="grid-2">
                 <div>
                     <core-demo-reactivity id="in04-el"></core-demo-reactivity>
-                    <div class="controls" style="margin-top:1rem">
+                    <div class="controls mt-1">
                         <button id="in04-loose">3 loose writes, same tick</button>
                         <button id="in04-ticks">3 writes across ticks</button>
                         <button id="in04-setattrs"><code>setAttributes({…})</code></button>
@@ -285,7 +285,7 @@ document.body.append(fresh);            // ONE reinit() with the full config</pr
             <div class="grid-2">
                 <div>
                     <core-demo-presets id="in05-el"></core-demo-presets>
-                    <div class="controls" style="margin-top:1rem">
+                    <div class="controls mt-1">
                         <label><code>el.mode =</code>
                             <select id="in05-mode"><option>simple</option><option>excel</option><option>custom</option></select></label>
                     </div>
@@ -294,7 +294,7 @@ document.body.append(fresh);            // ONE reinit() with the full config</pr
                         <button id="in05-assign"><code>el.items = ['Alpha', 'Beta']</code></button>
                         <button id="in05-staged">Assign, then read <code>el.items</code> immediately</button>
                     </div>
-                    <table class="reference-table table-compact" style="margin-top:1rem">
+                    <table class="reference-table table-compact mt-1">
                         <tbody id="in05-state"></tbody>
                     </table>
                 </div>
@@ -416,8 +416,8 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
             const tr = document.createElement('tr');
             tr.dataset.key = def.key;
             let control;
-            if (def.control === 'text') control = `<input type="text" class="in-value" value="${esc(def.value)}" style="width:9rem">`;
-            else if (def.control === 'select') control = `<select class="in-value" style="width:9rem">${def.options.map((o) => `<option>${o}</option>`).join('')}</select>`;
+            if (def.control === 'text') control = `<input type="text" class="in-value w-md" value="${esc(def.value)}">`;
+            else if (def.control === 'select') control = `<select class="in-value w-md">${def.options.map((o) => `<option>${o}</option>`).join('')}</select>`;
             else control = '';
             const buttons = def.control === 'callback'
                 ? `<button data-act="cb-set">el.${def.key} = (l, c) =&gt; …</button> <button data-act="cb-clear">= null</button>`

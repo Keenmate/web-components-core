@@ -69,7 +69,7 @@
                     </div>
                     <core-demo-event-shell id="demo-ia01-shell" data-log="ia01" label="core-demo-event-shell"></core-demo-event-shell>
                 </div>
-                <div class="css-readout" id="demo-ia01-readout" style="margin-top:.75rem"><span class="muted">Fire an event to inspect its detail.</span></div>
+                <div class="css-readout" id="demo-ia01-readout"><span class="muted">Fire an event to inspect its detail.</span></div>
                 <div class="log-panel log-panel--dark mt-1" style="--log-max-height: 19rem" data-empty="Timeline — press a button above." id="demo-ia01-log"></div>
             </div>
             <div class="code-block"><pre>type Events = { ping: { count: number }; 'ping-wide': { count: number } };
@@ -245,7 +245,7 @@ await runAction({
                 <!-- No height cap: a scroll anywhere outside the menu dismisses it (reason 'scroll'), so this log grows instead. -->
                 <div class="log-panel log-panel--dark mt-1" style="--log-max-height: none" data-empty="Timeline — press a button above." id="demo-ia04-log"></div>
             </div>
-                <table class="reference-table" style="margin-top:1rem">
+                <table class="reference-table mt-1">
                     <thead><tr><th>Key (while a menu is open)</th><th>Does</th></tr></thead>
                     <tbody>
                         <tr><td><kbd>↓</kbd> / <kbd>↑</kbd></td><td>Next / previous enabled item, wrapping. Disabled items and dividers are skipped.</td></tr>
