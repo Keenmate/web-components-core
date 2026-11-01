@@ -84,10 +84,11 @@
 
             <div class="controls">
                 <label><input type="checkbox" id="fc-follow" checked> <code>shouldFollowCursor</code></label>
-                <label><code>delay.show</code>:
-                    <input type="range" id="fc-delay" min="0" max="2000" step="50" value="400" style="width:14rem">
-                    <output id="fc-delay-out" style="min-width:4rem; font-variant-numeric:tabular-nums;">400&nbsp;ms</output>
-                </label>
+            </div>
+            <div class="display-sliders">
+                <label for="fc-delay">delay.show</label>
+                <input type="range" id="fc-delay" min="0" max="2000" step="50" value="400">
+                <output id="fc-delay-out" for="fc-delay">400&nbsp;ms</output>
             </div>
             <div class="demo-area">
                 <label class="demo-label">Sweep across the pyramid (each card is its own tooltip):</label>
@@ -136,13 +137,14 @@
                     </select>
                 </label>
                 <label><input type="checkbox" id="card-follow"> <code>follow-cursor</code></label>
-                <label><code>show-delay</code>:
-                    <input type="range" id="card-delay" min="0" max="2000" step="50" value="400" style="width:12rem">
-                    <output id="card-delay-out" style="min-width:4rem; font-variant-numeric:tabular-nums;">400&nbsp;ms</output>
-                </label>
                 <label><code>tooltip-text</code>:
-                    <input type="text" id="card-text" value="A core tooltip" style="width:14rem">
+                    <input type="text" id="card-text" value="A core tooltip">
                 </label>
+            </div>
+            <div class="display-sliders">
+                <label for="card-delay">show-delay</label>
+                <input type="range" id="card-delay" min="0" max="2000" step="50" value="400">
+                <output id="card-delay-out" for="card-delay">400&nbsp;ms</output>
             </div>
             <div class="demo-area">
                 <label class="demo-label">The live <code>&lt;tooltip-card&gt;</code>:</label>

@@ -6,17 +6,20 @@
     <title>Popovers — web-components-core</title>
     <link rel="stylesheet" href="examples-positioning.css">
     <style>
-        /* Give the playground some vertical room below the trigger so you can
-           scroll it near an edge and watch flip / lockPlacement:'freeze' behave. */
+        /* Room below the trigger so you can scroll it near an edge and watch
+           flip / lockPlacement:'freeze' behave. */
         .po-stage { padding-bottom: 50vh; }
-        /* `auto auto` → the list is content-sized (narrow), so matchWidth:none is
-           visibly narrower than min/exact rather than stretching to ~reference width. */
+        /* The 360px reference the matchWidth modes measure against. */
+        #po-btn { width: 360px; max-width: 100%; }
+        /* Panel content. `auto auto` → the list is content-sized (narrow), so
+           matchWidth:none is visibly narrower than min/exact rather than
+           stretching to ~reference width. */
         .demo-panel dl { margin: 0; display: grid; grid-template-columns: auto auto; gap: 0.15rem 0.75rem; justify-content: start; }
-        .demo-panel dt { color: #6b7280; }
-        .demo-panel dd { margin: 0; font-family: ui-monospace, 'Courier New', monospace; color: #1a202c; }
+        .demo-panel dt { color: var(--kmwc-text-color-3); }
+        .demo-panel dd { margin: 0; font-family: var(--kmwc-mono-font-family); color: var(--kmwc-text-color-1); }
         /* The long line wraps normally, so its max-content width (wide) drives the
            panel under none/min, while exact clamps the panel and wraps the line. */
-        .demo-panel .po-long { margin: 0.6rem 0 0; color: #4338ca; }
+        .demo-panel .po-long { margin: 0.6rem 0 0; color: var(--kmwc-accent-color); }
     </style>
 </head>
 <body>
@@ -76,22 +79,22 @@
                 <label><input type="radio" name="po-mw" value="min" checked> min</label>
                 <label><input type="radio" name="po-mw" value="max"> max</label>
                 <label><input type="radio" name="po-mw" value="exact"> exact</label>
-                <label style="margin-inline-start:1rem"><input type="checkbox" id="po-long"> long content (wider than 360px)</label>
+                <label><input type="checkbox" id="po-long"> long content (wider than 360px)</label>
             </div>
             <div class="controls">
                 <label><input type="checkbox" id="po-flip" checked> <code>shouldFlip</code></label>
-                <label><code>offset</code>:
-                    <input type="range" id="po-offset" min="0" max="32" step="2" value="4" style="width:11rem">
-                    <output id="po-offset-out" style="min-width:3.5rem; font-variant-numeric:tabular-nums;">4&nbsp;px</output>
-                </label>
-                <label><code>shift</code> padding:
-                    <input type="range" id="po-shift" min="0" max="32" step="2" value="8" style="width:11rem">
-                    <output id="po-shift-out" style="min-width:3.5rem; font-variant-numeric:tabular-nums;">8&nbsp;px</output>
-                </label>
+            </div>
+            <div class="display-sliders">
+                <label for="po-offset">offset</label>
+                <input type="range" id="po-offset" min="0" max="32" step="2" value="4">
+                <output id="po-offset-out" for="po-offset">4&nbsp;px</output>
+                <label for="po-shift">shift padding</label>
+                <input type="range" id="po-shift" min="0" max="32" step="2" value="8">
+                <output id="po-shift-out" for="po-shift">8&nbsp;px</output>
             </div>
 
             <div class="demo-area po-stage">
-                <button id="po-btn" style="width:360px; max-width:100%">Toggle popover (360px-wide reference)</button>
+                <button id="po-btn">Toggle popover (360px-wide reference)</button>
             </div>
         </div>
 
@@ -186,7 +189,7 @@ pop.open(); pop.close(); pop.isOpen; pop.destroy();</pre></div>
         // update (e.g. the long-content line) without reopening.
         document.addEventListener('click', (e) => {
             if (!pop.isOpen) return;
-            if (e.target === btn || panel.contains(e.target) || e.target.closest('.controls')) return;
+            if (e.target === btn || panel.contains(e.target) || e.target.closest('.controls, .display-sliders')) return;
             pop.close();
         });
 

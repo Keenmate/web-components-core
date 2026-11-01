@@ -4,15 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Theme context — web-components-core</title>
-    <style>
-        .card-row { display: flex; gap: .8rem; flex-wrap: wrap; align-items: flex-start; }
-        .stat { display: inline-block; font: 600 .85rem ui-monospace, 'Courier New', monospace; background: #0f172a;
-                color: #e2e8f0; border-radius: 8px; padding: .35rem .7rem; margin: .2rem .4rem .2rem 0; }
-        .stat b { color: #7dd3fc; }
-        .signal-panel { border: 2px dashed #94a3b8; border-radius: 12px; padding: 1rem; margin-top: .6rem; }
-        .signal-panel-title { font: 600 .8rem ui-monospace, 'Courier New', monospace; color: #475569; margin-bottom: .6rem; }
-        .mode-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
-    </style>
     <!-- Count the theme context's MutationObservers (classic script → runs before the
          modules load core). Only observers watching the theme signal attributes count,
          so other page scripts don't inflate the number. -->
@@ -88,13 +79,13 @@
                 <button id="unrelated">Toggle an unrelated class on &lt;html&gt;</button>
             </div>
             <div class="demo-area">
-                <div>
-                    <span class="stat">theme observers created: <b id="obs-created">0</b></span>
-                    <span class="stat">observing now: <b id="obs-live">0</b></span>
-                    <span class="stat">cards: <b id="card-count">0</b></span>
-                    <span class="stat">getThemeContext(): <b id="page-context">null</b></span>
+                <div class="controls">
+                    <span class="pill">theme observers created:&nbsp;<b id="obs-created">0</b></span>
+                    <span class="pill">observing now:&nbsp;<b id="obs-live">0</b></span>
+                    <span class="pill">cards:&nbsp;<b id="card-count">0</b></span>
+                    <span class="pill">getThemeContext():&nbsp;<b id="page-context">null</b></span>
                 </div>
-                <div class="card-row" id="page-cards" style="margin-top:.8rem">
+                <div class="card-grid" id="page-cards" style="--grid-min: 11rem; --grid-gap: 0.8rem">
                     <theme-card label="Card A"></theme-card>
                     <theme-card label="Card B"></theme-card>
                     <theme-card label="Card C"></theme-card>
@@ -117,11 +108,11 @@
                 observers <strong>pause</strong> — there is nothing to detect, so "observing now" drops to 0 and the
                 TH01 signal picker has no effect. <code>auto</code> re-detects once and resumes.
             </p>
-            <div class="controls mode-row">
+            <div class="controls">
                 <label><input type="radio" name="mode" value="auto" checked> <code>auto</code></label>
                 <label><input type="radio" name="mode" value="dark"> <code>dark</code></label>
                 <label><input type="radio" name="mode" value="light"> <code>light</code></label>
-                <span class="stat">getThemeMode(): <b id="mode-out">auto</b></span>
+                <span class="pill">getThemeMode():&nbsp;<b id="mode-out">auto</b></span>
             </div>
         </div>
 
@@ -136,7 +127,7 @@
                 <code>setThemeMode('dark')</code> above: the first card stays light.
             </p>
             <div class="demo-area">
-                <div class="card-row">
+                <div class="card-grid" style="--grid-min: 11rem; --grid-gap: 0.8rem">
                     <theme-card label='data-theme="light"' data-theme="light"></theme-card>
                     <theme-card label='data-theme="dark"' data-theme="dark"></theme-card>
                     <theme-card label="no data-theme (follows context)"></theme-card>
@@ -167,16 +158,16 @@
                 </label>
             </div>
             <div class="demo-area">
-                <div class="signal-panel" id="panel" data-bs-theme="dark">
-                    <div class="signal-panel-title">&lt;div id="panel" data-bs-theme="…"&gt;</div>
-                    <div class="card-row">
+                <div class="demo-card" id="panel" data-bs-theme="dark" style="--demo-card-border: 2px dashed var(--kmwc-border-color-strong)">
+                    <div class="demo-label"><code id="panel-title">&lt;div id="panel" data-bs-theme="…"&gt;</code></div>
+                    <div class="card-grid" style="--grid-min: 11rem; --grid-gap: 0.8rem">
                         <theme-card label='theme-source="closest"' theme-source="closest"></theme-card>
                         <theme-card label='theme-source="#panel"' theme-source="#panel"></theme-card>
                         <theme-card label="no theme-source (page)"></theme-card>
                     </div>
                 </div>
-                <label class="demo-label" style="margin-top:1rem">Outside the panel, pointed at it by selector:</label>
-                <div class="card-row">
+                <label class="demo-label mt-1">Outside the panel, pointed at it by selector:</label>
+                <div class="card-grid" style="--grid-min: 11rem; --grid-gap: 0.8rem">
                     <theme-card label='theme-source="#panel" (outside)' theme-source="#panel"></theme-card>
                 </div>
             </div>
@@ -271,7 +262,7 @@ getThemeContext();      // the detected page scheme: 'dark' | 'light' | null
             const panel = $('panel');
             if (e.target.value) panel.setAttribute('data-bs-theme', e.target.value);
             else panel.removeAttribute('data-bs-theme');
-            panel.querySelector('.signal-panel-title').textContent =
+            $('panel-title').textContent =
                 e.target.value ? `<div id="panel" data-bs-theme="${e.target.value}">` : '<div id="panel">';
         });
 

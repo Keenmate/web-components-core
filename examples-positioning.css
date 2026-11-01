@@ -39,15 +39,17 @@ tooltip-card:focus-visible {
     position: fixed;
     top: 0;
     left: 0;
-    background: var(--demo-tt-bg, #1a202c);
-    color: var(--demo-tt-fg, #fff);
+    /* Inverted surface (text colour as background) — dark bubble on the light
+       page, light bubble on the dark one. */
+    background: var(--kmwc-text-color-1);
+    color: var(--kmwc-main-bg);
     padding: 0.4rem 0.65rem;
-    border-radius: var(--demo-tt-radius, 8px);
+    border-radius: var(--kmwc-radius-md);
     font-size: 0.8rem;
     font-weight: 500;
     white-space: nowrap;
     pointer-events: none;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 8px 24px var(--kmwc-shadow-color);
     opacity: 0;
     transform: translateY(2px);
     transition: opacity 0.12s ease, transform 0.12s ease;
@@ -59,7 +61,7 @@ tooltip-card:focus-visible {
 .demo-panel {
     background: var(--kmwc-main-bg);
     border: 1px solid var(--kmwc-accent-color);
-    border-radius: 10px;
+    border-radius: var(--kmwc-radius-md);
     padding: 1rem 1.25rem;
     box-shadow: 0 16px 40px var(--kmwc-shadow-color);
     z-index: 1000;

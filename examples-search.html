@@ -5,22 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search — web-components-core</title>
     <style>
-        .search-input { width: 100%; max-width: 420px; padding: .55rem .75rem; font-size: 1rem;
-                        border: 1px solid #cbd5e0; border-radius: 8px; }
+        /* The result list a search box would render — the demo's output. */
         .results { list-style: none; margin: .8rem 0 0; padding: 0; display: grid;
-                   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .35rem .8rem; }
-        .results li { padding: .3rem .5rem; border-radius: 6px; background: #fff; border: 1px solid #e2e8f0; }
+                   grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: .35rem .8rem; }
+        .results li { padding: .3rem .5rem; border-radius: var(--kmwc-radius-sm); background: var(--kmwc-main-bg);
+                      border: 1px solid var(--kmwc-border-color); }
         .results li.is-miss { opacity: .35; }
-        .results li small { color: #94a3b8; margin-inline-start: .4rem; }
-        mark { background: #fde68a; color: inherit; border-radius: 2px; padding: 0; }
-        .stat { display: inline-block; font: 600 .85rem ui-monospace, 'Courier New', monospace; background: #0f172a;
-                color: #e2e8f0; border-radius: 8px; padding: .35rem .7rem; margin: .2rem .4rem .2rem 0; }
-        .stat b { color: #7dd3fc; }
-        .stat.is-warn b { color: #fbbf24; }
-        .mono { font-family: ui-monospace, 'Courier New', monospace; }
-        .reference-table td.is-hit { background: #ecfdf5; }
-        .reference-table td.is-none { color: #cbd5e0; }
-        .units { font: .8rem ui-monospace, 'Courier New', monospace; color: #64748b; }
+        .results li small { color: var(--kmwc-text-color-3); margin-inline-start: .4rem; }
+        /* The highlight under test (same look as the kit's spotlight match). */
+        mark { background: var(--kmwc-accent-light-bg-hover); color: var(--kmwc-accent-color); font-weight: 600;
+               border-radius: 2px; padding: 0; }
+        /* kit gap: a monospace text helper (folded values, code-unit dumps) */
+        .mono { font-family: var(--kmwc-mono-font-family); }
+        /* kit gap: a highlighted table CELL (the kit has tr.is-highlight for rows only) */
+        td.is-hit { background: color-mix(in srgb, var(--kmwc-success-color) 12%, transparent); }
     </style>
 </head>
 <body>
@@ -49,7 +47,7 @@
                 <code>town</code>, <code>haxkl324</code>, or with <code>regex</code>: <code>^(Ústí|Nové)</code>.
             </p>
             <div class="controls">
-                <input id="pg-term" class="search-input" type="search" placeholder="Type to search…" autocomplete="off">
+                <input id="pg-term" type="search" placeholder="Type to search…" autocomplete="off">
             </div>
             <div class="controls">
                 <span><code>behavior</code>:</span>
@@ -70,10 +68,10 @@
                 <label><input type="checkbox" id="pg-show-misses"> show misses</label>
             </div>
             <div class="demo-area">
-                <div>
-                    <span class="stat">matched: <b id="pg-count">0</b></span>
-                    <span class="stat">values normalized so far: <b id="pg-normalized">0</b></span>
-                    <span class="stat" id="pg-term-stat">ActiveSearchTerm: <b id="pg-active">none</b></span>
+                <div class="controls">
+                    <span class="pill">matched:&nbsp;<b id="pg-count">0</b></span>
+                    <span class="pill">values normalized so far:&nbsp;<b id="pg-normalized">0</b></span>
+                    <span class="pill" id="pg-term-stat">ActiveSearchTerm:&nbsp;<b id="pg-active">none</b></span>
                 </div>
                 <ul class="results" id="pg-results"></ul>
             </div>
@@ -98,7 +96,7 @@
                 Export it to normalize a custom index exactly like built-in search.
             </p>
             <div class="controls">
-                <input id="nz-input" class="search-input" type="text" placeholder="Add your own text…">
+                <input id="nz-input" type="text" placeholder="Add your own text…">
             </div>
             <table class="reference-table">
                 <thead><tr><th>input</th><th><code>normalized</code></th><th><code>case-insensitive</code></th><th><code>exact</code></th></tr></thead>
@@ -117,7 +115,7 @@
                 starts a word in <code>HA-324/56</code> but not in <code>HA324</code> — try <code>324</code>, <code>ha</code>, <code>56</code>.
             </p>
             <div class="controls">
-                <label>term <input id="mm-term" class="search-input" type="text" value="town" style="max-width:200px"></label>
+                <label>term <input id="mm-term" type="text" value="town"></label>
             </div>
             <table class="reference-table">
                 <thead id="mm-head"></thead>
@@ -136,8 +134,7 @@
                 so the ranges index into the NFC text — which <code>findHighlightRanges</code> returns alongside them.
                 Below, the label is stored decomposed (<code>Zlín</code>) and the term is <code>zli</code>.
             </p>
-            <div class="demo-area">
-                <table class="reference-table" style="margin:0">
+            <table class="reference-table">
                     <tbody>
                         <tr><th>input label</th><td class="mono" id="hl-input"></td></tr>
                         <tr><th>returned <code>text</code></th><td class="mono" id="hl-text"></td></tr>
@@ -145,8 +142,7 @@
                         <tr class="is-highlight"><th>✅ <code>wrapRanges(r.text, r.ranges)</code></th><td id="hl-right"></td></tr>
                         <tr><th>❌ ranges applied to the input</th><td id="hl-wrong"></td></tr>
                     </tbody>
-                </table>
-            </div>
+            </table>
             <p>
                 Markup is the caller's decision: <code>wrapRanges</code> takes <code>open</code> / <code>close</code> and
                 an <code>escape</code> applied to every slice of the text (never to the markers). Pass an HTML escaper when
@@ -157,7 +153,7 @@
             </div>
             <div class="demo-area">
                 <div id="hl-escaped"></div>
-                <pre id="hl-escaped-src" style="margin:.6rem 0 0"></pre>
+                <pre id="hl-escaped-src" class="mt-1"></pre>
             </div>
         </div>
 
@@ -175,11 +171,11 @@
                 warns; objects are for a custom <code>searchCallback</code>).
             </p>
             <div class="controls">
-                <input id="pn-term" class="search-input" type="search" value="ha-324/56" autocomplete="off" style="max-width:240px">
+                <input id="pn-term" type="search" value="ha-324/56" autocomplete="off">
                 <label><input type="checkbox" id="pn-prepare" checked> use <code>getSearchTermCallback</code> (separator-insensitive regex)</label>
             </div>
             <div class="demo-area">
-                <span class="stat">ActiveSearchTerm: <b id="pn-active"></b></span>
+                <span class="pill">ActiveSearchTerm:&nbsp;<b id="pn-active"></b></span>
                 <ul class="results" id="pn-results"></ul>
             </div>
             <div class="code-block"><pre>const getSearchTermCallback = (term) => {
@@ -203,13 +199,15 @@ prepareSearchTerm(typed, { behavior, match, regex, getSearchTermCallback });</pr
                 it. Type a city or a postal code (<code>335</code>, <code>602 00</code>).
             </p>
             <div class="controls">
-                <input id="cb-term" class="search-input" type="search" placeholder="City or postal code…" autocomplete="off" style="max-width:240px">
+                <input id="cb-term" type="search" placeholder="City or postal code…" autocomplete="off">
                 <button id="cb-replace">Replace items</button>
             </div>
             <div class="demo-area">
-                <span class="stat">entries built: <b id="cb-built">0</b></span>
-                <span class="stat">index (re)built: <b id="cb-indexed">0</b></span>
-                <span class="stat">context.searchTerm: <b id="cb-searchterm">—</b></span>
+                <div class="controls">
+                    <span class="pill">entries built:&nbsp;<b id="cb-built">0</b></span>
+                    <span class="pill">index (re)built:&nbsp;<b id="cb-indexed">0</b></span>
+                    <span class="pill">context.searchTerm:&nbsp;<b id="cb-searchterm">—</b></span>
+                </div>
                 <ul class="results" id="cb-results"></ul>
             </div>
             <div class="code-block"><pre>// component side — what web-multiselect does
@@ -316,7 +314,7 @@ searchCallback = (t, signal, { searchTerm, entries }) => {
             $('nz-rows').innerHTML = rows.map((s) => {
                 const cells = ['normalized', 'case-insensitive', 'exact']
                     .map((b) => `<td class="mono">${escapeHtml(normalizeSearchText(s, b))}</td>`).join('');
-                return `<tr><td>${escapeHtml(s)} <span class="units">(${s.length} units)</span></td>${cells}</tr>`;
+                return `<tr><td>${escapeHtml(s)} <small class="muted mono">(${s.length} units)</small></td>${cells}</tr>`;
             }).join('');
         }
         $('nz-input').addEventListener('input', renderNormalize);
@@ -335,8 +333,8 @@ searchCallback = (t, signal, { searchTerm, entries }) => {
                 const prepared = normalizeSearchText(value, behavior);
                 const cells = MM_MODES.map((match) => {
                     const term = prepareSearchTerm($('mm-term').value, { behavior, match, regex });
-                    if (term.kind === 'none') return '<td class="is-none">—</td>';
-                    if (!matchesSearchTerm(term, match, prepared, value)) return '<td class="is-none">✗</td>';
+                    if (term.kind === 'none') return '<td class="muted">—</td>';
+                    if (!matchesSearchTerm(term, match, prepared, value)) return '<td class="muted">✗</td>';
                     const r = findHighlightRanges(value, term, { behavior, match });
                     return `<td class="is-hit">${wrapRanges(r.text, r.ranges, { escape: escapeHtml })}</td>`;
                 }).join('');
@@ -363,9 +361,9 @@ searchCallback = (t, signal, { searchTerm, entries }) => {
             const wrong = wrapRanges(NFD_ZLIN, r.ranges);
             // Show the markup too — the browser re-attaches the stray accent visually, so the
             // rendered output alone hides the bug.
-            $('hl-right').innerHTML = `${right} <span class="units">${escapeHtml(units(right))}</span>`;
-            $('hl-wrong').innerHTML = `${wrong} <span class="units">${escapeHtml(units(wrong))}</span>`
-                + ' <span class="units">— <code>í</code> is split: the accent lands after <code>&lt;/mark&gt;</code></span>';
+            $('hl-right').innerHTML = `${right} <small class="muted mono">${escapeHtml(units(right))}</small>`;
+            $('hl-wrong').innerHTML = `${wrong} <small class="muted mono">${escapeHtml(units(wrong))}</small>`
+                + ' <small class="muted mono">— <code>í</code> is split: the accent lands after <code>&lt;/mark&gt;</code></small>';
         }
         function renderEscape() {
             const label = 'R&D <b>Brno</b>';

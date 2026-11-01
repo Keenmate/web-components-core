@@ -7,16 +7,17 @@
     <link rel="stylesheet" href="examples-positioning.css">
     <style>
         /* A persistent floating box used by the anchor demos (createTooltip/Popover
-           own their own elements; here we position a bare box ourselves). */
+           own their own elements; here we position a bare box ourselves).
+           Inverted surface, like the tooltip bubble — follows light / dark. */
         .demo-float {
             position: fixed;
             top: 0; left: 0;
-            background: #1a202c;
-            color: #fff;
+            background: var(--kmwc-text-color-1);
+            color: var(--kmwc-main-bg);
             padding: 0.6rem 0.9rem;
-            border-radius: 8px;
+            border-radius: var(--kmwc-radius-md);
             font-size: 0.85rem;
-            box-shadow: 0 10px 28px rgba(0,0,0,.3);
+            box-shadow: 0 10px 28px var(--kmwc-shadow-color);
             z-index: 1000;
             max-width: 90vw;
         }
@@ -32,23 +33,23 @@
             gap: 1rem;
             margin: -0.6rem -0.9rem 0.5rem;
             padding: 0.4rem 0.9rem;
-            background: #0f1530;
-            border-radius: 8px 8px 0 0;
+            background: color-mix(in srgb, var(--kmwc-text-color-1) 85%, var(--kmwc-accent-color));
+            border-radius: var(--kmwc-radius-md) var(--kmwc-radius-md) 0 0;
             font-weight: 600;
         }
         .demo-float__close {
             background: transparent;
-            color: #fff;
-            border: 1px solid rgba(255,255,255,.3);
-            border-radius: 6px;
+            color: inherit;
+            border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+            border-radius: var(--kmwc-radius-sm);
             width: 1.5rem;
+            min-height: 0;  /* not the kit's control height */
             height: 1.5rem;
             line-height: 1;
             padding: 0;
-            cursor: pointer;
             font-size: 1rem;
         }
-        .demo-float__close:hover { background: rgba(255,255,255,.15); }
+        .demo-float__close:hover { background: color-mix(in srgb, currentColor 15%, transparent); }
         /* Room below the AN02 reference so the panel opens downward by default
            (instead of flipping up over the controls). */
         .an-size-stage { padding-bottom: 36vh; }
@@ -57,10 +58,8 @@
         .transformed {
             transform: translateZ(0) scale(1);
             will-change: transform;
-            border: 1px dashed #f59e0b;
-            border-radius: 8px;
-            padding: 1.25rem;
-            background: #fffbeb;
+            border: 1px dashed var(--kmwc-warning-color);
+            background: color-mix(in srgb, var(--kmwc-warning-color) 8%, transparent);
         }
     </style>
 </head>
@@ -92,7 +91,7 @@
                     </select>
                 </label>
                 <label><code>offset</code> (px):
-                    <input type="number" id="an-offset" min="0" max="40" step="2" value="8" style="width:5rem">
+                    <input type="number" id="an-offset" min="0" max="40" step="2" value="8">
                 </label>
             </div>
             <div class="demo-area">
