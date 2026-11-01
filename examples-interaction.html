@@ -9,28 +9,6 @@
         .ia-parent { padding: .6rem; border-radius: var(--kmwc-radius-lg); border: 2px dashed var(--kmwc-border-color-strong); }
         .ia-parent-title { font: 600 .75rem var(--kmwc-mono-font-family); color: var(--kmwc-text-color-3); margin-bottom: .4rem; }
 
-
-        /* kit gap: .log-panel lines — a timeline row (seq / time / source / name / detail cells),
-           per-kind tones, and an empty placeholder. Class names are the proposal for the devkit. */
-        .log-panel { --log-max-height: 19rem; margin-top: 1rem; }
-        .log-panel:empty::before { content: attr(data-empty); color: var(--kmwc-console-muted-color); }
-        .log-line { display: flex; flex-wrap: wrap; column-gap: .6rem; padding: .1rem 0; white-space: pre-wrap;
-                    border-bottom: 1px solid color-mix(in srgb, var(--kmwc-console-text-color) 6%, transparent); }
-        .log-seq, .log-time { color: var(--kmwc-console-muted-color); text-align: right; font-variant-numeric: tabular-nums; }
-        .log-seq { min-width: 2.2rem; }
-        .log-time { min-width: 4.6rem; }
-        .log-source { color: var(--kmwc-console-muted-color); }
-        .log-name { color: var(--kmwc-console-highlight-color); font-weight: 600; }
-        .log-line > :last-child { min-width: 0; overflow-wrap: anywhere; }
-        .log-line[data-kind="action"] { color: #fde68a; margin-top: .35rem; }
-        .log-line[data-kind="note"] { font-style: italic; }
-        .log-line[data-kind="hook"] .log-name { color: #7dd3fc; }
-        .log-line[data-kind="callback"] .log-name { color: #f0abfc; }
-        .log-line[data-kind="error"] .log-name { color: #fca5a5; }
-        /* IA04: a scroll anywhere outside the menu dismisses it (reason 'scroll'), so this
-           log grows instead of auto-scrolling while a menu is open. */
-        #demo-ia04-log { max-height: none; }
-
         /* IA04 · page-wide menu theme (the public --km-menu-* layer, on :root) */
         :root.ia-menu-theme {
             --km-menu-bg: light-dark(#fffbeb, #292524);
@@ -92,7 +70,7 @@
                     <core-demo-event-shell id="demo-ia01-shell" data-log="ia01" label="core-demo-event-shell"></core-demo-event-shell>
                 </div>
                 <div class="css-readout" id="demo-ia01-readout" style="margin-top:.75rem"><span class="muted">Fire an event to inspect its detail.</span></div>
-                <div class="log-panel log-panel--dark" data-empty="Timeline — press a button above." id="demo-ia01-log"></div>
+                <div class="log-panel log-panel--dark mt-1" style="--log-max-height: 19rem" data-empty="Timeline — press a button above." id="demo-ia01-log"></div>
             </div>
             <div class="code-block"><pre>type Events = { ping: { count: number }; 'ping-wide': { count: number } };
 
@@ -158,7 +136,7 @@ JSON.stringify(e.detail);                            // '{"count":1,"emittedBy":
             </div>
             <div class="demo-area">
                 <core-demo-guarded id="demo-ia02-list" data-log="ia02"></core-demo-guarded>
-                <div class="log-panel log-panel--dark" data-empty="Timeline — press a button above." id="demo-ia02-log"></div>
+                <div class="log-panel log-panel--dark mt-1" style="--log-max-height: 19rem" data-empty="Timeline — press a button above." id="demo-ia02-log"></div>
             </div>
             <div class="code-block"><pre>el.beforeRenameCallback = (ctx) =&gt; {        // ctx: { id, oldLabel, newLabel } + element / controller
   if (ctx.newLabel.length &gt; 20) return false;  // reject
@@ -213,7 +191,7 @@ else apply(s);                             // sync hook (or unset): same tick</p
                 <core-demo-toolbar id="demo-ia03-bar" data-log="ia03">
                     <p>HTML-authored: <button type="button" data-action="custom" data-id="from-markup" data-row="42">Markup button</button></p>
                 </core-demo-toolbar>
-                <div class="log-panel log-panel--dark" data-empty="Timeline — press a button above." id="demo-ia03-log"></div>
+                <div class="log-panel log-panel--dark mt-1" style="--log-max-height: 19rem" data-empty="Timeline — press a button above." id="demo-ia03-log"></div>
             </div>
             <div class="code-block"><pre>let isBold = false;
 el.items = [
@@ -264,7 +242,8 @@ await runAction({
             </div>
             <div class="demo-area">
                 <core-demo-files id="demo-ia04-files" data-log="ia04"></core-demo-files>
-                <div class="log-panel log-panel--dark" data-empty="Timeline — press a button above." id="demo-ia04-log"></div>
+                <!-- No height cap: a scroll anywhere outside the menu dismisses it (reason 'scroll'), so this log grows instead. -->
+                <div class="log-panel log-panel--dark mt-1" style="--log-max-height: none" data-empty="Timeline — press a button above." id="demo-ia04-log"></div>
             </div>
                 <table class="reference-table" style="margin-top:1rem">
                     <thead><tr><th>Key (while a menu is open)</th><th>Does</th></tr></thead>
@@ -354,6 +333,8 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
 
         // ── timeline plumbing ────────────────────────────────────────────────
         const timelines = new Map();
+        /** Timeline kind → kit log-line tone (callback / event: untoned, the name cell takes the kit name colour). */
+        const KIND_TONE = { action: 'action', note: 'muted', hook: 'info', error: 'err' };
         let activeTl = null;
         class Timeline {
             constructor(id) {
@@ -367,12 +348,15 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
             }
             add(kind, el, what, detail = '') {
                 const li = document.createElement('div');
-                li.className = 'log-line';
-                li.dataset.kind = kind;
-                if (kind !== 'action' && kind !== 'note') li.dataset.step = what;
+                li.className = KIND_TONE[kind] ? `log-line log-line--${KIND_TONE[kind]}` : 'log-line';
                 const isMarker = kind === 'action' || kind === 'note';
-                const cells = [['log-seq', `#${++this.seq}`], ['log-source', el ? `${el.id}` : ''], [isMarker ? '' : 'log-name', what], ['log-detail', detail]]
-                    .filter(([, text], i) => i !== 1 || text);   // no element → no column
+                // Kit timeline cells (no element → no source column); the LAST child is the detail
+                // (a marker's text is its detail).
+                const cells = [
+                    ['log-line__seq', `#${++this.seq}`],
+                    ...(el ? [['log-line__source', el.id]] : []),
+                    ...(isMarker ? [['', what]] : [['log-line__name', what], ['', detail]]),
+                ];
                 for (const [cls, text] of cells) {
                     const span = document.createElement('span');
                     if (cls) span.className = cls;

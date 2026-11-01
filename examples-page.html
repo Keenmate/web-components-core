@@ -12,14 +12,6 @@
         window.__pgEarlyEntry = window.components['core-demo-pg-early'];
     </script>
     <style>
-        /* kit gap: tones for lines in a .log-panel (log levels / action echo / ok) */
-        .log-panel > div { white-space: pre-wrap; overflow-wrap: anywhere; }
-        .log-panel .lv-debug { color: var(--kmwc-text-color-3); }
-        .log-panel .lv-info { color: var(--kmwc-info-color); }
-        .log-panel .lv-warn { color: var(--kmwc-warning-color); }
-        .log-panel .lv-error { color: var(--kmwc-danger-color); }
-        .log-panel .act { color: var(--kmwc-text-color-3); margin-top: .3rem; }
-        .log-panel .ok { color: var(--kmwc-success-color); }
         /* Demo visual: the placeholder an element shows before its tag is defined. */
         core-demo-pg-early:not(:defined) { display: inline-block; padding: .45rem .7rem; border-radius: var(--kmwc-radius-sm); font-size: .85rem;
                                            border: 1px dashed var(--kmwc-border-color-strong); color: var(--kmwc-text-color-3); }
@@ -297,13 +289,16 @@ a.shadowRoot.querySelectorAll('style.pgd-custom').length;                    // 
 
         const $ = (id) => document.getElementById(id);
         const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-        const log = (panel, text, cls = '') => {
+        /** One log line; `tone` is a kit log-line tone (ok / info / warn / err / muted / action). */
+        const log = (panel, text, tone = '') => {
             const line = document.createElement('div');
-            if (cls) line.className = cls;
+            line.className = tone ? `log-line log-line--${tone}` : 'log-line';
             line.textContent = text;
             panel.appendChild(line);
             panel.scrollTop = panel.scrollHeight;
         };
+        /** Console level → log-line tone (`log` stays untoned). */
+        const LEVEL_TONE = { debug: 'muted', info: 'info', warn: 'warn', error: 'err' };
         const reg = window.components;
         const elA = $('demo-pg-a');
         const elB = $('demo-pg-b');
@@ -385,10 +380,10 @@ a.shadowRoot.querySelectorAll('style.pgd-custom').length;                    // 
             ].join('\n');
         }
         const act2 = (id, text, fn) => $(id).addEventListener('click', () => {
-            log(panel2, `▶ ${text}`, 'act');
+            log(panel2, `▶ ${text}`, 'action');
             const lines = captureConsole(fn);
             if (lines.length === 0) log(panel2, '(no console output)');
-            for (const { level, text: t } of lines) log(panel2, `${level.padEnd(5)} ${t}`, `lv-${level}`);
+            for (const { level, text: t } of lines) log(panel2, `${level.padEnd(5)} ${t}`, LEVEL_TONE[level]);
             render2();
         });
         act2('pg02-sample-a', 'A.logSample()', () => elA.logSample());
@@ -471,23 +466,23 @@ a.shadowRoot.querySelectorAll('style.pgd-custom').length;                    // 
         };
         const start = () => {
             const lines = captureConsole(() => { loadA.startLoading(); loadB.startLoading(); });
-            for (const { level, text } of lines) log(panel3, `${level} ${text}`, `lv-${level}`);
+            for (const { level, text } of lines) log(panel3, `${level} ${text}`, LEVEL_TONE[level]);
         };
-        $('pg03-start').addEventListener('click', () => { log(panel3, '▶ start', 'act'); start(); render3(); });
+        $('pg03-start').addEventListener('click', () => { log(panel3, '▶ start', 'action'); start(); render3(); });
         $('pg03-stop').addEventListener('click', () => {
-            log(panel3, '▶ remove()', 'act');
+            log(panel3, '▶ remove()', 'action');
             loadA.stopLoading(); loadB.stopLoading();
             render3();
         });
         $('pg03-page').addEventListener('change', (e) => {
             reg.renderLoaderCallback = e.target.checked ? pageHook : null;
-            log(panel3, `▶ window.components.renderLoaderCallback = ${e.target.checked ? 'dots' : 'null'}`, 'act');
+            log(panel3, `▶ window.components.renderLoaderCallback = ${e.target.checked ? 'dots' : 'null'}`, 'action');
             restart(); render3();
         });
         for (const radio of document.querySelectorAll('input[name="pg03-inst"]')) {
             radio.addEventListener('change', () => {
                 loadB.renderLoadingCallback = { none: null, bar: barHook, throw: throwHook }[radio.value];
-                log(panel3, `▶ B.renderLoadingCallback = ${radio.value === 'none' ? 'null' : radio.value}`, 'act');
+                log(panel3, `▶ B.renderLoadingCallback = ${radio.value === 'none' ? 'null' : radio.value}`, 'action');
                 restart(); render3();
             });
         }
@@ -521,7 +516,7 @@ a.shadowRoot.querySelectorAll('style.pgd-custom').length;                    // 
             $('pg03-page').checked = false;
             restart();
             render2(); render3();
-            log(panel2, '▶ page-wide state reset (all bundles → warn, instance overrides cleared)', 'act');
+            log(panel2, '▶ page-wide state reset (all bundles → warn, instance overrides cleared)', 'action');
         });
         window.addEventListener('pagehide', resetPageWide);
     </script>

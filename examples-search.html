@@ -15,10 +15,6 @@
         /* The highlight under test (same look as the kit's spotlight match). */
         mark { background: var(--kmwc-accent-light-bg-hover); color: var(--kmwc-accent-color); font-weight: 600;
                border-radius: 2px; padding: 0; }
-        /* kit gap: a monospace text helper (folded values, code-unit dumps) */
-        .mono { font-family: var(--kmwc-mono-font-family); }
-        /* kit gap: a highlighted table CELL (the kit has tr.is-highlight for rows only) */
-        td.is-hit { background: color-mix(in srgb, var(--kmwc-success-color) 12%, transparent); }
     </style>
 </head>
 <body>
@@ -336,7 +332,7 @@ searchCallback = (t, signal, { searchTerm, entries }) => {
                     if (term.kind === 'none') return '<td class="muted">—</td>';
                     if (!matchesSearchTerm(term, match, prepared, value)) return '<td class="muted">✗</td>';
                     const r = findHighlightRanges(value, term, { behavior, match });
-                    return `<td class="is-hit">${wrapRanges(r.text, r.ranges, { escape: escapeHtml })}</td>`;
+                    return `<td class="is-highlight">${wrapRanges(r.text, r.ranges, { escape: escapeHtml })}</td>`;
                 }).join('');
                 return `<tr><td class="mono">${escapeHtml(value)}</td>${cells}</tr>`;
             }).join('');

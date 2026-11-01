@@ -5,15 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Environment &amp; responsive rules — web-components-core</title>
     <style>
-        /* kit gap: a .log-panel fed by textContent keeps its line breaks + shows a placeholder while empty */
-        .log-panel { white-space: pre-wrap; }
-        .log-panel:empty::before { content: '(nothing yet)'; color: var(--kmwc-text-color-3); }
-        /* kit gap: a vertical list of checkbox / radio options (one per line, with a rank chip) */
-        .layer-list { display: grid; gap: .35rem; }
-        .layer-list > label { display: flex; gap: .5rem; align-items: baseline; }
-        .layer-list span { min-width: 0; }
-        .layer-list code { overflow-wrap: anywhere; }
-        textarea.json { width: 100%; min-height: 7.5rem; font-family: var(--kmwc-mono-font-family); font-size: .8rem; }
         core-demo-rs-map, core-demo-rs-layers, core-demo-rs-callback { max-width: 26rem; }
     </style>
 </head>
@@ -63,7 +54,7 @@
                         </div>
                         <div class="output">
                             <div class="output-label">Discrete-channel log</div>
-                            <div class="log-panel" id="disc-log"></div>
+                            <pre class="log-panel" data-empty="(nothing yet)" id="disc-log"></pre>
                         </div>
                     </div>
                 </div>
@@ -155,8 +146,10 @@ protected override environmentChanged(env) {
                     <core-demo-rs-map id="rs-map" responsive='{"breakpoint":{"mobile":{"layout":"stack","columns":1},"tablet":{"columns":2}},"device":{"tablet":{"layout":"grid","columns":2,"presentation":"modal"},"mobile":{"presentation":"fullscreen"}}}'></core-demo-rs-map>
                 </div>
                 <div>
-                    <label class="demo-label">Instance map (<code>responsive</code> attribute)</label>
-                    <textarea class="json" id="map-json"></textarea>
+                    <div class="form-group">
+                        <label class="demo-label" for="map-json">Instance map (<code>responsive</code> attribute)</label>
+                        <textarea class="mono" id="map-json" rows="7"></textarea>
+                    </div>
                     <div class="controls">
                         <button id="map-apply">Apply map</button>
                         <button id="map-clear">Remove attribute</button>
@@ -173,7 +166,7 @@ protected override environmentChanged(env) {
             <div class="output"><pre id="map-env"></pre></div>
             <div class="output">
                 <div class="output-label">Hook log (<code>config-applied</code> events)</div>
-                <div class="log-panel" id="map-log"></div>
+                <pre class="log-panel" data-empty="(nothing yet)" id="map-log"></pre>
             </div>
             <p class="muted">
                 The <em>base</em> column is read by a probe <code>el.responsiveCallback</code> that only records
@@ -205,7 +198,7 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
                 applies at any size.
             </p>
             <div class="grid" style="--grid-min: 16rem; --grid-gap: 1rem">
-                <div class="layer-list" id="layers">
+                <div class="check-list" id="layers">
                     <label><span class="pill">1</span><input type="checkbox" id="l-global-map"> <span><code>window.components.responsive</code> → accent amber, density compact, label, badge</span></label>
                     <label><span class="pill">2</span><input type="checkbox" id="l-global-cb"> <span><code>window.components.responsiveCallback</code> → accent teal, label</span></label>
                     <label><span class="pill">3</span><input type="checkbox" id="l-tag-map"> <span><code>window.components['core-demo-rs-layers'].responsive</code> → density spacious, label</span></label>
@@ -232,7 +225,7 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
             </table>
             <div class="output">
                 <div class="output-label">Hook log</div>
-                <div class="log-panel" id="layers-log"></div>
+                <pre class="log-panel" data-empty="(nothing yet)" id="layers-log"></pre>
             </div>
             <p class="muted">
                 The “which layer won” column is computed by this page (a re-statement of the documented precedence), not
@@ -268,7 +261,7 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
             </div>
             <div class="output">
                 <div class="output-label">Hook log</div>
-                <div class="log-panel" id="cb-log"></div>
+                <pre class="log-panel" data-empty="(nothing yet)" id="cb-log"></pre>
             </div>
             <div class="code-block"><pre id="cb-code"></pre></div>
         </div>

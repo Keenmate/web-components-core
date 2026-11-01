@@ -5,13 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reactive inputs — web-components-core</title>
     <style>
-        /* kit gap: .log-panel lines have no tones and lose their indentation — warn / ok / hook
-           lines in the dark console (always dark, so fixed light-on-dark tones work in both themes). */
-        .log-panel > div { white-space: pre-wrap; }
-        .log-panel--dark .warn { color: #fcd34d; }
-        .log-panel--dark .ok { color: var(--kmwc-console-highlight-color); }
-        .log-panel--dark .hook { color: #c4b5fd; }
-
         /* IN04 animated diagram (examples-whensettled-anim.ts) — page illustration only. */
         .anim-say { min-height: 3.2rem; } /* the narration .note keeps its height between steps */
         .anim-lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: .9rem; }
@@ -372,9 +365,10 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
         };
         const fmtAttr = (v) => (v === null ? 'null (absent)' : JSON.stringify(v));
         const fmtPartial = (p) => '{ ' + Object.entries(p).map(([k, v]) => `${k}: ${fmt(v)}`).join(', ') + ' }';
-        const log = (panel, html, cls = '') => {
+        /** One log line; `tone` is a kit log-line tone (ok / info / warn / err / muted / action). */
+        const log = (panel, html, tone = '') => {
             const line = document.createElement('div');
-            if (cls) line.className = cls;
+            line.className = tone ? `log-line log-line--${tone}` : 'log-line';
             line.innerHTML = html;
             panel.appendChild(line);
             panel.scrollTop = panel.scrollHeight;
@@ -493,10 +487,10 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
             const before = el2[op.key];
             const warnings = captureWarnings(op.run);
             await el2.whenSettled();
-            log(log2, `› <code>${esc(op.code)}</code>`);
-            for (const w of warnings) log(log2, `  ⚠ ${esc(w)}`, 'warn in02-warning');
+            log(log2, `› <code>${esc(op.code)}</code>`, 'action');
+            for (const w of warnings) log(log2, `  ⚠ ${esc(w)}`, 'warn');
             if (!warnings.length) log(log2, '  ✓ accepted (no warning)', 'ok');
-            log(log2, `  el.${op.key}: ${esc(fmt(before))} → <strong>${esc(fmt(el2[op.key]))}</strong> · attribute ${esc(fmtAttr(el2.getAttribute(op.attr)))}`, 'muted in02-result');
+            log(log2, `  el.${op.key}: ${esc(fmt(before))} → <strong>${esc(fmt(el2[op.key]))}</strong> · attribute ${esc(fmtAttr(el2.getAttribute(op.attr)))}`, 'muted');
         });
 
         // ── IN03 · update vs reinit ──────────────────────────────────────────
@@ -506,12 +500,12 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
             $('in03-reinits').textContent = `reinit() × ${el3.reinitCount}`;
             $('in03-updates').textContent = `update() × ${el3.updateCount}`;
         };
-        el3.addEventListener('hook', (e) => log(log3, `◆ ${esc(describeHook(e.detail))}`, `hook in03-hook in03-${e.detail.hook}`));
-        log(log3, `◆ reinit()  <span class="muted">— first connect is always a full build</span>`, 'hook');
+        el3.addEventListener('hook', (e) => log(log3, `◆ ${esc(describeHook(e.detail))}`, 'info'));
+        log(log3, `◆ reinit()  <span class="muted">— first connect is always a full build</span>`, 'info');
         const run3 = async (code, fn) => {
-            log(log3, `› <code>${esc(code)}</code>`);
+            log(log3, `› <code>${esc(code)}</code>`, 'action');
             const calls = await recordHooks(el3, async () => { fn(); await el3.whenSettled(); });
-            if (!calls.length) log(log3, '  (no hook — stored only)', 'muted in03-none');
+            if (!calls.length) log(log3, '  (no hook — stored only)', 'muted');
             counters3();
         };
         $('in03-caption-set').addEventListener('click', () => {
@@ -544,9 +538,9 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
         const ACCENTS = ['blue', 'green', 'red'];
         const nextAccent = () => ACCENTS[(ACCENTS.indexOf(el4.accent) + 1) % 3];
         let n4 = 0;
-        const head4 = (title) => log(log4, `<strong>${esc(title)}</strong>`, 'in04-head');
+        const head4 = (title) => log(log4, `<strong>${esc(title)}</strong>`, 'action');
         const hooks4 = (calls, prefix = '  ') => {
-            for (const c of calls) log(log4, `${prefix}◆ ${esc(describeHook(c))}`, 'hook');
+            for (const c of calls) log(log4, `${prefix}◆ ${esc(describeHook(c))}`, 'info');
         };
         $('in04-loose').addEventListener('click', async () => {
             n4 += 1;
@@ -554,10 +548,10 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
             const accent = nextAccent();
             const calls = await recordHooks(el4, async (calls) => {
                 el4.caption = `Loose ${n4}a`; el4.accent = accent; el4.caption = `Loose ${n4}b`;
-                log(log4, `  right after the writes: ${calls.length} hook calls`, 'in04-sync-count');
+                log(log4, `  right after the writes: ${calls.length} hook calls`);
                 await el4.whenSettled();
             });
-            log(log4, `  after await whenSettled(): <span class="in04-count">${calls.length}</span> hook call(s)`, 'ok');
+            log(log4, `  after await whenSettled(): ${calls.length} hook call(s)`, 'ok');
             hooks4(calls);
         });
         $('in04-ticks').addEventListener('click', async () => {
@@ -568,7 +562,7 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
                 el4.caption = `Tick ${n4}.2`; await el4.whenSettled();
                 el4.caption = `Tick ${n4}.3`; await el4.whenSettled();
             });
-            log(log4, `  <span class="in04-count">${calls.length}</span> hook calls — one flush per tick`, 'ok');
+            log(log4, `  ${calls.length} hook calls — one flush per tick`, 'ok');
             hooks4(calls);
         });
         $('in04-setattrs').addEventListener('click', async () => {
@@ -577,7 +571,7 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
             const size = el4.pageSize === 6 ? 4 : 6;
             const calls = await recordHooks(el4, (calls) => {
                 el4.setAttributes({ caption: `Set ${n4}`, 'page-size': size });
-                log(log4, `  synchronously after the call: <span class="in04-count">${calls.length}</span> hook call(s)`, 'ok');
+                log(log4, `  synchronously after the call: ${calls.length} hook call(s)`, 'ok');
             });
             hooks4(calls);
         });
@@ -587,7 +581,7 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
             const accent = nextAccent();
             const calls = await recordHooks(el4, (calls) => {
                 el4.batch(() => { el4.caption = `Batch ${n4}`; el4.accent = accent; });
-                log(log4, `  synchronously after the call: <span class="in04-count">${calls.length}</span> hook call(s)`, 'ok');
+                log(log4, `  synchronously after the call: ${calls.length} hook call(s)`, 'ok');
             });
             hooks4(calls);
         });
@@ -597,18 +591,18 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
             el4.layout = layout;
             log(log4, `  rendered layout right after the write: ${esc(el4.readRenderedWithoutFlush().layout)}`);
             await el4.whenSettled();
-            log(log4, `  after await whenSettled(): <span class="in04-settled-layout">${esc(el4.readRenderedWithoutFlush().layout)}</span>`, 'ok');
+            log(log4, `  after await whenSettled(): ${esc(el4.readRenderedWithoutFlush().layout)}`, 'ok');
         });
         $('in04-flush').addEventListener('click', () => {
             head4('el.pageSize = …; el.method()');
             const a = el4.pageSize >= 11 ? 3 : el4.pageSize + 1;
             el4.pageSize = a;
             const stale = el4.readRenderedWithoutFlush().pageSize;
-            log(log4, `  el.pageSize = ${a}; el.readRenderedWithoutFlush().pageSize → <span class="in04-stale">${stale}</span> (stale)`, 'warn');
+            log(log4, `  el.pageSize = ${a}; el.readRenderedWithoutFlush().pageSize → ${stale} (stale)`, 'warn');
             const b = a >= 11 ? 3 : a + 1;
             el4.pageSize = b;
             const fresh = el4.readRendered().pageSize;
-            log(log4, `  el.pageSize = ${b}; el.readRendered().pageSize → <span class="in04-fresh">${fresh}</span> (this.flush() first)`, 'ok');
+            log(log4, `  el.pageSize = ${b}; el.readRendered().pageSize → ${fresh} (this.flush() first)`, 'ok');
         });
         $('in04-builds').addEventListener('click', async () => {
             head4('How many reinit() builds?');
@@ -618,11 +612,11 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
             sandbox.append(inDom);                       // builds with defaults
             inDom.layout = 'grid'; inDom.pageSize = 8;   // + one batch
             await inDom.whenSettled();
-            log(log4, `  append, then configure: <span class="in04-builds-indom">${inDom.reinitCount}</span> reinit() (defaults + your batch)`, 'warn');
+            log(log4, `  append, then configure: ${inDom.reinitCount} reinit() (defaults + your batch)`, 'warn');
             const detached = document.createElement('core-demo-reactivity');
             detached.layout = 'grid'; detached.pageSize = 8;   // held while detached
             sandbox.append(detached);
-            log(log4, `  configure detached, then append: <span class="in04-builds-detached">${detached.reinitCount}</span> reinit() (full config)`, 'ok');
+            log(log4, `  configure detached, then append: ${detached.reinitCount} reinit() (full config)`, 'ok');
             sandbox.replaceChildren();
         });
 
@@ -640,29 +634,29 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
             $('in05-state').innerHTML = '<tr><th>read</th><th>value</th><th>attribute</th></tr>'
                 + rows.map(([k, v, a]) => `<tr data-read="${esc(k)}"><td><code>${esc(k)}</code></td><td><code>${esc(v)}</code></td><td>${a === '—' ? a : `<code>${esc(a)}</code>`}</td></tr>`).join('');
         };
-        el5.addEventListener('hook', (e) => log(log5, `◆ ${esc(describeHook(e.detail))}`, `hook in05-hook in05-${e.detail.hook}`));
+        el5.addEventListener('hook', (e) => log(log5, `◆ ${esc(describeHook(e.detail))}`, 'info'));
         $('in05-mode').addEventListener('change', async (e) => {
-            log(log5, `› <code>el.mode = '${esc(e.target.value)}'</code>`);
+            log(log5, `› <code>el.mode = '${esc(e.target.value)}'</code>`, 'action');
             el5.mode = e.target.value;
             await el5.whenSettled();
             state5();
         });
         $('in05-explicit').addEventListener('click', () => {
-            log(log5, "› <code>el.setAttributes({ mode: 'excel', editTrigger: 'none' })</code>");
+            log(log5, "› <code>el.setAttributes({ mode: 'excel', editTrigger: 'none' })</code>", 'action');
             el5.setAttributes({ mode: 'excel', editTrigger: 'none' });
             $('in05-mode').value = 'excel';
             state5();
         });
         $('in05-assign').addEventListener('click', async () => {
-            log(log5, "› <code>el.items = ['Alpha', 'Beta']</code>");
+            log(log5, "› <code>el.items = ['Alpha', 'Beta']</code>", 'action');
             el5.items = ['Alpha', 'Beta'];
             await el5.whenSettled();
             state5();
         });
         $('in05-staged').addEventListener('click', async () => {
-            log(log5, "› <code>el.items = ['Fresh']; el.items</code>");
+            log(log5, "› <code>el.items = ['Fresh']; el.items</code>", 'action');
             el5.items = ['Fresh'];
-            log(log5, `  read while staged → <span class="in05-staged-read">${esc(fmt(el5.items))}</span> (what you just assigned)`, 'ok');
+            log(log5, `  read while staged → ${esc(fmt(el5.items))} (what you just assigned)`, 'ok');
             await el5.whenSettled();
             state5();
         });

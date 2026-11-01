@@ -8,12 +8,6 @@
         /* Demo visual: the dashed outline marks a form's boundary (inside vs outside the <form>). */
         .fo-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: .8rem; margin: 0; padding: .9rem; min-width: 0;
                    border: 2px dashed var(--kmwc-border-color-strong); border-radius: var(--kmwc-radius-md); }
-        /* kit gap: tones for lines in a .log-panel (warn / ok / hook / action echo) */
-        .log-panel > div { white-space: pre-wrap; }
-        .log-panel .warn { color: var(--kmwc-warning-color); }
-        .log-panel .ok { color: var(--kmwc-success-color); }
-        .log-panel .hook { color: var(--kmwc-info-color); }
-        .log-panel .act { color: var(--kmwc-text-color-3); margin-top: .3rem; }
         /* Native pseudo-classes match a form-associated host — page CSS needs nothing from core. */
         core-demo-field:invalid { outline: 2px solid var(--kmwc-danger-color); outline-offset: 3px; border-radius: var(--kmwc-radius-sm); }
         core-demo-field:disabled { opacity: .8; }
@@ -254,9 +248,10 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
 
         const $ = (id) => document.getElementById(id);
         const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-        const log = (panel, text, cls = '') => {
+        /** One log line; `tone` is a kit log-line tone (ok / info / warn / err / muted / action). */
+        const log = (panel, text, tone = '') => {
             const line = document.createElement('div');
-            if (cls) line.className = cls;
+            line.className = tone ? `log-line log-line--${tone}` : 'log-line';
             line.textContent = text;
             panel.appendChild(line);
             panel.scrollTop = panel.scrollHeight;
@@ -293,7 +288,7 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
                 e.preventDefault();
                 log(panel, `submit → FormData ${fmtEntries(form)}`, 'ok');
             });
-            form.addEventListener('reset', () => log(panel, 'reset event', 'act'));
+            form.addEventListener('reset', () => log(panel, 'reset event', 'action'));
             form.addEventListener('change', (e) => {
                 log(panel, `change on <${e.target.localName}> · e.target.form === form: ${e.target.form === form}`);
             });
@@ -301,7 +296,7 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
             outEl.addEventListener('change', (e) => log(panel, `change on #${e.target.id} (outside) · e.target.form === form: ${e.target.form === form}`));
             for (const el of [inEl, outEl]) {
                 el.addEventListener('field-log', (e) => {
-                    if (e.detail.kind === 'formResetCallback') log(panel, `${el.id}: formResetCallback() ${e.detail.text}`, 'hook');
+                    if (e.detail.kind === 'formResetCallback') log(panel, `${el.id}: formResetCallback() ${e.detail.text}`, 'info');
                     render();
                 });
             }
@@ -323,11 +318,11 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
                 ].join('\n');
             };
             el.addEventListener('field-log', (e) => {
-                if (e.detail.kind === 'disabledChanged') log(panel, `disabledChanged${e.detail.text}`, 'hook');
+                if (e.detail.kind === 'disabledChanged') log(panel, `disabledChanged${e.detail.text}`, 'info');
                 render();
             });
             const act = (id, text, fn) => $(id).addEventListener('click', async () => {
-                log(panel, `▶ ${text()}`, 'act');
+                log(panel, `▶ ${text()}`, 'action');
                 fn();
                 await el.whenSettled();
                 render();
@@ -343,7 +338,7 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
             }
             $('fo02-bad').addEventListener('click', () => {
                 define('core-demo-bad-disabled', BadDisabledField);
-                log(panel, '▶ document.createElement(\'core-demo-bad-disabled\')', 'act');
+                log(panel, '▶ document.createElement(\'core-demo-bad-disabled\')', 'action');
                 const lines = captureWarnings(() => document.createElement('core-demo-bad-disabled'));
                 if (lines.length === 0) log(panel, '(no warning — the table is checked once per class)');
                 for (const l of lines) log(panel, l, 'warn');
@@ -373,7 +368,7 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
             };
             for (const f of [el, nv]) {
                 f.addEventListener('field-log', (e) => {
-                    if (e.detail.kind === 'setFormatError') log(panel, `#${f.id}: setFormatError ${e.detail.text}`, 'hook');
+                    if (e.detail.kind === 'setFormatError') log(panel, `#${f.id}: setFormatError ${e.detail.text}`, 'info');
                     render();
                 });
                 f.addEventListener('invalid', () => log(panel, `'invalid' event on #${f.id} — "${f.validationMessage}"`, 'warn'));
@@ -383,7 +378,7 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
                 });
             }
             const act = (id, text, fn) => $(id).addEventListener('click', () => {
-                log(panel, `▶ ${text}`, 'act');
+                log(panel, `▶ ${text}`, 'action');
                 fn();
                 render();
             });
