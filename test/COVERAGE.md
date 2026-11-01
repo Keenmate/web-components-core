@@ -192,6 +192,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | el.form null on non-form-associated BlissElement | ✓ | `core-regressions.spec.ts` | `regressions.html` |
 | Throwing environment listener doesn't stop others (discrete + viewport) | ✓ | `core-regressions.spec.ts` | `regressions.html` |
 | Throwing theme listener doesn't stop others | ✓ | `core-regressions.spec.ts` | `regressions.html` |
+| setAttributes() warns about a non-input key (other keys still apply) | ✓ | `core-regressions.spec.ts` | `regressions.html` |
 
 ## 14. Example site (smoke only)
 

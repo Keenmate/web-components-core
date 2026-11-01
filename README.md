@@ -179,7 +179,9 @@ disabled after `el.isDisabled = false` (core warns). A fieldset never writes
 `el.isDisabled`.
 
 Batch many changes into one reinit/update with `setAttributes({ ... })` or
-`batch(() => { ... })`. To await the pipeline deterministically — in a test or
+`batch(() => { ... })`. A `setAttributes()` key that isn't an input (configKey or
+attribute name, or a core-declared `shouldDefer` / `themeSource` / `responsive*`) warns and
+is skipped — a renamed or misspelled key is never dropped silently. To await the pipeline deterministically — in a test or
 before reading rendered state — use **`await el.whenSettled()`**: it resolves
 once every staged change has flushed and its `reinit()`/`update()` has run
 (immediately when nothing is pending).

@@ -308,6 +308,34 @@ describe('BlissElement', () => {
     expect(el.updates[0]).toEqual({ selectionMode: 'range', placeholder: 'Find' });
   });
 
+  it('setAttributes warns about a key that is not an input — and still applies the rest', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const el = new TestElement();
+    document.body.appendChild(el);
+    el.updates.length = 0;
+
+    // `data` was renamed (e.g. to `nodes`): it must not vanish silently.
+    el.setAttributes({ data: [1, 2], placeholder: 'Find', 'selection-mode': 'range' });
+
+    expect(el.updates).toEqual([{ placeholder: 'Find', selectionMode: 'range' }]);
+    expect(warn).toHaveBeenCalledOnce();
+    expect(consoleLines(warn)[0]).toContain('setAttributes: "data" is not an input of <');
+    warn.mockRestore();
+  });
+
+  it('setAttributes accepts the core-declared properties without a warning', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const el = new TestElement();
+    el.setAttributes({ shouldDefer: true });
+    expect(el.hasAttribute('defer')).toBe(true);
+    el.setAttributes({ defer: false, 'theme-source': '#panel', responsive: { device: { mobile: {} } } });
+    expect(el.hasAttribute('defer')).toBe(false);
+    expect(el.themeSource).toBe('#panel');
+    expect(el.responsive).toEqual({ device: { mobile: {} } });
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it('reflects a property to its attribute', () => {
     const el = new TestElement();
     document.body.appendChild(el);

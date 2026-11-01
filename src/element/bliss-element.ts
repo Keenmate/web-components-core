@@ -80,6 +80,19 @@ export const READY_ATTRIBUTE = 'ready';
 /** The core-provided event fired once the first build is live; twin `onReady`. */
 const READY_EVENT = 'ready';
 
+/**
+ * Core-declared properties {@link BlissElement.setAttributes} accepts besides the
+ * input table — by property or attribute name → the property it assigns.
+ */
+const CORE_PROPERTY_BY_KEY: ReadonlyMap<string, string> = new Map([
+  ['shouldDefer', 'shouldDefer'],
+  [DEFER_ATTRIBUTE, 'shouldDefer'],
+  ['themeSource', 'themeSource'],
+  ['theme-source', 'themeSource'],
+  ['responsive', 'responsive'],
+  ['responsiveCallback', 'responsiveCallback'],
+]);
+
 
 export abstract class BlissElement<TEvents extends EventMap = EventMap, TController = unknown> extends Base {
   /** The opt-in input table. Subclasses set this to enable attribute/property reactivity. */
@@ -593,11 +606,26 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
 
   // ── public batching API ─────────────────────────────────────────────────
 
-  /** Apply many inputs (by `configKey` or attribute name) as ONE reinit/update. */
+  /**
+   * Apply many inputs (by `configKey` or attribute name) as ONE reinit/update.
+   * The core-declared properties (`shouldDefer` / `defer`, `themeSource` /
+   * `theme-source`, `responsive`, `responsiveCallback`) are accepted too. Any
+   * other key is not an input of this element: it warns and is skipped — a
+   * renamed or misspelled key must never be dropped silently.
+   */
   setAttributes(values: Record<string, unknown>): void {
     for (const [key, value] of Object.entries(values)) {
       const def = this.#byConfigKey.get(key) ?? this.#byAttribute.get(key);
-      if (def) this.#setFromProperty(def, value);
+      if (def) {
+        this.#setFromProperty(def, value);
+        continue;
+      }
+      const coreProperty = CORE_PROPERTY_BY_KEY.get(key);
+      if (coreProperty) {
+        (this as unknown as Record<string, unknown>)[coreProperty] = value;
+        continue;
+      }
+      this.#warn(`setAttributes: "${key}" is not an input of <${this.localName}> (not a configKey or attribute); skipped`, value);
     }
     this.#flushNow();
   }

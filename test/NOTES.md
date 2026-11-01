@@ -33,6 +33,20 @@ later listener from hearing the change — other components' responsive rules / 
 
 ---
 
+## 2b. ~~`setAttributes()` dropped an unknown key silently~~ — FIXED in 1.0.0-rc15
+
+**Where:** `src/element/bliss-element.ts` `setAttributes()` — `if (def) …` with no else.
+
+**Symptom:** web-treeview's performance page called `tree.update({ data, … })` after `data` became
+`nodes`; the tree got zero rows and nothing failed. (That page went through treeview's public
+`update()`, which bypasses core entirely — a treeview issue — but core's own `setAttributes()` would
+have dropped `data` just as silently.)
+
+**Fix:** unknown keys warn and are skipped; the core-declared properties are accepted.
+**Test:** `e2e/core-regressions.spec.ts` + unit tests.
+
+---
+
 ## 3. `whenSettled()` doesn't resolve while an element is deferred — DECIDED: intended, documented
 
 **Where:** the defer gate (SPEC §6.3) + `whenSettled()` (§12.7).

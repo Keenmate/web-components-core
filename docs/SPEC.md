@@ -243,6 +243,9 @@ export abstract class BlissElement extends Base {
   //   el.getBadgeDisplayCallback = fn     → reactive (callbacks too)
 
   // BATCHING: setAttributes({...}) / batch(fn) coalesce many changes into ONE reinit()/update()
+  //   setAttributes keys = configKey or attribute name, plus the core-declared shouldDefer/defer,
+  //   themeSource/theme-source, responsive, responsiveCallback; any other key WARNS and is skipped
+  //   (a renamed/misspelled key must never vanish silently).
   setAttributes(values: Record<string, unknown>): void { /* … */ }
   batch(fn: () => void): void { /* … */ }
 

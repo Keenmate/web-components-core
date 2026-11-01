@@ -395,6 +395,13 @@ Attributes, events and CSS are unchanged — only the JS API of components built
 
 ### Fixed
 
+- **`setAttributes()` no longer drops an unknown key silently.** A key that is neither an
+  input's `configKey` nor its attribute name used to be skipped without a word — web-treeview's
+  performance page kept passing `data` after the input became `nodes` and got an empty tree, no
+  error. It now warns (`setAttributes: "data" is not an input of <web-treeview> …; skipped`,
+  INIT logger) and the other keys still apply. The core-declared properties (`shouldDefer` /
+  `defer`, `themeSource` / `theme-source`, `responsive`, `responsiveCallback`) are now accepted
+  — they were silently dropped too.
 - **`el.form` no longer throws on an element that isn't form-associated.** A real browser throws
   reading `ElementInternals.form` there ("not a form-associated custom element"; jsdom doesn't); the
   getter now returns `null` without touching (or attaching) internals, like the validity members.
