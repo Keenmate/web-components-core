@@ -219,14 +219,14 @@ function laneMarkup(kind: LaneKind): string {
         <div class="anim-track-label">Component</div>
         <div class="anim-track-body anim-comp">
           <div class="anim-bars">${bars(10)}</div>
-          <div class="anim-note anim-comp-note"></div>
+          <small class="muted anim-comp-note"></small>
         </div>
       </div>
       <div class="anim-track">
         <div class="anim-track-label">Screen / paint</div>
         <div class="anim-track-body anim-screen">
           <div class="anim-bars">${bars(10)}</div>
-          <div class="anim-note anim-screen-note"></div>
+          <small class="muted anim-screen-note"></small>
         </div>
       </div>
     </section>`;
@@ -253,7 +253,7 @@ function renderLane(lane: HTMLElement, s: LaneState): void {
   const queue = lane.querySelector<HTMLElement>('.anim-queue')!;
   queue.innerHTML = s.queue.length
     ? s.queue.map((t) => `<span class="anim-token is-${t.state}">${esc(t.label)}${t.state === 'done' ? ' ✓' : ''}</span>`).join('')
-    : '<span class="anim-note">empty</span>';
+    : '<small class="muted">empty</small>';
 
   const comp = lane.querySelector<HTMLElement>('.anim-comp')!;
   comp.classList.toggle('is-active', s.isCompActive);
@@ -269,21 +269,21 @@ function renderLane(lane: HTMLElement, s: LaneState): void {
 
 export function mountWhenSettledAnimation(root: HTMLElement): void {
   root.innerHTML = `
-    <div class="anim-caption">Animated diagram — the real gap is one microtask; the screen never shows it.</div>
-    <div class="anim-controls">
+    <div class="demo-label">Animated diagram <span class="muted">— the real gap is one microtask; the screen never shows it.</span></div>
+    <div class="controls">
       <button type="button" class="anim-play">▶ Play</button>
       <button type="button" class="anim-step">Step ›</button>
       <button type="button" class="anim-restart">↺ Restart</button>
-      <label class="anim-speed">Speed
-        <select>
+      <label>Speed
+        <select class="anim-speed">
           <option value="0.5">0.5×</option>
           <option value="1" selected>1×</option>
           <option value="2">2×</option>
         </select>
       </label>
-      <span class="anim-counter"></span>
+      <span class="pill anim-counter"></span>
     </div>
-    <div class="anim-say" aria-live="polite"></div>
+    <div class="note anim-say" aria-live="polite"></div>
     <div class="anim-lanes">${laneMarkup('without')}${laneMarkup('with')}</div>`;
 
   const lanes = {
@@ -293,7 +293,7 @@ export function mountWhenSettledAnimation(root: HTMLElement): void {
   const playBtn = root.querySelector<HTMLButtonElement>('.anim-play')!;
   const stepBtn = root.querySelector<HTMLButtonElement>('.anim-step')!;
   const restartBtn = root.querySelector<HTMLButtonElement>('.anim-restart')!;
-  const speedSel = root.querySelector<HTMLSelectElement>('.anim-speed select')!;
+  const speedSel = root.querySelector<HTMLSelectElement>('select.anim-speed')!;
   const counter = root.querySelector<HTMLElement>('.anim-counter')!;
   const say = root.querySelector<HTMLElement>('.anim-say')!;
   const last = STEPS.length - 1;

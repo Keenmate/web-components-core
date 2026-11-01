@@ -5,39 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lifecycle — web-components-core</title>
     <style>
-        .lc-stage { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-start; min-height: 5.5rem; }
-        .lc-box { flex: 1 1 16rem; min-height: 6rem; padding: .7rem; border-radius: 10px;
-                  border: 2px dashed light-dark(#cbd5e1, #475569); display: flex; gap: .6rem; flex-wrap: wrap; align-items: flex-start; }
-        .lc-box-title { flex-basis: 100%; font: 600 .75rem ui-monospace, monospace; color: light-dark(#64748b, #94a3b8); }
-        .lc-chip { padding: .45rem .7rem; border-radius: 8px; background: light-dark(#f1f5f9, #334155); font: 500 .85rem system-ui; }
-        .lc-parked { font: .8rem ui-monospace, monospace; color: light-dark(#64748b, #94a3b8); }
+        /* LC03 move targets — page illustration. */
+        .lc-box { min-height: 6rem; padding: .7rem; border-radius: var(--kmwc-radius-md);
+                  border: 2px dashed var(--kmwc-border-color-strong); display: flex; gap: .6rem; flex-wrap: wrap; align-items: flex-start; }
+        .lc-box-title { flex-basis: 100%; font: 600 .75rem var(--kmwc-mono-font-family); color: var(--kmwc-text-color-3); }
+        .lc-chip { padding: .45rem .7rem; border-radius: var(--kmwc-radius-md); background: var(--kmwc-elevated-bg); font-size: .85rem; }
 
         /* The ready hooks, styled from the PAGE: attribute + :state(). */
-        core-demo-lifecycle[ready] { outline: 2px solid #22c55e; outline-offset: 2px; border-radius: 10px; }
-        core-demo-lifecycle:state(ready) { box-shadow: 0 0 0 6px light-dark(#dcfce7, #14532d); border-radius: 10px; }
+        core-demo-lifecycle[ready] { outline: 2px solid var(--kmwc-success-color); outline-offset: 2px; border-radius: 10px; }
+        core-demo-lifecycle:state(ready) { box-shadow: 0 0 0 6px color-mix(in srgb, var(--kmwc-success-color) 25%, transparent); border-radius: 10px; }
 
-        .lc-state { font: .8rem ui-monospace, 'Courier New', monospace; margin-top: .8rem; padding: .45rem .7rem;
-                    border-radius: 8px; background: light-dark(#f8fafc, #0f172a); border: 1px solid light-dark(#e2e8f0, #334155); }
-        .lc-state b { color: light-dark(#0369a1, #7dd3fc); font-weight: 600; }
+        /* kit gap: .grid items keep min-width: auto, so wide content widens the page on a phone. */
+        .grid > * { min-width: 0; }
 
-        .lc-timeline { list-style: none; margin: .8rem 0 0; padding: .6rem .8rem; max-height: 19rem; overflow: auto;
-                       font: .8rem/1.55 ui-monospace, 'Courier New', monospace; border-radius: 10px;
-                       background: #0f172a; color: #e2e8f0; }
-        .lc-timeline:empty::before { content: 'Timeline — press a button above.'; color: #64748b; }
-        .lc-timeline li { display: flex; gap: .6rem; white-space: pre-wrap; }
-        .lc-timeline .seq { color: #64748b; min-width: 2.2rem; text-align: right; }
-        .lc-timeline .t { color: #64748b; min-width: 4.6rem; text-align: right; font-variant-numeric: tabular-nums; }
-        .lc-timeline .el { color: #94a3b8; min-width: 4.2rem; }
-        .lc-timeline .what { font-weight: 700; }
-        .lc-timeline .detail { color: #94a3b8; min-width: 0; overflow-wrap: anywhere; }
-        .lc-timeline li[data-kind="action"] { color: #fde68a; margin-top: .35rem; }
-        .lc-timeline li[data-kind="action"]:first-child { margin-top: 0; }
-        .lc-timeline li[data-kind="note"] { color: #94a3b8; font-style: italic; }
-        .lc-timeline li[data-kind="hook"] .what { color: #7dd3fc; }
-        .lc-timeline li[data-kind="event"] .what { color: #86efac; }
-        .lc-timeline li[data-kind="error"] .what { color: #fca5a5; }
-        .lc-timeline-head { display: flex; justify-content: flex-end; margin-top: .5rem; }
-        .lc-timeline-head button { font-size: .75rem; }
+        /* kit gap: .event-log has no column layout, no per-kind tones and no empty placeholder. */
+        .event-log { margin-top: 1rem; max-height: 19rem; }
+        .event-log:empty::before { content: 'Timeline — press a button above.'; }
+        .event-log .event-entry { display: flex; flex-wrap: wrap; column-gap: .6rem; white-space: pre-wrap; }
+        .event-log .event-time { text-align: right; font-variant-numeric: tabular-nums; min-width: 2.2rem; }
+        .event-log .event-time + .event-time { min-width: 4.6rem; }
+        .event-log .event-entry > :last-child { min-width: 0; overflow-wrap: anywhere; }
+        .event-log .event-entry[data-kind="action"] { color: #fde68a; margin-top: .35rem; }
+        .event-log .event-entry[data-kind="note"] { font-style: italic; }
+        .event-log .event-entry[data-kind="hook"] .event-name { color: #7dd3fc; }
+        .event-log .event-entry[data-kind="error"] .event-name { color: #fca5a5; }
     </style>
 </head>
 <body>
@@ -79,9 +70,9 @@
                 <button id="lc01-both">both in one <code>batch()</code></button>
             </div>
             <div class="demo-area">
-                <div class="lc-stage" id="lc01-stage"></div>
-                <div class="lc-state" id="lc01-state"></div>
-                <ol class="lc-timeline" id="lc01-log"></ol>
+                <div class="field-row" id="lc01-stage"></div>
+                <div class="css-readout" id="lc01-state" style="margin-top:.75rem"></div>
+                <div class="event-log" id="lc01-log"></div>
             </div>
             <div class="code-block"><pre>const el = document.createElement('core-demo-lifecycle');
 el.addEventListener('ready', (e) =&gt; log('ready event', e.detail.element === el));
@@ -121,9 +112,9 @@ el.batch(() =&gt; { el.label = 'B'; el.accent = 'amber'; });   // one reinit(), 
                 <button id="lc02-redefer"><code>shouldDefer = true</code> again, then set label</button>
             </div>
             <div class="demo-area">
-                <div class="lc-stage" id="lc02-stage"></div>
-                <div class="lc-state" id="lc02-state"></div>
-                <ol class="lc-timeline" id="lc02-log"></ol>
+                <div class="field-row" id="lc02-stage"></div>
+                <div class="css-readout" id="lc02-state" style="margin-top:.75rem"></div>
+                <div class="event-log" id="lc02-log"></div>
             </div>
             <div class="code-block"><pre>&lt;!-- markup: hold the first build until the app has configured it --&gt;
 &lt;core-demo-lifecycle id="card" defer&gt;&lt;/core-demo-lifecycle&gt;
@@ -157,12 +148,12 @@ el.shouldDefer = true;                         // latched: no effect after the f
                 <button id="lc03-attach">Re-attach</button>
             </div>
             <div class="demo-area">
-                <div class="lc-stage">
+                <div class="grid" style="--grid-min: 14rem; --grid-gap: 1rem">
                     <div class="lc-box" id="lc03-box-a"><span class="lc-box-title">box A</span><span class="lc-chip" id="lc03-neighbour">neighbour</span></div>
                     <div class="lc-box" id="lc03-box-b"><span class="lc-box-title">box B</span></div>
                 </div>
-                <div class="lc-state" id="lc03-state"></div>
-                <ol class="lc-timeline" id="lc03-log"></ol>
+                <div class="css-readout" id="lc03-state" style="margin-top:.75rem"></div>
+                <div class="event-log" id="lc03-log"></div>
             </div>
             <div class="code-block"><pre>boxB.append(el);                 // disconnect() → connect()   — no reinit(), state kept
 boxA.insertBefore(el, neighbour); // reorder: the same
@@ -193,9 +184,9 @@ boxA.append(el);                  // reinit() (the held change) → connect()</p
                 <button id="lc04-readd">Re-add</button>
             </div>
             <div class="demo-area">
-                <div class="lc-stage" id="lc04-stage"></div>
-                <div class="lc-state" id="lc04-state"></div>
-                <ol class="lc-timeline" id="lc04-log"></ol>
+                <div class="field-row" id="lc04-stage"></div>
+                <div class="css-readout" id="lc04-state" style="margin-top:.75rem"></div>
+                <div class="event-log" id="lc04-log"></div>
             </div>
             <div class="code-block"><pre>class MyElement extends BlissElement {
   protected override removedCallback(): void {   // overriding it = opting in
@@ -230,9 +221,9 @@ el.remove();                               // disconnect() … next frame: remov
                 <button id="lc05-new">Create a new element</button>
             </div>
             <div class="demo-area">
-                <div class="lc-stage" id="lc05-stage"></div>
-                <div class="lc-state" id="lc05-state"></div>
-                <ol class="lc-timeline" id="lc05-log"></ol>
+                <div class="field-row" id="lc05-stage"></div>
+                <div class="css-readout" id="lc05-state" style="margin-top:.75rem"></div>
+                <div class="event-log" id="lc05-log"></div>
             </div>
             <div class="code-block"><pre>el.destroy();       // disconnect() → destroyCallback()
 el.isDestroyed;     // true
@@ -263,9 +254,9 @@ stage.append(el);   // console warning: "&lt;core-demo-lifecycle&gt; was destroy
                 <button id="lc06-fresh">Create a fresh element with the throw armed</button>
             </div>
             <div class="demo-area">
-                <div class="lc-stage" id="lc06-stage"></div>
-                <div class="lc-state" id="lc06-state"></div>
-                <ol class="lc-timeline" id="lc06-log"></ol>
+                <div class="field-row" id="lc06-stage"></div>
+                <div class="css-readout" id="lc06-state" style="margin-top:.75rem"></div>
+                <div class="event-log" id="lc06-log"></div>
             </div>
             <div class="code-block"><pre>el.shouldThrowNextReinit = true;   // demo knob: the next reinit() throws once
 try {
@@ -328,21 +319,22 @@ fresh.flush();         // reinit() → connect() → ready</pre></div>
                 timelines.set(id, this);
             }
             add(kind, el, what, detail = '') {
-                const li = document.createElement('li');
+                const li = document.createElement('div');
+                li.className = 'event-entry';
                 li.dataset.kind = kind;
                 if (kind === 'hook' || kind === 'event' || kind === 'error') li.dataset.hook = what;
                 if (el) li.dataset.el = el.id;
                 const ms = (performance.now() - this.t0).toFixed(1);
                 const cells = [
-                    ['seq', `#${++this.seq}`],
-                    ['t', kind === 'action' ? '' : `+${ms}ms`],
-                    ['el', el ? el.id : ''],
-                    ['what', kind === 'hook' ? `${what}()` : what],
-                    ['detail', detail],
+                    ['event-time', `#${++this.seq}`],
+                    ['event-time', kind === 'action' ? '' : `+${ms}ms`],
+                    ['', el ? el.id : ''],
+                    [kind === 'action' || kind === 'note' ? '' : 'event-name', kind === 'hook' ? `${what}()` : what],
+                    ['', detail],
                 ];
                 for (const [cls, text] of cells) {
                     const span = document.createElement('span');
-                    span.className = cls;
+                    if (cls) span.className = cls;
                     span.textContent = text;
                     li.append(span);
                 }
@@ -381,11 +373,16 @@ fresh.flush();         // reinit() → connect() → ready</pre></div>
         function matchesReady(el) {
             try { return el.matches(':state(ready)'); } catch { return 'n/a'; }
         }
+        /** `<b>key</b> value · …` → the kit's `.css-readout` chips. */
+        const chips = (line) => line.split(' · ').filter(Boolean).map((part) => {
+            const m = part.match(/^\s*<b>(.*?)<\/b>\s*(.*)$/);
+            return m ? `<code>${m[1]} <b>${m[2]}</b></code>` : `<code>${part}</code>`;
+        }).join('');
         function stateLine(el, extra = '') {
-            if (!el) return 'no element';
-            return `<b>isReady</b> ${el.isReady} · <b>[ready]</b> ${el.hasAttribute('ready')} · <b>:state(ready)</b> ${matchesReady(el)}`
+            if (!el) return chips('no element');
+            return chips(`<b>isReady</b> ${el.isReady} · <b>[ready]</b> ${el.hasAttribute('ready')} · <b>:state(ready)</b> ${matchesReady(el)}`
                 + ` · <b>isDestroyed</b> ${el.isDestroyed} · <b>isConnected</b> ${el.isConnected}`
-                + ` · <b>label</b> "${el.label}" · <b>accent</b> ${el.accent}${extra}`;
+                + ` · <b>label</b> "${el.label}" · <b>accent</b> ${el.accent}${extra}`);
         }
 
         /** Run a button handler: action marker, the sync part, a "returned" note, then refresh the readout. */

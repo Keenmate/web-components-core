@@ -74,11 +74,13 @@ export class CoreDemoInputs extends BlissElement {
         .chip { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem .85rem; border-radius: 999px;
                 font: 500 .95rem system-ui, sans-serif; border: 1px solid transparent; }
         .compact { padding: .15rem .5rem; font-size: .8rem; }
-        .info { background: #e0f2fe; color: #075985; border-color: #7dd3fc; }
-        .success { background: #dcfce7; color: #166534; border-color: #86efac; }
-        .warning { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+        .chip { background: color-mix(in srgb, var(--tone) 12%, transparent); color: var(--tone);
+                border-color: color-mix(in srgb, var(--tone) 45%, transparent); }
+        .info { --tone: var(--kmwc-info-color, #075985); }
+        .success { --tone: var(--kmwc-success-color, #166534); }
+        .warning { --tone: var(--kmwc-warning-color, #92400e); }
         .count { background: currentColor; border-radius: 999px; min-width: 1.4em; text-align: center; }
-        .count span { color: #fff; font-size: .8em; padding: 0 .35em; }
+        .count span { color: var(--kmwc-main-bg, #fff); font-size: .8em; padding: 0 .35em; }
         .tag { font-size: .75em; opacity: .8; }
       </style>
       <span class="chip ${esc(c.tone)}${c.isCompact ? ' compact' : ''}" part="chip">
@@ -256,7 +258,7 @@ export class CoreDemoPresets extends BlissElement<HookEvents> {
         .meta { font: .8rem ui-monospace, monospace; margin-bottom: .4rem; opacity: .8; }
         table { border-collapse: collapse; min-width: 14rem; }
         td { padding: .25rem .6rem; }
-        .lines td { border: 1px solid #94a3b8; }
+        .lines td { border: 1px solid var(--kmwc-border-color-strong, #94a3b8); }
         button { margin-top: .5rem; }
       </style>
       <div class="meta"></div>

@@ -59,14 +59,14 @@ function trace(el: HTMLElement, kind: TraceKind, what: string, detail?: string):
 const delay = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 const BASE_CSS = `
-  :host { display: block; font: 500 .9rem system-ui, sans-serif; color: light-dark(#0f172a, #e2e8f0); }
+  :host { display: block; font: 500 .9rem system-ui, sans-serif; color: var(--kmwc-text-color-1); }
   button { font: inherit; padding: .3rem .7rem; border-radius: 6px; cursor: pointer;
-           border: 1px solid light-dark(#cbd5e1, #475569); background: light-dark(#fff, #1e293b); color: inherit; }
+           border: 1px solid var(--kmwc-border-color-strong); background: var(--kmwc-main-bg); color: inherit; }
   button[disabled] { opacity: .5; cursor: not-allowed; }
-  .box { border: 1px solid light-dark(#cbd5e1, #334155); border-radius: 10px; padding: .6rem .8rem;
-         background: light-dark(#ffffff, #1e293b); }
+  .box { border: 1px solid var(--kmwc-border-color); border-radius: 10px; padding: .6rem .8rem;
+         background: var(--kmwc-main-bg); }
   .title { font-weight: 700; margin-bottom: .4rem; }
-  .meta { font: .75rem ui-monospace, monospace; color: light-dark(#64748b, #94a3b8); }
+  .meta { font: .75rem ui-monospace, monospace; color: var(--kmwc-text-color-3); }
 `;
 
 function shadow(el: HTMLElement): ShadowRoot {
@@ -150,7 +150,7 @@ export class EventShellDemo extends BlissElement {
   protected override reinit(): void {
     const root = shadow(this);
     root.innerHTML = `<style>${BASE_CSS}
-        .shell { border: 2px dashed light-dark(#94a3b8, #64748b); border-radius: 12px; padding: .6rem; }
+        .shell { border: 2px dashed var(--kmwc-border-color-strong); border-radius: 12px; padding: .6rem; }
       </style>
       <div class="shell"><div class="meta"></div></div>`;
     (root.querySelector('.meta') as HTMLElement).textContent = `${this.config.label as string} — shadow root ↓`;
@@ -257,8 +257,8 @@ export class GuardedDemo extends BlissElement<GuardedEvents> {
     root.innerHTML = `<style>${BASE_CSS}
         ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
         li { display: flex; gap: .5rem; align-items: center; padding: .3rem .5rem; border-radius: 8px;
-             border: 1px solid light-dark(#e2e8f0, #334155); }
-        li[aria-selected="true"] { background: light-dark(#dbeafe, #1e3a8a); border-color: #3b82f6; }
+             border: 1px solid var(--kmwc-border-color); }
+        li[aria-selected="true"] { background: var(--kmwc-accent-light-bg-hover); border-color: var(--kmwc-accent-color); }
         .lbl { flex: 1; min-width: 0; }
       </style><div class="box"><ul role="listbox" aria-label="Guarded list"></ul></div>`;
     const ul = root.querySelector('ul')!;
@@ -395,8 +395,8 @@ export class ToolbarDemo extends BlissElement<{ action: ToolbarDetail }> {
     const root = shadow(this);
     root.innerHTML = `<style>${BASE_CSS}
         .bar { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
-        button.danger { color: light-dark(#b91c1c, #fca5a5); border-color: currentColor; }
-        button[aria-pressed="true"] { background: light-dark(#dbeafe, #1e3a8a); border-color: #3b82f6; }
+        button.danger { color: var(--kmwc-danger-color); border-color: currentColor; }
+        button[aria-pressed="true"] { background: var(--kmwc-accent-light-bg-hover); border-color: var(--kmwc-accent-color); }
         button[aria-busy="true"] { opacity: .6; cursor: progress; }
         .count { margin-left: auto; font: 600 .85rem ui-monospace, monospace; }
         ::slotted(*) { margin-top: .5rem; }
@@ -608,11 +608,11 @@ export class FilesDemo extends BlissElement<{ action: FilesDetail }> {
         .head { display: flex; gap: .5rem; align-items: center; margin-bottom: .5rem; }
         .head .meta { margin-left: auto; }
         ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .3rem; }
-        li { padding: .4rem .6rem; border-radius: 8px; border: 1px solid light-dark(#e2e8f0, #334155);
+        li { padding: .4rem .6rem; border-radius: 8px; border: 1px solid var(--kmwc-border-color);
              cursor: context-menu; display: flex; gap: .5rem; }
-        li:focus-visible { outline: 2px solid #3b82f6; outline-offset: 1px; }
+        li:focus-visible { outline: 2px solid var(--kmwc-accent-color); outline-offset: 1px; }
         .tag { font: .7rem ui-monospace, monospace; padding: .05rem .4rem; border-radius: 999px;
-               background: light-dark(#f1f5f9, #334155); color: light-dark(#475569, #cbd5e1); }
+               background: var(--kmwc-elevated-bg); color: var(--kmwc-text-color-2); }
       </style>
       <div class="box">
         <div class="head">

@@ -41,20 +41,20 @@ export function setHookSink(fn: HookSink | null): void {
 const ACCENTS = ['blue', 'green', 'amber'] as const;
 
 const STYLES = `
-  :host { display: inline-block; vertical-align: top; }
-  .lc { min-width: 13rem; border-radius: 10px; padding: .6rem .8rem; font: 500 .88rem system-ui, sans-serif;
-        background: light-dark(#ffffff, #1e293b); color: light-dark(#0f172a, #e2e8f0);
-        border: 1px solid light-dark(#cbd5e1, #334155); border-left-width: 5px; }
+  :host { display: inline-block; vertical-align: top; max-width: 100%; }
+  .lc { box-sizing: border-box; min-width: min(13rem, 100%); border-radius: 10px; padding: .6rem .8rem; font: 500 .88rem system-ui, sans-serif;
+        background: var(--kmwc-main-bg); color: var(--kmwc-text-color-1);
+        border: 1px solid var(--kmwc-border-color-strong); border-left-width: 5px; }
   .lc.accent-blue  { border-left-color: #3b82f6; }
   .lc.accent-green { border-left-color: #22c55e; }
   .lc.accent-amber { border-left-color: #f59e0b; }
   .lc-head { display: flex; gap: .5rem; align-items: center; justify-content: space-between; }
   .lc-label { font-weight: 700; }
   .lc-pill { font: 600 .7rem ui-monospace, monospace; padding: .1rem .45rem; border-radius: 999px;
-             background: light-dark(#e2e8f0, #334155); color: light-dark(#475569, #cbd5e1); }
+             background: var(--kmwc-elevated-bg); color: var(--kmwc-text-color-2); }
   /* :state(ready) — the CustomStateSet hook core sets after the first build. */
-  :host(:state(ready)) .lc-ready { background: #dcfce7; color: #166534; }
-  .lc-meta { margin-top: .3rem; font: .75rem ui-monospace, monospace; color: light-dark(#64748b, #94a3b8); }
+  :host(:state(ready)) .lc-ready { background: color-mix(in srgb, var(--kmwc-success-color) 16%, transparent); color: var(--kmwc-success-color); }
+  .lc-meta { margin-top: .3rem; font: .75rem ui-monospace, monospace; color: var(--kmwc-text-color-3); }
   .lc-row { display: flex; gap: .4rem; margin-top: .45rem; }
   .lc-row input { flex: 1; min-width: 0; font: inherit; padding: .2rem .4rem; }
   .lc-row button { font: inherit; padding: .2rem .5rem; cursor: pointer; }

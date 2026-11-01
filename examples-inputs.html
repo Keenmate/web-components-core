@@ -5,37 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reactive inputs — web-components-core</title>
     <style>
-        .in-table td, .in-table th { vertical-align: middle; }
-        .in-table input[type="text"], .in-table select { width: 9rem; }
-        .in-table button { font-size: .8rem; padding: .2rem .5rem; }
-        .in-table .val { font-family: ui-monospace, 'Courier New', monospace; font-size: .82rem; white-space: nowrap; }
-        .in-table .val.flash { background: color-mix(in srgb, #facc15 35%, transparent); }
-        .log-panel .warn { color: #b45309; }
-        .log-panel--dark .warn { color: #fcd34d; }
-        .log-panel .ok { color: #15803d; }
-        .log-panel--dark .ok { color: #86efac; }
-        .log-panel .hook { color: #7c3aed; }
-        .log-panel--dark .hook { color: #c4b5fd; }
-        .log-panel .muted-line { opacity: .65; }
+        /* kit gap: .log-panel lines have no tones and lose their indentation — warn / ok / hook
+           lines in the dark console (always dark, so fixed light-on-dark tones work in both themes). */
         .log-panel > div { white-space: pre-wrap; }
-        .counters { display: flex; gap: .6rem; flex-wrap: wrap; margin: .6rem 0; }
-        .demo-row { display: grid; grid-template-columns: minmax(16rem, 1fr) minmax(18rem, 1.3fr); gap: 1rem; align-items: start; }
-        @media (max-width: 800px) { .demo-row { grid-template-columns: 1fr; } }
-        .demo-row > * { min-width: 0; } /* long logs / code scroll or wrap inside, never widen the page */
-        .btn-col { display: flex; flex-direction: column; gap: .4rem; align-items: flex-start; }
-        #in04-sandbox { display: none; }
+        .log-panel--dark .warn { color: #fcd34d; }
+        .log-panel--dark .ok { color: var(--kmwc-console-highlight-color); }
+        .log-panel--dark .hook { color: #c4b5fd; }
+        /* kit gap: .grid / .grid-2 items keep min-width: auto, so a wide table inside widens the page on a phone. */
+        .grid-2 > * { min-width: 0; }
 
         /* IN04 animated diagram (examples-whensettled-anim.ts) — page illustration only. */
-        .anim-settled { margin: 1rem 0 1.25rem; padding: .9rem; border: 1px solid var(--kmwc-border-color);
-                        border-radius: var(--kmwc-radius-lg); background: var(--kmwc-elevated-bg); }
-        .anim-caption { font-size: .78rem; font-style: italic; color: var(--kmwc-text-color-3); margin-bottom: .6rem; }
-        .anim-controls { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
-        .anim-controls button { font-size: .82rem; padding: .25rem .65rem; }
-        .anim-speed { font-size: .82rem; display: inline-flex; gap: .3rem; align-items: center; }
-        .anim-counter { font: .78rem var(--kmwc-mono-font-family); color: var(--kmwc-text-color-3); margin-left: auto; }
-        .anim-say { margin: .7rem 0; padding: .5rem .7rem; min-height: 3.2rem; border-left: 3px solid var(--kmwc-accent-color);
-                    background: var(--kmwc-accent-light-bg); border-radius: 0 var(--kmwc-radius-sm) var(--kmwc-radius-sm) 0;
-                    font-size: .88rem; color: var(--kmwc-text-color-1); }
+        .anim-say { min-height: 3.2rem; } /* the narration .note keeps its height between steps */
         .anim-lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: .9rem; }
         .anim-lane { min-width: 0; padding: .6rem; border-radius: var(--kmwc-radius-md); background: var(--kmwc-main-bg);
                      border: 1px solid var(--kmwc-border-color); }
@@ -52,14 +32,14 @@
         .anim-code.is-parked { box-shadow: 0 0 0 2px var(--kmwc-warning-color); }
         .anim-line { display: block; padding: 0 .3rem; border-radius: 3px; opacity: .6; transition: background .3s, opacity .3s; }
         .anim-line.is-current { opacity: 1; background: color-mix(in srgb, var(--kmwc-accent-color) 45%, transparent); }
-        .anim-code.is-parked .anim-line.is-current { background: color-mix(in srgb, #f59e0b 40%, transparent); }
+        .anim-code.is-parked .anim-line.is-current { background: color-mix(in srgb, var(--kmwc-warning-color) 55%, transparent); }
         .anim-code-status { font-size: .76rem; margin-top: .3rem; color: var(--kmwc-text-color-2); }
         .anim-code-status[data-mod="parked"] { color: var(--kmwc-warning-color); font-weight: 600; }
         .anim-code-status[data-mod="running"] { color: var(--kmwc-info-color); }
         .anim-result { display: inline-block; margin-top: .35rem; padding: .2rem .5rem; border-radius: var(--kmwc-radius-sm);
                        font: 600 .76rem var(--kmwc-mono-font-family); animation: anim-pop .35s ease-out; }
-        .anim-result.is-bad { color: var(--kmwc-danger-color); background: color-mix(in srgb, var(--kmwc-danger-fill-color) 14%, transparent); }
-        .anim-result.is-ok { color: var(--kmwc-success-color); background: color-mix(in srgb, #22c55e 16%, transparent); }
+        .anim-result.is-bad { color: var(--kmwc-danger-color); background: color-mix(in srgb, var(--kmwc-danger-color) 14%, transparent); }
+        .anim-result.is-ok { color: var(--kmwc-success-color); background: color-mix(in srgb, var(--kmwc-success-color) 16%, transparent); }
         .anim-queue { display: flex; flex-wrap: wrap; gap: .35rem; min-height: 1.6rem; align-items: center; }
         .anim-token { padding: .15rem .55rem; border-radius: 999px; font: .74rem var(--kmwc-mono-font-family);
                       border: 1px solid var(--kmwc-accent-border-color); background: var(--kmwc-accent-light-bg);
@@ -67,7 +47,6 @@
         .anim-token.is-running { background: var(--kmwc-accent-color); color: var(--kmwc-text-color-on-accent);
                                  box-shadow: 0 0 0 3px var(--kmwc-accent-shadow-color); }
         .anim-token.is-done { opacity: .5; text-decoration: line-through; animation: none; }
-        .anim-note { font-size: .76rem; color: var(--kmwc-text-color-3); }
         .anim-comp, .anim-screen { display: flex; gap: .6rem; align-items: center; padding: .25rem; border-radius: var(--kmwc-radius-sm);
                                    transition: box-shadow .3s; }
         .anim-comp.is-active { box-shadow: 0 0 0 2px var(--kmwc-accent-color); }
@@ -81,7 +60,7 @@
         .anim-bar--new.is-on { background: var(--kmwc-success-color); }
         @keyframes anim-pop { from { transform: scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
         @media (prefers-reduced-motion: reduce) {
-            .anim-settled *, .anim-settled *::before { transition: none !important; animation: none !important; }
+            #anim-settled *, #anim-settled *::before { transition: none !important; animation: none !important; }
         }
     </style>
 </head>
@@ -113,7 +92,7 @@
             </p>
             <div class="demo-area">
                 <core-demo-inputs id="in01-el"></core-demo-inputs>
-                <table class="reference-table in-table" style="margin-top:1rem">
+                <table class="reference-table table-compact" style="margin-top:1rem">
                     <thead><tr><th>configKey</th><th>attribute</th><th>converter</th><th>write</th><th><code>el[configKey]</code></th><th><code>getAttribute()</code></th></tr></thead>
                     <tbody id="in01-rows"></tbody>
                 </table>
@@ -155,10 +134,10 @@ el.removeAttribute('count');     // → default 3</pre></div>
                 markup alone. Warnings go through the element's logger (<code>[CORE:ELEMENT] tag#id</code>, default level
                 <code>warn</code>); the log below captures them from the console.
             </p>
-            <div class="demo-row">
+            <div class="grid-2">
                 <div>
                     <core-demo-inputs id="in02-el" count="5"></core-demo-inputs>
-                    <div class="btn-col" style="margin-top:1rem" id="in02-buttons">
+                    <div class="controls" style="margin-top:1rem" id="in02-buttons">
                         <button data-op="attr-count-abc"><code>setAttribute('count', 'abc')</code> — reflected</button>
                         <button data-op="attr-count-42"><code>setAttribute('count', '42')</code> — out of range</button>
                         <button data-op="attr-limit-abc"><code>setAttribute('limit', 'abc')</code> — not reflected</button>
@@ -199,10 +178,10 @@ el.count = 99;                   // warn · count stays 5 (max: 10)</pre></div>
                 stamp); <code>'none'</code> inputs are stored only. A <strong>mixed batch</strong> runs <code>reinit()</code>
                 alone — the rebuild absorbs the update keys, so no partial is sent.
             </p>
-            <div class="demo-row">
+            <div class="grid-2">
                 <div>
                     <core-demo-reactivity id="in03-el"></core-demo-reactivity>
-                    <div class="counters">
+                    <div class="controls">
                         <span class="pill" id="in03-reinits">reinit() × 0</span>
                         <span class="pill" id="in03-updates">update() × 0</span>
                     </div>
@@ -261,11 +240,11 @@ el.setAttributes({ caption: 'Mixed', layout: 'grid' });  // → reinit() only, n
                 <code>await</code>. Configuring a <strong>detached</strong> element and appending it builds once.
             </p>
             <!-- Animated diagram (examples-whensettled-anim.ts): without vs with await whenSettled(). -->
-            <div class="anim-settled" id="anim-settled"></div>
-            <div class="demo-row">
+            <div class="demo-area" id="anim-settled"></div>
+            <div class="grid-2">
                 <div>
                     <core-demo-reactivity id="in04-el"></core-demo-reactivity>
-                    <div class="btn-col" style="margin-top:1rem">
+                    <div class="controls" style="margin-top:1rem">
                         <button id="in04-loose">3 loose writes, same tick</button>
                         <button id="in04-ticks">3 writes across ticks</button>
                         <button id="in04-setattrs"><code>setAttributes({…})</code></button>
@@ -274,7 +253,7 @@ el.setAttributes({ caption: 'Mixed', layout: 'grid' });  // → reinit() only, n
                         <button id="in04-flush">Imperative method: without vs with <code>flush()</code></button>
                         <button id="in04-builds">Builds: in-DOM-then-configure vs detached-then-append</button>
                     </div>
-                    <div id="in04-sandbox"></div>
+                    <div id="in04-sandbox" hidden></div>
                 </div>
                 <div>
                     <label class="demo-label">What happened:</label>
@@ -312,19 +291,19 @@ document.body.append(fresh);            // ONE reinit() with the full config</pr
                 the component and <code>el.items</code> reports them, while <code>this.config.items</code> keeps the assigned
                 array. Right after an assignment (still staged) the getter returns what you just assigned.
             </p>
-            <div class="demo-row">
+            <div class="grid-2">
                 <div>
                     <core-demo-presets id="in05-el"></core-demo-presets>
                     <div class="controls" style="margin-top:1rem">
                         <label><code>el.mode =</code>
                             <select id="in05-mode"><option>simple</option><option>excel</option><option>custom</option></select></label>
                     </div>
-                    <div class="btn-col">
+                    <div class="controls">
                         <button id="in05-explicit"><code>setAttributes({ mode: 'excel', editTrigger: 'none' })</code></button>
                         <button id="in05-assign"><code>el.items = ['Alpha', 'Beta']</code></button>
                         <button id="in05-staged">Assign, then read <code>el.items</code> immediately</button>
                     </div>
-                    <table class="reference-table in-table" style="margin-top:1rem">
+                    <table class="reference-table table-compact" style="margin-top:1rem">
                         <tbody id="in05-state"></tbody>
                     </table>
                 </div>
@@ -445,8 +424,8 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
             const tr = document.createElement('tr');
             tr.dataset.key = def.key;
             let control;
-            if (def.control === 'text') control = `<input type="text" class="in-value" value="${esc(def.value)}">`;
-            else if (def.control === 'select') control = `<select class="in-value">${def.options.map((o) => `<option>${o}</option>`).join('')}</select>`;
+            if (def.control === 'text') control = `<input type="text" class="in-value" value="${esc(def.value)}" style="width:9rem">`;
+            else if (def.control === 'select') control = `<select class="in-value" style="width:9rem">${def.options.map((o) => `<option>${o}</option>`).join('')}</select>`;
             else control = '';
             const buttons = def.control === 'callback'
                 ? `<button data-act="cb-set">el.${def.key} = (l, c) =&gt; …</button> <button data-act="cb-clear">= null</button>`
@@ -454,8 +433,8 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
             tr.innerHTML = `<td><code>${def.key}</code>${def.note ? ` <small>(${def.note})</small>` : ''}</td>
                 <td>${def.attr ? `<code>${def.attr}</code>` : '<em>property-only</em>'}</td>
                 <td><code>${esc(def.conv)}</code></td>
-                <td style="white-space:nowrap">${control} ${buttons}</td>
-                <td class="val prop"></td><td class="val attr"></td>`;
+                <td>${control} ${buttons}</td>
+                <td class="prop"></td><td class="attr"></td>`;
             rows1.appendChild(tr);
         }
         const render1 = (changedKey) => {
@@ -463,10 +442,9 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
                 const def = INPUTS.find((d) => d.key === tr.dataset.key);
                 const p = tr.querySelector('.prop');
                 const a = tr.querySelector('.attr');
-                p.textContent = fmt(el1[def.key]);
-                a.textContent = def.attr ? fmtAttr(el1.getAttribute(def.attr)) : '—';
-                p.classList.toggle('flash', def.key === changedKey);
-                a.classList.toggle('flash', def.key === changedKey);
+                p.innerHTML = `<code>${esc(fmt(el1[def.key]))}</code>`;
+                a.innerHTML = def.attr ? `<code>${esc(fmtAttr(el1.getAttribute(def.attr)))}</code>` : '—';
+                tr.classList.toggle('is-highlight', def.key === changedKey);
             }
         };
         rows1.addEventListener('click', async (e) => {
@@ -520,7 +498,7 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
             log(log2, `› <code>${esc(op.code)}</code>`);
             for (const w of warnings) log(log2, `  ⚠ ${esc(w)}`, 'warn in02-warning');
             if (!warnings.length) log(log2, '  ✓ accepted (no warning)', 'ok');
-            log(log2, `  el.${op.key}: ${esc(fmt(before))} → <strong>${esc(fmt(el2[op.key]))}</strong> · attribute ${esc(fmtAttr(el2.getAttribute(op.attr)))}`, 'muted-line in02-result');
+            log(log2, `  el.${op.key}: ${esc(fmt(before))} → <strong>${esc(fmt(el2[op.key]))}</strong> · attribute ${esc(fmtAttr(el2.getAttribute(op.attr)))}`, 'muted in02-result');
         });
 
         // ── IN03 · update vs reinit ──────────────────────────────────────────
@@ -531,11 +509,11 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
             $('in03-updates').textContent = `update() × ${el3.updateCount}`;
         };
         el3.addEventListener('hook', (e) => log(log3, `◆ ${esc(describeHook(e.detail))}`, `hook in03-hook in03-${e.detail.hook}`));
-        log(log3, `◆ reinit()  <span class="muted-line">— first connect is always a full build</span>`, 'hook');
+        log(log3, `◆ reinit()  <span class="muted">— first connect is always a full build</span>`, 'hook');
         const run3 = async (code, fn) => {
             log(log3, `› <code>${esc(code)}</code>`);
             const calls = await recordHooks(el3, async () => { fn(); await el3.whenSettled(); });
-            if (!calls.length) log(log3, '  (no hook — stored only)', 'muted-line in03-none');
+            if (!calls.length) log(log3, '  (no hook — stored only)', 'muted in03-none');
             counters3();
         };
         $('in03-caption-set').addEventListener('click', () => {
@@ -662,7 +640,7 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
                 ['this.config.items (assigned)', fmt(el5.assignedItems), '—'],
             ];
             $('in05-state').innerHTML = '<tr><th>read</th><th>value</th><th>attribute</th></tr>'
-                + rows.map(([k, v, a]) => `<tr data-read="${esc(k)}"><td><code>${esc(k)}</code></td><td class="val">${esc(v)}</td><td class="val">${esc(a)}</td></tr>`).join('');
+                + rows.map(([k, v, a]) => `<tr data-read="${esc(k)}"><td><code>${esc(k)}</code></td><td><code>${esc(v)}</code></td><td>${a === '—' ? a : `<code>${esc(a)}</code>`}</td></tr>`).join('');
         };
         el5.addEventListener('hook', (e) => log(log5, `◆ ${esc(describeHook(e.detail))}`, `hook in05-hook in05-${e.detail.hook}`));
         $('in05-mode').addEventListener('change', async (e) => {
@@ -693,7 +671,7 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
         // The component's own "+ Add row" button lives in its shadow DOM; the click is composed.
         el5.addEventListener('click', (e) => {
             if (!e.composedPath().some((n) => n.classList?.contains('add-row'))) return;
-            log(log5, `  component added a row → el.items has ${el5.items.length}, this.config.items still ${el5.assignedItems.length}`, 'muted-line');
+            log(log5, `  component added a row → el.items has ${el5.items.length}, this.config.items still ${el5.assignedItems.length}`, 'muted');
             state5();
         });
         await el5.whenSettled();
