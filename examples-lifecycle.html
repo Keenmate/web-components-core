@@ -18,17 +18,23 @@
         /* kit gap: .grid items keep min-width: auto, so wide content widens the page on a phone. */
         .grid > * { min-width: 0; }
 
-        /* kit gap: .event-log has no column layout, no per-kind tones and no empty placeholder. */
-        .event-log { margin-top: 1rem; max-height: 19rem; }
-        .event-log:empty::before { content: 'Timeline — press a button above.'; }
-        .event-log .event-entry { display: flex; flex-wrap: wrap; column-gap: .6rem; white-space: pre-wrap; }
-        .event-log .event-time { text-align: right; font-variant-numeric: tabular-nums; min-width: 2.2rem; }
-        .event-log .event-time + .event-time { min-width: 4.6rem; }
-        .event-log .event-entry > :last-child { min-width: 0; overflow-wrap: anywhere; }
-        .event-log .event-entry[data-kind="action"] { color: #fde68a; margin-top: .35rem; }
-        .event-log .event-entry[data-kind="note"] { font-style: italic; }
-        .event-log .event-entry[data-kind="hook"] .event-name { color: #7dd3fc; }
-        .event-log .event-entry[data-kind="error"] .event-name { color: #fca5a5; }
+        /* kit gap: .log-panel lines — a timeline row (seq / time / source / name / detail cells),
+           per-kind tones, and an empty placeholder. Class names are the proposal for the devkit. */
+        .log-panel { --log-max-height: 19rem; margin-top: 1rem; }
+        .log-panel:empty::before { content: attr(data-empty); color: var(--kmwc-console-muted-color); }
+        .log-line { display: flex; flex-wrap: wrap; column-gap: .6rem; padding: .1rem 0; white-space: pre-wrap;
+                    border-bottom: 1px solid color-mix(in srgb, var(--kmwc-console-text-color) 6%, transparent); }
+        .log-seq, .log-time { color: var(--kmwc-console-muted-color); text-align: right; font-variant-numeric: tabular-nums; }
+        .log-seq { min-width: 2.2rem; }
+        .log-time { min-width: 4.6rem; }
+        .log-source { color: var(--kmwc-console-muted-color); }
+        .log-name { color: var(--kmwc-console-highlight-color); font-weight: 600; }
+        .log-line > :last-child { min-width: 0; overflow-wrap: anywhere; }
+        .log-line[data-kind="action"] { color: #fde68a; margin-top: .35rem; }
+        .log-line[data-kind="note"] { font-style: italic; }
+        .log-line[data-kind="hook"] .log-name { color: #7dd3fc; }
+        .log-line[data-kind="callback"] .log-name { color: #f0abfc; }
+        .log-line[data-kind="error"] .log-name { color: #fca5a5; }
     </style>
 </head>
 <body>
@@ -72,7 +78,7 @@
             <div class="demo-area">
                 <div class="field-row" id="lc01-stage"></div>
                 <div class="css-readout" id="lc01-state" style="margin-top:.75rem"></div>
-                <div class="event-log" id="lc01-log"></div>
+                <div class="log-panel log-panel--dark" data-empty="Timeline — press a button above." id="lc01-log"></div>
             </div>
             <div class="code-block"><pre>const el = document.createElement('core-demo-lifecycle');
 el.addEventListener('ready', (e) =&gt; log('ready event', e.detail.element === el));
@@ -114,7 +120,7 @@ el.batch(() =&gt; { el.label = 'B'; el.accent = 'amber'; });   // one reinit(), 
             <div class="demo-area">
                 <div class="field-row" id="lc02-stage"></div>
                 <div class="css-readout" id="lc02-state" style="margin-top:.75rem"></div>
-                <div class="event-log" id="lc02-log"></div>
+                <div class="log-panel log-panel--dark" data-empty="Timeline — press a button above." id="lc02-log"></div>
             </div>
             <div class="code-block"><pre>&lt;!-- markup: hold the first build until the app has configured it --&gt;
 &lt;core-demo-lifecycle id="card" defer&gt;&lt;/core-demo-lifecycle&gt;
@@ -153,7 +159,7 @@ el.shouldDefer = true;                         // latched: no effect after the f
                     <div class="lc-box" id="lc03-box-b"><span class="lc-box-title">box B</span></div>
                 </div>
                 <div class="css-readout" id="lc03-state" style="margin-top:.75rem"></div>
-                <div class="event-log" id="lc03-log"></div>
+                <div class="log-panel log-panel--dark" data-empty="Timeline — press a button above." id="lc03-log"></div>
             </div>
             <div class="code-block"><pre>boxB.append(el);                 // disconnect() → connect()   — no reinit(), state kept
 boxA.insertBefore(el, neighbour); // reorder: the same
@@ -186,7 +192,7 @@ boxA.append(el);                  // reinit() (the held change) → connect()</p
             <div class="demo-area">
                 <div class="field-row" id="lc04-stage"></div>
                 <div class="css-readout" id="lc04-state" style="margin-top:.75rem"></div>
-                <div class="event-log" id="lc04-log"></div>
+                <div class="log-panel log-panel--dark" data-empty="Timeline — press a button above." id="lc04-log"></div>
             </div>
             <div class="code-block"><pre>class MyElement extends BlissElement {
   protected override removedCallback(): void {   // overriding it = opting in
@@ -223,7 +229,7 @@ el.remove();                               // disconnect() … next frame: remov
             <div class="demo-area">
                 <div class="field-row" id="lc05-stage"></div>
                 <div class="css-readout" id="lc05-state" style="margin-top:.75rem"></div>
-                <div class="event-log" id="lc05-log"></div>
+                <div class="log-panel log-panel--dark" data-empty="Timeline — press a button above." id="lc05-log"></div>
             </div>
             <div class="code-block"><pre>el.destroy();       // disconnect() → destroyCallback()
 el.isDestroyed;     // true
@@ -256,7 +262,7 @@ stage.append(el);   // console warning: "&lt;core-demo-lifecycle&gt; was destroy
             <div class="demo-area">
                 <div class="field-row" id="lc06-stage"></div>
                 <div class="css-readout" id="lc06-state" style="margin-top:.75rem"></div>
-                <div class="event-log" id="lc06-log"></div>
+                <div class="log-panel log-panel--dark" data-empty="Timeline — press a button above." id="lc06-log"></div>
             </div>
             <div class="code-block"><pre>el.shouldThrowNextReinit = true;   // demo knob: the next reinit() throws once
 try {
@@ -320,17 +326,17 @@ fresh.flush();         // reinit() → connect() → ready</pre></div>
             }
             add(kind, el, what, detail = '') {
                 const li = document.createElement('div');
-                li.className = 'event-entry';
+                li.className = 'log-line';
                 li.dataset.kind = kind;
                 if (kind === 'hook' || kind === 'event' || kind === 'error') li.dataset.hook = what;
                 if (el) li.dataset.el = el.id;
                 const ms = (performance.now() - this.t0).toFixed(1);
                 const cells = [
-                    ['event-time', `#${++this.seq}`],
-                    ['event-time', kind === 'action' ? '' : `+${ms}ms`],
-                    ['', el ? el.id : ''],
-                    [kind === 'action' || kind === 'note' ? '' : 'event-name', kind === 'hook' ? `${what}()` : what],
-                    ['', detail],
+                    ['log-seq', `#${++this.seq}`],
+                    ['log-time', kind === 'action' ? '' : `+${ms}ms`],
+                    ['log-source', el ? el.id : ''],
+                    [kind === 'action' || kind === 'note' ? '' : 'log-name', kind === 'hook' ? `${what}()` : what],
+                    ['log-detail', detail],
                 ];
                 for (const [cls, text] of cells) {
                     const span = document.createElement('span');
