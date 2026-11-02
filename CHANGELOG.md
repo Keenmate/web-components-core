@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc17] - 2026-11-02
+
 ### Changed — BREAKING
 
 - **`scrollIntoContainer()` option `revealContainer` → `shouldRevealContainer`** (boolean options

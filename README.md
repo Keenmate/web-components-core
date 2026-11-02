@@ -10,6 +10,21 @@ that correctness lives in a single place and can't drift.
 > **[`docs/SPEC.md`](docs/SPEC.md) is the source of truth** for design intent. This
 > README is the tour; read the relevant SPEC section before changing behavior.
 
+## What's New in v1.0.0-rc17
+
+**[Release notes](release-notes/1.0.0-rc17.md)** cover the upgrade: the motion level, plus one rename in
+the rc16 scroll API.
+
+- **Motion level.** `motion="auto | none | snappy | smooth"` on every component, `window.components.motion`
+  page-wide, and `data-motion` on any element (a section, `<html>`) for everything inside, with or
+  without base-css-variables. Components follow through the shared `--base-duration-*` /
+  `--base-scroll-behavior` tokens; **the OS reduced-motion setting always wins**. Live demo:
+  `examples-motion.html`.
+- **`revealContainer` → `shouldRevealContainer` (BREAKING).** The `scrollIntoContainer()` option from
+  rc16 follows the boolean naming rule; same behaviour.
+
+See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
+
 ## What's New in v1.0.0-rc16
 
 **[Release notes](release-notes/1.0.0-rc16.md)** cover the upgrade: one small **breaking** change for
@@ -25,29 +40,6 @@ component authors (`toBool` needs its mode), plus container scrolling.
   `disabled` / `readonly` only).
 - **Dead defaults warn.** The input-table check now flags a row whose `default` can never apply
   because the converter answers a missing attribute with something else.
-
-See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
-
-## What's New in v1.0.0-rc15
-
-**[Release notes](release-notes/1.0.0-rc15.md)** cover the upgrade: this is the core of the KeenMate v2
-component generation and **breaking for component authors** (no aliases).
-
-- **One interaction model.** `on<Name>` properties are event twins called with the detail; events are no
-  longer `composed`; every detail carries the component context. New **`/actions`** (`runAction`:
-  `beforeActionCallback` → `onClick` → built-in → `action` event) and **`/menu`** (`openMenu()` with
-  submenus and the WAI-ARIA keyboard model, themed by `--km-menu-*`).
-- **One lifecycle.** `defer` / `release()`, a `ready` event + `whenReady()` (on a microtask),
-  `destroy()`, fieldset-aware disabled (`isEffectivelyDisabled`, `disabledChanged()`), the form validity
-  API and `setFormatError()` for values a component can't produce.
-- **Shared loader and live getters.** `renderLoader()` with the page-wide
-  `window.components.renderLoaderCallback`; `InputDef.getLiveValue` makes a property return live state.
-- **Responsive rules.** `window.components.responsive` / `[tag].responsive` / `el.responsive` (+ callbacks):
-  partial configs on two axes (`device` class / width `breakpoint`) with one precedence chain; breakpoints follow `--base-breakpoint-*`
-  (default mobile line 768). `MobilePresentation` → `Presentation`.
-- **Naming review.** `is/should/has` booleans, `*Callback` hooks, `on*` only for notifications
-  (`shouldDefer`, `shouldReflect`, `isToggled`, `isRejected`, `km-` menu prefix …). Invalid attributes
-  now warn and keep the previous value; the default log level is `warn`.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
 
