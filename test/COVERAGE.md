@@ -210,6 +210,18 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | Element inside an iframe → the iframe's scroller | ✓ | `scroll.spec.ts` | `scroll.html` |
 | A redundant call doesn't disturb a running smooth scroll | ✗ | — | headless Chromium doesn't animate smooth scroll |
 
+## 13c. Motion level (`motion`, `window.components.motion`, `data-motion`)
+
+| Feature | Status | Spec | Fixture |
+| ------- | :----: | ---- | ------- |
+| Default keeps the component's own speed | ✓ | `motion.spec.ts` | `motion.html` |
+| none / snappy / smooth on the element (computed durations, scroll behaviour) | ✓ | `motion.spec.ts` | `motion.html` |
+| Property switches live; auto removes data-motion | ✓ | `motion.spec.ts` | `motion.html` |
+| Page-wide level; the element's own level wins | ✓ | `motion.spec.ts` | `motion.html` |
+| data-motion on a section without base-css-variables | ✓ | `motion.spec.ts` | `motion.html` |
+| Component nested in another's shadow root | ✓ | `motion.spec.ts` | `motion.html` |
+| OS reduced motion beats motion="smooth" | ✓ | `motion.spec.ts` | `motion.html` |
+
 ## 14. Example site (smoke only)
 
 | Feature | Status | Spec | Fixture |

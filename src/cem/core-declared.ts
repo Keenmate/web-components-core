@@ -4,8 +4,8 @@
  * plugin adds them to each table-driven class so custom-elements.json /
  * web-types / VS Code data document them like any other input.
  *
- * - `defer` / `shouldDefer` and `theme-source` / `themeSource` and the `ready`
- *   event: every table-driven class (inputs or events table).
+ * - `defer` / `shouldDefer`, `theme-source` / `themeSource`, `motion` and the
+ *   `ready` event: every table-driven class (inputs or events table).
  * - `responsive` / `responsiveCallback`: only classes with an input table (the
  *   runtime skips responsive rules without one, SPEC §6.7).
  *
@@ -25,6 +25,8 @@ const DEFER_DESCRIPTION =
   'Hold the first build (core, SPEC §6.3): while set when the element first connects, nothing is built and every input, callback and listener assigned meanwhile accumulates; `release()` (or removing the attribute) then builds once. Latched after the first build.';
 const THEME_SOURCE_DESCRIPTION =
   "Where this element reads its theme from instead of the page (core, SPEC §12.10): a CSS selector (nearest matching ancestor, else the first match), `'closest'` (the nearest ancestor carrying a theme signal), or (property only) an `Element`. Unset = the page.";
+const MOTION_DESCRIPTION =
+  "Motion level (core, SPEC §12.16): `auto` (default — follow `window.components.motion`, then a `data-motion` on the page / an ancestor), `none` (no transitions, instant scrolling), `snappy` (short) or `smooth` (longer). Sets the shared `--base-duration-*` / `--base-scroll-behavior` tokens on the element through `data-motion`; the OS reduced-motion setting always wins.";
 const RESPONSIVE_DESCRIPTION =
   "Instance responsive rules (core, SPEC §6.7): partial configs on two axes — `device` (keyed by device class `mobile` / `tablet` / `desktop`; a mouse device is `desktop` at any width) and `breakpoint` (keyed by the window-width bucket); the breakpoint entry applies first, the device entry over it (device wins). An object or a JSON attribute, e.g. `{\"device\":{\"tablet\":{\"presentation\":\"modal\"}},\"breakpoint\":{\"mobile\":{…}}}`. Beats page rules (`window.components.responsive*`) and values set on the element; never reflects. An entry of `null` ignores the page rules while it matches.";
 const RESPONSIVE_CALLBACK_DESCRIPTION =
@@ -39,6 +41,10 @@ export const CORE_DECLARED_INPUTS: readonly CoreInput[] = [
   {
     attribute: { name: 'theme-source', fieldName: 'themeSource', type: { text: 'string' }, description: THEME_SOURCE_DESCRIPTION },
     member: { kind: 'field', name: 'themeSource', privacy: 'public', type: { text: 'string | Element | null' }, default: 'null', attribute: 'theme-source', reflects: true, description: THEME_SOURCE_DESCRIPTION },
+  },
+  {
+    attribute: { name: 'motion', fieldName: 'motion', type: { text: "'auto' | 'none' | 'snappy' | 'smooth'" }, default: "'auto'", description: MOTION_DESCRIPTION },
+    member: { kind: 'field', name: 'motion', privacy: 'public', type: { text: "'auto' | 'none' | 'snappy' | 'smooth'" }, default: "'auto'", attribute: 'motion', reflects: true, description: MOTION_DESCRIPTION },
   },
   {
     attribute: { name: 'responsive', fieldName: 'responsive', type: { text: 'ResponsiveMap | null' }, description: RESPONSIVE_DESCRIPTION },

@@ -1782,3 +1782,49 @@ innermost scroller moves — one clipped inside an outer scroller stays out of s
 
 **Non-core copies** (svelte-treeview has no core dependency) must follow this exact algorithm,
 including the no-call-when-nothing-moves rule and scroll-padding / scroll-margin.
+
+### 12.16 Motion level — IMPLEMENTED (`src/environment/motion.ts`, main index)
+
+**The gap.** Components animate through the shared speed tokens (`--<prefix>-transition-normal:
+var(--base-duration-normal, 0.15s)`, `--<prefix>-scroll-behavior: var(--base-scroll-behavior,
+smooth)`), and base-css-variables zeroes those under `prefers-reduced-motion`. On a page without
+base-css-variables nothing did — web-multiselect kept its own reduced-motion block for exactly that
+reason — and there was no single switch for "no animations here" or "snappier, please".
+
+**API.**
+
+- **`motion`** on every `BlissElement` (core-declared, like `theme-source`): `'auto'` (default) |
+  `'none'` | `'snappy'` | `'smooth'`; attribute `motion`, property `el.motion`, reflects, accepted by
+  `setAttributes()`. Invalid → warn, keep the previous level (the attribute is written back).
+- **`window.components.motion`** — the page-wide level for every element whose own level is
+  `auto` (non-enumerable accessor on `globalThis` state, shared by every bundled core copy; a value
+  assigned earlier as a plain property is adopted; invalid → `auto`). Exports: `getPageMotion()`,
+  `observePageMotion(listener)`.
+- **`data-motion`** — core writes the resolved level (instance, else page) to the host;
+  `auto` removes it (only one core wrote — an author-written `data-motion` is left alone). The same
+  attribute on any element (`<html>`, a `<section>`) sets the level for everything inside.
+
+**Mechanism.** `MOTION_CSS` is adopted (`adoptStyles`) into every root a `BlissElement` connects
+in — the document, or the shadow root of the component that renders it — so `[data-motion]`
+matches the host itself and any page element, with or without base-css-variables:
+
+| Level | `--base-duration-fast / -normal / -medium / -slow` | `--base-scroll-behavior` |
+|---|---|---|
+| `none` | `0s` ×4 | `auto` |
+| `snappy` | `0.05s / 0.08s / 0.12s / 0.15s` | unchanged |
+| `smooth` | `0.15s / 0.25s / 0.35s / 0.45s` | unchanged |
+| `auto` | not set — inherited (section / page / base-css-variables) or the component's fallback | |
+
+`@media (prefers-reduced-motion: reduce)` comes last and zeroes the durations (+ `scroll-behavior:
+auto`) on `:root`, `:host` and every `[data-motion]` element: **the OS setting always wins**, even
+over `motion="smooth"` — it's the user's accessibility choice. Precedence: OS reduce > the element's
+own level (set on the host) > the nearest `[data-motion]` ancestor > base-css-variables' `:root`
+values > the component's fallbacks.
+
+base-css-variables carries the same `[data-motion]` presets (the reference for the values; a core
+unit test compares them when the repo sits next to core).
+
+**Component contract.** Animate only through the `--base-duration-*` speeds (via the component's
+own `--<prefix>-transition-*` tokens) and scroll via `--<prefix>-scroll-behavior`; a hard-coded
+`transition: 0.2s` ignores the level. No per-component reduced-motion code is required any more
+(a component's own block stays harmless).

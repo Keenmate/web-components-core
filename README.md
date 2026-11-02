@@ -325,6 +325,21 @@ getThemeContext();     // the detected page scheme: 'dark' | 'light' | null
 Override `themeChanged(scheme)` for JS-side theming; `static hasThemeContext = false`
 opts a component out. See [SPEC §12.10](docs/SPEC.md) and `examples-theme.html`.
 
+## Motion level (none / snappy / smooth)
+
+Every component takes `motion="auto | none | snappy | smooth"`; `window.components.motion` sets
+the level page-wide and `data-motion` does it for any element and everything inside (a section, the
+whole page) — no base-css-variables needed. Components follow through the shared
+`--base-duration-*` / `--base-scroll-behavior` tokens; **the OS reduced-motion setting always wins**.
+
+```html
+<section data-motion="snappy">
+  <web-multiselect></web-multiselect>             <!-- snappy -->
+  <web-daterangepicker motion="none"></web-daterangepicker>  <!-- its own level wins -->
+</section>
+<script>window.components.motion = 'none';</script>  <!-- every component left on auto -->
+```
+
 ## Global registration (`window.components`)
 
 `registerComponent` replaces the block every component used to copy-paste (and

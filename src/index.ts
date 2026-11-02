@@ -101,6 +101,19 @@ export {
 } from './environment/theme.js';
 export type { ColorScheme, ThemeMode, ThemeSource, ThemeListener, ObserveThemeContextOptions } from './environment/theme.js';
 
+// Motion level (SPEC §12.16): `motion` on every BlissElement, window.components.motion, [data-motion].
+export {
+  adoptMotionStyles,
+  getPageMotion,
+  observePageMotion,
+  MOTION_ATTRIBUTE,
+  MOTION_CSS,
+  MOTION_DATA_ATTRIBUTE,
+  MOTION_PRESETS,
+  MOTION_VALUES,
+} from './environment/motion.js';
+export type { Motion } from './environment/motion.js';
+
 // Overlay / fullscreen presentation primitives (SPEC §12.9) — shared by any
 // component that swaps a floating panel for a full-viewport sheet on phones.
 // classifyDevice() owns the shared device classification; resolvePresentation()

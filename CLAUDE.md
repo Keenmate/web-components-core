@@ -148,6 +148,12 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    flush, + the continuous `observeViewport` channel while a callback layer applies (maps =
    discrete channel only); applied before the first `reinit()`. Code: `src/element/responsive.ts`.
 
+   **Motion (SPEC §12.16), every component:** core-declared `motion` (`auto | none | snappy |
+   smooth`, reflects) + page-wide `window.components.motion` → core writes the resolved level to
+   `data-motion` on the host and adopts `MOTION_CSS` into the root the element lives in, which maps
+   `[data-motion]` onto `--base-duration-*` / `--base-scroll-behavior`; OS reduced motion always
+   wins. Components animate only through those tokens. Code: `src/environment/motion.ts`.
+
    A DOM move (reorder/re-parent) fires `disconnect()`→`connect()` and
    **re-activates without rebuilding** (`reinit()` runs only on first connect or
    an `on:'reinit'` change) — so transient UI state survives. `connect()`/

@@ -18,6 +18,7 @@ import type { LoggerBundle, LogLevelDesc } from '../logging/create-loggers.js';
 import { attachLoggerBundle } from '../logging/logger-registry.js';
 import { publishGlobalLogging, type GlobalLoggingControls } from '../logging/global-logging.js';
 import { publishLoaderHook, type RenderLoaderCallback } from '../dom/render-loader.js';
+import { publishMotionHook, type Motion } from '../environment/motion.js';
 import { getInstances } from './instances.js';
 import {
   installTagResponsiveHooks,
@@ -93,6 +94,8 @@ export type ComponentsRegistry = Record<string, RegisteredComponent | undefined>
   responsiveCallback?: ResponsiveCallback;
   /** Page-wide loader look: draws every component's loading states unless an instance `renderLoadingCallback` is set. */
   renderLoaderCallback?: RenderLoaderCallback;
+  /** Page-wide motion level (SPEC §12.16) for every component whose own `motion` is `auto`. Non-enumerable. */
+  motion?: Motion;
 };
 
 declare global {
@@ -148,6 +151,7 @@ export function registerComponent<T extends HTMLElement = HTMLElement>(
     components[tagName] = entry as RegisteredComponent;
     publishGlobalLogging(); // re-publish if the page replaced window.components
     publishLoaderHook();
+    publishMotionHook();
     publishResponsiveHooks();
   } else {
     installTagResponsiveHooks(entry, tagName);

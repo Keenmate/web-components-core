@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — motion level (SPEC §12.16)
+
+- **`motion` on every `BlissElement`** — `'auto'` (default) | `'none'` | `'snappy'` | `'smooth'`
+  (attribute, property, reflects, `setAttributes()`), plus the page-wide `window.components.motion`
+  and a `data-motion` attribute that works on any element (`<html>`, a section). Core writes the
+  resolved level to `data-motion` on the host and adopts one small stylesheet into the document (and
+  into any shadow root a component lives in) that maps the level onto the shared
+  `--base-duration-*` / `--base-scroll-behavior` tokens — so every component that animates through
+  them follows, with or without base-css-variables on the page. **The OS reduced-motion setting
+  always wins**, even over `motion="smooth"`. Exports: `MOTION_VALUES`, `MOTION_PRESETS`,
+  `MOTION_CSS`, `MOTION_ATTRIBUTE`, `MOTION_DATA_ATTRIBUTE`, `adoptMotionStyles`, `getPageMotion`,
+  `observePageMotion`, type `Motion`. The CEM plugin documents `motion` on every component.
+
 ## [1.0.0-rc16] - 2026-11-02
 
 ### Changed — BREAKING

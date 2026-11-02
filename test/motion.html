@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test — motion level</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>motion fixture</h1>
+    <p>Targeted by <code>e2e/motion.spec.ts</code>. <code>&lt;motion-probe&gt;</code> reads its speed the way every
+        component does (<code>--probe-transition: var(--base-duration-normal, 0.15s)</code>); no base-css-variables
+        on this page. Each test builds its own elements.</p>
+
+    <script type="module">
+        import * as core from '/src/index.ts';
+        const { BlissElement, define, toText } = core;
+
+        // A component reading the contract tokens, like web-multiselect's --ms-transition-normal.
+        class MotionProbe extends BlissElement {
+            static inputs = [{ configKey: 'label', attribute: 'label', converter: toText() }];
+            reinit() {
+                const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
+                root.innerHTML = `<style>
+                    :host { display: block; --probe-transition: var(--base-duration-normal, 0.15s);
+                            --probe-scroll-behavior: var(--base-scroll-behavior, smooth); }
+                    .box { transition: opacity var(--probe-transition) ease; }
+                </style><div class="box">probe</div>`;
+            }
+        }
+        // A component that renders a probe inside its own shadow root (nested components).
+        class MotionParent extends BlissElement {
+            static inputs = [{ configKey: 'label', attribute: 'label', converter: toText() }];
+            reinit() {
+                const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
+                root.innerHTML = '<motion-probe motion="none"></motion-probe>';
+            }
+        }
+        define('motion-probe', MotionProbe);
+        define('motion-parent', MotionParent);
+
+        /** The probe's effective transition duration and scroll behaviour. */
+        window.readProbe = (probe) => ({
+            duration: getComputedStyle(probe.shadowRoot.querySelector('.box')).transitionDuration,
+            scroll: getComputedStyle(probe).getPropertyValue('--probe-scroll-behavior').trim(),
+        });
+        window.core = core;
+        document.body.dataset.ready = '';
+    </script>
+</body>
+</html>

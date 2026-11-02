@@ -26,15 +26,15 @@ function runPlugin(source: string, declarations: { kind: string; name: string }[
 const names = (list: { name?: string }[] | undefined) => (list ?? []).map((x) => x.name);
 
 describe('core-declared CEM entries', () => {
-  it('the plugin adds defer / theme-source / responsive / responsiveCallback / ready to a class with an input table', () => {
+  it('the plugin adds defer / theme-source / motion / responsive / responsiveCallback / ready to a class with an input table', () => {
     const [decl] = runPlugin(
       `class Widget extends BlissElement {
         static inputs = [{ configKey: 'label', attribute: 'label', converter: toText() }];
       }`,
       [{ kind: 'class', name: 'Widget' }],
     );
-    expect(names(decl!.attributes)).toEqual(['label', 'defer', 'theme-source', 'responsive']);
-    expect(names(decl!.members)).toEqual(['label', 'shouldDefer', 'themeSource', 'responsive', 'responsiveCallback']);
+    expect(names(decl!.attributes)).toEqual(['label', 'defer', 'theme-source', 'motion', 'responsive']);
+    expect(names(decl!.members)).toEqual(['label', 'shouldDefer', 'themeSource', 'motion', 'responsive', 'responsiveCallback']);
     expect(names(decl!.events)).toEqual(['ready']);
     const responsive = decl!.members.find((m: { name: string }) => m.name === 'responsive');
     expect(responsive).toMatchObject({ attribute: 'responsive', type: { text: 'ResponsiveMap | null' } });
@@ -46,11 +46,11 @@ describe('core-declared CEM entries', () => {
     expect(defer).toMatchObject({ fieldName: 'shouldDefer', type: { text: 'boolean' } });
   });
 
-  it('an events-only class gets defer / theme-source / ready but no responsive', () => {
+  it('an events-only class gets defer / theme-source / motion / ready but no responsive', () => {
     const [meta] = parse(`class Grid extends BlissElement { static events = [{ name: 'row-click' }]; }`);
     const out = withCoreDeclared(meta!);
-    expect(names(out.attributes)).toEqual(['defer', 'theme-source']);
-    expect(names(out.members)).toEqual(['shouldDefer', 'themeSource']);
+    expect(names(out.attributes)).toEqual(['defer', 'theme-source', 'motion']);
+    expect(names(out.members)).toEqual(['shouldDefer', 'themeSource', 'motion']);
     expect(names(out.events)).toEqual(['row-click', 'ready']);
   });
 

@@ -54,6 +54,16 @@ import {
   type ColorScheme,
   type ThemeSource,
 } from '../environment/theme.js';
+import {
+  adoptMotionStyles,
+  getPageMotion,
+  isMotion,
+  MOTION_ATTRIBUTE,
+  MOTION_DATA_ATTRIBUTE,
+  MOTION_VALUES,
+  observePageMotion,
+  type Motion,
+} from '../environment/motion.js';
 import { trackInstance, untrackInstance } from '../global/instances.js';
 import { coreLog, getElementLoggers, setInstanceLogLevelSource } from '../logging/element-logger.js';
 import type { InstanceLogger, LogLevelDesc } from '../logging/create-loggers.js';
@@ -114,6 +124,7 @@ const CORE_PROPERTY_BY_KEY: ReadonlyMap<string, string> = new Map([
   ['theme-source', 'themeSource'],
   ['responsive', 'responsive'],
   ['responsiveCallback', 'responsiveCallback'],
+  ['motion', 'motion'],
 ]);
 
 
@@ -143,7 +154,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     // element. Deduped in case a subclass declares either as an input attribute.
     // `defer` (SPEC §6.3) is the build gate every component gets.
     // `responsive` (SPEC §6.7) is the instance responsive map as JSON.
-    for (const global of ['dir', THEME_SOURCE_ATTRIBUTE, DEFER_ATTRIBUTE, RESPONSIVE_ATTRIBUTE]) {
+    // `motion` (SPEC §12.16) is the instance motion level.
+    for (const global of ['dir', THEME_SOURCE_ATTRIBUTE, DEFER_ATTRIBUTE, RESPONSIVE_ATTRIBUTE, MOTION_ATTRIBUTE]) {
       if (!attrs.includes(global)) attrs.push(global);
     }
     return attrs;
@@ -243,6 +255,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   #themeSource: ThemeSource = null;
   /** Unsubscribe from the theme context; set only while connected AND `hasThemeContext` is on. */
   #themeUnsub?: () => void;
+  /** The instance motion level (SPEC §12.16); `auto` = follow the page. */
+  #motion: Motion = 'auto';
+  #motionUnsub?: () => void;
+  /** Core wrote `data-motion` — so it may remove it (an author-written one is left alone). */
+  #hasAppliedMotion = false;
   #internals?: ElementInternals;
   /**
    * The `defer` gate no longer holds (SPEC §6.3): {@link release} was called, the
@@ -326,6 +343,20 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       this.#setResponsiveFromAttribute(raw);
       return;
     }
+    // Global `motion` (SPEC §12.16): invalid → warn, keep the previous level and write it back.
+    if (name === MOTION_ATTRIBUTE && !this.#byAttribute.has(MOTION_ATTRIBUTE)) {
+      if (raw === null || isMotion(raw)) {
+        this.#motion = raw ?? 'auto';
+      } else {
+        this.#warn(`rejected invalid value for attribute ${MOTION_ATTRIBUTE}="${raw}" (expected ${MOTION_VALUES.join(' | ')}); keeping "${this.#motion}"`);
+        this.#withoutReflect(() => {
+          if (this.#motion === 'auto') this.removeAttribute(MOTION_ATTRIBUTE);
+          else this.setAttribute(MOTION_ATTRIBUTE, this.#motion);
+        });
+      }
+      this.#applyMotion();
+      return;
+    }
     const def = this.#byAttribute.get(name);
     if (!def) return;
     // A property assigned before upgrade wins over the initial attribute the
@@ -386,6 +417,10 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     // Reconnected before the removal check ran → a DOM move, not a removal.
     this.#cancelRemovalCheck?.();
     this.#cancelRemovalCheck = undefined;
+    // Motion (SPEC §12.16): presets in the root this element lives in; follow the page level.
+    adoptMotionStyles(this);
+    this.#motionUnsub ??= observePageMotion(() => this.#applyMotion());
+    this.#applyMotion();
     // Page responsive rules changing reach this element while it is connected.
     if (this.#hasInputs() && !this.#responsiveUnsub) {
       this.#responsiveUnsub = onResponsiveChange((tag) => {
@@ -482,6 +517,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     if (this.#isDestroyed) return; // destroy() already stopped everything
     untrackInstance(this.localName, this);
     this.#stopResponsive();
+    this.#motionUnsub?.();
+    this.#motionUnsub = undefined;
     this.#scheduleRemovalCheck();
     this.#deactivate();
   }
@@ -731,6 +768,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#resolveSettled();
     untrackInstance(this.localName, this);
     this.#stopResponsive();
+    this.#motionUnsub?.();
+    this.#motionUnsub = undefined;
     try {
       this.#deactivate();
     } finally {
@@ -1014,6 +1053,27 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#themeSource = next;
     this.#withoutReflect(() => this.removeAttribute(THEME_SOURCE_ATTRIBUTE));
     this.#resubscribeTheme();
+  }
+
+  /**
+   * Motion level (SPEC §12.16): `'auto'` (default — follow `window.components.motion`, then the
+   * page / section `data-motion`), `'none'`, `'snappy'` or `'smooth'`. Core writes the resolved
+   * level to `data-motion` on the host; components follow through the `--base-duration-*` /
+   * `--base-scroll-behavior` tokens. The OS reduced-motion setting always wins. Reflects to `motion`.
+   */
+  get motion(): Motion {
+    return this.#motion;
+  }
+
+  set motion(value: Motion | null | undefined) {
+    const next = value ?? 'auto';
+    if (!isMotion(next)) {
+      this.#warn(`rejected invalid motion ${JSON.stringify(value)} (expected ${MOTION_VALUES.join(' | ')}); keeping "${this.#motion}"`);
+      return;
+    }
+    // Route through the attribute so both entry points share one path.
+    if (next === 'auto') this.removeAttribute(MOTION_ATTRIBUTE);
+    else this.setAttribute(MOTION_ATTRIBUTE, next);
   }
 
   // ── form association ──────────────────────────────────────────────────────
@@ -1344,6 +1404,19 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       else this.removeAttribute(THEME_CONTEXT_ATTRIBUTE);
       this.themeChanged(scheme);
     });
+  }
+
+  /** Write the resolved motion level to `data-motion`: the instance level, else the page level. */
+  #applyMotion(): void {
+    if (!this.isConnected) return;
+    const level = this.#motion !== 'auto' ? this.#motion : getPageMotion();
+    if (level !== 'auto') {
+      if (this.getAttribute(MOTION_DATA_ATTRIBUTE) !== level) this.setAttribute(MOTION_DATA_ATTRIBUTE, level);
+      this.#hasAppliedMotion = true;
+    } else if (this.#hasAppliedMotion) {
+      this.removeAttribute(MOTION_DATA_ATTRIBUTE);
+      this.#hasAppliedMotion = false;
+    }
   }
 
   /** Re-resolve the theme source while connected (the source is fixed per subscription). */
