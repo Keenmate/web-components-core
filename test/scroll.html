@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test — container scroll</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+    <style>
+        .scroller { height: 200px; width: 300px; overflow-y: auto; border: 3px solid #888; margin-bottom: 16px; }
+        .row { height: 30px; line-height: 30px; padding: 0 8px; border-bottom: 1px solid #ddd; }
+        #sticky { scroll-padding-top: 40px; }
+        #sticky .head { position: sticky; top: 0; height: 40px; background: #eee; }
+        #margin .row.target { scroll-margin-top: 12px; }
+        #rtl { overflow-x: auto; overflow-y: hidden; height: auto; white-space: nowrap; }
+        #rtl .cell { display: inline-block; width: 120px; height: 30px; border-right: 1px solid #ddd; }
+        .spacer { height: 3000px; }
+    </style>
+</head>
+<body>
+    <h1>container scroll fixture</h1>
+    <p>Targeted by <code>e2e/scroll.spec.ts</code>. Core on <code>window.core</code>; rows are built below.</p>
+
+    <!-- a shadow host inside a light-DOM scroller -->
+    <div class="scroller" id="light"><scroll-shadow-list id="shadow-list"></scroll-shadow-list></div>
+    <!-- light rows slotted into a scroller inside the shadow root -->
+    <scroll-slot-list id="slot-list"></scroll-slot-list>
+    <!-- sticky header covered by scroll-padding-top -->
+    <div class="scroller" id="sticky"><div class="head">header</div></div>
+    <!-- scroll-margin on the target row -->
+    <div class="scroller" id="margin"></div>
+    <!-- right-to-left horizontal scroller -->
+    <div class="scroller" id="rtl" dir="rtl"></div>
+
+    <div class="spacer"></div>
+    <!-- far down the page: revealContainer -->
+    <div class="scroller" id="far"></div>
+    <div class="spacer"></div>
+
+    <script type="module">
+        import * as core from '/src/index.ts';
+
+        const rows = (n, cls = 'row') =>
+            Array.from({ length: n }, (_, i) => {
+                const row = document.createElement('div');
+                row.className = cls;
+                row.dataset.i = String(i);
+                row.textContent = `row ${i}`;
+                return row;
+            });
+
+        customElements.define('scroll-shadow-list', class extends HTMLElement {
+            connectedCallback() {
+                const root = this.attachShadow({ mode: 'open' });
+                const style = document.createElement('style');
+                style.textContent = '.row { height: 30px; line-height: 30px; }';
+                root.append(style, ...rows(50));
+            }
+        });
+        customElements.define('scroll-slot-list', class extends HTMLElement {
+            connectedCallback() {
+                const root = this.attachShadow({ mode: 'open' });
+                root.innerHTML = '<div class="inner" style="height:200px;overflow-y:auto;border:3px solid #888"><slot></slot></div>';
+                this.append(...rows(50));
+            }
+        });
+        for (const id of ['sticky', 'margin', 'far']) document.getElementById(id).append(...rows(50));
+        document.querySelector('#margin .row[data-i="30"]').classList.add('target');
+        document.getElementById('rtl').append(...rows(20, 'cell'));
+
+        window.core = core;
+        document.body.dataset.ready = '';
+    </script>
+</body>
+</html>

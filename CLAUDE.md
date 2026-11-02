@@ -202,6 +202,10 @@ Loading states go through `renderLoader(host, container, context, { label, prefi
 `globalThis`) > default `<span class="<prefix>-loader">`. Core ships no loader CSS —
 components copy the drawing rule from §12.14.
 
+Container scroll goes through `scrollIntoContainer(el, opts)` / `findScrollContainer(el, opts)`
+(`src/dom/scroll-container.ts`, main index, SPEC §12.15) — scrolls the one container around an
+element, never the page; components call it instead of `scrollIntoView()`.
+
 Per-module design notes live next to the code and load when working there:
 `src/logging/`, `src/cem/`, `src/testing/`, `src/positioning/`, `src/dom/`,
 `src/search/`, `src/menu/` (each has a `CLAUDE.md`).

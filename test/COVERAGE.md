@@ -194,6 +194,20 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | Throwing theme listener doesn't stop others | ✓ | `core-regressions.spec.ts` | `regressions.html` |
 | setAttributes() warns about a non-input key (other keys still apply) | ✓ | `core-regressions.spec.ts` | `regressions.html` |
 
+## 13b. Container scroll (`scrollIntoContainer` / `findScrollContainer`)
+
+| Feature | Status | Spec | Fixture |
+| ------- | :----: | ---- | ------- |
+| Light-DOM scroller around a shadow host found; page doesn't move | ✓ | `scroll.spec.ts` | `scroll.html` |
+| Native scrollIntoView moves the page, scrollIntoContainer doesn't | ✓ | `scroll.spec.ts` | `scroll.html` |
+| Slotted row → shadow scroller around the slot | ✓ | `scroll.spec.ts` | `scroll.html` |
+| nearest: bottom aligns inside borders; visible row stays | ✓ | `scroll.spec.ts` | `scroll.html` |
+| scroll-padding-top (sticky header) / scroll-margin-top honoured | ✓ | `scroll.spec.ts` | `scroll.html` |
+| No scrollTo when nothing moves | ✓ | `scroll.spec.ts` | `scroll.html` |
+| RTL inline start = right edge | ✓ | `scroll.spec.ts` | `scroll.html` |
+| revealContainer (off by default) | ✓ | `scroll.spec.ts` | `scroll.html` |
+| A redundant call doesn't disturb a running smooth scroll | ✗ | — | headless Chromium doesn't animate smooth scroll |
+
 ## 14. Example site (smoke only)
 
 | Feature | Status | Spec | Fixture |

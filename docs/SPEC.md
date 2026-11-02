@@ -1722,3 +1722,48 @@ loader draws without the contract loaded. `--x-loader-rotate: 0` = the SVG anima
 reduced motion — only rotating shapes slow, via `--base-loader-duration` 1.5s; the
 loader never stops). Mask data URIs fall under CSP `img-src`. Multi-colour loaders
 go through the render hook.
+
+### 12.15 Container scroll — IMPLEMENTED (`src/dom/scroll-container.ts`, main index)
+
+**The gap.** Components bring an inner element into view (a tree row, a list option, a
+calendar day). `Element.scrollIntoView()` scrolls *every* scrollable ancestor, the page
+included, so a search jump or a keyboard move made the whole page jump. web-multiselect
+(`revealFocusedOnOpen`), svelte-treeview (`findScrollableAncestor`) and web-treeview each
+hand-rolled the same workaround; web-daterangepicker still calls `scrollIntoView` for day moves.
+
+**API** (zero deps, SSR-safe — no `document` → `null`, nothing happens):
+
+```ts
+findScrollContainer(el, { stopAt?, axis?: 'y' | 'x' | 'both' }): HTMLElement | null
+scrollIntoContainer(el, { block?, inline?, behavior?, container?, revealContainer?, stopAt?, axis? }): HTMLElement | null
+```
+
+- **Find.** Walks the *flat* tree from `el`'s parent: a slotted node → its `assignedSlot`,
+  else the parent element, else the shadow host (so a light-DOM wrapper around a custom element,
+  and a shadow scroller around a `<slot>`, are both found). A scroller = computed overflow on
+  `axis` (default `'y'`; `'both'` = either) is `auto | scroll | overlay` AND the content is larger
+  than the client box. `overflow: hidden` never counts. Never returns `<html>`, `<body>` or
+  `document.scrollingElement`; `stopAt` ends the walk (exclusive). `null` = only the page scrolls.
+- **Scroll.** One container — `container` or the found one — never the page. View = the
+  container's client box (inside borders, scrollbar excluded) minus its computed
+  `scroll-padding`; target = `el`'s box plus its `scroll-margin` (sticky headers are CSS, as with
+  native scrolling). Per axis: `start` / `end` / `center` align; `nearest` (default, both axes)
+  follows the CSSOM rule (inside → no move; larger than the view and covering it → no move; else
+  the closer edge aligns). `inline` is logical — in an RTL container `start` is the right edge.
+  Delta-based (`scrollTop + delta`); the browser clamps. Under 1px on both axes → **no
+  `scrollTo()` call** (a redundant call can disturb a running smooth scroll). `behavior`
+  default `'auto'` — the caller decides (reduced motion, its `--*-scroll-behavior` token).
+- **No container** → `el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior })`
+  (the page moves only if `el` is off-screen) and returns `null`. Otherwise returns the container.
+- **`revealContainer: true`** → first, if the container isn't fully inside the viewport,
+  `container.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior })` — a jump to a
+  search hit in a tree further down the page. Default `false` (keyboard moves happen in a
+  focused, visible container).
+
+**Not this module's job:** virtual lists (the component scrolls by index), focus (callers use
+`focus({ preventScroll: true })`), deciding *whether* to scroll — a component's
+`beforeScrollCallback` (component vocabulary in its ctx) runs through `runBeforeCallback`
+(§12.12) and passes the container it found.
+
+**Non-core copies** (svelte-treeview has no core dependency) must follow this exact algorithm,
+including the no-call-when-nothing-moves rule and scroll-padding / scroll-margin.

@@ -56,6 +56,9 @@ export type { StyleSlot, StyleSlotOptions } from './dom/adopt-styles.js';
 // Shared loader (SPEC §12.14): instance renderLoadingCallback > window.components.renderLoaderCallback > <prefix>-loader span.
 export { renderLoader, publishLoaderHook } from './dom/render-loader.js';
 export type { LoaderRenderContext, RenderLoaderCallback, RenderLoaderOptions } from './dom/render-loader.js';
+// Container scroll (SPEC §12.15): scroll the one container around an element, never the page.
+export { findScrollContainer, scrollIntoContainer } from './dom/scroll-container.js';
+export type { FindScrollContainerOptions, ScrollAxis, ScrollIntoContainerOptions } from './dom/scroll-container.js';
 export { extractConsumedCssVars, extractDeclaredCssVars, suggestCssVars, lintCssVars } from './dom/css-var-lint.js';
 export type { CssVarFinding } from './dom/css-var-lint.js';
 

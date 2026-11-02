@@ -457,6 +457,25 @@ const slot = createStyleSlot(this.shadowRoot, { cssClass: 'custom-styles' });
 slot.set(this.config.customStylesCallback?.());  // re-set replaces; falsy clears
 ```
 
+## Container scroll
+
+`scrollIntoContainer()` brings an inner element (a row, an option, a day) into view by scrolling
+the one container around it — never the page, unlike `scrollIntoView()`. The search walks out of
+shadow roots and slots; `<html>` / `<body>` never count. It honours the container's
+`scroll-padding` (sticky headers) and the element's `scroll-margin`, and `inline` is RTL-aware.
+
+```ts
+import { scrollIntoContainer, findScrollContainer } from '@keenmate/web-components-core';
+
+scrollIntoContainer(row);                                   // nearest, instant
+scrollIntoContainer(row, { block: 'center', behavior: 'smooth', revealContainer: true });
+scrollIntoContainer(option, { container: this.listEl });   // known scroller, no search
+findScrollContainer(row);                                   // the scroller, or null (page only)
+```
+
+No container found → `el.scrollIntoView({ block: 'nearest' })` and `null`. Nothing to move → no
+`scrollTo()` call. Virtual lists scroll by index themselves.
+
 ## Positioning (`@keenmate/web-components-core/positioning`)
 
 Floating-element positioning over a single pinned `@floating-ui/dom` — one

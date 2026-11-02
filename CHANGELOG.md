@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — container scroll (SPEC §12.15)
+
+- **`scrollIntoContainer(el, options)` / `findScrollContainer(el, options)`** (main index) — bring
+  an element into view by scrolling the one container around it, never the page
+  (`scrollIntoView()` scrolls every ancestor, so a search jump or keyboard move made the page
+  jump). The walk crosses shadow roots and slots; `<html>` / `<body>` are never a container.
+  `block` / `inline` (`nearest` default, `start` / `center` / `end`; `inline` is RTL-aware),
+  `behavior`, `container` (skip the search), `stopAt`, `axis: 'y' | 'x' | 'both'`,
+  `revealContainer` (also bring an off-screen container into the viewport). Honours the
+  container's `scroll-padding` and the element's `scroll-margin`; nothing to move → no
+  `scrollTo()` call; no container → `scrollIntoView({ block: 'nearest' })` and `null`. Replaces
+  the private copies in web-treeview / web-multiselect and daterangepicker's `scrollIntoView` calls.
+
 ## [1.0.0-rc15] - 2026-11-01
 
 ### Added — responsive rules: page / per-tag / instance partial configs per device class / breakpoint (SPEC §6.7)
