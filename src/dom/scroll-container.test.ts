@@ -192,11 +192,11 @@ describe('scrollIntoContainer', () => {
     expect(row.scrollIntoView).toHaveBeenLastCalledWith({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
   });
 
-  it('revealContainer brings an off-screen container into the viewport first', () => {
+  it('shouldRevealContainer brings an off-screen container into the viewport first', () => {
     const { box, row } = scroller('auto', 150);
     geometry(box, { top: 5000, height: 200, scrollHeight: 1000 });
     box.scrollIntoView = vi.fn();
-    scrollIntoContainer(row, { revealContainer: true });
+    scrollIntoContainer(row, { shouldRevealContainer: true });
     expect(box.scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
 
     (box.scrollIntoView as ReturnType<typeof vi.fn>).mockClear();

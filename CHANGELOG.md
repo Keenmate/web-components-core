@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — BREAKING
+
+- **`scrollIntoContainer()` option `revealContainer` → `shouldRevealContainer`** (boolean options
+  use `is` / `should` / `has` / `can`). Same behaviour; rename the key. New in rc16, so nothing
+  outside core used it yet.
+
 ### Added — motion level (SPEC §12.16)
 
 - **`motion` on every `BlissElement`** — `'auto'` (default) | `'none'` | `'snappy'` | `'smooth'`

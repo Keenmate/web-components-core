@@ -205,7 +205,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | scroll-padding-top (sticky header) / scroll-margin-top honoured | ✓ | `scroll.spec.ts` | `scroll.html` |
 | No scrollTo when nothing moves | ✓ | `scroll.spec.ts` | `scroll.html` |
 | RTL inline start = right edge | ✓ | `scroll.spec.ts` | `scroll.html` |
-| revealContainer (off by default) | ✓ | `scroll.spec.ts` | `scroll.html` |
+| shouldRevealContainer (off by default) | ✓ | `scroll.spec.ts` | `scroll.html` |
 | No container → page gets the caller's block (center) | ✓ | `scroll.spec.ts` | `scroll.html` |
 | Element inside an iframe → the iframe's scroller | ✓ | `scroll.spec.ts` | `scroll.html` |
 | A redundant call doesn't disturb a running smooth scroll | ✗ | — | headless Chromium doesn't animate smooth scroll |

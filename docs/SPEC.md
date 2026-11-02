@@ -1740,7 +1740,7 @@ hand-rolled the same workaround; web-daterangepicker still calls `scrollIntoView
 
 ```ts
 findScrollContainer(el, { stopAt?, axis?: 'y' | 'x' | 'both' }): HTMLElement | null
-scrollIntoContainer(el, { block?, inline?, behavior?, container?, revealContainer?, stopAt?, axis? }): HTMLElement | null
+scrollIntoContainer(el, { block?, inline?, behavior?, container?, shouldRevealContainer?, stopAt?, axis? }): HTMLElement | null
 ```
 
 - **Find.** Walks the *flat* tree from `el`'s parent: a slotted node → its `assignedSlot`,
@@ -1765,7 +1765,7 @@ scrollIntoContainer(el, { block?, inline?, behavior?, container?, revealContaine
 - **Documents.** Measured against `el`'s own document / window (`ownerDocument.defaultView`), so
   an element inside an iframe finds and scrolls the iframe's scroller; that document's
   `<html>` / `<body>` are the "page".
-- **`revealContainer: true`** → first, if the container isn't fully inside the viewport,
+- **`shouldRevealContainer: true`** → first, if the container isn't fully inside the viewport,
   `container.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior })` — a jump to a
   search hit in a tree further down the page. Default `false` (keyboard moves happen in a
   focused, visible container).
@@ -1773,7 +1773,7 @@ scrollIntoContainer(el, { block?, inline?, behavior?, container?, revealContaine
 **Limits:** a CSS-scaled container (`transform: scale`, a zoomed preview) scrolls by the
 unscaled amount; vertical writing modes aren't handled (`block` is always vertical); only the
 innermost scroller moves — one clipped inside an outer scroller stays out of sight unless
-`revealContainer` (whose `scrollIntoView` scrolls every ancestor).
+`shouldRevealContainer` (whose `scrollIntoView` scrolls every ancestor).
 
 **Not this module's job:** virtual lists (the component scrolls by index), focus (callers use
 `focus({ preventScroll: true })`), deciding *whether* to scroll — a component's

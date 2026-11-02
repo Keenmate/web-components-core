@@ -9,7 +9,7 @@ import { test, expect, type Page } from './fixtures';
 //   - nearest on an already-visible row issues no scrollTo (headless Chromium doesn't animate
 //     smooth scrolling, so the "don't disturb a running glide" reason can't be shown here);
 //   - right-to-left horizontal scrolling;
-//   - revealContainer brings a container far down the page into view;
+//   - shouldRevealContainer brings a container far down the page into view;
 //   - no container → the page gets the caller's block (center centres the row in the window);
 //   - an element inside an iframe is measured against the iframe's own document.
 //
@@ -148,12 +148,12 @@ test('right-to-left horizontal scroller: inline start brings a far cell into vie
   expect(Math.abs(p.right - p.clientWidth)).toBeLessThanOrEqual(1);
 });
 
-test('revealContainer brings a container far down the page into view; off by default', async ({ page }) => {
+test('shouldRevealContainer brings a container far down the page into view; off by default', async ({ page }) => {
   const rowExpr = `document.querySelector('#far .row[data-i="30"]')`;
   await page.evaluate((r) => (window as any).core.scrollIntoContainer(eval(r), { block: 'center' }), rowExpr);
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
 
-  await page.evaluate((r) => (window as any).core.scrollIntoContainer(eval(r), { block: 'center', revealContainer: true }), rowExpr);
+  await page.evaluate((r) => (window as any).core.scrollIntoContainer(eval(r), { block: 'center', shouldRevealContainer: true }), rowExpr);
   const inView = await page.evaluate((r) => {
     const box = document.getElementById('far')!.getBoundingClientRect();
     const row = (eval(r) as HTMLElement).getBoundingClientRect();

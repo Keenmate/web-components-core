@@ -118,22 +118,22 @@ scrollIntoContainer(row, { block: 'start' });   // → the container it scrolled
         </div>
 
         <!-- ============================================================= -->
-        <!-- SC04 · revealContainer                                        -->
+        <!-- SC04 · shouldRevealContainer                                        -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>SC04 · <code>revealContainer</code> — when the list itself is off-screen</h2>
+            <h2>SC04 · <code>shouldRevealContainer</code> — when the list itself is off-screen</h2>
             <p>
                 Scrolling only the container is right for keyboard moves: the focused list is on screen. A jump from
                 somewhere else (a search box, a link) can target a list the user can't see; the list scrolls and
-                nothing visible happens. <code>revealContainer: true</code> first brings the container into the viewport.
+                nothing visible happens. <code>shouldRevealContainer: true</code> first brings the container into the viewport.
                 These buttons target <strong>row 55 of the SC02 list</strong>, which is above this card.
             </p>
             <div class="controls">
-                <button id="sc04-off">Row 55 — revealContainer off</button>
-                <button id="sc04-on">Row 55 — revealContainer on</button>
+                <button id="sc04-off">Row 55 — shouldRevealContainer off</button>
+                <button id="sc04-on">Row 55 — shouldRevealContainer on</button>
             </div>
             <div class="log-panel log-panel--dark mt-1" data-empty="Scroll this card into view, then press a button." id="sc04-log"></div>
-            <div class="code-block"><pre>scrollIntoContainer(row, { block: 'center', behavior: 'smooth', revealContainer: true });</pre></div>
+            <div class="code-block"><pre>scrollIntoContainer(row, { block: 'center', behavior: 'smooth', shouldRevealContainer: true });</pre></div>
         </div>
     </div>
 
@@ -241,13 +241,13 @@ scrollIntoContainer(row, { block: 'start' });   // → the container it scrolled
         });
 
         // SC04 ------------------------------------------------------------
-        async function sc04(revealContainer) {
+        async function sc04(shouldRevealContainer) {
             const row = sc02.mark(55);
             const before = Math.round(window.scrollY);
-            scrollIntoContainer(row, { block: 'center', behavior: 'smooth', revealContainer });
+            scrollIntoContainer(row, { block: 'center', behavior: 'smooth', shouldRevealContainer });
             await settle();
             const moved = Math.round(window.scrollY) - before;
-            log('sc04-log', revealContainer ? 'ok' : 'muted', `revealContainer: ${revealContainer}`,
+            log('sc04-log', shouldRevealContainer ? 'ok' : 'muted', `shouldRevealContainer: ${shouldRevealContainer}`,
                 moved ? `page moved ${moved}px to show the SC02 list` : 'page stayed — the SC02 list scrolled out of sight');
         }
         $('sc04-off').addEventListener('click', () => sc04(false));

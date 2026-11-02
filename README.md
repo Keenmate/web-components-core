@@ -480,7 +480,7 @@ shadow roots and slots; `<html>` / `<body>` never count. It honours the containe
 import { scrollIntoContainer, findScrollContainer } from '@keenmate/web-components-core';
 
 scrollIntoContainer(row);                                   // nearest, instant
-scrollIntoContainer(row, { block: 'center', behavior: 'smooth', revealContainer: true });
+scrollIntoContainer(row, { block: 'center', behavior: 'smooth', shouldRevealContainer: true });
 scrollIntoContainer(option, { container: this.listEl });   // known scroller, no search
 findScrollContainer(row);                                   // the scroller, or null (page only)
 ```

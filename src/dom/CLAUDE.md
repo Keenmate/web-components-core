@@ -25,7 +25,7 @@ plain property assigned earlier. No CSS here — the component owns `.<prefix>-l
 ## Container scroll (`src/dom/scroll-container.ts`, SPEC §12.15 — implemented)
 
 `findScrollContainer(el, { stopAt?, axis? })` / `scrollIntoContainer(el, { block, inline,
-behavior, container?, revealContainer?, stopAt?, axis? })` — scroll the ONE container around
+behavior, container?, shouldRevealContainer?, stopAt?, axis? })` — scroll the ONE container around
 `el`, never the page. Flat-tree walk (`assignedSlot` → parent → shadow host; local
 `flatParent`, `composedParent` itself is unchanged — theme / containing-block rely on it).
 Never returns html/body/scrollingElement. Honours container `scroll-padding` + element

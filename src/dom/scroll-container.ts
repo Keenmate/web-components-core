@@ -8,7 +8,7 @@
  *
  * Limits: a CSS-scaled container (`transform: scale`, a zoomed preview) scrolls by the unscaled
  * amount; vertical writing modes aren't handled; only the innermost scroller moves (a scroller
- * clipped inside an outer one stays out of sight unless `revealContainer`).
+ * clipped inside an outer one stays out of sight unless `shouldRevealContainer`).
  */
 
 import { composedParent } from './composed-tree.js';
@@ -36,7 +36,7 @@ export interface ScrollIntoContainerOptions extends FindScrollContainerOptions {
   container?: HTMLElement | null;
   /** Also bring the container itself into the viewport (`'nearest'`) when it isn't fully
    *  visible — e.g. a jump to a search hit in a tree further down the page. Default `false`. */
-  revealContainer?: boolean;
+  shouldRevealContainer?: boolean;
 }
 
 const SCROLLING_OVERFLOW = new Set(['auto', 'scroll', 'overlay']);
@@ -147,7 +147,7 @@ export function scrollIntoContainer(el: Element, options: ScrollIntoContainerOpt
   if (!isAvailable()) return null;
   const view = viewOf(el);
   if (!view) return null;
-  const { block = 'nearest', inline = 'nearest', behavior = 'auto', revealContainer = false } = options;
+  const { block = 'nearest', inline = 'nearest', behavior = 'auto', shouldRevealContainer = false } = options;
   const container = options.container ?? findScrollContainer(el, options);
 
   if (!container) {
@@ -155,7 +155,7 @@ export function scrollIntoContainer(el: Element, options: ScrollIntoContainerOpt
     return null;
   }
 
-  if (revealContainer && !isFullyInViewport(container, view)) {
+  if (shouldRevealContainer && !isFullyInViewport(container, view)) {
     container.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior });
   }
 
