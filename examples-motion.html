@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motion level — web-components-core</title>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="back-link">← Back to Examples</a>
+            <h1>Motion level</h1>
+            <p class="subtitle">One switch for how much every component animates: <code>motion="auto | none | snappy |
+                smooth"</code> on an element, <code>window.components.motion</code> for the page, and
+                <code>data-motion</code> on any element (a section, <code>&lt;html&gt;</code>) for everything inside.
+                Components follow through the shared <code>--base-duration-*</code> / <code>--base-scroll-behavior</code>
+                tokens, with or without base-css-variables on the page. The OS reduced-motion setting always wins. See
+                <strong>SPEC §12.16</strong>.</p>
+        </header>
+
+        <!-- ============================================================= -->
+        <!-- MO01 · Levels side by side                                    -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>MO01 · <code>motion</code> on the element</h2>
+            <p>
+                Four copies of a demo component that slides a knob at its own default speed
+                (<code>var(--base-duration-slow, 0.3s)</code>). Each sets a different <code>motion</code>; press
+                <strong>Slide</strong> and compare. The log shows the duration each one actually runs at.
+            </p>
+            <div class="controls">
+                <button id="mo01-slide">Slide</button>
+            </div>
+            <div class="grid-2" id="mo01-grid">
+                <core-demo-motion label='motion="auto" (default)'></core-demo-motion>
+                <core-demo-motion motion="none" label='motion="none"'></core-demo-motion>
+                <core-demo-motion motion="snappy" label='motion="snappy"'></core-demo-motion>
+                <core-demo-motion motion="smooth" label='motion="smooth"'></core-demo-motion>
+            </div>
+            <div class="log-panel log-panel--dark mt-1" data-empty="Press Slide." id="mo01-log"></div>
+            <div class="code-block"><pre>&lt;web-multiselect motion="none"&gt;&lt;/web-multiselect&gt;
+el.motion = 'snappy';</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- MO02 · Page-wide and per section                              -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>MO02 · Page-wide and per section</h2>
+            <p>
+                <code>window.components.motion</code> applies to every component left on <code>auto</code>.
+                <code>data-motion</code> on a wrapper applies to everything inside it, even without base-css-variables
+                (core adds the presets once a component connects). A component's own <code>motion</code> always beats
+                both. The last knob below keeps <code>motion="smooth"</code> to show that.
+            </p>
+            <div class="controls">
+                <label>page <code>window.components.motion</code>
+                    <select id="mo02-page" class="w-sm">
+                        <option>auto</option><option>none</option><option>snappy</option><option>smooth</option>
+                    </select>
+                </label>
+                <label>section <code>data-motion</code>
+                    <select id="mo02-section" class="w-sm">
+                        <option value="">(none)</option><option>none</option><option>snappy</option><option>smooth</option>
+                    </select>
+                </label>
+                <button id="mo02-slide">Slide</button>
+            </div>
+            <div class="demo-area" id="mo02-section-el">
+                <div class="card-grid">
+                    <core-demo-motion label="motion=&quot;auto&quot;"></core-demo-motion>
+                    <core-demo-motion label="motion=&quot;auto&quot;"></core-demo-motion>
+                    <core-demo-motion motion="smooth" label="motion=&quot;smooth&quot; (own level)"></core-demo-motion>
+                </div>
+            </div>
+            <div class="log-panel log-panel--dark mt-1" data-empty="Change a level or press Slide." id="mo02-log"></div>
+            <div class="note">
+                <div class="note-title">The OS setting always wins</div>
+                With "reduce motion" switched on in the operating system, every level runs at <code>0s</code>, even
+                <code>motion="smooth"</code>. It's the user's accessibility choice, and the page can't know why it was
+                set. Right now this browser reports reduced motion: <b id="mo02-os">…</b>.
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="examples-motion-card.ts"></script>
+
+    <script type="module">
+        import { getPageMotion } from '/src/index.ts';
+
+        await customElements.whenDefined('core-demo-motion');
+        const $ = (id) => document.getElementById(id);
+
+        function log(panelId, tone, name, detail) {
+            const line = document.createElement('div');
+            line.className = tone ? `log-line log-line--${tone}` : 'log-line';
+            const nameCell = document.createElement('span');
+            nameCell.className = 'log-line__name';
+            nameCell.textContent = name;
+            const detailCell = document.createElement('span');
+            detailCell.textContent = detail;
+            line.append(nameCell, detailCell);
+            $(panelId).prepend(line);
+        }
+
+        function slide(cardSelector, panelId) {
+            for (const demo of document.querySelectorAll(`${cardSelector} core-demo-motion`)) {
+                demo.toggle();
+                const { transition, scroll } = demo.durations;
+                log(panelId, transition === '0s' ? 'muted' : 'info', demo.getAttribute('label'),
+                    `transition ${transition}, scroll ${scroll}${demo.dataset.motion ? ` — data-motion="${demo.dataset.motion}"` : ''}`);
+            }
+        }
+
+        // MO01 ------------------------------------------------------------
+        $('mo01-slide').addEventListener('click', () => slide('#mo01-grid', 'mo01-log'));
+
+        // MO02 ------------------------------------------------------------
+        getPageMotion(); // publishes window.components.motion
+        $('mo02-page').addEventListener('change', (e) => {
+            window.components.motion = e.target.value;
+            log('mo02-log', 'action', 'page', `window.components.motion = '${e.target.value}'`);
+        });
+        $('mo02-section').addEventListener('change', (e) => {
+            const section = $('mo02-section-el');
+            if (e.target.value) section.dataset.motion = e.target.value;
+            else delete section.dataset.motion;
+            log('mo02-log', 'action', 'section', e.target.value ? `data-motion="${e.target.value}"` : 'data-motion removed');
+        });
+        $('mo02-slide').addEventListener('click', () => slide('#mo02-section-el', 'mo02-log'));
+
+        const os = matchMedia('(prefers-reduced-motion: reduce)');
+        const showOs = () => { $('mo02-os').textContent = os.matches ? 'yes' : 'no'; };
+        os.addEventListener('change', showOs);
+        showOs();
+    </script>
+</body>
+</html>
