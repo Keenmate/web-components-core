@@ -152,14 +152,23 @@ const TRUEISH = new Set(['', 'true', '1', 'yes', 'on']);
 const FALSEISH = new Set(['false', '0', 'no', 'off']);
 
 /**
- * Boolean attribute, per mode:
+ * Boolean attribute. The mode is REQUIRED — "what does a missing attribute mean, and is
+ * `x="false"` false?" has no obvious answer, so every row states it:
  *
- * - `presence`      — present (any value) → `true`, absent → `false`.
- * - `default-true`  — absent → `true`; explicit `"false"`/`"0"`/… → `false`.
- * - `default-false` — absent → `false`; explicit `"true"`/`"1"`/… → `true`.
- * - `tristate`      — absent → `null`; otherwise `true` / `false`.
+ * - `default-false` — the usual flag: absent → `false`; `""` / `"true"` / `"1"` / `"yes"` / `"on"` →
+ *   `true`; `"false"` / `"0"` / `"no"` / `"off"` → `false`; anything else → invalid (warn, keep).
+ * - `default-true`  — a flag that is on unless switched off: absent → `true`, same values otherwise.
+ * - `tristate`      — absent → `null` ("not set"); otherwise `true` / `false`.
+ * - `presence`      — the native-HTML rule: present (ANY value, `"false"` included) → `true`,
+ *   absent → `false`; reflects as a bare attribute. Meant for `disabled` / `readonly`, where the
+ *   browser itself reads the attribute by presence and the value must agree with it.
+ *
+ * The mode's absent value replaces the row's `default` — declare a matching one or none
+ * (BlissElement warns on a mismatch).
  */
-export function toBool(mode: 'presence' | 'default-true' | 'default-false' | 'tristate' = 'presence'): Converter<boolean | null> {
+export type BoolMode = 'presence' | 'default-true' | 'default-false' | 'tristate';
+
+export function toBool(mode: BoolMode): Converter<boolean | null> {
   const parse = (raw: string): boolean | null => {
     const v = raw.trim().toLowerCase();
     if (TRUEISH.has(v)) return true;

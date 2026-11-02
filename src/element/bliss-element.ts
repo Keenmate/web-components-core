@@ -15,6 +15,29 @@ import { resolveFromAttribute, resolveFromProperty, type Resolved } from '../inp
 import { deriveClearableKeys } from '../inputs/clearable.js';
 import { collectEngineConfig } from '../inputs/engine-config.js';
 import type { AttrReader, InputDef } from '../inputs/types.js';
+
+/** A reader for "no attribute present" — probing a converter's absent value. */
+const ABSENT_ATTRIBUTES: AttrReader = { getAttribute: () => null, hasAttribute: () => false };
+
+/** Same value: identical, or arrays / plain objects with the same JSON (a fresh `[]` equals `[]`). */
+function isSameValue(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
+  }
+}
+
+function describeValue(value: unknown): string {
+  if (typeof value === 'function') return 'a function';
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return String(value);
+  }
+}
 import { createMicrotaskScheduler, type MicrotaskScheduler } from '../dom/microtask-scheduler.js';
 import {
   classifyDevice,
@@ -1368,6 +1391,24 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       }
       if (def.getLiveValue !== undefined && typeof def.getLiveValue !== 'function') {
         this.#warn(`invalid input table: "${def.configKey}" has a getLiveValue that is not a function; the getter returns the stored value`);
+      }
+      // A converter's own answer for a missing attribute replaces the row's `default`
+      // (resolveFromAttribute applies `default` only when it answers `undefined`), so a
+      // differing concrete value makes `default` dead — e.g. toBool('default-false') with
+      // default: true. `null` is exempt: it's the null-clear "unset, the engine decides"
+      // sentinel (SPEC §6.1), and there `default` documents what the engine applies.
+      if (def.default !== undefined && def.converter?.fromAttribute) {
+        let absent: unknown;
+        try {
+          absent = def.converter.fromAttribute(null, ABSENT_ATTRIBUTES, def.attribute ?? def.configKey);
+        } catch {
+          absent = undefined; // a throwing converter is reported when the element seeds its defaults
+        }
+        if (absent !== undefined && absent !== null && !isSameValue(absent, def.default)) {
+          this.#warn(
+            `invalid input table: "${def.configKey}" declares default ${describeValue(def.default)}, but its converter resolves a missing attribute to ${describeValue(absent)} — the default never applies. Make the converter's default match (e.g. toBool('default-true'), toEnum(values, { default })) or drop default`,
+          );
+        }
       }
       if (def.shouldReflect && !def.converter?.toAttribute) {
         this.#warn(`invalid input table: "${def.configKey}" has shouldReflect:true but its converter has no toAttribute`);

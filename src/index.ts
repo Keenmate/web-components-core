@@ -16,7 +16,7 @@ export {
   toText,
   toValue,
 } from './inputs/converters.js';
-export type { EnumConverter } from './inputs/converters.js';
+export type { BoolMode, EnumConverter } from './inputs/converters.js';
 export { resolveFromAttribute, resolveFromProperty } from './inputs/apply.js';
 export type { Resolved } from './inputs/apply.js';
 export { collectEngineConfig } from './inputs/engine-config.js';

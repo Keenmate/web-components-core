@@ -171,7 +171,7 @@ toEnum(values, { default?, shouldNullOnInvalid? })  // exact-match against the s
 toInt({ min?, max?, default? })                // parse + range-check; NaN/out-of-range → default
 toFloat({ min?, max?, default? })
 toText({ shouldTrim?, isEmptyAllowed?, isNullable?, default? })  // string (NOT toString). isNullable:true → absent/empty is null (optional string), not ''
-toBool('presence' | 'default-true' | 'default-false' | 'tristate')
+toBool('default-false' | 'default-true' | 'tristate' | 'presence')  // mode REQUIRED; presence = native rule (any value, "false" too → true) — for disabled/readonly only
 toBytes({ default? })                          // "10mb" → 10485760
 toList({ itemType: 'string' | 'int', separator?, requiredCount? }) // CSV / pipe-list, with optional fixed-length validation
 toCustom(parseFn)                              // wrap any bespoke parser  (month-names, 'auto'|0..6)
@@ -323,9 +323,14 @@ and generic DOM utils (`resolveEnumAttribute`, `createMicrotaskScheduler`)
 lifted from dropzone. The store/satellite topology stays dropzone-local.
 
 The `static inputs` table is sanity-checked once per class at construction
-(warn-only, never throws): duplicate `configKey`/`attribute`, or `shouldReflect:true`
-without an `attribute` / without `converter.toAttribute`. Removing an attribute
-is reactive — it resets that input to its `default` (absent == default).
+(warn-only, never throws): duplicate `configKey`/`attribute`, `shouldReflect:true`
+without an `attribute` / without `converter.toAttribute`, or a **dead `default`** — the
+converter answers a missing attribute with a concrete value other than the row's `default`
+(`toBool('default-false')` + `default: true`, `toText()` + `default: 'Hello'`), which then
+never applies, because the converter's answer wins and `default` fills in only for
+`undefined`. A `null` answer is exempt — the null-clear "unset, the engine decides" sentinel,
+where `default` documents the engine's value. Removing an attribute is reactive — it resets
+that input to its `default` (absent == default).
 
 **Invalid values — one rule for both paths: warn and keep the previous value.**
 A property value `validate` rejects, and an attribute value the converter reports

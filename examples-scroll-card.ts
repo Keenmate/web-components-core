@@ -31,8 +31,8 @@ const ROW_CSS = (sel: string, target = `${sel}.is-target`) => `
 export class CoreDemoRows extends BlissElement {
   protected static override inputs: readonly InputDef[] = [
     { configKey: 'count', attribute: 'count', converter: toInt({ min: 1 }), default: 60, on: 'reinit' },
-    { configKey: 'hasScroller', attribute: 'has-scroller', converter: toBool(), default: false, on: 'reinit' },
-    { configKey: 'hasStickyHeader', attribute: 'has-sticky-header', converter: toBool(), default: false, on: 'reinit' },
+    { configKey: 'hasScroller', attribute: 'has-scroller', converter: toBool('default-false'), default: false, on: 'reinit' },
+    { configKey: 'hasStickyHeader', attribute: 'has-sticky-header', converter: toBool('default-false'), default: false, on: 'reinit' },
     { configKey: 'hasScrollPadding', attribute: 'has-scroll-padding', converter: toBool('default-true'), default: true, on: 'update' },
   ];
 

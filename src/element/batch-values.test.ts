@@ -29,7 +29,7 @@ class PresetElement extends BlissElement {
       // one level only — a returned value must never run this
       getBatchValuesCallback: () => ({ isEditable: false }),
     } as InputDef,
-    { configKey: 'isEditable', attribute: 'is-editable', converter: toBool(), default: false, on: 'reinit' },
+    { configKey: 'isEditable', attribute: 'is-editable', converter: toBool('default-false'), default: false, on: 'reinit' },
   ];
   reinits = 0;
   updates: Array<Record<string, unknown>> = [];

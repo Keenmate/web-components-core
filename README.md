@@ -108,7 +108,7 @@ The `to*` factory library sets both paths from the same inputs:
 | `toEnum(values, { default?, shouldNullOnInvalid? })` | fixed string set |
 | `toInt({ min?, max?, default? })` / `toFloat(...)` | numbers |
 | `toText({ shouldTrim?, isEmptyAllowed?, isNullable?, default? })` | strings (`isNullable` → optional string, absent/empty ⇒ `null`) |
-| `toBool('presence' \| 'default-true' \| 'default-false' \| 'tristate')` | booleans |
+| `toBool('default-false' \| 'default-true' \| 'tristate' \| 'presence')` | booleans — mode required; `'presence'` is the native rule (`x="false"` is still `true`), meant for `disabled` / `readonly` |
 | `toBytes({ default? })` | human sizes (`"10mb"`) |
 | `toList({ itemType?, separator?, requiredCount?, shouldTrim?, default? })` | delimited lists |
 | `toCustom(parse, { validate?, toAttribute? })` | bespoke parsers |

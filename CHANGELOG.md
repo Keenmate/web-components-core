@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — BREAKING
+
+- **`toBool(mode)` requires its mode.** `toBool()` with no argument used to mean `'presence'`,
+  where ANY attribute value — `x="false"` included — is `true`; nobody reading `toBool()` expects
+  that. Pick one: `'default-false'` (the usual flag: `x="false"` → `false`), `'default-true'`,
+  `'tristate'`, or `'presence'` (the native rule — for `disabled` / `readonly`, where the browser
+  itself reads the attribute by presence). No KeenMate component used the bare form. New
+  exported type `BoolMode`.
+
+### Added — input-table check: dead `default`
+
+- **The once-per-class table check warns when a row's `default` can never apply**: the converter
+  answers a missing attribute with a concrete value that differs from it (the converter's answer
+  wins; `default` fills in only for `undefined`) — e.g. `toBool('default-false')` with
+  `default: true` starts `false`, `toText()` with `default: 'Hello'` starts `''`. A `null` answer
+  is exempt (the null-clear "unset, the engine decides" sentinel). Warn-only; no behaviour change.
+
 ### Added — container scroll (SPEC §12.15)
 
 - **`scrollIntoContainer(el, options)` / `findScrollContainer(el, options)`** (main index) — bring

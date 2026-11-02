@@ -167,9 +167,11 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
   enforced centrally. No input can be added that forgets to parse, validate, or
   react.
 - The `static inputs` table is sanity-checked once per class at construction
-  (`console.warn`, never throws): duplicate `configKey`/`attribute`, or
-  `shouldReflect: true` without an `attribute` / without `converter.toAttribute`. Watch
-  the console when authoring a table.
+  (`console.warn`, never throws): duplicate `configKey`/`attribute`,
+  `shouldReflect: true` without an `attribute` / without `converter.toAttribute`, or a dead
+  `default` (the converter answers a missing attribute with a different concrete value —
+  `null` exempt). Watch the console when authoring a table. `toBool(mode)` takes a REQUIRED
+  mode; `'presence'` (any value → true) is for `disabled` / `readonly` only.
 - Removing an attribute is reactive: it resets that input to its `default`
   (absent == default), consistent with construction.
 - Invalid values follow one rule on both paths: warn and keep the previous value

@@ -71,6 +71,22 @@ class DupKeyElement extends BlissElement {
     { configKey: 'a', attribute: 'b', converter: toText() },
   ];
 }
+/** Row defaults the converter's own absent value overrides (dead) — and matching ones (fine). */
+class DeadDefaultElement extends BlissElement {
+  protected static override inputs: readonly InputDef[] = [
+    { configKey: 'isOpen', attribute: 'is-open', converter: toBool('default-false'), default: true },
+    { configKey: 'isShown', attribute: 'is-shown', converter: toBool('presence'), default: true },
+    { configKey: 'label', attribute: 'label', converter: toText(), default: 'Hello' },
+    // matching — no warning
+    // absent → null = the null-clear "unset, engine decides" sentinel; `default` documents the engine's value
+    { configKey: 'mode', attribute: 'mode', converter: toEnum(['a', 'b'] as const), default: 'a' },
+    { configKey: 'isSorted', attribute: 'is-sorted', converter: toBool('tristate'), default: true },
+    { configKey: 'isOn', attribute: 'is-on', converter: toBool('default-true'), default: true },
+    { configKey: 'kind', attribute: 'kind', converter: toEnum(['x', 'y'] as const, { default: 'x' }), default: 'x' },
+    { configKey: 'size', attribute: 'size', converter: toInt(), default: 5 },
+    { configKey: 'title', attribute: 'title-text', converter: toText(), default: '' },
+  ];
+}
 class DupAttrElement extends BlissElement {
   protected static override inputs: readonly InputDef[] = [
     { configKey: 'a', attribute: 'x', converter: toText() },
@@ -93,7 +109,7 @@ class ValidTableElement extends BlissElement {
     { configKey: 'b', attribute: 'b', converter: toBool('presence'), shouldReflect: true },
   ];
 }
-[DupKeyElement, DupAttrElement, ReflectNoAttrElement, ReflectNoToAttrElement, ValidTableElement].forEach(
+[DupKeyElement, DeadDefaultElement, DupAttrElement, ReflectNoAttrElement, ReflectNoToAttrElement, ValidTableElement].forEach(
   (ctor, i) => define(`table-element-${i}`, ctor as unknown as CustomElementConstructor),
 );
 
@@ -642,6 +658,18 @@ describe('BlissElement table validation (warn-only, once per class)', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     new ReflectNoToAttrElement();
     expect(tableWarnings(warn).some((m) => m.includes('has no toAttribute'))).toBe(true);
+    warn.mockRestore();
+  });
+
+  it('warns when the converter resolves a missing attribute to something other than the row default', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const el = new DeadDefaultElement();
+    const lines = tableWarnings(warn).filter((m) => m.includes('the default never applies'));
+    expect(lines.map((m) => m.match(/"(\w+)" declares/)?.[1]).sort()).toEqual(['isOpen', 'isShown', 'label']);
+    expect(lines.find((m) => m.includes('"isOpen"'))).toContain('declares default true, but its converter resolves a missing attribute to false');
+    // what the element actually holds — the reason for the warning
+    const config = (el as unknown as { config: Record<string, unknown> }).config;
+    expect(config).toMatchObject({ isOpen: false, isShown: false, label: '', isOn: true, kind: 'x', size: 5, mode: null, isSorted: null });
     warn.mockRestore();
   });
 
