@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Container scroll — web-components-core</title>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="back-link">← Back to Examples</a>
+            <h1>Container scroll</h1>
+            <p class="subtitle"><code>scrollIntoContainer()</code> brings a row, an option or a day into view by scrolling
+                the <strong>one container</strong> around it, never the page. Native <code>scrollIntoView()</code> scrolls
+                every scrollable ancestor, the page included, so a search jump or a keyboard move makes the whole page
+                jump. <code>findScrollContainer()</code> is the search on its own. Main index, no dependencies; see
+                <strong>SPEC §12.15</strong>.</p>
+        </header>
+
+        <!-- ============================================================= -->
+        <!-- SC01 · Native vs container scroll                             -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>SC01 · <code>scrollIntoView()</code> vs <code>scrollIntoContainer()</code></h2>
+            <p>
+                Two identical lists, each a component (<code>&lt;core-demo-rows&gt;</code>, rows in its shadow root)
+                inside a light-DOM scroll panel. Jump to a row in each and watch the page: the native call scrolls the
+                list <em>and</em> the page; the core call scrolls only the list. The log shows how far the page moved.
+            </p>
+            <div class="controls">
+                <label>row <input id="sc01-row" type="number" class="w-xs" min="0" max="59" value="45"></label>
+                <label>block
+                    <select id="sc01-block" class="w-sm">
+                        <option>nearest</option><option selected>start</option><option>center</option><option>end</option>
+                    </select>
+                </label>
+                <button id="sc01-native">Native scrollIntoView()</button>
+                <button id="sc01-core">scrollIntoContainer()</button>
+                <button id="sc01-reset">Reset</button>
+            </div>
+            <div class="grid-2">
+                <div>
+                    <span class="demo-label">native <code>scrollIntoView()</code></span>
+                    <div class="log-panel" id="sc01-native-box"><core-demo-rows id="sc01-native-list"></core-demo-rows></div>
+                </div>
+                <div>
+                    <span class="demo-label"><code>scrollIntoContainer()</code></span>
+                    <div class="log-panel" id="sc01-core-box"><core-demo-rows id="sc01-core-list"></core-demo-rows></div>
+                </div>
+            </div>
+            <div class="log-panel log-panel--dark mt-1" data-empty="Press a button above." id="sc01-log"></div>
+            <div class="code-block"><pre>import { scrollIntoContainer } from '@keenmate/web-components-core';
+
+// instead of row.scrollIntoView({ block: 'center' })
+scrollIntoContainer(row, { block: 'center' });   // → the container it scrolled, or null (page fallback)</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- SC02 · Alignment, sticky header, smooth                       -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>SC02 · Alignment, a sticky header and smooth scrolling</h2>
+            <p>
+                A component with its own scroller and a sticky header. <code>nearest</code> (the default) moves only as
+                far as needed, so a visible row stays put and no <code>scrollTo()</code> runs at all;
+                <code>start</code> / <code>center</code> / <code>end</code> align the row. The container's
+                <code>scroll-padding-top</code> keeps <code>start</code> clear of the header. Turn it off and the
+                header covers the row.
+            </p>
+            <div class="controls">
+                <label>row <input id="sc02-row" type="number" class="w-xs" min="0" max="59" value="30"></label>
+                <button data-block="nearest">nearest</button>
+                <button data-block="start">start</button>
+                <button data-block="center">center</button>
+                <button data-block="end">end</button>
+                <label><input type="checkbox" id="sc02-smooth"> smooth</label>
+                <label><input type="checkbox" id="sc02-padding" checked> scroll-padding-top</label>
+            </div>
+            <core-demo-rows id="sc02-list" has-scroller has-sticky-header></core-demo-rows>
+            <div class="log-panel log-panel--dark mt-1" data-empty="Pick a row and an alignment." id="sc02-log"></div>
+            <div class="note">
+                <div class="note-title">Sticky headers are CSS</div>
+                Like native scrolling, the helper honours the container's <code>scroll-padding</code> and the row's
+                <code>scroll-margin</code>, so a component reserves room for its sticky header in its stylesheet
+                instead of passing an offset.
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- SC03 · Shadow DOM and slots                                   -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>SC03 · Finding the container across shadow DOM and slots</h2>
+            <p>
+                <code>findScrollContainer()</code> walks up the tree the browser lays out: out of a shadow root to its
+                host, and from slotted content into its slot. Left: rows inside a component's shadow root, the
+                scroller is the page's panel around the component. Right: the page's own rows slotted into
+                <code>&lt;core-demo-slot-box&gt;</code>, the scroller is inside that component's shadow root.
+                <code>&lt;html&gt;</code> and <code>&lt;body&gt;</code> never count, and neither does
+                <code>overflow: hidden</code>.
+            </p>
+            <div class="controls">
+                <label>row <input id="sc03-row" type="number" class="w-xs" min="0" max="39" value="25"></label>
+                <button id="sc03-find">findScrollContainer()</button>
+                <button id="sc03-scroll">scrollIntoContainer()</button>
+            </div>
+            <div class="grid-2">
+                <div>
+                    <span class="demo-label">shadow rows, light-DOM scroller</span>
+                    <div class="log-panel" id="sc03-light-box"><core-demo-rows id="sc03-shadow-list" count="40"></core-demo-rows></div>
+                </div>
+                <div>
+                    <span class="demo-label">light rows, shadow scroller (slot)</span>
+                    <core-demo-slot-box id="sc03-slot-box"></core-demo-slot-box>
+                </div>
+            </div>
+            <div class="log-panel log-panel--dark mt-1" data-empty="Find or scroll a row." id="sc03-log"></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- SC04 · revealContainer                                        -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>SC04 · <code>revealContainer</code> — when the list itself is off-screen</h2>
+            <p>
+                Scrolling only the container is right for keyboard moves: the focused list is on screen. A jump from
+                somewhere else (a search box, a link) can target a list the user can't see; the list scrolls and
+                nothing visible happens. <code>revealContainer: true</code> first brings the container into the viewport.
+                These buttons target <strong>row 55 of the SC02 list</strong>, which is above this card.
+            </p>
+            <div class="controls">
+                <button id="sc04-off">Row 55 — revealContainer off</button>
+                <button id="sc04-on">Row 55 — revealContainer on</button>
+            </div>
+            <div class="log-panel log-panel--dark mt-1" data-empty="Scroll this card into view, then press a button." id="sc04-log"></div>
+            <div class="code-block"><pre>scrollIntoContainer(row, { block: 'center', behavior: 'smooth', revealContainer: true });</pre></div>
+        </div>
+    </div>
+
+    <script type="module" src="examples-scroll-card.ts"></script>
+
+    <script type="module">
+        import { findScrollContainer, scrollIntoContainer } from '/src/index.ts';
+
+        await customElements.whenDefined('core-demo-rows');
+        await customElements.whenDefined('core-demo-slot-box');
+        const $ = (id) => document.getElementById(id);
+        const int = (id, max) => Math.max(0, Math.min(max, parseInt($(id).value, 10) || 0));
+        /** Wait for the page / container scroll to finish (the kit's page uses smooth scroll-behavior). */
+        const settle = () => new Promise((resolve) => setTimeout(resolve, 700));
+
+        function log(panelId, tone, name, detail) {
+            const line = document.createElement('div');
+            line.className = tone ? `log-line log-line--${tone}` : 'log-line';
+            const nameCell = document.createElement('span');
+            nameCell.className = 'log-line__name';
+            nameCell.textContent = name;
+            const detailCell = document.createElement('span');
+            detailCell.textContent = detail;
+            line.append(nameCell, detailCell);
+            $(panelId).prepend(line);
+        }
+
+        /** Human name of a container the helper returned. */
+        function describe(container) {
+            if (!container) return 'none — page fallback (scrollIntoView nearest)';
+            if (container.id) return `#${container.id} (light DOM)`;
+            const host = container.getRootNode()?.host;
+            return host ? `the scroller inside <${host.localName}#${host.id}>'s shadow root` : container.localName;
+        }
+
+        // SC01 ------------------------------------------------------------
+        async function sc01(useCore) {
+            const i = int('sc01-row', 59);
+            const block = $('sc01-block').value;
+            const list = $(useCore ? 'sc01-core-list' : 'sc01-native-list');
+            const row = list.mark(i);
+            const before = Math.round(window.scrollY);
+            if (useCore) scrollIntoContainer(row, { block });
+            else row.scrollIntoView({ block });
+            await settle();
+            const moved = Math.round(window.scrollY) - before;
+            const label = useCore ? 'scrollIntoContainer' : 'scrollIntoView';
+            log('sc01-log', moved === 0 ? 'ok' : 'warn', label,
+                `row ${i}, block ${block} — page moved ${moved}px (scrollY ${before} → ${before + moved})`);
+        }
+        $('sc01-native').addEventListener('click', () => sc01(false));
+        $('sc01-core').addEventListener('click', () => sc01(true));
+        $('sc01-reset').addEventListener('click', () => {
+            $('sc01-native-box').scrollTop = 0;
+            $('sc01-core-box').scrollTop = 0;
+            $('sc01-log').replaceChildren();
+        });
+
+        // SC02 ------------------------------------------------------------
+        const sc02 = $('sc02-list');
+        for (const button of document.querySelectorAll('[data-block]')) {
+            button.addEventListener('click', () => {
+                const i = int('sc02-row', 59);
+                const row = sc02.mark(i);
+                const scroller = sc02.shadowRoot.querySelector('.scroller');
+                const before = Math.round(scroller.scrollTop);
+                let calls = 0;
+                const original = scroller.scrollTo;
+                scroller.scrollTo = function (...args) { calls++; return original.apply(this, args); };
+                scrollIntoContainer(row, { block: button.dataset.block, behavior: $('sc02-smooth').checked ? 'smooth' : 'auto' });
+                delete scroller.scrollTo;
+                const after = Math.round(scroller.scrollTop);
+                log('sc02-log', calls ? 'info' : 'muted', button.dataset.block,
+                    calls ? `row ${i} — scrollTop ${before} → ${after}` : `row ${i} is already visible — no scrollTo() call`);
+            });
+        }
+        $('sc02-padding').addEventListener('change', (e) => { sc02.hasScrollPadding = e.target.checked; });
+
+        // SC03 ------------------------------------------------------------
+        const slotBox = $('sc03-slot-box');
+        for (let i = 0; i < 40; i++) {
+            const row = document.createElement('div');
+            row.className = 'log-line';
+            row.dataset.i = String(i);
+            row.textContent = `light row ${i}`;
+            slotBox.append(row);
+        }
+        function sc03Rows() {
+            const i = int('sc03-row', 39);
+            for (const r of slotBox.querySelectorAll('.log-line--ok')) r.classList.remove('log-line--ok');
+            const slotted = slotBox.querySelector(`[data-i="${i}"]`);
+            slotted.classList.add('log-line--ok');
+            return { i, shadowRow: $('sc03-shadow-list').mark(i), slotted };
+        }
+        $('sc03-find').addEventListener('click', () => {
+            const { i, shadowRow, slotted } = sc03Rows();
+            log('sc03-log', 'info', 'find', `left row ${i} → ${describe(findScrollContainer(shadowRow))}`);
+            log('sc03-log', 'info', 'find', `right row ${i} → ${describe(findScrollContainer(slotted))}`);
+        });
+        $('sc03-scroll').addEventListener('click', () => {
+            const { i, shadowRow, slotted } = sc03Rows();
+            log('sc03-log', 'ok', 'scroll', `left row ${i} → scrolled ${describe(scrollIntoContainer(shadowRow, { block: 'center' }))}`);
+            log('sc03-log', 'ok', 'scroll', `right row ${i} → scrolled ${describe(scrollIntoContainer(slotted, { block: 'center' }))}`);
+        });
+
+        // SC04 ------------------------------------------------------------
+        async function sc04(revealContainer) {
+            const row = sc02.mark(55);
+            const before = Math.round(window.scrollY);
+            scrollIntoContainer(row, { block: 'center', behavior: 'smooth', revealContainer });
+            await settle();
+            const moved = Math.round(window.scrollY) - before;
+            log('sc04-log', revealContainer ? 'ok' : 'muted', `revealContainer: ${revealContainer}`,
+                moved ? `page moved ${moved}px to show the SC02 list` : 'page stayed — the SC02 list scrolled out of sight');
+        }
+        $('sc04-off').addEventListener('click', () => sc04(false));
+        $('sc04-on').addEventListener('click', () => sc04(true));
+    </script>
+</body>
+</html>
