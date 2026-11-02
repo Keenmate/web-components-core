@@ -10,6 +10,24 @@ that correctness lives in a single place and can't drift.
 > **[`docs/SPEC.md`](docs/SPEC.md) is the source of truth** for design intent. This
 > README is the tour; read the relevant SPEC section before changing behavior.
 
+## What's New in v1.0.0-rc16
+
+**[Release notes](release-notes/1.0.0-rc16.md)** cover the upgrade: one small **breaking** change for
+component authors (`toBool` needs its mode), plus container scrolling.
+
+- **Container scroll.** `scrollIntoContainer(el, opts)` brings a row, an option or a day into view by
+  scrolling the one container around it — never the page, unlike `scrollIntoView()`. The search for
+  the container crosses shadow roots and slots; it honours `scroll-padding` (sticky headers) and
+  `scroll-margin`, is RTL-aware, and `revealContainer` also brings an off-screen list into view.
+  `findScrollContainer(el)` is the search on its own. Live demo: `examples-scroll.html`.
+- **`toBool(mode)` requires its mode (BREAKING).** The bare `toBool()` meant `'presence'`, where
+  `x="false"` is `true`. Pick `'default-false'`, `'default-true'`, `'tristate'` or `'presence'` (for
+  `disabled` / `readonly` only).
+- **Dead defaults warn.** The input-table check now flags a row whose `default` can never apply
+  because the converter answers a missing attribute with something else.
+
+See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
+
 ## What's New in v1.0.0-rc15
 
 **[Release notes](release-notes/1.0.0-rc15.md)** cover the upgrade: this is the core of the KeenMate v2
@@ -30,27 +48,6 @@ component generation and **breaking for component authors** (no aliases).
 - **Naming review.** `is/should/has` booleans, `*Callback` hooks, `on*` only for notifications
   (`shouldDefer`, `shouldReflect`, `isToggled`, `isRejected`, `km-` menu prefix …). Invalid attributes
   now warn and keep the previous value; the default log level is `warn`.
-
-See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
-
-## What's New in v1.0.0-rc14
-
-New `/search` module, no changes to existing APIs. **[Release notes](release-notes/1.0.0-rc14.md)**
-cover the API and how a component adopts it.
-
-- **Shared search — `@keenmate/web-components-core/search`.** The search rules web-multiselect
-  2.6.0-rc02 shipped now live in core, so every component with a search box matches and highlights
-  the same way. Pure, DOM-free functions, no dependencies, on a new subpath (not re-exported from the
-  root).
-- **Normalization and match modes.** `normalizeSearchText` handles `normalized` (default: ignores
-  case and diacritics, folds `ł ø đ ß æ œ` …), `case-insensitive`, and `exact`. Match modes are
-  `contains`, `equals`, `starts-with`, `ends-with`, `word-starts-with`, `word-ends-with`, and `regex`.
-  `prepareSearchTerm` and `createRegexCompiler` (which keeps the last valid typed pattern) build the
-  term; `matchesSearchTerm` tests it.
-- **Highlight mapping you can render safely.** `findHighlightRanges` returns `{ text, ranges }`, with
-  ranges indexing into the returned NFC text, and `wrapRanges` wraps them with your markup and
-  escaping. Also exports the shared `searchCallback(term, signal, context)` types. See **SPEC §12.11**
-  and the live `examples-search.html` demo.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
 

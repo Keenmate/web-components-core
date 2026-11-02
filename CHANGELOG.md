@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc16] - 2026-11-02
+
 ### Changed — BREAKING
 
 - **`toBool(mode)` requires its mode.** `toBool()` with no argument used to mean `'presence'`,
