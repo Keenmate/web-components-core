@@ -3,7 +3,12 @@
  * container around it, never the page. `Element.scrollIntoView()` scrolls every scrollable
  * ancestor (the page included), so a search jump or a keyboard move made the whole page jump.
  *
- * Zero dependencies, SSR-safe (no `document` → `null`, nothing happens).
+ * Zero dependencies, SSR-safe (no `document` → `null`, nothing happens). Works on the element's
+ * own document, so an element inside an iframe is measured against that iframe.
+ *
+ * Limits: a CSS-scaled container (`transform: scale`, a zoomed preview) scrolls by the unscaled
+ * amount; vertical writing modes aren't handled; only the innermost scroller moves (a scroller
+ * clipped inside an outer one stays out of sight unless `revealContainer`).
  */
 
 import { composedParent } from './composed-tree.js';
@@ -51,8 +56,13 @@ function flatParent(node: Element): Element | null {
   return node.assignedSlot ?? composedParent(node);
 }
 
-function isPage(el: Element): boolean {
-  return el === document.documentElement || el === document.body || el === document.scrollingElement;
+function isPage(el: Element, doc: Document): boolean {
+  return el === doc.documentElement || el === doc.body || el === doc.scrollingElement;
+}
+
+/** The element's own window (an iframe's, not ours) — its `getComputedStyle` / `HTMLElement`. */
+function viewOf(el: Element): (Window & typeof globalThis) | null {
+  return (el.ownerDocument?.defaultView as (Window & typeof globalThis) | null) ?? null;
 }
 
 function scrollsOn(el: Element, style: CSSStyleDeclaration, axis: 'x' | 'y'): boolean {
@@ -70,11 +80,14 @@ function scrollsOn(el: Element, style: CSSStyleDeclaration, axis: 'x' | 'y'): bo
  */
 export function findScrollContainer(el: Element, options: FindScrollContainerOptions = {}): HTMLElement | null {
   if (!isAvailable()) return null;
+  const view = viewOf(el);
+  if (!view) return null;
+  const doc = el.ownerDocument;
   const { stopAt = null, axis = 'y' } = options;
   for (let node = flatParent(el); node; node = flatParent(node)) {
-    if (node === stopAt || isPage(node)) return null;
-    if (!(node instanceof HTMLElement)) continue;
-    const style = getComputedStyle(node);
+    if (node === stopAt || isPage(node, doc)) return null;
+    if (!(node instanceof view.HTMLElement)) continue;
+    const style = view.getComputedStyle(node);
     const matches =
       axis === 'both'
         ? scrollsOn(node, style, 'y') || scrollsOn(node, style, 'x')
@@ -112,11 +125,11 @@ function axisDelta(position: ScrollLogicalPosition, tStart: number, tEnd: number
   }
 }
 
-function isFullyInViewport(el: Element): boolean {
+function isFullyInViewport(el: Element, view: Window): boolean {
   const rect = el.getBoundingClientRect();
-  const root = document.documentElement;
-  const height = root.clientHeight || window.innerHeight;
-  const width = root.clientWidth || window.innerWidth;
+  const root = el.ownerDocument.documentElement;
+  const height = root.clientHeight || view.innerHeight;
+  const width = root.clientWidth || view.innerWidth;
   return rect.top >= 0 && rect.left >= 0 && rect.bottom <= height && rect.right <= width;
 }
 
@@ -126,27 +139,30 @@ function isFullyInViewport(el: Element): boolean {
  * `scroll-padding` and the element's `scroll-margin` (sticky headers are a CSS matter, as with
  * native scrolling). Nothing to move → no `scrollTo()` call.
  *
- * No container → `el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior })`: the
- * page moves only if `el` is off-screen. Returns the container used, `null` for that fallback.
+ * No container → `el.scrollIntoView({ block, inline, behavior })`: the page is the only scroller,
+ * so it gets the same request (a `center` jump centres the row in the window; `nearest` moves the
+ * page only if `el` is off-screen). Returns the container used, `null` for that fallback.
  */
 export function scrollIntoContainer(el: Element, options: ScrollIntoContainerOptions = {}): HTMLElement | null {
   if (!isAvailable()) return null;
+  const view = viewOf(el);
+  if (!view) return null;
   const { block = 'nearest', inline = 'nearest', behavior = 'auto', revealContainer = false } = options;
   const container = options.container ?? findScrollContainer(el, options);
 
   if (!container) {
-    el.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior });
+    el.scrollIntoView?.({ block, inline, behavior });
     return null;
   }
 
-  if (revealContainer && !isFullyInViewport(container)) {
+  if (revealContainer && !isFullyInViewport(container, view)) {
     container.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior });
   }
 
   const box = container.getBoundingClientRect();
-  const boxStyle = getComputedStyle(container);
+  const boxStyle = view.getComputedStyle(container);
   const target = el.getBoundingClientRect();
-  const targetStyle = getComputedStyle(el);
+  const targetStyle = view.getComputedStyle(el);
 
   const viewTop = box.top + container.clientTop + px(boxStyle.scrollPaddingTop);
   const viewBottom = box.top + container.clientTop + container.clientHeight - px(boxStyle.scrollPaddingBottom);

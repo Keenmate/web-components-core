@@ -1753,12 +1753,22 @@ scrollIntoContainer(el, { block?, inline?, behavior?, container?, revealContaine
   Delta-based (`scrollTop + delta`); the browser clamps. Under 1px on both axes → **no
   `scrollTo()` call** (a redundant call can disturb a running smooth scroll). `behavior`
   default `'auto'` — the caller decides (reduced motion, its `--*-scroll-behavior` token).
-- **No container** → `el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior })`
-  (the page moves only if `el` is off-screen) and returns `null`. Otherwise returns the container.
+- **No container** → the page is the only scroller, so it gets the same request:
+  `el.scrollIntoView({ block, inline, behavior })` (a `center` jump — search hit, `scrollToPath` —
+  centres the row in the window, exactly as it would in a panel; `nearest` keyboard moves still
+  nudge the page only when `el` is off-screen) and returns `null`. Otherwise returns the container.
+- **Documents.** Measured against `el`'s own document / window (`ownerDocument.defaultView`), so
+  an element inside an iframe finds and scrolls the iframe's scroller; that document's
+  `<html>` / `<body>` are the "page".
 - **`revealContainer: true`** → first, if the container isn't fully inside the viewport,
   `container.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior })` — a jump to a
   search hit in a tree further down the page. Default `false` (keyboard moves happen in a
   focused, visible container).
+
+**Limits:** a CSS-scaled container (`transform: scale`, a zoomed preview) scrolls by the
+unscaled amount; vertical writing modes aren't handled (`block` is always vertical); only the
+innermost scroller moves — one clipped inside an outer scroller stays out of sight unless
+`revealContainer` (whose `scrollIntoView` scrolls every ancestor).
 
 **Not this module's job:** virtual lists (the component scrolls by index), focus (callers use
 `focus({ preventScroll: true })`), deciding *whether* to scroll — a component's

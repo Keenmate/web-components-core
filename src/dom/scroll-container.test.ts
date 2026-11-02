@@ -182,12 +182,14 @@ describe('scrollIntoContainer', () => {
     expect(box.scrollTo).toHaveBeenCalled();
   });
 
-  it('no container → scrollIntoView nearest on the element, returns null', () => {
+  it('no container → the page gets the same request (scrollIntoView with block / inline), returns null', () => {
     const row = document.createElement('div');
     document.body.appendChild(row);
     row.scrollIntoView = vi.fn();
     expect(scrollIntoContainer(row, { block: 'center', behavior: 'smooth' })).toBeNull();
-    expect(row.scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+    expect(row.scrollIntoView).toHaveBeenCalledWith({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+    scrollIntoContainer(row);
+    expect(row.scrollIntoView).toHaveBeenLastCalledWith({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
   });
 
   it('revealContainer brings an off-screen container into the viewport first', () => {

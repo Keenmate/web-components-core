@@ -9,7 +9,9 @@ import { test, expect, type Page } from './fixtures';
 //   - nearest on an already-visible row issues no scrollTo (headless Chromium doesn't animate
 //     smooth scrolling, so the "don't disturb a running glide" reason can't be shown here);
 //   - right-to-left horizontal scrolling;
-//   - revealContainer brings a container far down the page into view.
+//   - revealContainer brings a container far down the page into view;
+//   - no container → the page gets the caller's block (center centres the row in the window);
+//   - an element inside an iframe is measured against the iframe's own document.
 //
 // Fixture: test/scroll.html
 
@@ -161,4 +163,29 @@ test('revealContainer brings a container far down the page into view; off by def
   expect(inView.pageY).toBeGreaterThan(0);
   expect(inView.boxFits).toBe(true);
   expect(inView.rowFits).toBe(true);
+});
+
+test('no container → the page gets the same request: block center centres the row in the window', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const row = document.getElementById('page-row')!;
+    const container = (window as any).core.scrollIntoContainer(row, { block: 'center' });
+    const rect = row.getBoundingClientRect();
+    return { container, offset: (rect.top + rect.bottom) / 2 - document.documentElement.clientHeight / 2, y: window.scrollY };
+  });
+  expect(result.container).toBeNull();
+  expect(result.y).toBeGreaterThan(0);
+  expect(Math.abs(result.offset)).toBeLessThanOrEqual(1);
+});
+
+test('an element inside an iframe: its scroller is found and scrolled, the page stays', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const frameDoc = (document.getElementById('frame') as HTMLIFrameElement).contentDocument!;
+    const box = frameDoc.getElementById('box')!;
+    const row = box.querySelector('.row[data-i="30"]')!;
+    const { findScrollContainer, scrollIntoContainer } = (window as any).core;
+    const found = findScrollContainer(row) === box;
+    const scrolled = scrollIntoContainer(row, { block: 'start' }) === box;
+    return { found, scrolled, scrollTop: box.scrollTop, pageY: window.scrollY };
+  });
+  expect(result).toEqual({ found: true, scrolled: true, scrollTop: 900, pageY: 0 });
 });

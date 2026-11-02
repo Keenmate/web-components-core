@@ -30,10 +30,12 @@
     <!-- right-to-left horizontal scroller -->
     <div class="scroller" id="rtl" dir="rtl"></div>
 
-    <div class="spacer"></div>
+    <div class="spacer"><div id="page-row" class="row" style="margin-top: 1500px">a row with no container</div></div>
     <!-- far down the page: revealContainer -->
     <div class="scroller" id="far"></div>
     <div class="spacer"></div>
+    <!-- a scroller in another document -->
+    <iframe id="frame" style="width: 320px; height: 260px"></iframe>
 
     <script type="module">
         import * as core from '/src/index.ts';
@@ -65,6 +67,13 @@
         for (const id of ['sticky', 'margin', 'far']) document.getElementById(id).append(...rows(50));
         document.querySelector('#margin .row[data-i="30"]').classList.add('target');
         document.getElementById('rtl').append(...rows(20, 'cell'));
+
+        // iframe: its own document with a scroller of 40 rows (core stays in this window)
+        const frameDoc = document.getElementById('frame').contentDocument;
+        frameDoc.body.style.margin = '0';
+        frameDoc.body.innerHTML = '<div id="box" style="height:200px;overflow-y:auto"></div>';
+        frameDoc.getElementById('box').innerHTML = Array.from({ length: 40 }, (_, i) =>
+            `<div class="row" data-i="${i}" style="height:30px">row ${i}</div>`).join('');
 
         window.core = core;
         document.body.dataset.ready = '';

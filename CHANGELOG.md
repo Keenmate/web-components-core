@@ -17,7 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `behavior`, `container` (skip the search), `stopAt`, `axis: 'y' | 'x' | 'both'`,
   `revealContainer` (also bring an off-screen container into the viewport). Honours the
   container's `scroll-padding` and the element's `scroll-margin`; nothing to move → no
-  `scrollTo()` call; no container → `scrollIntoView({ block: 'nearest' })` and `null`. Replaces
+  `scrollTo()` call; no container → the page gets the same request
+  (`scrollIntoView({ block, inline, behavior })`) and `null`. An element inside an iframe is
+  measured against the iframe's own document. Replaces
   the private copies in web-treeview / web-multiselect and daterangepicker's `scrollIntoView` calls.
 
 ## [1.0.0-rc15] - 2026-11-01

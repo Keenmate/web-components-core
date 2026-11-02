@@ -473,7 +473,8 @@ scrollIntoContainer(option, { container: this.listEl });   // known scroller, no
 findScrollContainer(row);                                   // the scroller, or null (page only)
 ```
 
-No container found → `el.scrollIntoView({ block: 'nearest' })` and `null`. Nothing to move → no
+No container found → the page is the only scroller and gets the same request
+(`el.scrollIntoView({ block, inline, behavior })`), returning `null`. Nothing to move → no
 `scrollTo()` call. Virtual lists scroll by index themselves.
 
 ## Positioning (`@keenmate/web-components-core/positioning`)
