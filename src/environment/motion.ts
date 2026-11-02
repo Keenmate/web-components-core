@@ -26,7 +26,9 @@ export type Motion = (typeof MOTION_VALUES)[number];
 export const MOTION_ATTRIBUTE = 'motion';
 export const MOTION_DATA_ATTRIBUTE = 'data-motion';
 
-/** The four contract speeds per preset (`--base-duration-fast / -normal / -medium / -slow`). */
+/** The four contract speeds per preset (`--base-duration-fast / -normal / -medium / -slow`).
+ *  Every preset also sets `--base-scroll-behavior` (`none` → `auto`, the others → `smooth`), so a
+ *  level nested inside another follows the nearest one for scrolling too. */
 export const MOTION_PRESETS: Readonly<Record<Exclude<Motion, 'auto'>, readonly [string, string, string, string]>> = {
   none: ['0s', '0s', '0s', '0s'],
   snappy: ['0.05s', '0.08s', '0.12s', '0.15s'],
@@ -38,8 +40,8 @@ const durations = ([fast, normal, medium, slow]: readonly string[]): string =>
 
 export const MOTION_CSS = `
 [data-motion="none"] { ${durations(MOTION_PRESETS.none)} --base-scroll-behavior: auto; }
-[data-motion="snappy"] { ${durations(MOTION_PRESETS.snappy)} }
-[data-motion="smooth"] { ${durations(MOTION_PRESETS.smooth)} }
+[data-motion="snappy"] { ${durations(MOTION_PRESETS.snappy)} --base-scroll-behavior: smooth; }
+[data-motion="smooth"] { ${durations(MOTION_PRESETS.smooth)} --base-scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) {
   :root, :host, [data-motion] { ${durations(MOTION_PRESETS.none)} --base-scroll-behavior: auto; }
 }

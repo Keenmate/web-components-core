@@ -73,6 +73,19 @@ test('data-motion on a section — no base-css-variables needed; the element\'s 
   ]);
 });
 
+test('nested levels: the nearest data-motion wins for speed AND scrolling', async ({ page }) => {
+  expect(
+    await probes(
+      page,
+      '<section data-motion="none"><div data-motion="smooth"><motion-probe></motion-probe></div></section>' +
+        '<section data-motion="smooth"><div data-motion="none"><motion-probe></motion-probe></div></section>',
+    ),
+  ).toEqual([
+    { duration: '0.25s', scroll: 'smooth' }, // smooth inside none — scrolling must not stay instant
+    { duration: '0s', scroll: 'auto' },
+  ]);
+});
+
 test('a component nested in another component\'s shadow root', async ({ page }) => {
   expect(await probes(page, '<motion-parent></motion-parent>')).toEqual([{ duration: '0s', scroll: 'auto' }]);
 });

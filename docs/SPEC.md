@@ -1811,8 +1811,8 @@ matches the host itself and any page element, with or without base-css-variables
 | Level | `--base-duration-fast / -normal / -medium / -slow` | `--base-scroll-behavior` |
 |---|---|---|
 | `none` | `0s` ×4 | `auto` |
-| `snappy` | `0.05s / 0.08s / 0.12s / 0.15s` | unchanged |
-| `smooth` | `0.15s / 0.25s / 0.35s / 0.45s` | unchanged |
+| `snappy` | `0.05s / 0.08s / 0.12s / 0.15s` | `smooth` |
+| `smooth` | `0.15s / 0.25s / 0.35s / 0.45s` | `smooth` |
 | `auto` | not set — inherited (section / page / base-css-variables) or the component's fallback | |
 
 `@media (prefers-reduced-motion: reduce)` comes last and zeroes the durations (+ `scroll-behavior:
@@ -1820,6 +1820,12 @@ auto`) on `:root`, `:host` and every `[data-motion]` element: **the OS setting a
 over `motion="smooth"` — it's the user's accessibility choice. Precedence: OS reduce > the element's
 own level (set on the host) > the nearest `[data-motion]` ancestor > base-css-variables' `:root`
 values > the component's fallbacks.
+
+Every level sets the scroll behaviour too, so a level nested inside another (`smooth` inside a
+`none` section) follows the nearest one for scrolling as well as speed. A page's own
+`:root { --base-duration-*: … }` has the same specificity as `html[data-motion]` in
+base-css-variables, so a later page stylesheet can win there; core's adopted copy comes after the
+page's styles, so on pages with components the level holds.
 
 base-css-variables carries the same `[data-motion]` presets (the reference for the values; a core
 unit test compares them when the repo sits next to core).

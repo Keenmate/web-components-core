@@ -146,13 +146,22 @@ describe('motion — presets', () => {
   } catch {
     // not checked out next to core
   }
-  it.skipIf(!/\[data-motion=/.test(baseCss))('presets match base-css-variables', () => {
+  // One rule per level, selector on its own (`[data-motion="snappy"] {`), not a comment mention.
+  const presetBlock = (level: string): string =>
+    baseCss.match(new RegExp(`^\\s*\\[data-motion="${level}"\\]\\s*\\{([^}]*)\\}`, 'm'))?.[1] ?? '';
+  const escape = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const declares = (block: string, name: string, value: string): boolean =>
+    new RegExp(`${name}:\\s*${escape(value)}\\s*;`).test(block);
+
+  it.skipIf(!/\[data-motion=/.test(baseCss))('presets match base-css-variables (speeds and scroll behaviour)', () => {
     for (const [level, [fast, normal, medium, slow]] of Object.entries(MOTION_PRESETS)) {
-      const block = baseCss.match(new RegExp(`\\[data-motion="${level}"\\][^{]*\\{([^}]*)\\}`))?.[1] ?? '';
-      expect(block, level).toMatch(new RegExp(`--base-duration-fast:\\s*${fast}`));
-      expect(block, level).toMatch(new RegExp(`--base-duration-normal:\\s*${normal}`));
-      expect(block, level).toMatch(new RegExp(`--base-duration-medium:\\s*${medium}`));
-      expect(block, level).toMatch(new RegExp(`--base-duration-slow:\\s*${slow}`));
+      const block = presetBlock(level);
+      expect(block, `${level} block`).not.toBe('');
+      expect(declares(block, '--base-duration-fast', fast), `${level} fast`).toBe(true);
+      expect(declares(block, '--base-duration-normal', normal), `${level} normal`).toBe(true);
+      expect(declares(block, '--base-duration-medium', medium), `${level} medium`).toBe(true);
+      expect(declares(block, '--base-duration-slow', slow), `${level} slow`).toBe(true);
+      expect(declares(block, '--base-scroll-behavior', level === 'none' ? 'auto' : 'smooth'), `${level} scroll`).toBe(true);
     }
   });
 });
