@@ -51,8 +51,8 @@
             <div class="log-panel log-panel--dark mt-1" data-empty="Press a button above." id="sc01-log"></div>
             <div class="code-block"><pre>import { scrollIntoContainer } from '@keenmate/web-components-core';
 
-// instead of row.scrollIntoView({ block: 'center' })
-scrollIntoContainer(row, { block: 'center' });   // → the container it scrolled, or null (page fallback)</pre></div>
+// instead of row.scrollIntoView({ block: 'start' })
+scrollIntoContainer(row, { block: 'start' });   // → the container it scrolled, or null (page fallback)</pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -195,7 +195,7 @@ scrollIntoContainer(row, { block: 'center' });   // → the container it scrolle
         // SC02 ------------------------------------------------------------
         const sc02 = $('sc02-list');
         for (const button of document.querySelectorAll('[data-block]')) {
-            button.addEventListener('click', () => {
+            button.addEventListener('click', async () => {
                 const i = int('sc02-row', 59);
                 const row = sc02.mark(i);
                 const scroller = sc02.shadowRoot.querySelector('.scroller');
@@ -203,8 +203,10 @@ scrollIntoContainer(row, { block: 'center' });   // → the container it scrolle
                 let calls = 0;
                 const original = scroller.scrollTo;
                 scroller.scrollTo = function (...args) { calls++; return original.apply(this, args); };
-                scrollIntoContainer(row, { block: button.dataset.block, behavior: $('sc02-smooth').checked ? 'smooth' : 'auto' });
+                const isSmooth = $('sc02-smooth').checked;
+                scrollIntoContainer(row, { block: button.dataset.block, behavior: isSmooth ? 'smooth' : 'auto' });
                 delete scroller.scrollTo;
+                if (isSmooth) await settle(); // a smooth scroll is still running — read the position once it ends
                 const after = Math.round(scroller.scrollTop);
                 log('sc02-log', calls ? 'info' : 'muted', button.dataset.block,
                     calls ? `row ${i} — scrollTop ${before} → ${after}` : `row ${i} is already visible — no scrollTo() call`);
@@ -216,16 +218,15 @@ scrollIntoContainer(row, { block: 'center' });   // → the container it scrolle
         const slotBox = $('sc03-slot-box');
         for (let i = 0; i < 40; i++) {
             const row = document.createElement('div');
-            row.className = 'log-line';
             row.dataset.i = String(i);
             row.textContent = `light row ${i}`;
             slotBox.append(row);
         }
         function sc03Rows() {
             const i = int('sc03-row', 39);
-            for (const r of slotBox.querySelectorAll('.log-line--ok')) r.classList.remove('log-line--ok');
+            for (const r of slotBox.querySelectorAll('.is-target')) r.classList.remove('is-target');
             const slotted = slotBox.querySelector(`[data-i="${i}"]`);
-            slotted.classList.add('log-line--ok');
+            slotted.classList.add('is-target');
             return { i, shadowRow: $('sc03-shadow-list').mark(i), slotted };
         }
         $('sc03-find').addEventListener('click', () => {

@@ -8,7 +8,7 @@
  * (`has-sticky-header`) that `scroll-padding-top` keeps clear (`has-scroll-padding`).
  *
  * `<core-demo-slot-box>` is a shadow-root scroller around a `<slot>` — the page's light rows
- * scroll inside it.
+ * scroll inside it (styled through `::slotted()`, highlighted with `.is-target`).
  *
  * Their CSS is the element's own (shadow) CSS, like any component's; page tokens (--kmwc-*)
  * inherit in, so both follow light / dark. Demo-only — not part of the published package.
@@ -19,6 +19,13 @@ import type { InputDef } from './src/index.js';
 const SCROLLER_CSS = `
   .scroller { max-height: 220px; overflow-y: auto; border: 1px solid var(--kmwc-border-color);
               border-radius: var(--kmwc-radius-md, 8px); background: var(--kmwc-page-bg); }
+`;
+
+/** Row look shared by both demos — `.row` in the shadow root, `::slotted(*)` for page rows. */
+const ROW_CSS = (sel: string, target = `${sel}.is-target`) => `
+  ${sel} { padding: .35rem .7rem; border-bottom: 1px solid var(--kmwc-border-color);
+           font-family: var(--kmwc-mono-font-family, monospace); font-size: .85rem; color: var(--kmwc-text-color-1); }
+  ${target} { background: color-mix(in srgb, var(--kmwc-accent-color) 18%, transparent); font-weight: 600; }
 `;
 
 export class CoreDemoRows extends BlissElement {
@@ -42,9 +49,7 @@ export class CoreDemoRows extends BlissElement {
         .scroller.is-padded { scroll-padding-top: 2.25rem; }
         .head { position: sticky; top: 0; height: 2.25rem; display: flex; align-items: center; padding: 0 .7rem;
                 font-weight: 600; background: var(--kmwc-elevated-bg, #eef2f7); border-bottom: 1px solid var(--kmwc-border-color); }
-        .row { padding: .35rem .7rem; border-bottom: 1px solid var(--kmwc-border-color);
-               font-family: var(--kmwc-font-mono, monospace); font-size: .85rem; color: var(--kmwc-text-color-1); }
-        .row.is-target { background: color-mix(in srgb, var(--kmwc-accent-color) 18%, transparent); font-weight: 600; }
+        ${ROW_CSS('.row')}
       </style>
       ${hasScroller
         ? `<div class="scroller" part="scroller">${hasStickyHeader ? '<div class="head">Sticky header</div>' : ''}${rows}</div>`
@@ -75,7 +80,10 @@ export class CoreDemoRows extends BlissElement {
 export class CoreDemoSlotBox extends BlissElement {
   protected override reinit(): void {
     const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
-    root.innerHTML = `<style>:host { display: block; } ${SCROLLER_CSS}</style><div class="scroller" part="scroller"><slot></slot></div>`;
+    // The page's own rules beat ::slotted() (the kit resets padding on *), so slotted rows get their
+    // height from line-height and the indent from the scroller.
+    root.innerHTML = `<style>:host { display: block; } ${SCROLLER_CSS} ${ROW_CSS('::slotted(*)', '::slotted(.is-target)')}
+      ::slotted(*) { line-height: 1.9; } .scroller { padding-inline: .7rem; }</style><div class="scroller" part="scroller"><slot></slot></div>`;
   }
 }
 
