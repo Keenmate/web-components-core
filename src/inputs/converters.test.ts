@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toBool, toBytes, toCustom, toEnum, toFloat, toFunction, toInt, toList, toObject, toObjectArray, toText, toValue } from './converters.js';
+import { toBool, toBytes, toCssLength, toCustom, toEnum, toFloat, toFunction, toInt, toList, toObject, toObjectArray, toText, toValue } from './converters.js';
 
 describe('toEnum', () => {
   const SELECTION = ['single', 'multiple', 'range'] as const;
@@ -306,12 +306,12 @@ describe('reportInvalid (attribute path)', () => {
 
   it('reports an unusable present value, with a reason', () => {
     expect(reported(toEnum(['a', 'b']), 'c')).toBe('expected one of a | b');
-    expect(reported(toInt(), 'abc')).toBe('not a number');
+    expect(reported(toInt(), 'abc')).toBe('expected an integer');
     expect(reported(toInt({ min: 1, max: 5 }), '9')).toBe('out of range 1..5');
-    expect(reported(toFloat(), 'x')).toBe('not a number');
+    expect(reported(toFloat(), 'x')).toBe('expected a number');
     expect(reported(toBool('default-true'), 'maybe')).toBe('expected true | false');
     expect(reported(toBool('tristate'), 'maybe')).toBe('expected true | false');
-    expect(reported(toBytes(), '1.5 HB')).toBe('expected a size like "10mb"');
+    expect(reported(toBytes(), '1.5 HB')).toBe('expected a size like "10mb" or "300 kB"');
     expect(reported(toList({ itemType: 'int' }), '1,x')).toBe('expected integers separated by ","');
     expect(reported(toList({ requiredCount: 2 }), 'a')).toBe('expected 2 items separated by ","');
     expect(reported(toValue(), '{bad')).toBe('malformed JSON');
@@ -330,5 +330,108 @@ describe('reportInvalid (attribute path)', () => {
     expect(reported(toList(), '')).toBeUndefined();
     expect(reported(toObject(), '  ')).toBeUndefined();
     expect(reported(toBytes(), '10mb')).toBeUndefined();
+  });
+});
+
+// Review 2026-11-03 (WP4a): one parsing contract — the whole attribute must be the value.
+describe('strict parsing (attribute path)', () => {
+  /** [raw, value] for valid input; [raw, 'invalid'] for a value that must be reported. */
+  const parse = (c: { fromAttribute?: (...a: never[]) => unknown }, raw: string): unknown => {
+    let isInvalid = false;
+    const value = (c.fromAttribute as (r: string | null, el: unknown, a: string, rep: () => void) => unknown)(raw, reader(), 'x', () => {
+      isInvalid = true;
+    });
+    return isInvalid ? 'invalid' : value;
+  };
+
+  it.each([
+    ['12', 12],
+    [' 5 ', 5],
+    ['-3', -3],
+    ['+4', 4],
+    ['12px', 'invalid'],
+    ['1.9', 'invalid'],
+    ['1e3', 'invalid'],
+    ['0x10', 'invalid'],
+    ['1,5', 'invalid'],
+    ['', 'invalid'],
+  ])('toInt %j → %j', (raw, expected) => expect(parse(toInt(), raw)).toBe(expected));
+
+  it.each([
+    ['1.5', 1.5],
+    ['.5', 0.5],
+    ['-2e3', -2000],
+    [' 3 ', 3],
+    ['1.5em', 'invalid'],
+    ['1,5', 'invalid'],
+    ['Infinity', 'invalid'],
+    ['NaN', 'invalid'],
+  ])('toFloat %j → %j', (raw, expected) => expect(parse(toFloat(), raw)).toBe(expected));
+
+  it.each([
+    ['1024', 1024],
+    ['10mb', 10 * 1024 ** 2],
+    ['300 kB', 300 * 1024],
+    ['1.5G', 1.5 * 1024 ** 3],
+    ['5MiB', 5 * 1024 ** 2],
+    [' 2 k ', 2048],
+    ['1.2.3mb', 'invalid'],
+    ['1.5b', 'invalid'],
+    ['10 parsecs', 'invalid'],
+  ])('toBytes %j → %j', (raw, expected) => expect(parse(toBytes(), raw)).toBe(expected));
+
+  it('toBytes rejects a fractional byte count on the property path', () => {
+    expect(toBytes().validate!(1.5)).toBe(false);
+    expect(toBytes().validate!(1024)).toBe(true);
+  });
+
+  it('toList int items are whole-string integers', () => {
+    expect(parse(toList({ itemType: 'int' }), '1, 2,3')).toEqual([1, 2, 3]);
+    expect(parse(toList({ itemType: 'int' }), '1,2px')).toBe('invalid');
+    expect(parse(toList({ itemType: 'int' }), '1.5')).toBe('invalid');
+  });
+
+  it('toEnum trims the attribute', () => {
+    expect(parse(toEnum(['sm', 'lg'] as const), ' lg ')).toBe('lg');
+  });
+});
+
+describe('toCssLength', () => {
+  const parse = (c: { fromAttribute?: (...a: never[]) => unknown }, raw: string): unknown => {
+    let isInvalid = false;
+    const value = (c.fromAttribute as (r: string | null, el: unknown, a: string, rep: () => void) => unknown)(raw, reader(), 'x', () => {
+      isInvalid = true;
+    });
+    return isInvalid ? 'invalid' : value;
+  };
+
+  it.each([
+    ['120', '120px'],
+    ['12px', '12px'],
+    ['2rem', '2rem'],
+    ['50%', '50%'],
+    ['0', '0px'],
+    ['calc(100% - 2rem)', 'calc(100% - 2rem)'],
+    ['var(--gap)', 'var(--gap)'],
+    ['12 px', 'invalid'],
+    ['wide', 'invalid'],
+    ['-4px', 'invalid'],
+    ['', 'invalid'],
+  ])('%j → %j', (raw, expected) => expect(parse(toCssLength(), raw)).toBe(expected));
+
+  it('keywords and negatives are opt-in', () => {
+    expect(parse(toCssLength({ keywords: ['auto', 'none'] }), 'Auto')).toBe('auto');
+    expect(parse(toCssLength({ allowNegative: true }), '-4px')).toBe('-4px');
+  });
+
+  it('the property path takes a length string, not a bare number', () => {
+    const c = toCssLength();
+    expect(c.validate!('20rem')).toBe(true);
+    expect(c.validate!(120)).toBe(false);
+    expect(c.validate!('20 rem')).toBe(false);
+  });
+
+  it('an absent attribute is the default', () => {
+    expect(toCssLength({ default: '10rem' }).fromAttribute!(null, reader(), 'x')).toBe('10rem');
   });
 });

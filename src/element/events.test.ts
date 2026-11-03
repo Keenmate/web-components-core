@@ -158,6 +158,23 @@ describe('managed on<Name> handler property', () => {
     expect(el.onSelect).toBeNull();
   });
 
+  // Review I-13.
+  it('assigning something that is not a function warns and keeps the handler', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const tag = freshTag();
+    class El extends BlissElement<{ select: undefined }> {
+      protected static override events = ['select'];
+    }
+    customElements.define(tag, El as unknown as CustomElementConstructor);
+    const el = document.createElement(tag) as unknown as El & { onSelect: unknown };
+    const handler = vi.fn();
+    el.onSelect = handler;
+    el.onSelect = 'doSomething()';
+    expect(el.onSelect).toBe(handler);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it('property:false exposes the event with no managed property', () => {
     const tag = freshTag();
     class El extends BlissElement<{ internal: undefined }> {

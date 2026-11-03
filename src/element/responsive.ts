@@ -18,7 +18,7 @@
  * bundled core copies via `Symbol.for`) and the pure layer merge; the element side
  * lives in `bliss-element.ts`.
  */
-import { sharedState } from '../global/shared-state.js';
+import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import type { DeviceClass, EnvironmentSnapshot } from '../environment/environment.js';
 import { coreLog } from '../logging/element-logger.js';
 
@@ -267,4 +267,6 @@ export function __resetResponsive(): void {
   const s = state();
   s.map = undefined;
   s.callback = undefined;
+  // The once-per-page warnings about the page-wide rules (BlissElement#warnResponsiveOnce).
+  sharedState(sharedStateKey('responsive-page-warnings'), () => new Set<string>()).clear();
 }

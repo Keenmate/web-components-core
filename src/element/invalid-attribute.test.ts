@@ -74,7 +74,7 @@ describe('invalid attribute values', () => {
     expect(el.size).toBe('sm');
     expect(warnings(warn)).toEqual([
       // No logging bundle registered for this tag → core's CORE bundle, tag kept in the instance part.
-      expect.stringMatching(/^\[CORE:ELEMENT\] invalid-element#\d+ rejected invalid value for attribute page-size="abc" \(not a number\); keeping previous value$/),
+      expect.stringMatching(/^\[CORE:ELEMENT\] invalid-element#\d+ rejected invalid value for attribute page-size="abc" \(expected an integer\); keeping previous value$/),
       expect.stringMatching(/^\[CORE:ELEMENT\] invalid-element#\d+ rejected invalid value for attribute size="huge" \(expected one of sm \| lg\); keeping previous value$/),
     ]);
   });
@@ -90,7 +90,7 @@ describe('invalid attribute values', () => {
     await el.whenSettled();
     expect(el.updates).toEqual([]);
     expect(warnings(warn)).toEqual([
-      expect.stringContaining('page-size="abc" (not a number)'),
+      expect.stringContaining('page-size="abc" (expected an integer)'),
       expect.stringContaining('page-size="0" (out of range 1..∞)'),
     ]);
   });

@@ -5,6 +5,7 @@ export type { AttrReader, Converter, InputDef, Reactivity } from './inputs/types
 export {
   toBool,
   toBytes,
+  toCssLength,
   toCustom,
   toEnum,
   toFloat,

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`toCssLength({ default?, allowNegative?, keywords? })`** — a converter for inputs that only end
+  up in a style or a CSS variable: `"12px"`, `"2rem"`, `"50%"`, `calc(…)`, `var(…)`, validated with
+  `CSS.supports` in the browser. A bare number attribute means pixels (`max-width="120"` →
+  `"120px"`). Inputs the component does arithmetic with stay `toInt` / `toFloat` (pixels).
+- `toBytes()` accepts single-letter and IEC units (`k`, `m`, `g`, `t`, `KiB`, `MiB`, …), still
+  binary (1024-based).
+- `isLogLevel(value)` — whether a value is a level `setLevel()` accepts.
+
 ### Fixed
 
 - **`dismissAllOverlays()` now reaches every component.** `ALL_GROUPS` was a plain `Symbol()`, so
@@ -97,6 +107,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `measure()` times a throwing function too.
 
 ### Changed
+
+- **Number attributes are parsed strictly.** The whole (trimmed) attribute must be the number:
+  `toInt` rejects `"12px"`, `"1.9"`, `"1e3"`, `"0x10"` and `"1,5"`, which used to become 12, 1, 1, 0
+  and 1 silently; `toFloat` rejects `"1.5em"`, `"1,5"` and `"Infinity"` (the property path already
+  did). A rejected value warns and keeps the previous one, like any invalid attribute.
+  `toList({ itemType: 'int' })` items and `toBytes()` follow the same rule (`"1.2.3mb"`, `"1.5b"`
+  and fractional byte properties are invalid). Pages with a unit on a pixel input
+  (`badge-height="24px"`) now see a warning naming the attribute — drop the unit.
+- `toEnum()` trims the attribute (`size=" lg "` is `lg`).
+- **Assigning a non-function to an `on<Name>` handler** (a string from a template, an object)
+  warns and keeps the previous handler; it used to clear it silently. `null` / `undefined` still
+  clear it.
+- `clearableConfigKeys` / `isClearableConverter()`: a converter with no `validate` (`toValue()`,
+  `toCustom()` without one) is clearable — its property path accepts `null`, so `null` can be in
+  `config` and must reach the engine.
+- **Responsive rules:** a rule that sets an input with a `getBatchValuesCallback` also sets the
+  inputs it implies (as an explicit write does), unless the rule names them itself; a rule can no
+  longer set the `disabled` input of a form-associated element (overrides never reflect, so it
+  could only half-disable it) — it warns and is skipped; a problem in the page-wide rules warns
+  once per page instead of once per element.
 
 - **`lockBodyScroll()` pins `<body>`** (`position: fixed` at minus the scroll offset, plus
   `overflow: hidden`) instead of only `overflow: hidden`, which iOS Safari ignores for touch

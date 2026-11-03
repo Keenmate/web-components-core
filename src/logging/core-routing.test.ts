@@ -76,7 +76,7 @@ describe('instance line format', () => {
     const args = warn.mock.calls[0]!;
     expect(args[0]).toBe(`%c[${ns}:INIT]%c #country`);
     expect(String(args[1])).toContain('color:');
-    expect(consoleLine(args)).toBe(`[${ns}:INIT] #country rejected invalid value for attribute page-size="abc" (not a number); keeping previous value`);
+    expect(consoleLine(args)).toBe(`[${ns}:INIT] #country rejected invalid value for attribute page-size="abc" (expected an integer); keeping previous value`);
     expect(args[4]).toBe(10); // the kept value stays a separate (inspectable) arg
   });
 
@@ -102,7 +102,7 @@ describe('instance line format', () => {
     const { tag, make } = defineComponent(); // like web-grid: no logging option
     make('main').setAttribute('page-size', 'abc');
     expect(consoleLines(warn)).toEqual([
-      `[CORE:ELEMENT] ${tag}#main rejected invalid value for attribute page-size="abc" (not a number); keeping previous value`,
+      `[CORE:ELEMENT] ${tag}#main rejected invalid value for attribute page-size="abc" (expected an integer); keeping previous value`,
     ]);
   });
 

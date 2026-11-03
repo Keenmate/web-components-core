@@ -65,6 +65,7 @@ import {
   type Motion,
 } from '../environment/motion.js';
 import { trackInstance, untrackInstance } from '../global/instances.js';
+import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { coreLog, getElementLoggers, setInstanceLogLevelSource } from '../logging/element-logger.js';
 import type { InstanceLogger, LogLevelDesc } from '../logging/create-loggers.js';
 import { dispatch, type DispatchOptions } from './dispatch.js';
@@ -1676,7 +1677,9 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
         get: () => this.#eventHandlers.get(eventName) ?? null,
         set: (handler: unknown) => {
           if (typeof handler === 'function') this.#eventHandlers.set(eventName, handler as (detail: unknown) => void);
-          else this.#eventHandlers.delete(eventName);
+          else if (handler == null) this.#eventHandlers.delete(eventName); // null / undefined clear it
+          // Anything else is a mistake (a string from a template, a misspelled object): keep the handler.
+          else this.#warn(`rejected ${prop}: expected a function or null; keeping the previous handler`, handler);
         },
       });
       if (pre.had) (this as Record<string, unknown>)[prop] = pre.value;
@@ -1812,9 +1815,15 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     return this.#base[key];
   }
 
-  /** Log a responsive problem once per element. */
+  /**
+   * Log a responsive problem once per element — or once per PAGE when it is about the
+   * page-wide rules (`window.components.responsive*`), which every element reads.
+   */
   #warnResponsiveOnce(message: string, ...detail: unknown[]): void {
-    const warned = (this.#responsiveWarned ??= new Set());
+    const isPageWide = message.startsWith('window.components.responsive');
+    const warned = isPageWide
+      ? sharedState(sharedStateKey('responsive-page-warnings'), () => new Set<string>())
+      : (this.#responsiveWarned ??= new Set());
     if (warned.has(message)) return;
     warned.add(message);
     this.#warn(message, ...detail);
@@ -1869,9 +1878,36 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
         this.#warnResponsiveOnce(`${label}: invalid value for "${key}" skipped`, value);
         continue;
       }
+      // The browser disables a form-associated host by its own `disabled` ATTRIBUTE, and
+      // responsive overrides never reflect — so an override could only half-disable it.
+      if (def.attribute === 'disabled' && (this.constructor as { formAssociated?: boolean }).formAssociated) {
+        this.#warnResponsiveOnce(`${label}: "${key}" can't be set by a responsive rule (disabling must reflect to the attribute); skipped`);
+        continue;
+      }
       out[key] = value;
+      // Same rule as an explicit write (SPEC §6.2): the input's batch values come along,
+      // at this layer, unless this rule names them itself.
+      if (def.getBatchValuesCallback) this.#mergeBatchValues(def, value, result as Record<string, unknown>, label, out);
     }
     return false;
+  }
+
+  /** {@link #mergeRule}: add the values `source`'s `getBatchValuesCallback` implies for `value`. */
+  #mergeBatchValues(source: InputDef, value: unknown, rule: Record<string, unknown>, label: string, out: Record<string, unknown>): void {
+    let implied: Record<string, unknown> | null | undefined;
+    try {
+      implied = source.getBatchValuesCallback!(value as never, this.#base);
+    } catch (err) {
+      this.#warnResponsiveOnce(`${label}: getBatchValuesCallback of "${source.configKey}" threw; no other inputs set`, err);
+      return;
+    }
+    if (!implied) return;
+    for (const [key, v] of Object.entries(implied)) {
+      if (key === source.configKey || rule[key] !== undefined) continue; // the rule's own value wins
+      const def = this.#byConfigKey.get(key);
+      if (!def || !resolveFromProperty(def, v)) continue;
+      out[key] = v;
+    }
   }
 
   /**

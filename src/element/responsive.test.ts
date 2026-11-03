@@ -575,6 +575,18 @@ describe('responsive rules — validation', () => {
     expect(text).toMatch(/reserved key "shouldDefer"/);
   });
 
+  // Review I-17.
+  it('a problem in the page-wide rules warns once per page, not once per element', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    window.components = window.components ?? {};
+    window.components.responsive = { desktop: { label: 'old' } } as never;
+    make();
+    make();
+    make();
+    const lines = warn.mock.calls.map((c) => c.join(' ')).filter((l) => l.includes('unknown top-level key'));
+    expect(lines).toHaveLength(1);
+  });
+
   it('unknown keys in the page-wide (global) rules are skipped silently', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     window.components = window.components ?? {};
@@ -691,5 +703,52 @@ describe('responsive rules — page registry', () => {
     const other = make(`<resp-other-element></resp-other-element>`);
     comps()[TAG].responsive = { device: { desktop: { label: 'mine' } } };
     expect(other.label).toBe('x');
+  });
+});
+
+// Review I-05 / I-15.
+describe('responsive rules — batch values and disabling', () => {
+  class Preset extends BlissElement {
+    static formAssociated = true;
+    protected static override inputs: readonly InputDef[] = [
+      {
+        configKey: 'mode',
+        attribute: 'mode',
+        converter: toEnum(['list', 'cards'] as const, { default: 'list' }),
+        default: 'list',
+        getBatchValuesCallback: (mode) => (mode === 'cards' ? { columns: 3, label: 'cards' } : { columns: 1, label: 'list' }),
+      },
+      { configKey: 'columns', attribute: 'columns', converter: toInt({ min: 1 }), default: 1 },
+      { configKey: 'label', attribute: 'label', converter: toText({ default: 'x' }), default: 'x' },
+      { configKey: 'isDisabled', attribute: 'disabled', converter: toBool('presence'), default: false, shouldReflect: true },
+    ];
+  }
+  define('resp-preset', Preset as unknown as CustomElementConstructor);
+  type P = Preset & { mode: string; columns: number; label: string; isDisabled: boolean };
+
+  it('a rule setting an input with getBatchValuesCallback sets the inputs it implies', () => {
+    const el = document.createElement('resp-preset') as unknown as P;
+    document.body.append(el as unknown as Node);
+    el.responsive = { device: { desktop: { mode: 'cards' } } };
+    expect(el.mode).toBe('cards');
+    expect(el.columns).toBe(3);
+    expect(el.label).toBe('cards');
+  });
+
+  it('a value the rule names itself beats the implied one', () => {
+    const el = document.createElement('resp-preset') as unknown as P;
+    document.body.append(el as unknown as Node);
+    el.responsive = { device: { desktop: { mode: 'cards', columns: 2 } } };
+    expect(el.columns).toBe(2);
+    expect(el.label).toBe('cards');
+  });
+
+  it('a rule cannot disable a form-associated element (disabling must reflect)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const el = document.createElement('resp-preset') as unknown as P;
+    document.body.append(el as unknown as Node);
+    el.responsive = { device: { desktop: { isDisabled: true } } };
+    expect(el.isDisabled).toBe(false);
+    expect(warn.mock.calls.map((c) => c.join(' ')).join(' ')).toMatch(/"isDisabled" can't be set by a responsive rule/);
   });
 });

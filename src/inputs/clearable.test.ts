@@ -57,7 +57,12 @@ describe('isClearableConverter', () => {
     // fromAttribute(null) returns undefined (not null), validate(null) is false.
     expect(isClearableConverter(toObject())).toBe(false);
     expect(isClearableConverter(toObjectArray())).toBe(false);
-    expect(isClearableConverter(toValue())).toBe(false);
+  });
+
+  // Review I-14: with no `validate`, the property path accepts `null`, so it can be in #config.
+  it('a converter with no validate (toValue(), toCustom()) accepts null, so it is clearable', () => {
+    expect(isClearableConverter(toValue())).toBe(true);
+    expect(isClearableConverter(toValue({ validate: (v): v is number => typeof v === 'number' }))).toBe(false);
   });
 
   it('returns false for a missing converter', () => {

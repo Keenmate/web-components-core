@@ -14,7 +14,9 @@
  *
  * - PROPERTY path — `validate(null) === true` means an assigned `null` is an
  *   accepted value: nullable `toText`, tristate `toBool`, `toFunction` (a
- *   cleared callback).
+ *   cleared callback). A converter WITHOUT `validate` accepts every value,
+ *   `null` included (`toValue()` / `toCustom()` with no `validate`), so it is
+ *   clearable too: an assigned `null` really is in `#config`.
  * - ATTRIBUTE path — `fromAttribute(null) === null` means an absent/removed
  *   attribute resolves to `null`: `toEnum({ shouldNullOnInvalid })` with no
  *   default, nullable `toText`. (`fromAttribute` is contractually called with
@@ -43,7 +45,7 @@ const ABSENT_READER: AttrReader = {
 export function isClearableConverter(converter?: Converter<unknown>, attribute?: string): boolean {
   if (!converter) return false;
   try {
-    if (converter.validate?.(null) === true) return true;
+    if (!converter.validate || converter.validate(null) === true) return true;
     if (converter.fromAttribute && converter.fromAttribute(null, ABSENT_READER, attribute ?? '') === null) return true;
   } catch {
     return false;

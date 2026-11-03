@@ -61,7 +61,8 @@ export function toEnum<const T extends readonly string[]>(
     values,
     fromAttribute(raw, _el, _attr, reportInvalid) {
       if (raw === null) return (opts.default ?? fallback) as T[number];
-      if (set.has(raw)) return raw as T[number];
+      const value = raw.trim();
+      if (set.has(value)) return value as T[number];
       reportInvalid?.(`expected one of ${values.join(' | ')}`);
       return fallback;
     },
@@ -73,14 +74,27 @@ export function toEnum<const T extends readonly string[]>(
   };
 }
 
-/** Parse a base-10 integer with optional range check; `NaN` / out-of-range → `default`. */
+/** A whole-string base-10 integer (surrounding whitespace allowed). */
+const INTEGER = /^[+-]?\d+$/;
+/** A whole-string decimal number, optional exponent (`1.5`, `.5`, `-2e3`); no `Infinity`, hex or `1,5`. */
+const DECIMAL = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
+
+/**
+ * Parse a base-10 integer with optional range check. The WHOLE attribute must be the
+ * number: `"12px"`, `"1.9"`, `"1e3"` and `"0x10"` are invalid (warn, keep the previous
+ * value) instead of quietly becoming 12, 1, 1 and 0. Values with a CSS unit belong in
+ * {@link toCssLength}.
+ */
 export function toInt(opts: { min?: number; max?: number; default?: number } = {}): Converter<number> {
-  return toNumber((raw) => Number.parseInt(raw, 10), Number.isInteger, opts);
+  return toNumber((raw) => (INTEGER.test(raw) ? Number(raw) : Number.NaN), Number.isInteger, opts, 'an integer');
 }
 
-/** Parse a floating-point number with optional range check; `NaN` / out-of-range → `default`. */
+/**
+ * Parse a finite floating-point number with optional range check. The whole attribute
+ * must be the number (`"1.5"`, `"-2e3"`); `"1.5em"`, `"1,5"` and `"Infinity"` are invalid.
+ */
 export function toFloat(opts: { min?: number; max?: number; default?: number } = {}): Converter<number> {
-  return toNumber(Number.parseFloat, Number.isFinite, opts);
+  return toNumber((raw) => (DECIMAL.test(raw) ? Number(raw) : Number.NaN), Number.isFinite, opts, 'a number');
 }
 
 /** {@link toInt} / {@link toFloat}: the same range + fallback rules over a different parser and type check. */
@@ -88,6 +102,7 @@ function toNumber(
   parse: (raw: string) => number,
   isNumber: (n: number) => boolean,
   opts: { min?: number; max?: number; default?: number },
+  expected: string,
 ): Converter<number> {
   const inRange = (n: number): boolean =>
     (opts.min == null || n >= opts.min) && (opts.max == null || n <= opts.max);
@@ -95,9 +110,9 @@ function toNumber(
   return {
     fromAttribute(raw, _el, _attr, reportInvalid) {
       if (raw === null) return fallback;
-      const n = parse(raw);
-      if (Number.isNaN(n)) {
-        reportInvalid?.('not a number');
+      const n = parse(raw.trim());
+      if (Number.isNaN(n) || !isNumber(n)) {
+        reportInvalid?.(`expected ${expected}`);
         return fallback;
       }
       if (!inRange(n)) {
@@ -195,34 +210,119 @@ export function toBool(mode: BoolMode): Converter<boolean | null> {
   };
 }
 
+/** Binary (1024-based) multipliers — the same units file sizes are displayed in. */
 const BYTE_UNITS: Record<string, number> = {
   b: 1,
+  k: 1024,
   kb: 1024,
+  kib: 1024,
+  m: 1024 ** 2,
   mb: 1024 ** 2,
+  mib: 1024 ** 2,
+  g: 1024 ** 3,
   gb: 1024 ** 3,
+  gib: 1024 ** 3,
+  t: 1024 ** 4,
   tb: 1024 ** 4,
+  tib: 1024 ** 4,
 };
 
-/** Parse a human byte size (`"10mb"` → `10485760`); unrecognized → `default`. */
+/**
+ * Parse a human byte size: a number plus an optional case-insensitive unit, binary
+ * (1024-based): `"10mb"`, `"300 kB"`, `"1.5G"`, `"5MiB"`, `"1024"` (bytes). `5MB` is always
+ * 5 × 1024 × 1024. A malformed number (`"1.2.3mb"`) or a fractional byte count is invalid.
+ */
 export function toBytes(opts: { default?: number } = {}): Converter<number> {
   const fallback = opts.default as number;
   const parse = (raw: string): number | null => {
-    const m = /^\s*([\d.]+)\s*(b|kb|mb|gb|tb)?\s*$/i.exec(raw);
+    const m = /^\s*(\d+(?:\.\d+)?|\.\d+)\s*([a-z]+)?\s*$/i.exec(raw);
     if (!m) return null;
-    const n = Number.parseFloat(m[1]!);
-    if (Number.isNaN(n)) return null;
-    return Math.round(n * BYTE_UNITS[(m[2] ?? 'b').toLowerCase()]!);
+    const multiplier = BYTE_UNITS[(m[2] ?? 'b').toLowerCase()];
+    if (multiplier === undefined) return null;
+    const bytes = Number(m[1]) * multiplier;
+    if (multiplier === 1 && !Number.isInteger(bytes)) return null; // "1.5b"
+    return Math.round(bytes);
   };
   return {
     fromAttribute(raw, _el, _attr, reportInvalid) {
       if (raw === null) return fallback;
       const bytes = parse(raw);
       if (bytes !== null) return bytes;
-      reportInvalid?.('expected a size like "10mb"');
+      reportInvalid?.('expected a size like "10mb" or "300 kB"');
       return fallback;
     },
     validate(value): value is number {
-      return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+      return typeof value === 'number' && Number.isInteger(value) && value >= 0;
+    },
+    toAttribute: scalarToAttribute,
+  };
+}
+
+/** CSS length units the offline check (no `CSS.supports`: SSR, jsdom) accepts. */
+const CSS_LENGTH_UNITS =
+  'px|em|rem|ex|rex|ch|rch|ic|ric|cap|rcap|lh|rlh|%|vw|vh|vi|vb|vmin|vmax|svw|svh|lvw|lvh|dvw|dvh|svi|svb|lvi|lvb|dvi|dvb|svmin|svmax|lvmin|lvmax|dvmin|dvmax|cqw|cqh|cqi|cqb|cqmin|cqmax|cm|mm|q|in|pt|pc';
+const CSS_LENGTH = new RegExp(String.raw`^[+-]?(?:\d+\.?\d*|\.\d+)(?:${CSS_LENGTH_UNITS})$`, 'i');
+const CSS_MATH = /^(?:calc|min|max|clamp|var|env)\(.*\)$/i;
+
+/**
+ * `CSS.supports`, when it actually works: some environments (jsdom) ship a stub that
+ * answers `false` for everything, so it must recognise `1px` before it is trusted.
+ */
+function cssSupports(): ((property: string, value: string) => boolean) | null {
+  if (typeof CSS === 'undefined' || typeof CSS.supports !== 'function') return null;
+  try {
+    return CSS.supports('width', '1px') ? CSS.supports.bind(CSS) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Whether `value` is a CSS length (`"12px"`, `"2rem"`, `"50%"`, `"0"`, `calc(…)`, `var(…)`). */
+function isCssLength(value: string, allowNegative: boolean): boolean {
+  const v = value.trim();
+  if (v === '') return false;
+  if (!allowNegative && v.startsWith('-')) return false;
+  if (v === '0' || v === '+0' || v === '-0') return true;
+  const supports = cssSupports();
+  // `width` takes every length / percentage / math function; keywords (`auto`) are handled by the caller.
+  if (supports) return supports('width', v) && !/^[a-z-]+$/i.test(v);
+  return CSS_LENGTH.test(v) || CSS_MATH.test(v);
+}
+
+/**
+ * A CSS length for inputs that only end up in a style or a CSS variable (a max width,
+ * a gap): `"12px"`, `"2rem"`, `"50%"`, `calc(100% - 2rem)`, `var(--x)`. A bare number
+ * attribute means pixels (`max-width="120"` → `"120px"`). Validated with
+ * `CSS.supports('width', …)` in the browser, a unit check elsewhere. `keywords` lists
+ * extra accepted words (`['auto', 'none']`); negatives need `allowNegative`.
+ *
+ * Inputs the component does arithmetic with (row heights, offsets for positioning)
+ * stay {@link toInt} — a `"2rem"` can't be added to a pixel count.
+ *
+ * Property path: a valid length string (`el.maxWidth = '20rem'`). A bare number is not
+ * a length there — assign `'120px'`.
+ */
+export function toCssLength(
+  opts: { default?: string; allowNegative?: boolean; keywords?: readonly string[] } = {},
+): Converter<string> {
+  const fallback = opts.default as string;
+  const keywords = new Set((opts.keywords ?? []).map((k) => k.toLowerCase()));
+  const allowNegative = opts.allowNegative === true;
+  const isValid = (v: string): boolean => keywords.has(v.trim().toLowerCase()) || isCssLength(v, allowNegative);
+  return {
+    fromAttribute(raw, _el, _attr, reportInvalid) {
+      if (raw === null) return fallback;
+      const v = raw.trim();
+      if (DECIMAL.test(v) && !/[eE]/.test(v)) {
+        const n = Number(v);
+        if (allowNegative || n >= 0) return `${n}px`;
+      }
+      if (isValid(v)) return keywords.has(v.toLowerCase()) ? v.toLowerCase() : v;
+      reportInvalid?.(`expected a CSS length like "12px", "2rem" or "50%"${keywords.size ? ` or ${[...keywords].join(' | ')}` : ''}`);
+      return fallback;
+    },
+    validate(value): value is string {
+      return typeof value === 'string' && isValid(value);
     },
     toAttribute: scalarToAttribute,
   };
@@ -248,7 +348,7 @@ export function toList<E extends string | number = string>(opts: {
     const parts = raw.split(separator).map((p) => (opts.shouldTrim === false ? p : p.trim()));
     let items: (string | number)[] = parts;
     if (itemType === 'int') {
-      items = parts.map((p) => Number.parseInt(p, 10));
+      items = parts.map((p) => (INTEGER.test(p.trim()) ? Number(p) : Number.NaN));
       if (items.some((n) => Number.isNaN(n as number))) return null;
     }
     if (opts.requiredCount != null && items.length !== opts.requiredCount) return null;
