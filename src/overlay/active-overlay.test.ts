@@ -179,4 +179,15 @@ describe('active-overlay coordination', () => {
     ha.activate();
     expect(order).toEqual(['b', 'c']);
   });
+
+  it('dismissAllOverlays() from another copy of core reaches this copy (Symbol.for)', async () => {
+    const a = vi.fn();
+    registerOverlay(a, 'A');
+    vi.resetModules();
+    const other = await import('./active-overlay.js'); // a second module instance = another bundle
+    expect(other.dismissAllOverlays).not.toBe(dismissAllOverlays);
+    other.dismissAllOverlays();
+    expect(a).toHaveBeenCalledTimes(1);
+    other.__resetOverlays();
+  });
 });

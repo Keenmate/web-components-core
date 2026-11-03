@@ -120,7 +120,7 @@ export type { Motion } from './environment/motion.js';
 // owns the (per-component overridable) class→presentation policy.
 export { resolvePresentation, DEFAULT_PRESENTATION_MAP, createPresentationContext } from './overlay/presentation.js';
 export type { Presentation, ResolvedPresentation, PresentationMap, PresentationContext } from './overlay/presentation.js';
-export { lockBodyScroll } from './overlay/scroll-lock.js';
+export { lockBodyScroll, type ScrollLockState } from './overlay/scroll-lock.js';
 export { observeKeyboardInset } from './overlay/keyboard-inset.js';
 // Cross-component "one overlay open at a time" coordination (framework-agnostic via a
 // `km-overlay-activate` document event; external code can trigger + observe it too).

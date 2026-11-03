@@ -38,8 +38,12 @@
 /** The single coordination event. `detail` is an {@link OverlayActivateDetail}. */
 export const OVERLAY_ACTIVATE_EVENT = 'km-overlay-activate';
 
-/** Wildcard group: an activation carrying it dismisses overlays in *every* group. */
-export const ALL_GROUPS = Symbol('km-overlay-all-groups');
+/**
+ * Wildcard group: an activation carrying it dismisses overlays in *every* group. A
+ * registry symbol (`Symbol.for`), so every bundled copy of core — and outside code —
+ * holds the same value: `dismissAllOverlays()` from one component reaches all of them.
+ */
+export const ALL_GROUPS: unique symbol = Symbol.for('km-overlay-all-groups');
 
 /** Detail payload of {@link OVERLAY_ACTIVATE_EVENT}. */
 export interface OverlayActivateDetail {

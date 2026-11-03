@@ -222,6 +222,16 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | Component nested in another's shadow root | ✓ | `motion.spec.ts` | `motion.html` |
 | OS reduced motion beats motion="smooth" | ✓ | `motion.spec.ts` | `motion.html` |
 
+## 13d. Body scroll lock (`lockBodyScroll`)
+
+| Feature | Status | Spec | Fixture |
+| ------- | :----: | ---- | ------- |
+| Pinned page keeps its position and doesn't scroll (wheel) | ✓ | `scroll-lock.spec.ts` | `scroll-lock.html` |
+| Release unpins and restores the scroll position | ✓ | `scroll-lock.spec.ts` | `scroll-lock.html` |
+| A lock held by another copy of core keeps the page pinned | ✓ | `scroll-lock.spec.ts` | `scroll-lock.html` |
+| The jump back is instant under `scroll-behavior: smooth` | unit | `scroll-lock.test.ts` | Chromium reports a smooth scroll's destination immediately |
+| iOS Safari touch scrolling blocked | ✗ | — | needs a real iOS device |
+
 ## 14. Example site (smoke only)
 
 | Feature | Status | Spec | Fixture |

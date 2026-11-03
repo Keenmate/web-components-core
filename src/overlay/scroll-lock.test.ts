@@ -1,57 +1,84 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { lockBodyScroll, __resetScrollLock } from './scroll-lock.js';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { lockBodyScroll, __resetScrollLock, type ScrollLockState } from './scroll-lock.js';
+
+const STATE_KEY = Symbol.for('km-scroll-lock');
+const shared = () => (globalThis as unknown as Record<symbol, ScrollLockState>)[STATE_KEY]!;
 
 describe('lockBodyScroll', () => {
+  // jsdom has no scrolling; it logs "not implemented" for scrollTo.
+  beforeEach(() => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+  });
   afterEach(() => {
     __resetScrollLock();
-    document.body.style.overflow = '';
+    document.body.removeAttribute('style');
+    vi.restoreAllMocks();
   });
 
-  it('sets body overflow hidden and restores the prior value on release', () => {
+  it('pins the body at minus the scroll offset and restores everything on release', () => {
+    Object.defineProperty(window, 'scrollY', { value: 300, configurable: true });
     document.body.style.overflow = 'auto';
     const release = lockBodyScroll();
+    expect(document.body.style.position).toBe('fixed');
+    expect(document.body.style.top).toBe('-300px');
+    expect(document.body.style.width).toBe('100%');
     expect(document.body.style.overflow).toBe('hidden');
     release();
+    expect(document.body.style.position).toBe('');
+    expect(document.body.style.top).toBe('');
     expect(document.body.style.overflow).toBe('auto');
+    expect(window.scrollTo).toHaveBeenCalledWith({ left: 0, top: 300, behavior: 'instant' });
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
   });
 
-  it('restores an initially-empty overflow', () => {
-    document.body.style.overflow = '';
+  it('restores the body’s own inline position', () => {
+    document.body.style.position = 'relative';
     const release = lockBodyScroll();
-    expect(document.body.style.overflow).toBe('hidden');
+    expect(document.body.style.position).toBe('fixed');
     release();
-    expect(document.body.style.overflow).toBe('');
+    expect(document.body.style.position).toBe('relative');
   });
 
   it('ref-counts: stays locked until the last release', () => {
-    document.body.style.overflow = 'scroll';
     const a = lockBodyScroll();
     const b = lockBodyScroll();
-    expect(document.body.style.overflow).toBe('hidden');
     a();
-    expect(document.body.style.overflow).toBe('hidden'); // b still holds
+    expect(document.body.style.position).toBe('fixed'); // b still holds
     b();
-    expect(document.body.style.overflow).toBe('scroll');
+    expect(document.body.style.position).toBe('');
   });
 
   it('release is idempotent — a double-release cannot unbalance the count', () => {
-    document.body.style.overflow = 'auto';
     const a = lockBodyScroll();
     const b = lockBodyScroll();
     a();
     a(); // second call is a no-op, must NOT drop b's hold
-    expect(document.body.style.overflow).toBe('hidden');
+    expect(document.body.style.position).toBe('fixed');
+    b();
+    expect(document.body.style.position).toBe('');
+  });
+
+  it('captures the styles present at the FIRST lock, not at a nested one', () => {
+    document.body.style.overflow = 'auto';
+    const a = lockBodyScroll();
+    const b = lockBodyScroll();
+    a();
     b();
     expect(document.body.style.overflow).toBe('auto');
   });
 
-  it('captures the value present at the FIRST lock, not at a nested one', () => {
+  it('shares one count across copies of core (globalThis, Symbol.for)', async () => {
+    vi.resetModules();
+    const other = await import('./scroll-lock.js'); // a second module instance = another bundle
+    expect(other.lockBodyScroll).not.toBe(lockBodyScroll);
     document.body.style.overflow = 'auto';
     const a = lockBodyScroll();
-    document.body.style.overflow = 'hidden'; // some other write while locked
-    const b = lockBodyScroll();
+    const b = other.lockBodyScroll();
+    expect(shared().count).toBe(2);
     a();
+    expect(document.body.style.position).toBe('fixed'); // the other copy still holds it
     b();
+    expect(document.body.style.position).toBe('');
     expect(document.body.style.overflow).toBe('auto');
   });
 });
