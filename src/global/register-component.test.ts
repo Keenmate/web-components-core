@@ -178,3 +178,51 @@ describe('live-instance registry', () => {
     expect(getInstances(tag)).toEqual([el]);
   });
 });
+
+// Review V-02 / V-03 / L-11: every component bundles its own copy of core.
+describe('two copies of core on one page', () => {
+  it('getInstances() / getRegisteredTags() from another copy see this copy’s elements', async () => {
+    const tag = freshTag();
+    class El extends BlissElement {}
+    registerComponent(tag, El as unknown as CustomElementConstructor, { config: { name: 'x', version: '1' } });
+    const el = document.createElement(tag);
+    document.body.append(el);
+    vi.resetModules();
+    const other = await import('./instances.js'); // a second module instance = another bundle
+    expect(other.getInstances).not.toBe(getInstances);
+    expect(other.getInstances(tag)).toEqual([el]);
+    expect(other.getRegisteredTags()).toContain(tag);
+  });
+
+  it('a second copy registering an already-defined tag keeps the first entry and warns', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const tag = freshTag();
+    class First extends BlissElement {}
+    const logging = createLoggers(`TWICE${seq}`);
+    const first = registerComponent(tag, First as unknown as CustomElementConstructor, { config: { name: 'x', version: '2.0.0' }, logging });
+    const el = document.createElement(tag);
+    document.body.append(el);
+
+    vi.resetModules();
+    const otherCore = await import('./register-component.js');
+    const otherBase = await import('../element/bliss-element.js');
+    class Second extends otherBase.BlissElement {}
+    const second = otherCore.registerComponent(tag, Second as unknown as CustomElementConstructor, { config: { name: 'x', version: '1.9.0' } });
+
+    expect(second).toBe(first);
+    expect(window.components![tag]).toBe(first);
+    expect(first.version()).toBe('2.0.0');
+    expect(first.logging).toBeDefined();
+    expect(first.getInstances()).toEqual([el]);
+    expect(warn.mock.calls.some((args) => args.some((x) => String(x).includes('a second copy (version 1.9.0) was ignored')))).toBe(true);
+    warn.mockRestore();
+  });
+
+  it('registering the SAME class again still updates the entry (HMR / re-import)', () => {
+    const tag = freshTag();
+    class El extends BlissElement {}
+    registerComponent(tag, El as unknown as CustomElementConstructor, { config: { name: 'x', version: '1' } });
+    const again = registerComponent(tag, El as unknown as CustomElementConstructor, { config: { name: 'x', version: '1.0.1' } });
+    expect(again.version()).toBe('1.0.1');
+  });
+});

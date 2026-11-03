@@ -16,6 +16,8 @@
  * them in sync.
  */
 
+import { sharedState } from '../global/shared-state.js';
+import { publishPageSetting } from '../global/page-setting.js';
 import { adoptStyles } from '../dom/adopt-styles.js';
 import { notifyEach } from '../logging/safe-call.js';
 
@@ -69,12 +71,11 @@ interface MotionState {
 }
 
 /** On globalThis because each component bundles its own core copy (like logging / the loader hook). */
-const STATE_KEY = Symbol.for('@keenmate/web-components-core:motion');
+const STATE_KEY = '@keenmate/web-components-core:motion';
 const HOOK_KEY = 'motion';
 
 function state(): MotionState {
-  const g = globalThis as unknown as Record<symbol, MotionState | undefined>;
-  return (g[STATE_KEY] ??= { level: 'auto', listeners: new Set() });
+  return sharedState(STATE_KEY, () => ({ level: 'auto', listeners: new Set() }));
 }
 
 function setLevel(value: unknown): void {
@@ -93,17 +94,7 @@ function setLevel(value: unknown): void {
  * Idempotent; SSR-safe.
  */
 export function publishMotionHook(): void {
-  if (typeof window === 'undefined') return;
-  const components = (window.components ??= {}) as object;
-  const existing = Object.getOwnPropertyDescriptor(components, HOOK_KEY);
-  if (existing && existing.get) return;
-  if (existing) setLevel(existing.value);
-  Object.defineProperty(components, HOOK_KEY, {
-    enumerable: false,
-    configurable: true,
-    get: () => state().level,
-    set: setLevel,
-  });
+  publishPageSetting(HOOK_KEY, { get: () => state().level, set: setLevel });
 }
 
 /** The page-wide level (`'auto'` when unset). */

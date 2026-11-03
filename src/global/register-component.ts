@@ -14,6 +14,7 @@
  * ```
  */
 import { define } from '../element/define.js';
+import { coreLog } from '../logging/element-logger.js';
 import type { LoggerBundle, LogLevelDesc } from '../logging/create-loggers.js';
 import { attachLoggerBundle } from '../logging/logger-registry.js';
 import { publishGlobalLogging, type GlobalLoggingControls } from '../logging/global-logging.js';
@@ -105,6 +106,23 @@ declare global {
   }
 }
 
+/** The existing `window.components[tagName]` entry when the tag is defined by a different class. */
+function registeredByAnotherClass(tagName: string, elementClass: CustomElementConstructor): RegisteredComponent | undefined {
+  if (typeof window === 'undefined' || typeof customElements === 'undefined') return undefined;
+  const defined = customElements.get(tagName);
+  if (!defined || defined === elementClass) return undefined;
+  const existing = window.components?.[tagName];
+  return existing && typeof existing.register === 'function' ? existing : undefined;
+}
+
+function safeVersion(entry: RegisteredComponent): string {
+  try {
+    return entry.version();
+  } catch {
+    return 'unknown';
+  }
+}
+
 function flattenLogging(bundle: LoggerBundle<string>): ComponentLoggingControls {
   return {
     enableLogging: (level) => bundle.enableLogging(level),
@@ -127,6 +145,17 @@ export function registerComponent<T extends HTMLElement = HTMLElement>(
   options: RegisterComponentOptions,
 ): RegisteredComponent<T> {
   const { config, logging, shouldAutoDefine = true } = options;
+  // The tag is already defined by ANOTHER class with a full registry entry: the page loads
+  // the component twice (two bundles, or two versions). The browser keeps the first
+  // definition, so the entry must keep describing it — replacing it would report this
+  // copy's version and lose the live instances / logging of the elements actually on the page.
+  const taken = registeredByAnotherClass(tagName, elementClass);
+  if (taken) {
+    coreLog(null, 'INIT', 'ELEMENT').warn(
+      `<${tagName}> is already registered (version ${safeVersion(taken)}); a second copy (version ${config.version}) was ignored — the page loads this component twice`,
+    );
+    return taken as RegisteredComponent<T>;
+  }
   // Make the bundle discoverable by tag so BlissElement can build per-instance
   // loggers (this.log) for elements of this tag (SPEC §12.3).
   if (logging) attachLoggerBundle(tagName, logging);

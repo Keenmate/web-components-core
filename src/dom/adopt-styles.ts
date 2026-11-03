@@ -19,62 +19,109 @@
  * is your business.
  */
 
-/** Shared cache: one constructable sheet per unique CSS string, reused across roots/instances. */
-const sheetCache = new Map<string, CSSStyleSheet>();
-/** Per-root record of which strings have already been adopted (dedup across both paths). */
-const adoptedByRoot = new WeakMap<object, Set<string>>();
-/** Memoized result of the constructable-stylesheet feature probe. */
-let constructableOk: boolean | undefined;
+import { sharedState, sharedStateKey } from '../global/shared-state.js';
 
-function supportsConstructable(root: DocumentOrShadowRoot): boolean {
-  if (typeof CSSStyleSheet === 'undefined' || !('adoptedStyleSheets' in root)) return false;
-  if (constructableOk === undefined) {
+/**
+ * Page-wide (every copy of core shares it — see `shared-state.ts`): one constructable
+ * sheet per unique CSS string PER DOCUMENT, and the fallback `<style>` element per root.
+ * Per document because a `CSSStyleSheet` can only be adopted into the document whose
+ * window constructed it (an iframe needs its own). Shared so a sheet another copy of
+ * core already adopted is recognised by identity instead of adopted a second time.
+ */
+interface AdoptedStylesState {
+  sheets: WeakMap<Document, Map<string, CSSStyleSheet>>;
+  styleElements: WeakMap<object, Map<string, HTMLStyleElement>>;
+  /** Constructable-stylesheet support, probed once per window. */
+  isConstructableByWindow: WeakMap<object, boolean>;
+}
+
+const state = (): AdoptedStylesState =>
+  sharedState(sharedStateKey('adopted-styles@1'), () => ({
+    sheets: new WeakMap(),
+    styleElements: new WeakMap(),
+    isConstructableByWindow: new WeakMap(),
+  }));
+
+function documentOf(root: DocumentOrShadowRoot): Document {
+  return ((root as unknown as Node).ownerDocument ?? (root as Document)) as Document;
+}
+
+/** The window's `CSSStyleSheet` constructor, when that window can construct + adopt sheets. */
+function sheetConstructor(root: DocumentOrShadowRoot): typeof CSSStyleSheet | null {
+  if (!('adoptedStyleSheets' in root)) return null;
+  const view = documentOf(root).defaultView as (Window & { CSSStyleSheet?: typeof CSSStyleSheet }) | null;
+  const Ctor = view?.CSSStyleSheet ?? (typeof CSSStyleSheet === 'undefined' ? undefined : CSSStyleSheet);
+  if (!Ctor) return null;
+  const probes = state().isConstructableByWindow;
+  const key = (view ?? globalThis) as object;
+  let isConstructable = probes.get(key);
+  if (isConstructable === undefined) {
     try {
-      new CSSStyleSheet().replaceSync('');
-      constructableOk = true;
+      new Ctor().replaceSync('');
+      isConstructable = true;
     } catch {
-      constructableOk = false;
+      isConstructable = false;
     }
+    probes.set(key, isConstructable);
   }
-  return constructableOk;
+  return isConstructable ? Ctor : null;
 }
 
 /**
  * Adopt one or more static stylesheets into `root` (a shadow root or document),
- * sharing one cached `CSSStyleSheet` per unique string across every instance.
- * Idempotent per root — re-adopting the same string is a no-op. No-op during SSR
- * (`document` absent).
+ * sharing one cached `CSSStyleSheet` per unique string across every instance (and
+ * every copy of core). Idempotent per root — a string whose sheet the root already
+ * has is skipped; one that was dropped meanwhile (the root's `adoptedStyleSheets`
+ * reassigned, the fallback `<style>` removed by a re-render) is adopted again.
+ * No-op during SSR (`document` absent).
  */
 export function adoptStyles(root: DocumentOrShadowRoot, ...cssStrings: string[]): void {
   if (typeof document === 'undefined') return;
+  const strings = [...new Set(cssStrings.filter(Boolean))];
+  if (strings.length === 0) return;
 
-  let seen = adoptedByRoot.get(root);
-  if (!seen) adoptedByRoot.set(root, (seen = new Set<string>()));
-  const fresh = cssStrings.filter((css) => css && !seen!.has(css));
-  if (fresh.length === 0) return;
-  for (const css of fresh) seen.add(css);
-
-  if (supportsConstructable(root)) {
-    const sheets = fresh.map((css) => {
-      let sheet = sheetCache.get(css);
+  const Ctor = sheetConstructor(root);
+  if (Ctor) {
+    const doc = documentOf(root);
+    const byDocument = state().sheets;
+    let cache = byDocument.get(doc);
+    if (!cache) byDocument.set(doc, (cache = new Map()));
+    const current = root.adoptedStyleSheets;
+    const missing: CSSStyleSheet[] = [];
+    for (const css of strings) {
+      let sheet = cache.get(css);
       if (!sheet) {
-        sheet = new CSSStyleSheet();
+        sheet = new Ctor();
         sheet.replaceSync(css);
-        sheetCache.set(css, sheet);
+        cache.set(css, sheet);
       }
-      return sheet;
-    });
-    root.adoptedStyleSheets = [...root.adoptedStyleSheets, ...sheets];
+      if (!current.includes(sheet)) missing.push(sheet);
+    }
+    if (missing.length > 0) root.adoptedStyleSheets = [...current, ...missing];
     return;
   }
 
-  // Fallback: append a <style> per string.
+  // Fallback: one <style> per string, re-added if it was removed from the root.
+  const byRoot = state().styleElements;
+  let elements = byRoot.get(root);
+  if (!elements) byRoot.set(root, (elements = new Map()));
   const target: Node = (root as Document).head ?? (root as unknown as Node);
-  for (const css of fresh) {
-    const style = document.createElement('style');
+  for (const css of strings) {
+    const existing = elements.get(css);
+    if (existing && existing.parentNode && (root as unknown as Node).contains(existing)) continue;
+    const style = documentOf(root).createElement('style');
     style.textContent = css;
     target.appendChild(style);
+    elements.set(css, style);
   }
+}
+
+/** @internal Test hook: forget the cached sheets, fallback elements and feature probes. */
+export function __resetAdoptedStyles(): void {
+  const s = state();
+  s.sheets = new WeakMap();
+  s.styleElements = new WeakMap();
+  s.isConstructableByWindow = new WeakMap();
 }
 
 /** A single replaceable `<style>` slot (see {@link createStyleSlot}). */

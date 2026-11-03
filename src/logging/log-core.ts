@@ -22,6 +22,8 @@
  * {@link setLogPersistKeyPrefix}).
  */
 
+import { sharedState, sharedStateKey } from '../global/shared-state.js';
+
 /** Level names, most→least verbose. */
 export type LogLevelName = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent';
 /** A level given as a name (either case) or its numeric rank (0..5). */
@@ -78,21 +80,53 @@ const noop: LogFn = () => {};
 
 // ── persistence key ──────────────────────────────────────────────────────────
 
-let persistKeyPrefix = 'km-log';
+/**
+ * The prefix is page-wide (every copy of core reads the same one), and each copy
+ * enlists a reload so loggers created before a prefix change pick up the levels
+ * stored under the new prefix.
+ */
+interface PersistPrefixState {
+    prefix: string;
+    reloads: Set<() => void>;
+}
+
+const persistState = (): PersistPrefixState =>
+    sharedState(sharedStateKey('log-persist-prefix'), () => ({ prefix: 'km-log', reloads: new Set<() => void>() }));
 
 /**
  * Configure the localStorage key prefix used to persist per-logger levels.
  * Keys are `${prefix}:${loggerName}` (e.g. `km-log:DROPZONE:UI`). Default is
  * `km-log` — namespaced and unambiguous, unlike loglevel's bare `loglevel` key.
- * Call before levels are persisted (typically at app startup) to take effect.
+ * Page-wide: it applies to every component (every copy of core), and loggers that
+ * already exist re-read their level from the new key.
  */
 export function setLogPersistKeyPrefix(prefix: string): void {
-    persistKeyPrefix = prefix;
+    const state = persistState();
+    if (state.prefix === prefix) return;
+    state.prefix = prefix;
+    for (const reload of [...state.reloads]) {
+        try {
+            reload();
+        } catch {
+            // One copy's loggers failing to reload must not stop the others.
+        }
+    }
 }
 
 /** Current localStorage key prefix (see {@link setLogPersistKeyPrefix}). */
 export function getLogPersistKeyPrefix(): string {
-    return persistKeyPrefix;
+    return persistState().prefix;
+}
+
+let isReloadEnlisted = false;
+
+/** Enlist this copy's loggers for prefix changes (once, on the first logger). */
+function enlistReload(): void {
+    if (isReloadEnlisted) return;
+    isReloadEnlisted = true;
+    persistState().reloads.add(() => {
+        for (const name in byName) (byName[name] as LoggerImpl).reloadPersisted();
+    });
 }
 
 // ── console binding (line-number-preserving) ─────────────────────────────────
@@ -176,7 +210,7 @@ class LoggerImpl implements CoreLogger {
     }
 
     private storageKey(): string | undefined {
-        return typeof this.name === 'string' ? `${persistKeyPrefix}:${this.name}` : undefined;
+        return typeof this.name === 'string' ? `${persistState().prefix}:${this.name}` : undefined;
     }
 
     /** Run `fn` against localStorage under this logger's key — best-effort: skipped without a window/name, errors swallowed. */
@@ -202,6 +236,14 @@ class LoggerImpl implements CoreLogger {
             return undefined;
         }
         return stored;
+    }
+
+    /** The persist prefix changed: adopt a level stored under the new key, if there is one. */
+    reloadPersisted(): void {
+        const persisted = this.getPersistedLevel();
+        if (persisted == null) return;
+        this.userLevel = normalizeLevel(persisted as LogLevelDesc);
+        this.replaceLoggingMethods();
     }
 
     private clearPersisted(): void {
@@ -271,6 +313,7 @@ export function getLogger(name: string): CoreLogger {
     }
     let logger = byName[name];
     if (!logger) {
+        enlistReload();
         logger = byName[name] = new LoggerImpl(name, root!.methodFactory);
     }
     return logger;

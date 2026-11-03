@@ -16,6 +16,7 @@
  * SSR-safe: with no `document` (or no `<body>` yet) it's a no-op returning a no-op release.
  */
 
+import { sharedState } from '../global/shared-state.js';
 import { once } from '../dom/once.js';
 
 /** The body inline styles the lock writes (and restores). */
@@ -38,11 +39,10 @@ export interface ScrollLockState {
   } | null;
 }
 
-const STATE_KEY = Symbol.for('km-scroll-lock');
+const STATE_KEY = 'km-scroll-lock';
 
 function state(): ScrollLockState {
-  const g = globalThis as unknown as Record<symbol, ScrollLockState | undefined>;
-  return (g[STATE_KEY] ??= { count: 0, saved: null });
+  return sharedState(STATE_KEY, () => ({ count: 0, saved: null }));
 }
 
 function pin(body: HTMLElement): void {

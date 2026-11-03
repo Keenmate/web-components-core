@@ -7,11 +7,16 @@
  * event assertions that every component test otherwise re-implements.
  */
 
+import { sharedState, sharedStateKey } from '../global/shared-state.js';
+
 /** Every container `mount`/`mountBeforeUpgrade` created, for {@link cleanup}. */
 const MOUNTED = new Set<HTMLElement>();
 
-/** Monotonic counter for {@link uniqueTag} — deterministic, no `Math.random`. */
-let TAG_SEQ = 0;
+/**
+ * Monotonic counter for {@link uniqueTag} — deterministic, no `Math.random`. Page-wide,
+ * so two copies of core (or a test that re-imports the module) never hand out the same tag.
+ */
+const tagSeq = (): { next: number } => sharedState(sharedStateKey('test-tag-seq'), () => ({ next: 0 }));
 
 /**
  * A fresh, valid custom-element tag name (`prefix-N`). Use one per test so a
@@ -19,16 +24,22 @@ let TAG_SEQ = 0;
  * throws on a duplicate tag).
  */
 export function uniqueTag(prefix = 'bliss-test'): string {
-  return `${prefix}-${TAG_SEQ++}`;
+  const seq = tagSeq();
+  return `${prefix}-${seq.next++}`;
 }
 
 /**
  * Idempotent `customElements.define`: defines `tag` only if it isn't already,
  * so re-running a test file (watch mode) doesn't throw "already defined".
- * Returns `tag` for chaining.
+ * Throws when `tag` is already defined by a DIFFERENT class — the test would
+ * otherwise silently run against the wrong one. Returns `tag` for chaining.
  */
 export function defineOnce(tag: string, ctor: CustomElementConstructor): string {
-  if (!customElements.get(tag)) customElements.define(tag, ctor);
+  const defined = customElements.get(tag);
+  if (!defined) customElements.define(tag, ctor);
+  else if (defined !== ctor) {
+    throw new Error(`defineOnce: <${tag}> is already defined by a different class — use uniqueTag() for a fresh tag`);
+  }
   return tag;
 }
 

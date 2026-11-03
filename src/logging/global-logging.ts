@@ -19,6 +19,7 @@
  * bundle's levels again, so it wins for that component.
  */
 import { isLogLevel, type LogLevelDesc } from './log-core.js';
+import { sharedState } from '../global/shared-state.js';
 
 /** The page-wide controls — same method names as a component's `logging` entry. */
 export interface GlobalLoggingControls {
@@ -46,12 +47,10 @@ interface GlobalLoggingState {
   controls: GlobalLoggingControls;
 }
 
-const STATE_KEY = Symbol.for('@keenmate/web-components-core:logging');
+const STATE_KEY = '@keenmate/web-components-core:logging';
 
 function state(): GlobalLoggingState {
-  const g = globalThis as unknown as Record<symbol, GlobalLoggingState | undefined>;
-  let s = g[STATE_KEY];
-  if (!s) {
+  return sharedState(STATE_KEY, () => {
     const created: GlobalLoggingState = {
       level: undefined,
       bundles: new Set(),
@@ -78,9 +77,8 @@ function state(): GlobalLoggingState {
         return [...out];
       },
     };
-    s = g[STATE_KEY] = created;
-  }
-  return s;
+    return created;
+  });
 }
 
 /** The page-wide controls (also reachable as `window.components.logging` in a browser). */

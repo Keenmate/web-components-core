@@ -32,6 +32,7 @@ import { createFrameScheduler } from '../dom/frame-scheduler.js';
 import { once } from '../dom/once.js';
 import { createThrottle } from '../dom/throttle.js';
 import { callSafely, notifyEach } from '../logging/safe-call.js';
+import { sharedState } from '../global/shared-state.js';
 
 /** The primary pointing device: `coarse` = touch/stylus, `fine` = mouse/trackpad. */
 export type PointerType = 'coarse' | 'fine' | 'none';
@@ -139,11 +140,10 @@ interface BreakpointState {
   isSettled: boolean;
 }
 
-const BREAKPOINT_STATE_KEY = Symbol.for('@keenmate/web-components-core:breakpoints');
+const BREAKPOINT_STATE_KEY = '@keenmate/web-components-core:breakpoints';
 
 function breakpointState(): BreakpointState {
-  const g = globalThis as unknown as Record<symbol, BreakpointState | undefined>;
-  return (g[BREAKPOINT_STATE_KEY] ??= { breakpoints: sortBreakpoints(DEFAULT_BREAKPOINTS), isSettled: false });
+  return sharedState(BREAKPOINT_STATE_KEY, () => ({ breakpoints: sortBreakpoints(DEFAULT_BREAKPOINTS), isSettled: false }));
 }
 
 /**

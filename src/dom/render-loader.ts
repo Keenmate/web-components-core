@@ -13,6 +13,8 @@
  * `labels.loading` / `labels.searching`, …). Core ships no loader CSS — each
  * component copies the drawing rule (SPEC §12.14) into its own stylesheet.
  */
+import { sharedState } from '../global/shared-state.js';
+import { publishPageSetting } from '../global/page-setting.js';
 import { coreLog } from '../logging/element-logger.js';
 
 /** What a loader render hook receives. */
@@ -60,12 +62,11 @@ interface LoaderHookState {
 }
 
 /** On globalThis because each component bundles its own core copy (like logging). */
-const STATE_KEY = Symbol.for('@keenmate/web-components-core:loader');
+const STATE_KEY = '@keenmate/web-components-core:loader';
 const HOOK_KEY = 'renderLoaderCallback';
 
 function state(): LoaderHookState {
-  const g = globalThis as unknown as Record<symbol, LoaderHookState | undefined>;
-  return (g[STATE_KEY] ??= { callback: undefined });
+  return sharedState(STATE_KEY, () => ({ callback: undefined }));
 }
 
 /**
@@ -75,15 +76,8 @@ function state(): LoaderHookState {
  * SSR-safe. Called by `registerComponent()` and `renderLoader()`.
  */
 export function publishLoaderHook(): void {
-  if (typeof window === 'undefined') return;
-  const components = (window.components ??= {}) as object;
-  const existing = Object.getOwnPropertyDescriptor(components, HOOK_KEY);
-  if (existing && existing.get) return; // already our accessor
   const s = state();
-  if (existing) s.callback = typeof existing.value === 'function' ? existing.value : undefined;
-  Object.defineProperty(components, HOOK_KEY, {
-    enumerable: false,
-    configurable: true,
+  publishPageSetting(HOOK_KEY, {
     get: () => s.callback,
     set: (value: unknown) => {
       s.callback = typeof value === 'function' ? (value as RenderLoaderCallback) : undefined;

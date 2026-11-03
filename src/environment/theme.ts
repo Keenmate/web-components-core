@@ -29,6 +29,7 @@
  * mode, one cache and one observer per element.
  */
 
+import { sharedState } from '../global/shared-state.js';
 import { composedParent } from '../dom/composed-tree.js';
 import { coreLog } from '../logging/element-logger.js';
 import { once } from '../dom/once.js';
@@ -108,15 +109,14 @@ interface ThemeState {
   sources: Map<Element, Watch>;
 }
 
-const STATE_KEY = Symbol.for('@keenmate/web-components-core/theme@1');
+const STATE_KEY = '@keenmate/web-components-core/theme@1';
 
 function state(): ThemeState {
-  const g = globalThis as unknown as Record<symbol, ThemeState | undefined>;
-  return (g[STATE_KEY] ??= {
+  return sharedState(STATE_KEY, () => ({
     mode: 'auto',
     page: newWatch('page', null),
     sources: new Map(),
-  });
+  }));
 }
 
 function newWatch(kind: Watch['kind'], element: Element | null): Watch {

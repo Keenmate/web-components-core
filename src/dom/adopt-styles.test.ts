@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import { adoptStyles, createStyleSlot } from './adopt-styles.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { __resetAdoptedStyles, adoptStyles, createStyleSlot } from './adopt-styles.js';
 
 // jsdom has no constructable-stylesheet support, so these exercise the <style>
 // fallback path (the observable behavior is identical either way).
@@ -48,6 +48,70 @@ describe('adoptStyles', () => {
     const root = shadow();
     adoptStyles(root, '', '.a {}');
     expect(root.querySelectorAll('style')).toHaveLength(1);
+  });
+});
+
+// Review D-03 / D-19 / D-29.
+describe('adoptStyles — re-adoption and the constructable path', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    __resetAdoptedStyles();
+  });
+
+  it('fallback: a <style> removed by a re-render is added again', () => {
+    const root = shadow();
+    adoptStyles(root, '.a {}');
+    root.replaceChildren(); // the component re-rendered its shadow root
+    adoptStyles(root, '.a {}');
+    expect(root.querySelectorAll('style')).toHaveLength(1);
+  });
+
+  /** A minimal constructable sheet + an adoptedStyleSheets slot on the root (jsdom has neither). */
+  function constructableRoot(): ShadowRoot & { adoptedStyleSheets: CSSStyleSheet[] } {
+    class FakeSheet {
+      css = '';
+      replaceSync(css: string): void {
+        this.css = css;
+      }
+    }
+    vi.stubGlobal('CSSStyleSheet', FakeSheet);
+    const root = shadow() as ShadowRoot & { adoptedStyleSheets: CSSStyleSheet[] };
+    Object.defineProperty(root, 'adoptedStyleSheets', { value: [], writable: true, configurable: true });
+    return root;
+  }
+
+  it('constructable: one sheet object shared by two roots, appended after existing sheets', () => {
+    const a = constructableRoot();
+    const b = shadow() as ShadowRoot & { adoptedStyleSheets: CSSStyleSheet[] };
+    Object.defineProperty(b, 'adoptedStyleSheets', { value: [], writable: true, configurable: true });
+    const own = new CSSStyleSheet();
+    a.adoptedStyleSheets = [own];
+    adoptStyles(a, '.x {}');
+    adoptStyles(b, '.x {}');
+    expect(a.adoptedStyleSheets).toHaveLength(2);
+    expect(a.adoptedStyleSheets[0]).toBe(own);
+    expect(a.adoptedStyleSheets[1]).toBe(b.adoptedStyleSheets[0]);
+    expect(a.querySelectorAll('style')).toHaveLength(0);
+  });
+
+  it('constructable: idempotent, and re-adopts after the list was reassigned', () => {
+    const root = constructableRoot();
+    adoptStyles(root, '.x {}');
+    adoptStyles(root, '.x {}');
+    expect(root.adoptedStyleSheets).toHaveLength(1);
+    root.adoptedStyleSheets = []; // the component replaced its sheets
+    adoptStyles(root, '.x {}');
+    expect(root.adoptedStyleSheets).toHaveLength(1);
+  });
+
+  it('constructable: another copy of core reuses the same sheet instead of adopting it twice', async () => {
+    const root = constructableRoot();
+    adoptStyles(root, '.motion {}');
+    vi.resetModules();
+    const other = await import('./adopt-styles.js'); // a second module instance = another bundle
+    expect(other.adoptStyles).not.toBe(adoptStyles);
+    other.adoptStyles(root, '.motion {}');
+    expect(root.adoptedStyleSheets).toHaveLength(1);
   });
 });
 

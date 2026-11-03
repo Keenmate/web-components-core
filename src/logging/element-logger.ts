@@ -15,6 +15,7 @@
  * fall back to core's `CORE` bundle with the tag kept in the instance part.
  */
 import { createLoggers, type InstanceLogger, type LoggerBundle, type LogLevelDesc } from './create-loggers.js';
+import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { getLoggerBundle } from './logger-registry.js';
 
 /** Categories of core's own `CORE` bundle. */
@@ -24,9 +25,13 @@ export type CoreLogCategory = (typeof CORE_LOG_CATEGORIES)[number];
 /**
  * Core's own logger bundle (`CORE:ELEMENT`, `CORE:ACTIONS`, `CORE:MENU`,
  * `CORE:THEME`). Default level `warn` like every bundle; driven by the global
- * `window.components.logging` switch.
+ * `window.components.logging` switch. One bundle per PAGE: every copy of core
+ * shares it, so `coreLogging.setCategoryLevel()` from any copy reaches core
+ * messages from all of them.
  */
-export const coreLogging = createLoggers('CORE', CORE_LOG_CATEGORIES);
+export const coreLogging: LoggerBundle<CoreLogCategory> = sharedState(sharedStateKey('core-logging'), () =>
+  createLoggers('CORE', CORE_LOG_CATEGORIES),
+);
 
 const NO_OVERRIDE = (): undefined => undefined;
 

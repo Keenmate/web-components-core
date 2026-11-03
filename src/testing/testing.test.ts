@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BlissElement } from '../element/bliss-element.js';
 import { toInt, toText } from '../inputs/converters.js';
 import type { InputDef } from '../inputs/types.js';
@@ -41,6 +41,19 @@ describe('uniqueTag / defineOnce', () => {
     const ctor = freshWidget();
     defineOnce(tag, ctor);
     expect(() => defineOnce(tag, ctor)).not.toThrow();
+  });
+
+  // Review L-12.
+  it('defineOnce throws when the tag is taken by a different class', () => {
+    const tag = defineOnce(uniqueTag(), freshWidget());
+    expect(() => defineOnce(tag, freshWidget())).toThrow(/already defined by a different class/);
+  });
+
+  it('uniqueTag never repeats across copies of core', async () => {
+    const a = uniqueTag('x');
+    vi.resetModules();
+    const other = await import('./fixtures.js'); // a second module instance = another bundle
+    expect(other.uniqueTag('x')).not.toBe(a);
   });
 });
 

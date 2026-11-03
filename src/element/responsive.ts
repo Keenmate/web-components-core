@@ -18,6 +18,7 @@
  * bundled core copies via `Symbol.for`) and the pure layer merge; the element side
  * lives in `bliss-element.ts`.
  */
+import { sharedState } from '../global/shared-state.js';
 import type { DeviceClass, EnvironmentSnapshot } from '../environment/environment.js';
 import { coreLog } from '../logging/element-logger.js';
 
@@ -86,13 +87,12 @@ interface ResponsivePageState {
 }
 
 /** On globalThis because each component bundles its own core copy (like logging / the loader hook). */
-const STATE_KEY = Symbol.for('@keenmate/web-components-core:responsive');
+const STATE_KEY = '@keenmate/web-components-core:responsive';
 const MAP_KEY = 'responsive';
 const CALLBACK_KEY = 'responsiveCallback';
 
 function state(): ResponsivePageState {
-  const g = globalThis as unknown as Record<symbol, ResponsivePageState | undefined>;
-  return (g[STATE_KEY] ??= { map: undefined, callback: undefined, listeners: new Set() });
+  return sharedState(STATE_KEY, () => ({ map: undefined, callback: undefined, listeners: new Set() }));
 }
 
 /** A responsive map is a plain object (non-array); `null`/`undefined` = unset. */

@@ -63,6 +63,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   logged instead of becoming an unhandled rejection. *pure-css port affected.*
 - **`runBeforeCallbackSync()`:** a returned Promise that rejects is reported instead of being
   left unhandled, and the warning now says that resolving it to `false` cannot cancel.
+- **More page-wide state is shared by every copy of core** (each component bundles its own):
+  - `getInstances()` / `getRegisteredTags()` see the elements of every component, not only those
+    defined through the same copy;
+  - **a component loaded twice** (two bundles or two versions) keeps the first registration: the
+    second `registerComponent()` used to replace `window.components[tag]`, reporting the wrong
+    `version()`, an empty `getInstances()` and no `logging`. It now warns and returns the first entry;
+  - `adoptStyles()` recognises a sheet another copy already adopted (one `CSSStyleSheet` per CSS
+    string per document), re-adopts a sheet dropped from the root (`adoptedStyleSheets` reassigned,
+    fallback `<style>` removed by a re-render), and builds a separate sheet for an iframe's document
+    (adopting the main window's sheet there threw `NotAllowedError`);
+  - `setLogPersistKeyPrefix()` is page-wide, and loggers that already exist re-read their level
+    from the new key (core's own loggers never saw the prefix);
+  - one `coreLogging` (`CORE:*`) bundle per page, so `coreLogging.setCategoryLevel()` reaches core
+    messages from every copy;
+  - `/testing`: `uniqueTag()` never repeats across copies, and `defineOnce()` throws when the tag is
+    already defined by a different class instead of silently testing the wrong one.
+- **`createPerfLogger()`:** spans are recorded only while `PERF` prints (a silent logger no longer
+  accumulates them), a nested `start()` of the same label no longer overwrites the open one, and
+  `measure()` times a throwing function too.
 
 ### Changed
 
@@ -73,6 +92,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **Other code that pins `<body>` itself** (pure-css's modal / panel lock) must join the shared
   state — count on `globalThis[Symbol.for('km-scroll-lock')]`, pin only on 0→1 and unpin only on
   1→0. Two independent pinning locks released out of order leave the page stuck pinned.
+
+### Internal
+
+- New `sharedState(key, init)` (`src/global/shared-state.ts`): the one way to keep page-wide state
+  on `globalThis[Symbol.for(key)]`. Every existing shared state moved onto it with its key
+  unchanged (`km-scroll-lock`, `km-overlay-all-groups` and the `@keenmate/web-components-core:*`
+  keys are contracts with other copies and pure-css). `publishPageSetting()` owns the
+  non-enumerable `window.components.*` accessors (loader hook, motion).
+- New `callSafely()` / `notifyEach()` (`src/logging/safe-call.ts`): run code core doesn't own and
+  log a throw through the core logger.
 
 ### Docs
 
