@@ -89,6 +89,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     messages from every copy;
   - `/testing`: `uniqueTag()` never repeats across copies, and `defineOnce()` throws when the tag is
     already defined by a different class instead of silently testing the wrong one.
+- **Popovers and tooltips work inside a modal `<dialog>`.** A modal dialog sits in the browser's
+  top layer, so a panel portaled to `<body>` rendered underneath it and couldn't be clicked. The
+  default container is now the nearest open modal `<dialog>` / `:popover-open` element around the
+  trigger (found across shadow roots, resolved at each open), else `<body>`. New export
+  `findOverlayContainer(trigger)` in `/positioning` for components that portal panels themselves.
+  *pure-css port affected* (same default in `position.js` if it portals).
 - **Upgrade order:**
   - `motion` and `themeSource` assigned before the element upgraded are applied (they were never
     picked up, and the own property hid the accessor for good);

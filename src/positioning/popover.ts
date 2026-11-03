@@ -6,6 +6,7 @@
  * reference width on request (`size()`, replacing the per-component width hacks),
  * and keeps position updated while open.
  */
+import { findOverlayContainer } from './overlay-container.js';
 import { anchor } from './anchor.js';
 import type { AnchorHandle, MatchWidth, Placement, Platform, Strategy } from './types.js';
 
@@ -18,7 +19,10 @@ export interface PopoverOptions {
   reference: Reference;
   /** The panel element to position and portal. */
   panel: HTMLElement;
-  /** Where to mount the panel while open. Default `document.body`. */
+  /**
+   * Where to mount the panel while open. Default: the nearest open modal `<dialog>` /
+   * `:popover-open` element around the reference (the top layer), else `document.body`.
+   */
   container?: HTMLElement;
   /** Preferred placement. Default `'bottom-start'`. */
   placement?: Placement;
@@ -69,7 +73,9 @@ export interface PopoverHandle {
 }
 
 export function createPopover(opts: PopoverOptions): PopoverHandle {
-  const container = opts.container ?? document.body;
+  // Resolved at each open: a trigger inside a modal <dialog> mounts the panel in the dialog.
+  const container = (): HTMLElement =>
+    opts.container ?? findOverlayContainer(opts.reference instanceof Element ? opts.reference : null);
   let handle: AnchorHandle | undefined;
   let open = false;
 
@@ -82,7 +88,7 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
     open() {
       if (open) return;
       open = true;
-      container.append(opts.panel);
+      container().append(opts.panel);
       handle = anchor(opts.panel, opts.reference, {
         placement: opts.placement ?? 'bottom-start',
         strategy: opts.strategy,

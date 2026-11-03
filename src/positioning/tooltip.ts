@@ -6,6 +6,7 @@
  * `option-tooltip-follow-cursor`) anchors to a `VirtualElement` tracking the
  * pointer rather than the trigger — one preset, moving reference.
  */
+import { findOverlayContainer } from './overlay-container.js';
 import { anchor } from './anchor.js';
 import type { AnchorHandle, Placement, Strategy, VirtualElement } from './types.js';
 
@@ -19,7 +20,8 @@ export interface TooltipOptions {
   /** Tooltip content — text or an element to append. */
   content: string | HTMLElement;
   /**
-   * Where to mount the tooltip. Default `document.body` (portaled). Pass the
+   * Where to mount the tooltip. Default `document.body` (portaled) — or, when the trigger
+   * is inside a modal `<dialog>` / open popover (the top layer), that element. Pass the
    * component's `ShadowRoot` to keep the tooltip inside the shadow tree, so it
    * inherits shadow-scoped CSS custom properties and component tooltip styles.
    */
@@ -68,7 +70,8 @@ function normalizeDelay(delay: TooltipDelay | undefined): { show: number; hide: 
 }
 
 export function createTooltip(opts: TooltipOptions): TooltipHandle {
-  const container = opts.container ?? document.body;
+  // Resolved at each show: a trigger inside a modal <dialog> mounts the tooltip in the dialog.
+  const container = (): HTMLElement | ShadowRoot => opts.container ?? findOverlayContainer(opts.trigger);
   const placement = opts.placement ?? 'top';
   const visibleClass = opts.visibleClass ?? 'is-visible';
   const delay = normalizeDelay(opts.delay);
@@ -121,7 +124,7 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     if (visible) return;
     opts.beforeShowCallback?.();
     visible = true;
-    container.append(element);
+    container().append(element);
     const reference = opts.shouldFollowCursor ? cursorReference : opts.trigger;
     handle = anchor(element, reference, {
       placement,

@@ -241,6 +241,14 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | `setAttribute()` after upgrade, before the first connect, still applies | ✓ | `upgrade.spec.ts` | `upgrade.html` |
 | Appended into `<fieldset disabled>`: the first build sees it disabled, no `update()` first | ✓ | `upgrade.spec.ts` | `upgrade.html` |
 
+## 13f. Panels inside a modal `<dialog>` (top layer)
+
+| Feature | Status | Spec | Fixture |
+| ------- | :----: | ---- | ------- |
+| Popover from a trigger in `dialog.showModal()` mounts in the dialog, above the backdrop, clickable | ✓ | `dialog.spec.ts` | `dialog.html` |
+| Tooltip on a trigger in the dialog renders above it | ✓ | `dialog.spec.ts` | `dialog.html` |
+| Menu hosted in the dialog: items clickable | ✓ | `dialog.spec.ts` | `dialog.html` |
+
 ## 14. Example site (smoke only)
 
 | Feature | Status | Spec | Fixture |

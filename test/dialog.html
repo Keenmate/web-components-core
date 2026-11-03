@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test — panels inside a modal dialog</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+    <style>
+        .panel { padding: 8px; background: #fff; border: 1px solid #888; }
+        .tip { padding: 4px; background: #222; color: #fff; }
+        dialog::backdrop { background: rgb(0 0 0 / 0.4); }
+    </style>
+</head>
+<body>
+    <h1>dialog fixture</h1>
+    <p>Targeted by <code>e2e/dialog.spec.ts</code>. A modal <code>&lt;dialog&gt;</code> (top layer) with a trigger;
+        a popover / tooltip / menu opened from it must render above the backdrop and be clickable.</p>
+    <dialog id="dlg">
+        <button id="trigger" type="button">Open</button>
+        <div id="menu-host"></div>
+    </dialog>
+
+    <script type="module">
+        import { createPopover, createTooltip } from '/src/positioning/index.ts';
+        import { openMenu } from '/src/menu/index.ts';
+        window.fixture = { createPopover, createTooltip, openMenu };
+        document.body.dataset.ready = '';
+    </script>
+</body>
+</html>

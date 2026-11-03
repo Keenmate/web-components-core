@@ -9,6 +9,7 @@
 export { anchor } from './anchor.js';
 export { createTooltip } from './tooltip.js';
 export { createPopover } from './popover.js';
+export { findOverlayContainer } from './overlay-container.js';
 export {
   getFixedPositionOffsetParent,
   findContainingBlockCulprit,
