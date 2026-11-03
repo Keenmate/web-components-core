@@ -71,10 +71,28 @@ export interface OverlayActivateDetail {
   ancestors?: readonly unknown[];
 }
 
+/**
+ * Why core dismissed an overlay: another overlay opened (`'overlay'`, also `dismissAllOverlays`),
+ * the overlay it was opened from closed (`'parent'`), Escape (`'escape'`) or a pointer press
+ * outside it (`'outside-click'`) — the last two only for overlays that opt in.
+ */
+export type OverlayDismissReason = 'overlay' | 'parent' | 'escape' | 'outside-click';
+
 /** Options of {@link registerOverlay}. */
 export interface RegisterOverlayOptions {
   /** The overlay's panel (or root) element — overlays opened from inside it become its children. */
   getElement?: () => Element | null | undefined;
+  /**
+   * Close on Escape (overlay tree step 2): Escape closes only the DEEPEST open overlay that opts
+   * in — one level per press — and returns focus to what opened it. Default `false`.
+   */
+  shouldCloseOnEscape?: boolean;
+  /**
+   * Close on a pointer press outside the panel: everything above the overlay that was pressed
+   * in closes (outside every overlay → the whole chain), deepest first. A press on the overlay's
+   * own trigger is ignored (the trigger toggles it). Default `false`.
+   */
+  shouldCloseOnOutsideClick?: boolean;
 }
 
 /** Options of {@link OverlayHandle.activate}. */
@@ -104,7 +122,7 @@ interface Participant {
   /** Coordination group (default `undefined` — the ungrouped group). */
   readonly group: unknown;
   /** Called when another overlay in the same group activates (or a dismiss is requested). */
-  readonly dismiss: () => void;
+  readonly dismiss: (reason: OverlayDismissReason) => void;
 }
 
 /**
@@ -115,7 +133,86 @@ interface OpenOverlay {
   readonly getElement?: () => Element | null | undefined;
   /** Ancestor sources, parent first. */
   readonly ancestors: readonly unknown[];
-  readonly dismiss: () => void;
+  readonly dismiss: (reason: OverlayDismissReason) => void;
+  /** The element that opened it — focus returns there; a press on it doesn't count as outside. */
+  readonly trigger?: Element | null;
+  readonly shouldCloseOnEscape?: boolean;
+  readonly shouldCloseOnOutsideClick?: boolean;
+}
+
+/**
+ * Escape / outside-press routing (step 2), installed ONCE per page by whichever copy of core
+ * needs it first; it reads the shared registry, so overlays from every copy are routed.
+ */
+const routing = (): { isInstalled: boolean } => sharedState(sharedStateKey('overlay-routing'), () => ({ isInstalled: false }));
+
+/** Does the event's composed path contain `el`? */
+function pathContains(path: readonly EventTarget[], el: Element | null | undefined): boolean {
+  return !!el && path.includes(el);
+}
+
+/** The deepest open overlay (longest ancestor chain; the later one on a tie) matching `filter`. */
+function deepestOpen(filter: (entry: OpenOverlay) => boolean): [unknown, OpenOverlay] | undefined {
+  let best: [unknown, OpenOverlay] | undefined;
+  for (const pair of openOverlays()) {
+    if (!filter(pair[1])) continue;
+    if (!best || pair[1].ancestors.length >= best[1].ancestors.length) best = pair;
+  }
+  return best;
+}
+
+/** Close one open overlay as the router: out of the tree, its subtree first, then itself. */
+function closeRouted(source: unknown, entry: OpenOverlay, reason: OverlayDismissReason): void {
+  const open = openOverlays();
+  if (!open.has(source)) return;
+  open.delete(source);
+  dismissDescendants(source);
+  try {
+    entry.dismiss(reason);
+  } catch (error) {
+    coreLog(null, 'UI', 'ELEMENT').error('overlay dismiss threw', error);
+  }
+}
+
+function onRoutedKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing) return;
+  const hit = deepestOpen((e) => !!e.shouldCloseOnEscape);
+  if (!hit) return;
+  const [source, entry] = hit;
+  const panel = entry.getElement?.();
+  const active = deepActiveElement();
+  const hadFocus = !!panel && !!active && (panel === active || panel.contains(active) || active === document.body);
+  closeRouted(source, entry, 'escape');
+  // Focus goes back to what opened it — if it was inside the closed panel (or lost to <body>).
+  if (hadFocus && entry.trigger instanceof HTMLElement && entry.trigger.isConnected) entry.trigger.focus({ preventScroll: true });
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+function onRoutedPointerDown(event: PointerEvent): void {
+  const path = event.composedPath();
+  // The overlay pressed in (the deepest whose panel is on the path) and its ancestors stay.
+  const inside = deepestOpen((e) => pathContains(path, e.getElement?.()));
+  const keep = new Set<unknown>(inside ? [inside[0], ...inside[1].ancestors] : []);
+  const toClose = [...openOverlays()]
+    .filter(([source, e]) => e.shouldCloseOnOutsideClick && !keep.has(source) && !pathContains(path, e.trigger ?? null))
+    .sort((a, b) => b[1].ancestors.length - a[1].ancestors.length);
+  for (const [source, entry] of toClose) closeRouted(source, entry, 'outside-click');
+}
+
+function ensureRouting(): void {
+  const state = routing();
+  if (state.isInstalled || !hasDocument()) return;
+  state.isInstalled = true;
+  document.addEventListener('keydown', onRoutedKeydown, true);
+  document.addEventListener('pointerdown', onRoutedPointerDown, true);
+}
+
+/** The focused element, descending into shadow roots. */
+function deepActiveElement(): Element | null {
+  let active: Element | null = hasDocument() ? document.activeElement : null;
+  while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+  return active;
 }
 
 const openOverlays = (): Map<unknown, OpenOverlay> =>
@@ -143,7 +240,7 @@ function onActivated(e: Event): void {
   // Snapshot: a dismiss handler may destroy (mutating the set) mid-iteration.
   for (const p of Array.from(participants)) {
     if (p.id !== source && !ancestors.includes(p.id) && groupMatches(p.group, group)) {
-      p.dismiss();
+      p.dismiss('overlay');
       // A dismissed overlay is closed even if its dismiss handler forgot to deactivate():
       // drop it from the tree (and close what it opened) so it can't be picked as a parent.
       const open = openOverlays();
@@ -191,7 +288,7 @@ function dismissDescendants(source: unknown): void {
   for (const [descendant, entry] of descendants) {
     open.delete(descendant); // closed now, whether or not its handler deactivates
     try {
-      entry.dismiss();
+      entry.dismiss('parent');
     } catch (error) {
       coreLog(null, 'UI', 'ELEMENT').error('overlay dismiss threw', error);
     }
@@ -225,7 +322,11 @@ function broadcast(source: unknown, group: unknown, ancestors?: readonly unknown
  * coordination (default: ungrouped). Pass `getElement` so overlays opened from inside
  * this one become its children instead of dismissing it. Returns a handle to drive activation.
  */
-export function registerOverlay(onDismiss: () => void, group?: unknown, opts: RegisterOverlayOptions = {}): OverlayHandle {
+export function registerOverlay(
+  onDismiss: (reason: OverlayDismissReason) => void,
+  group?: unknown,
+  opts: RegisterOverlayOptions = {},
+): OverlayHandle {
   const participant: Participant = { id: {}, group, dismiss: onDismiss };
   participants.add(participant);
   ensureListening();
@@ -240,7 +341,15 @@ export function registerOverlay(onDismiss: () => void, group?: unknown, opts: Re
   return {
     activate(activateOpts?: ActivateOverlayOptions): void {
       const ancestors = resolveAncestors(participant.id, activateOpts);
-      openOverlays().set(participant.id, { getElement: opts.getElement, ancestors, dismiss: onDismiss });
+      openOverlays().set(participant.id, {
+        getElement: opts.getElement,
+        ancestors,
+        dismiss: onDismiss,
+        trigger: activateOpts?.trigger ?? null,
+        shouldCloseOnEscape: opts.shouldCloseOnEscape,
+        shouldCloseOnOutsideClick: opts.shouldCloseOnOutsideClick,
+      });
+      if (opts.shouldCloseOnEscape || opts.shouldCloseOnOutsideClick) ensureRouting();
       // Route through the event so external listeners see KM activations too; the shared
       // listener dismisses every *other* same-group participant that isn't an ancestor.
       broadcast(participant.id, participant.group, ancestors);
@@ -296,4 +405,10 @@ export function __resetOverlays(): void {
     document.removeEventListener(OVERLAY_ACTIVATE_EVENT, onActivated);
   }
   listening = false;
+  const route = routing();
+  if (route.isInstalled && hasDocument()) {
+    document.removeEventListener('keydown', onRoutedKeydown, true);
+    document.removeEventListener('pointerdown', onRoutedPointerDown, true);
+  }
+  route.isInstalled = false;
 }

@@ -73,6 +73,15 @@ brief); no compatibility aliases (v2 rule).
   automatically. New types `RegisterOverlayOptions`, `ActivateOverlayOptions`;
   `notifyOverlayActivated(source, group, ancestors?)`; `onOverlayActivated` handlers also get
   `ancestors`. SPEC §12.9.
+- **Overlay tree step 2: Escape and outside presses routed through the tree** (opt-in).
+  `registerOverlay(…, { shouldCloseOnEscape, shouldCloseOnOutsideClick })`: Escape closes only
+  the deepest open overlay (one level per press) and returns focus to what opened it; a pointer
+  press closes every opted-in overlay above the one pressed in (outside all of them → the whole
+  chain), deepest first, and a press on an overlay's own trigger doesn't close it. The dismiss
+  callback gets a reason (`OverlayDismissReason`: `'overlay' | 'parent' | 'escape' |
+  'outside-click'`). `createPopover({ shouldCloseOnEscape, shouldCloseOnOutsideClick,
+  overlayGroup, onClose })` joins the tree — components can drop their own Escape /
+  outside-click code for popovers. SPEC §12.9.
 - `ResolvedActionItem.isToggle` — the item has a toggle state (render it checkbox-like even while
   `isToggled` is `false`).
 - `isActionBusy(item, host?)` — scoped to one component element when `host` is given.
@@ -180,6 +189,8 @@ brief); no compatibility aliases (v2 rule).
   trigger (found across shadow roots, resolved at each open), else `<body>`. New export
   `findOverlayContainer(trigger)` in `/positioning` for components that portal panels themselves.
   *pure-css port affected* (same default in `position.js` if it portals).
+- `lockBodyScroll()` pads `<body>` by the scrollbar width while pinned, so desktop content no
+  longer shifts sideways when a modal opens.
 - **Positioning / DOM:**
   - `scrollIntoContainer()` with no container scrolls only the page (window `scrollTo` with the
     same alignment rules) instead of `el.scrollIntoView()`, which also scrolled `overflow: hidden`

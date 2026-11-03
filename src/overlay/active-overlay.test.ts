@@ -305,3 +305,97 @@ describe('active-overlay nesting', () => {
     expect(seen).toEqual([[]]);
   });
 });
+
+// Review 2026-11-03 (WP8): overlay tree step 2 — Escape / outside-press routing.
+describe('active-overlay routing (step 2)', () => {
+  afterEach(() => {
+    __resetOverlays();
+    document.body.replaceChildren();
+  });
+
+  function openPanel(opts: { parentTrigger?: HTMLElement; reasons: string[]; name: string }) {
+    const el = document.createElement('div');
+    const trigger = document.createElement('button');
+    const inner = document.createElement('button'); // where a child overlay is opened from
+    el.append(inner);
+    (opts.parentTrigger?.parentElement ?? document.body).append(trigger);
+    document.body.append(el);
+    const handle = registerOverlay((reason) => opts.reasons.push(`${opts.name}:${reason}`), undefined, {
+      getElement: () => el,
+      shouldCloseOnEscape: true,
+      shouldCloseOnOutsideClick: true,
+    });
+    handle.activate({ trigger: opts.parentTrigger ?? trigger });
+    return { el, trigger, inner, handle };
+  }
+
+  const escape = () => {
+    const e = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    document.body.dispatchEvent(e);
+    return e;
+  };
+  // jsdom has no PointerEvent; the router only reads composedPath().
+  const press = (target: Element) => target.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, composed: true }));
+
+  it('Escape closes only the deepest open overlay, one level per press', () => {
+    const reasons: string[] = [];
+    const modal = openPanel({ name: 'modal', reasons });
+    const dropdown = openPanel({ name: 'dropdown', reasons, parentTrigger: modal.inner });
+    openPanel({ name: 'menu', reasons, parentTrigger: dropdown.inner });
+    expect(escape().defaultPrevented).toBe(true);
+    expect(reasons).toEqual(['menu:escape']);
+    escape();
+    expect(reasons).toEqual(['menu:escape', 'dropdown:escape']);
+    escape();
+    expect(reasons).toEqual(['menu:escape', 'dropdown:escape', 'modal:escape']);
+    expect(escape().defaultPrevented).toBe(false); // nothing left to close
+  });
+
+  it('a press inside the modal (outside the dropdown) closes the dropdown and its menu, not the modal', () => {
+    const reasons: string[] = [];
+    const modal = openPanel({ name: 'modal', reasons });
+    const dropdown = openPanel({ name: 'dropdown', reasons, parentTrigger: modal.inner });
+    openPanel({ name: 'menu', reasons, parentTrigger: dropdown.inner });
+    const spot = document.createElement('span');
+    modal.el.append(spot);
+    press(spot);
+    expect(reasons).toEqual(['menu:outside-click', 'dropdown:outside-click']); // deepest first
+  });
+
+  it('a press outside every overlay closes the whole chain, deepest first', () => {
+    const reasons: string[] = [];
+    const modal = openPanel({ name: 'modal', reasons });
+    openPanel({ name: 'dropdown', reasons, parentTrigger: modal.inner });
+    const outside = document.createElement('p');
+    document.body.append(outside);
+    press(outside);
+    expect(reasons[0]).toBe('dropdown:outside-click');
+    expect(reasons).toContain('modal:outside-click');
+    expect(reasons).toHaveLength(2);
+  });
+
+  it('a press on an overlay’s own trigger does not close it (the trigger toggles it)', () => {
+    const reasons: string[] = [];
+    const { trigger } = openPanel({ name: 'dropdown', reasons });
+    press(trigger);
+    expect(reasons).toEqual([]);
+  });
+
+  it('Escape returns focus to the trigger when focus was inside the closed panel', () => {
+    const reasons: string[] = [];
+    const { inner, trigger } = openPanel({ name: 'dropdown', reasons });
+    inner.focus();
+    escape();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('overlays that do not opt in are left alone by the router', () => {
+    const dismiss = vi.fn();
+    const el = document.createElement('div');
+    document.body.append(el);
+    registerOverlay(dismiss, undefined, { getElement: () => el }).activate();
+    escape();
+    press(document.body);
+    expect(dismiss).not.toHaveBeenCalled();
+  });
+});

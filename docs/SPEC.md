@@ -1450,8 +1450,23 @@ overrides it. The rules:
 3. an overlay dismissed by another activation leaves the tree even if its handler never
    deactivates (it can't become a parent afterwards);
 4. an activation without `ancestors` (older code, pure-css) behaves exactly as before.
-`/menu` registers its root level and passes its opener. Step 2 (Escape / outside clicks
-routed to the deepest overlay, focus restore, `popover` / `tooltip` options) follows.
+`/menu` registers its root level and passes its opener.
+
+**Step 2 — routing (since rc20 work, opt-in).** `registerOverlay(onDismiss, group, {
+getElement, shouldCloseOnEscape, shouldCloseOnOutsideClick })`: one page-wide `keydown` /
+`pointerdown` capture listener (installed once, by whichever copy needs it first) routes
+- **Escape** to the DEEPEST open overlay that opts in — one level per press; focus returns
+  to its trigger when it was inside the panel; the key is consumed;
+- an **outside press**: the overlay pressed in (the deepest whose panel is on the event's
+  composed path) and its ancestors stay; every other opted-in overlay closes, deepest first; a
+  press on an overlay's own trigger doesn't close it (the trigger toggles it).
+`onDismiss(reason)` gets an `OverlayDismissReason`: `'overlay'` (another activation,
+`dismissAllOverlays`), `'parent'` (the overlay it was opened from closed), `'escape'`,
+`'outside-click'`. `createPopover({ shouldCloseOnEscape, shouldCloseOnOutsideClick,
+overlayGroup, onClose })` joins the tree with them. `/menu` keeps its own keyboard and
+dismiss handling (its submenus are levels of ONE overlay) but is a node of the tree;
+components move their own dropdown dismissal onto the stack when they next touch it.
+`lockBodyScroll()` pads `<body>` by the scrollbar width while pinned (no sideways jump).
 
 ### 12.10 Theme context (dark / light) — IMPLEMENTED (`src/environment/theme.ts`)
 

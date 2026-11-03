@@ -10,6 +10,7 @@
 import { findOverlayContainer } from './overlay-container.js';
 import { anchor } from './anchor.js';
 import type { AnchorHandle, AnchorOptions } from './types.js';
+import { registerOverlay, type OverlayDismissReason, type OverlayHandle } from '../overlay/active-overlay.js';
 
 /** A DOM element or a floating-ui `VirtualElement` to anchor against. */
 type Reference = Parameters<typeof anchor>[1];
@@ -29,6 +30,21 @@ export interface PopoverOptions extends AnchorOptions {
    * `:popover-open` element around the reference (the top layer), else `document.body`.
    */
   container?: HTMLElement;
+  /**
+   * Join the page-wide overlay tree (SPEC §12.9) and close on Escape — only the deepest open
+   * overlay closes, and focus returns to the reference. Default `false`.
+   */
+  shouldCloseOnEscape?: boolean;
+  /** Join the overlay tree and close on a pointer press outside the panel (and the reference). Default `false`. */
+  shouldCloseOnOutsideClick?: boolean;
+  /**
+   * Join the overlay tree in this coordination group: opening another overlay of the group
+   * closes this one (but never an overlay it was opened from). Implied (ungrouped) by the two
+   * options above.
+   */
+  overlayGroup?: unknown;
+  /** The popover closed itself because of the overlay tree: Escape, an outside press, another overlay. */
+  onClose?(reason: OverlayDismissReason): void;
 }
 
 /** Handle returned by {@link createPopover}. */
@@ -46,7 +62,18 @@ export interface PopoverHandle {
 }
 
 export function createPopover(opts: PopoverOptions): PopoverHandle {
-  const { reference, panel, container: containerOption, ...anchorOptions } = opts;
+  const {
+    reference,
+    panel,
+    container: containerOption,
+    shouldCloseOnEscape,
+    shouldCloseOnOutsideClick,
+    overlayGroup,
+    onClose,
+    ...anchorOptions
+  } = opts;
+  const isInOverlayTree = !!shouldCloseOnEscape || !!shouldCloseOnOutsideClick || 'overlayGroup' in opts;
+  let overlay: OverlayHandle | undefined;
   // Resolved at each open: a trigger inside a modal <dialog> mounts the panel in the dialog.
   const container = (): HTMLElement =>
     containerOption ?? findOverlayContainer(reference instanceof Element ? reference : null);
@@ -62,6 +89,8 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
     handle?.destroy();
     handle = undefined;
     panel.remove();
+    overlay?.destroy(); // also closes overlays opened from inside the panel
+    overlay = undefined;
   };
 
   return {
@@ -77,6 +106,18 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
         placement: anchorOptions.placement ?? 'bottom-start',
         ...(defaultTheme ? { inheritThemeFrom: defaultTheme } : {}),
       });
+      if (isInOverlayTree) {
+        overlay = registerOverlay(
+          (reason) => {
+            if (!isOpen) return;
+            close();
+            onClose?.(reason);
+          },
+          overlayGroup,
+          { getElement: () => panel, shouldCloseOnEscape, shouldCloseOnOutsideClick },
+        );
+        overlay.activate({ trigger: reference instanceof Element ? reference : null });
+      }
     },
     close,
     update() {

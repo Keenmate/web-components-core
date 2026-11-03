@@ -20,7 +20,7 @@ import { sharedState } from '../global/shared-state.js';
 import { once } from '../dom/once.js';
 
 /** The body inline styles the lock writes (and restores). */
-const PINNED_PROPERTIES = ['position', 'top', 'left', 'right', 'width', 'overflow'] as const;
+const PINNED_PROPERTIES = ['position', 'top', 'left', 'right', 'width', 'overflow', 'padding-right'] as const;
 
 /**
  * Shared lock state, `globalThis[Symbol.for('km-scroll-lock')]`. A documented shape:
@@ -53,6 +53,14 @@ function pin(body: HTMLElement): void {
   for (const prop of PINNED_PROPERTIES) style[prop] = body.style.getPropertyValue(prop);
   state().saved = { scrollX, scrollY, style };
 
+  // Pinning removes the page scrollbar (desktop): pad the body by its width so the content
+  // doesn't jump sideways while the lock holds.
+  const rootWidth = body.ownerDocument.documentElement.clientWidth;
+  const scrollbar = view && rootWidth > 0 ? view.innerWidth - rootWidth : 0;
+  if (scrollbar > 0 && view) {
+    const padding = parseFloat(view.getComputedStyle(body).paddingRight) || 0;
+    body.style.setProperty('padding-right', `${padding + scrollbar}px`);
+  }
   body.style.setProperty('position', 'fixed');
   body.style.setProperty('top', `${-scrollY}px`);
   body.style.setProperty('left', `${-scrollX}px`);

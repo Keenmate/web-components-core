@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test — overlay tree</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+    <style>
+        .panel { padding: 12px; background: #fff; border: 1px solid #888; min-width: 160px; }
+    </style>
+</head>
+<body>
+    <h1>overlay-tree fixture</h1>
+    <p>Targeted by <code>e2e/overlay-tree.spec.ts</code>. Two nested popovers in the page-wide overlay tree
+        (<code>shouldCloseOnEscape</code> / <code>shouldCloseOnOutsideClick</code>): Escape closes one level per press,
+        a press inside the outer panel closes only the inner one, focus returns to the opener.</p>
+    <button id="open-outer" type="button">Open outer</button>
+    <p id="outside">outside</p>
+
+    <script type="module">
+        import { createPopover } from '/src/positioning/index.ts';
+        const log = [];
+        const outer = document.createElement('div');
+        outer.className = 'panel';
+        outer.id = 'outer';
+        outer.innerHTML = '<button id="open-inner" type="button">Open inner</button><div id="outer-spot" style="margin-top: 60px">outer body</div>';
+        const inner = document.createElement('div');
+        inner.className = 'panel';
+        inner.id = 'inner';
+        inner.innerHTML = '<button id="inner-button" type="button">Inner action</button>';
+        const openOuter = document.getElementById('open-outer');
+        const outerPopover = createPopover({
+            reference: openOuter, panel: outer, shouldCloseOnEscape: true, shouldCloseOnOutsideClick: true,
+            onClose: (reason) => log.push(`outer:${reason}`),
+        });
+        const innerPopover = createPopover({
+            reference: outer.querySelector('#open-inner'), panel: inner, placement: 'right-start',
+            shouldCloseOnEscape: true, shouldCloseOnOutsideClick: true,
+            onClose: (reason) => log.push(`inner:${reason}`),
+        });
+        openOuter.addEventListener('click', () => (outerPopover.isOpen ? outerPopover.close() : outerPopover.open()));
+        outer.querySelector('#open-inner').addEventListener('click', () => innerPopover.open());
+        window.fixture = { log, outerPopover, innerPopover };
+        document.body.dataset.ready = '';
+    </script>
+</body>
+</html>

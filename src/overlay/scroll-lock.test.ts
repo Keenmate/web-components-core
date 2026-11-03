@@ -82,3 +82,23 @@ describe('lockBodyScroll', () => {
     expect(document.body.style.overflow).toBe('auto');
   });
 });
+
+// Review 2026-11-03 V-11.
+describe('lockBodyScroll — scrollbar compensation', () => {
+  afterEach(() => {
+    __resetScrollLock();
+    document.body.removeAttribute('style');
+    vi.restoreAllMocks();
+  });
+
+  it('pads the body by the scrollbar width while pinned, and restores it', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    Object.defineProperty(document.documentElement, 'clientWidth', { configurable: true, value: window.innerWidth - 15 });
+    document.body.style.paddingRight = '4px';
+    const release = lockBodyScroll();
+    expect(document.body.style.paddingRight).toBe('19px');
+    release();
+    expect(document.body.style.paddingRight).toBe('4px');
+    Object.defineProperty(document.documentElement, 'clientWidth', { configurable: true, value: 0 });
+  });
+});
