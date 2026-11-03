@@ -79,6 +79,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     messages from every copy;
   - `/testing`: `uniqueTag()` never repeats across copies, and `defineOnce()` throws when the tag is
     already defined by a different class instead of silently testing the wrong one.
+- **Upgrade order:**
+  - `motion` and `themeSource` assigned before the element upgraded are applied (they were never
+    picked up, and the own property hid the accessor for good);
+  - a property assigned before upgrade still wins over the initial attribute, but only over the
+    browser's one replay of it — a real `setAttribute()` made after upgrade and before the first
+    connect used to be dropped too;
+  - an element inserted into a `<fieldset disabled>` is already disabled in its first `reinit()`
+    (the browser reports the fieldset only after `connectedCallback`), and a
+    `formDisabledCallback` before the first connect never runs `update()` on an unbuilt element;
+  - `setAttributes({ shouldDefer: false, … })` builds once, with every value of the call (it
+    built at the release and then again).
+- **Input-table check** also warns about an unknown `on` value and a `configKey` that hides a
+  `BlissElement` member (`form`, `controller`, `release`, …).
 - **`createPerfLogger()`:** spans are recorded only while `PERF` prints (a silent logger no longer
   accumulates them), a nested `start()` of the same label no longer overwrites the open one, and
   `measure()` times a throwing function too.

@@ -8,8 +8,8 @@
  * {@link connect}/{@link disconnect} start and stop live resources on every
  * connect/disconnect — a plain DOM move re-activates without rebuilding.
  * The input table is OPT-IN: a subclass without `static inputs` still gets the
- * SSR base plus
- * `dispatch`/`define` (web-grid's use). See docs/SPEC.md §6.
+ * SSR base plus `emit` / the lifecycle (every KeenMate component has a table today).
+ * See docs/SPEC.md §6.
  */
 import { resolveFromAttribute, resolveFromProperty, type Resolved } from '../inputs/apply.js';
 import { deriveClearableKeys } from '../inputs/clearable.js';
@@ -114,18 +114,35 @@ export const READY_ATTRIBUTE = 'ready';
 const READY_EVENT = 'ready';
 
 /**
- * Core-declared properties {@link BlissElement.setAttributes} accepts besides the
- * input table — by property or attribute name → the property it assigns.
+ * The properties core declares on every element (besides the input table), in ONE
+ * place: `observedAttributes`, {@link BlissElement.setAttributes} (by property or
+ * attribute name), and the pre-upgrade lift (a value assigned before the element
+ * upgraded) are all derived from it. A subclass that declares the same name as its
+ * own input owns it instead. Each attribute's reaction lives in `attributeChangedCallback`.
  */
-const CORE_PROPERTY_BY_KEY: ReadonlyMap<string, string> = new Map([
-  ['shouldDefer', 'shouldDefer'],
-  [DEFER_ATTRIBUTE, 'shouldDefer'],
-  ['themeSource', 'themeSource'],
-  ['theme-source', 'themeSource'],
-  ['responsive', 'responsive'],
-  ['responsiveCallback', 'responsiveCallback'],
-  ['motion', 'motion'],
-]);
+const CORE_PROPERTIES: ReadonlyArray<{
+  property: string;
+  attribute?: string;
+  /** The setter writes the attribute and lets attributeChangedCallback apply it. */
+  isAttributeRouted?: boolean;
+}> = [
+  { property: 'themeSource', attribute: THEME_SOURCE_ATTRIBUTE, isAttributeRouted: true }, // SPEC §12.10
+  { property: 'shouldDefer', attribute: DEFER_ATTRIBUTE }, // SPEC §6.3
+  { property: 'responsive', attribute: RESPONSIVE_ATTRIBUTE }, // SPEC §6.7
+  { property: 'responsiveCallback' }, // SPEC §6.7
+  { property: 'motion', attribute: MOTION_ATTRIBUTE, isAttributeRouted: true }, // SPEC §12.16
+];
+
+/** The `on` values an input row may declare. */
+const REACTIVITY_VALUES: ReadonlySet<unknown> = new Set(['update', 'reinit', 'none']);
+
+/** {@link CORE_PROPERTIES} by property or attribute name → the property it assigns. */
+const CORE_PROPERTY_BY_KEY: ReadonlyMap<string, string> = new Map(
+  CORE_PROPERTIES.flatMap(({ property, attribute }) => [
+    [property, property] as const,
+    ...(attribute ? [[attribute, property] as const] : []),
+  ]),
+);
 
 
 export abstract class BlissElement<TEvents extends EventMap = EventMap, TController = unknown> extends Base {
@@ -149,13 +166,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   static get observedAttributes(): string[] {
     const attrs = (this.inputs ?? []).filter((d) => d.attribute).map((d) => d.attribute!);
     // Always observe the global `dir` attribute (never an input) so a runtime
-    // writing-direction switch reaches the directionChanged() hook, and
-    // `theme-source` (SPEC §12.10) so a component can read its theme from a chosen
-    // element. Deduped in case a subclass declares either as an input attribute.
-    // `defer` (SPEC §6.3) is the build gate every component gets.
-    // `responsive` (SPEC §6.7) is the instance responsive map as JSON.
-    // `motion` (SPEC §12.16) is the instance motion level.
-    for (const global of ['dir', THEME_SOURCE_ATTRIBUTE, DEFER_ATTRIBUTE, RESPONSIVE_ATTRIBUTE, MOTION_ATTRIBUTE]) {
+    // writing-direction switch reaches the directionChanged() hook, plus the
+    // attributes of the core-declared properties (CORE_PROPERTIES). Deduped in case
+    // a subclass declares one as an input attribute.
+    const core = CORE_PROPERTIES.flatMap((p) => (p.attribute ? [p.attribute] : []));
+    for (const global of ['dir', ...core]) {
       if (!attrs.includes(global)) attrs.push(global);
     }
     return attrs;
@@ -225,10 +240,12 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * `attributeChangedCallback`s AFTER the constructor, so without this an initial
    * attribute would clobber that lifted property. We let the pre-upgrade property
    * win over the *initial* attribute (the conventional lazy-property-upgrade
-   * guarantee); post-connect attribute changes react normally. Cleared on first
-   * connect.
+   * guarantee). Keyed by configKey → the attribute value present at upgrade: only
+   * that ONE replay (old value `null`, same value) is skipped, so a real
+   * `setAttribute()` made later — even before the first connect — still applies.
+   * Cleared on first connect.
    */
-  #preUpgradeKeys: Set<string> | null = null;
+  #preUpgradeKeys: Map<string, string> | null = null;
   /**
    * The attribute core is writing itself right now (reflection / write-back), so its
    * `attributeChangedCallback` doesn't feed back in. Only THAT name is skipped: a write
@@ -289,7 +306,9 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   #isReadyScheduled = false;
   #readyResolvers: Array<() => void> = [];
   /** Last `formDisabledCallback` value — the browser's combined (own attribute OR fieldset) state. */
-  #isFormDisabled = false;
+  #browserDisabledState = false;
+  /** formDisabledCallback ran at least once — {@link #browserDisabledState} is the browser's answer. */
+  #hasBrowserDisabledState = false;
   /** {@link isEffectivelyDisabled} as of the last flush — `undefined` before the first build. */
   #lastEffectiveDisabled?: boolean;
   #logLevel?: LogLevelDesc;
@@ -313,22 +332,28 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#seedDefaults(defs);
     this.#installAccessors(defs);
     this.#installEventAccessors(events);
-    // A subclass declaring its own `shouldDefer` input owns the property.
-    if (!this.#byConfigKey.has('shouldDefer')) {
-      const pre = this.#liftPreUpgrade('shouldDefer');
-      if (pre.had) this.#preUpgradeDefer = !!pre.value;
-    }
-    // Same for the instance responsive rules (SPEC §6.7).
-    for (const key of ['responsive', 'responsiveCallback'] as const) {
-      if (this.#byConfigKey.has(key)) continue;
-      const pre = this.#liftPreUpgrade(key);
-      if (pre.had) (this as unknown as Record<string, unknown>)[key] = pre.value;
+    // Core-declared properties assigned before upgrade (an own property shadowing the
+    // accessor): re-apply through the accessor. A subclass input of the same name owns it.
+    for (const { property, attribute, isAttributeRouted } of CORE_PROPERTIES) {
+      if (this.#byConfigKey.has(property)) continue;
+      const pre = this.#liftPreUpgrade(property);
+      if (!pre.had) continue;
+      if (property === 'shouldDefer') {
+        this.#preUpgradeDefer = !!pre.value; // read at the first connect
+        continue;
+      }
+      (this as unknown as Record<string, unknown>)[property] = pre.value;
+      // A setter that routes through its attribute (motion, theme-source) wrote it from
+      // inside the constructor, where the browser queues no attributeChangedCallback
+      // (the element isn't "custom" yet) — apply the attribute now.
+      const raw = isAttributeRouted && attribute ? this.getAttribute(attribute) : null;
+      if (attribute && raw !== null) this.attributeChangedCallback(attribute, null, raw);
     }
   }
 
   // ── lifecycle ──────────────────────────────────────────────────────────
 
-  attributeChangedCallback(name: string, _old: string | null, raw: string | null): void {
+  attributeChangedCallback(name: string, old: string | null, raw: string | null): void {
     if (name === this.#reflectingAttribute) return;
     // Global `dir` is observed for every component (not an input). Route runtime
     // changes to the directionChanged() hook — but only post-connect: the initial
@@ -374,8 +399,12 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     const def = this.#byAttribute.get(name);
     if (!def) return;
     // A property assigned before upgrade wins over the initial attribute the
-    // browser replays right after the constructor (see #preUpgradeKeys).
-    if (!this.#connectedOnce && this.#preUpgradeKeys?.has(def.configKey)) return;
+    // browser replays right after the constructor (see #preUpgradeKeys) — that replay only.
+    const replayed = this.#preUpgradeKeys?.get(def.configKey);
+    if (replayed !== undefined && old === null && raw === replayed) {
+      this.#preUpgradeKeys!.delete(def.configKey);
+      return;
+    }
     let isInvalid = false;
     let reason: string | undefined;
     let resolved: Resolved;
@@ -708,11 +737,15 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   /**
    * Apply many inputs (by `configKey` or attribute name) as ONE reinit/update.
    * The core-declared properties (`shouldDefer` / `defer`, `themeSource` /
-   * `theme-source`, `responsive`, `responsiveCallback`) are accepted too. Any
+   * `theme-source`, `responsive`, `responsiveCallback`, `motion`) are accepted too;
+   * a `shouldDefer: false` release applies after the other keys. Any
    * other key is not an input of this element: it warns and is skipped — a
    * renamed or misspelled key must never be dropped silently.
    */
   setAttributes(values: Record<string, unknown>): void {
+    // A `shouldDefer: false` / `defer` release is applied LAST, so the build it
+    // triggers already has every other value of this call (one build, not two).
+    let release: [string, unknown] | undefined;
     for (const [key, value] of Object.entries(values)) {
       const def = this.#byConfigKey.get(key) ?? this.#byAttribute.get(key);
       if (def) {
@@ -720,12 +753,17 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
         continue;
       }
       const coreProperty = CORE_PROPERTY_BY_KEY.get(key);
+      if (coreProperty === 'shouldDefer') {
+        release = [coreProperty, value];
+        continue;
+      }
       if (coreProperty) {
         (this as unknown as Record<string, unknown>)[coreProperty] = value;
         continue;
       }
       this.#warn(`setAttributes: "${key}" is not an input of <${this.localName}> (not a configKey or attribute); skipped`, value);
     }
+    if (release) (this as unknown as Record<string, unknown>)[release[0]] = release[1];
     this.#flushNow();
   }
 
@@ -1258,9 +1296,12 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * flip. Don't override; implement {@link disabledChanged}.
    */
   formDisabledCallback(isDisabled: boolean): void {
-    if (this.#isFormDisabled === isDisabled) return;
-    this.#isFormDisabled = isDisabled;
-    if (this.isConnected) this.#flushNow(); // ends with #syncDisabled(); a no-op while held
+    this.#hasBrowserDisabledState = true;
+    if (this.#browserDisabledState === isDisabled) return;
+    this.#browserDisabledState = isDisabled;
+    // Before the first connect only record it: the first build reads it (a flush here
+    // would run update() on an element that was never built).
+    if (this.isConnected && this.#connectedOnce) this.#flushNow(); // ends with #syncDisabled(); a no-op while held
   }
 
   /**
@@ -1270,7 +1311,13 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * apart (no callback fires for a fieldset flip then), so the ancestors are read.
    */
   protected get isFormDisabled(): boolean {
-    if (!this.#isFormDisabled) return false;
+    // Until the browser reports a state (it calls formDisabledCallback AFTER connectedCallback
+    // when the element is inserted into a disabled fieldset), read the ancestors, so the
+    // first build already sees it.
+    if (!this.#hasBrowserDisabledState) {
+      return (this.constructor as { formAssociated?: boolean }).formAssociated === true && this.#isInDisabledFieldset();
+    }
+    if (!this.#browserDisabledState) return false;
     return !this.hasAttribute('disabled') || this.#isInDisabledFieldset();
   }
 
@@ -1490,6 +1537,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     const ctor = this.constructor as object;
     if (VALIDATED.has(ctor)) return;
     VALIDATED.add(ctor);
+    const CORE_MEMBERS = new Set(Object.getOwnPropertyNames(BlissElement.prototype));
 
     const seenKeys = new Set<string>();
     const seenAttrs = new Set<string>();
@@ -1504,6 +1552,15 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
 
       if (def.shouldReflect && !def.attribute) {
         this.#warn(`invalid input table: "${def.configKey}" has shouldReflect:true but no attribute to reflect to`);
+      }
+      if (def.on !== undefined && !REACTIVITY_VALUES.has(def.on)) {
+        this.#warn(`invalid input table: "${def.configKey}" has on: ${describeValue(def.on)} (expected 'update' | 'reinit' | 'none'); treated as 'update'`);
+      }
+      // The input's accessor is installed on the instance, so it would hide a core member
+      // of the same name (`form`, `controller`, `release`, …). The core-declared properties
+      // (CORE_PROPERTIES) are the documented exception: an input of that name owns it.
+      if (CORE_MEMBERS.has(def.configKey) && !CORE_PROPERTY_BY_KEY.has(def.configKey)) {
+        this.#warn(`invalid input table: configKey "${def.configKey}" hides BlissElement's own "${def.configKey}" — rename the input`);
       }
       if (def.getLiveValue !== undefined && typeof def.getLiveValue !== 'function') {
         this.#warn(`invalid input table: "${def.configKey}" has a getLiveValue that is not a function; the getter returns the stored value`);
@@ -1592,7 +1649,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       // Re-apply through the setter. Only an ACCEPTED value is remembered so the
       // initial attribute can't clobber it (see attributeChangedCallback) — a
       // rejected one must not block a valid initial attribute.
-      if (pre.had && this.#setFromProperty(def, pre.value)) (this.#preUpgradeKeys ??= new Set()).add(key);
+      if (pre.had && this.#setFromProperty(def, pre.value) && def.attribute) {
+        // The browser replays this attribute right after the constructor; skip that replay.
+        const initial = this.getAttribute(def.attribute);
+        if (initial !== null) (this.#preUpgradeKeys ??= new Map()).set(key, initial);
+      }
     }
   }
 
@@ -1630,7 +1691,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    */
   #readLive(def: InputDef): unknown {
     const key = def.configKey;
-    if (!this.#hasBuilt || this.#hasFailedReinit || (this.#pending !== null && key in this.#pending)) {
+    if (!this.#hasBuilt || this.#hasFailedReinit || (this.#pending !== null && key in this.#pending) || (this.#failedPartial !== null && key in this.#failedPartial)) {
       return this.#config[key];
     }
     const live = def.getLiveValue!(this);

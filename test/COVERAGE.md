@@ -233,6 +233,14 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | The jump back is instant under `scroll-behavior: smooth` | unit | `scroll-lock.test.ts` | Chromium reports a smooth scroll's destination immediately |
 | iOS Safari touch scrolling blocked | ✗ | — | needs a real iOS device |
 
+## 13e. Upgrade order (`upgrade.spec.ts`)
+
+| Feature | Status | Spec | Fixture |
+| ------- | :----: | ---- | ------- |
+| Pre-upgrade properties win over initial attributes, incl. `motion` / `themeSource` / `onReady`; `:state(ready)` | ✓ | `upgrade.spec.ts` | `upgrade.html` |
+| `setAttribute()` after upgrade, before the first connect, still applies | ✓ | `upgrade.spec.ts` | `upgrade.html` |
+| Appended into `<fieldset disabled>`: the first build sees it disabled, no `update()` first | ✓ | `upgrade.spec.ts` | `upgrade.html` |
+
 ## 14. Example site (smoke only)
 
 | Feature | Status | Spec | Fixture |
