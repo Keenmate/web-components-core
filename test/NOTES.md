@@ -84,3 +84,22 @@ Silent at runtime; only `tsc` catches it — and nothing typechecks `e2e/` or `t
   for touch emulation need `<meta name="viewport">` and must not overflow.
 - **The example smoke spec allowlists lazily-defined demo tags** (`LAZY_TAGS` in
   `e2e/examples.spec.ts`; today `core-demo-pg-early`) — add any new one there.
+
+## Cross-copy tests (every component bundles its own core)
+
+Page-wide state must live in `sharedState(key, init)` (`src/global/shared-state.ts`), never in a
+module variable. Every module that holds such state has a test that loads a SECOND copy of the
+module and checks both copies see the same state:
+
+```ts
+it('… is shared by another copy of core', async () => {
+  doSomethingThroughThisCopy();
+  vi.resetModules();
+  const other = await import('./the-module.js'); // a second module instance = another bundle
+  expect(other.someFunction).not.toBe(someFunction); // really a second copy
+  expect(other.readTheState()).toEqual(/* what this copy wrote */);
+});
+```
+
+Coverage is measured: `npm run test:coverage` (v8; text summary + `coverage/index.html`).
+`src/ssr-entry-points.test.ts` imports every published entry point with no DOM.

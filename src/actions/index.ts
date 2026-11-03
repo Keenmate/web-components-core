@@ -1,7 +1,7 @@
 /**
  * `@keenmate/web-components-core/actions` — the shared model for clickable
  * items (action buttons, toolbars, context / header menus) and the `action`
- * event they fire (SPEC §12.11).
+ * event they fire (SPEC §12.12).
  */
 export type {
   ActionEventDetail,

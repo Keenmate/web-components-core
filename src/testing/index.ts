@@ -14,3 +14,4 @@ export {
   type MountOptions,
 } from './fixtures.js';
 export { listen, type EventSpy } from './event-spy.js';
+export { captureConsole, resetPageState, waitForEvent, type ConsoleCapture } from './page-state.js';

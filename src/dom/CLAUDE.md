@@ -27,11 +27,12 @@ plain property assigned earlier. No CSS here — the component owns `.<prefix>-l
 `findScrollContainer(el, { stopAt?, axis? })` / `scrollIntoContainer(el, { block, inline,
 behavior, container?, shouldRevealContainer?, stopAt?, axis? })` — scroll the ONE container around
 `el`, never the page. Flat-tree walk (`assignedSlot` → parent → shadow host; local
-`flatParent`, `composedParent` itself is unchanged — theme / containing-block rely on it).
+`flatParent`; containing-block has its own; `composedParent` itself is unchanged — theme relies on it).
 Never returns html/body/scrollingElement. Honours container `scroll-padding` + element
 `scroll-margin`; logical `inline` (RTL swaps start/end); no `scrollTo()` when < 1px on both axes.
-No container → `el.scrollIntoView({ block, inline, behavior })` (the caller's request goes to
-the page), returns `null`. Uses `el.ownerDocument.defaultView` (iframe-safe). Limits: scaled
+No container → the page scrolls (window `scrollTo`, same alignment rules, the root's
+`scroll-padding`) — never `el.scrollIntoView()`, which would also scroll `overflow: hidden`
+wrappers; with `stopAt` and no container below it nothing scrolls; returns `null`. Uses `el.ownerDocument.defaultView` (iframe-safe). Limits: scaled
 containers, vertical writing modes, nested scrollers (innermost only). jsdom has no layout: the unit test
 fakes geometry; the real checks are `e2e/scroll.spec.ts` (`test/scroll.html`). Headless
 Chromium doesn't animate smooth scrolling — don't write tests that depend on a running glide.

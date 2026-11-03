@@ -117,8 +117,8 @@ function ensureObserver(): ResizeObserver | null {
  * Observe one element's border-box size. The listener fires immediately with the
  * current box (unless `shouldFireImmediately: false`), then on size changes, throttled to
  * {@link ObserveElementSizeOptions.throttleMs} (default 30 ms, leading + trailing);
- * identical consecutive sizes are deduped. All subscriptions share one page-wide
- * `ResizeObserver`. Returns an unsubscribe; the shared observer is torn down when
+ * identical consecutive sizes are deduped. All subscriptions of this copy of core share
+ * one `ResizeObserver` (each bundled copy has its own — they don't need to share it). Returns an unsubscribe; the shared observer is torn down when
  * its last target leaves. No-op-safe during SSR (fires once, returns a working
  * unsubscribe). Components normally consume this via `BlissElement`'s `sizeChanged()`
  * hook rather than subscribing directly.

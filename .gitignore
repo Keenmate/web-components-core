@@ -13,3 +13,6 @@ dist/
 # kmwc
 dist-examples/
 .makefile.env
+
+# Unit test coverage (npm run test:coverage)
+/coverage/

@@ -3,7 +3,10 @@
 `@keenmate/web-components-core/testing` is a separate subpath of runner-agnostic
 DOM fixtures (pure DOM, **zero deps**): `mount`/`cleanup`, `mountBeforeUpgrade`
 (pre-upgrade capture), `uniqueTag`/`defineOnce`, `nextTick`/`nextFrame`, and
-`listen()` → `EventSpy`. Playwright/a11y-contrast fixtures are **deferred** (out
+`listen()` → `EventSpy`, `waitForEvent()`, `captureConsole()` (readable lines, `%c` stripped),
+`resetPageState()` (core's page-wide state: overlays, scroll lock, environment, theme,
+responsive rules, global log level, style caches). `uniqueTag`'s counter is page-wide;
+`defineOnce` / `mountBeforeUpgrade` throw on a tag already defined by another class. Playwright/a11y-contrast fixtures are **deferred** (out
 of the input-model core).
 
 `BlissElement.whenSettled()` / `flush()` are documented in the root `CLAUDE.md`.

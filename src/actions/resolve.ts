@@ -217,7 +217,7 @@ export interface RunActionOptions<Ctx, A extends string> {
 }
 
 /**
- * Run one activation in the shared order (SPEC §12.11):
+ * Run one activation in the shared order (SPEC §12.12):
  * `beforeActionCallback` (`false` cancels — nothing else runs) → the item's
  * `onClick` → the built-in behaviour → the `action` event. The event is a
  * notification after the fact: a listener sees the state the built-in left

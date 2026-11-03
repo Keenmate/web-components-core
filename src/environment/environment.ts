@@ -440,7 +440,9 @@ export function getEnvironment(): EnvironmentSnapshot {
 /**
  * Subscribe to environment changes. The listener fires immediately with the
  * current snapshot (unless `shouldFireImmediately: false`), then again whenever the pointer,
- * hover, orientation, viewport size, or resolved breakpoint changes. Returns an
+ * hover, orientation, or resolved breakpoint changes (a viewport-size change alone doesn't
+ * notify — use {@link observeViewport} for that). A listener that throws (also on the
+ * immediate call) is logged; the subscription stands. Returns an
  * unsubscribe function; the shared `matchMedia`/resize listeners are attached on
  * the first subscriber and torn down when the last one leaves. No-op-safe during
  * SSR (fires once with the desktop default, returns a no-op unsubscribe).

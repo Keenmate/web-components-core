@@ -15,7 +15,7 @@ definition — the stock analyzer only knows `customElements.define()` — so it
 hoisted `const PLACEMENTS = […] as const`), not just inline array literals.
 Core-declared inputs (not table rows) are added by the plugin via
 `withCoreDeclared()` (`core-declared.ts`): `defer`/`shouldDefer`,
-`theme-source`/`themeSource`, the `ready` event on every table-driven class;
+`theme-source`/`themeSource`, `motion`, the `ready` event on every table-driven class;
 `responsive` + `responsiveCallback` only with a `static inputs` table
 (`ExtractedClass.hasInputTable`), plus `BlissElement`'s own public API (`CORE_DECLARED_API`:
 `release`, `destroy`, `whenReady`, …; a test fails if a name disappears from the class).

@@ -9,7 +9,7 @@
 
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 
-/** Every container `mount`/`mountBeforeUpgrade` created, for {@link cleanup}. */
+/** Every container `mount`/`mountBeforeUpgrade` created (or element it put into a given container), for {@link cleanup}. */
 const MOUNTED = new Set<HTMLElement>();
 
 /**
@@ -60,6 +60,11 @@ export function mount<T extends Element = Element>(source: string | Element, opt
   if (!opts?.container) {
     document.body.append(host);
     MOUNTED.add(host);
+  } else if (!opts.container.isConnected) {
+    // A detached container would leave the element unconnected (no build) — contrary to the
+    // contract; connect it, and remove it again in cleanup().
+    document.body.append(opts.container);
+    MOUNTED.add(opts.container);
   }
   let el: Element | null;
   if (typeof source === 'string') {
@@ -73,6 +78,8 @@ export function mount<T extends Element = Element>(source: string | Element, opt
     el = source;
   }
   if (!el) throw new Error('mount(): source produced no element');
+  // Into a caller's container: cleanup() removes the mounted element (not the container).
+  if (opts?.container) MOUNTED.add(el as HTMLElement);
   return el as unknown as T;
 }
 
@@ -89,12 +96,18 @@ export function mountBeforeUpgrade<T extends Element = Element>(
   configure: (el: Record<string, unknown>) => void,
   opts?: MountOptions,
 ): T {
+  if (typeof customElements !== 'undefined' && customElements.get(tag)) {
+    // Already defined: createElement would construct it right away and the pre-upgrade path
+    // this helper exists to test would silently not run.
+    throw new Error(`mountBeforeUpgrade: <${tag}> is already defined — use a fresh uniqueTag()`);
+  }
   const host = opts?.container ?? document.createElement('div');
   if (!opts?.container) {
     document.body.append(host);
     MOUNTED.add(host);
   }
   const el = document.createElement(tag); // plain HTMLElement — not yet upgraded
+  if (opts?.container) MOUNTED.add(el);
   configure(el as unknown as Record<string, unknown>);
   host.append(el);
   defineOnce(tag, ctor); // in-DOM + define → upgrade runs the constructor now

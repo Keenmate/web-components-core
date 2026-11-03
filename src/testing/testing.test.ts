@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BlissElement } from '../element/bliss-element.js';
 import { toInt, toText } from '../inputs/converters.js';
 import type { InputDef } from '../inputs/types.js';
-import { cleanup, defineOnce, listen, mount, mountBeforeUpgrade, uniqueTag } from './index.js';
+import { captureConsole, cleanup, defineOnce, listen, mount, mountBeforeUpgrade, resetPageState, uniqueTag, waitForEvent } from './index.js';
 
 class Widget extends BlissElement<{ ping: { n: number } }> {
   protected static override inputs: readonly InputDef[] = [
@@ -118,5 +118,48 @@ describe('listen', () => {
     spy.stop();
     el.firePing(3);
     expect(spy.count).toBe(2); // stopped
+  });
+});
+
+// Review 2026-11-03 L-13 / L-20 / L-21 (WP12).
+describe('/testing — review fixes', () => {
+  it('mount({ container }): cleanup() removes the element; a detached container is connected', () => {
+    const container = document.createElement('section');
+    const el = mount(`<div class="x"></div>`, { container });
+    expect(el.isConnected).toBe(true);
+    cleanup();
+    expect(el.isConnected).toBe(false);
+  });
+
+  it('mountBeforeUpgrade on an already-defined tag throws instead of skipping the pre-upgrade path', () => {
+    const tag = defineOnce(uniqueTag(), freshWidget());
+    expect(() => mountBeforeUpgrade(tag, freshWidget(), () => {})).toThrow(/already defined/);
+  });
+
+  it('captureConsole records readable lines and restores the console', () => {
+    const original = console.warn;
+    const capture = captureConsole(['warn']);
+    console.warn('%c[NS:INIT]%c #x', 'color:red', 'color:grey', 'hello', { detail: 1 });
+    capture.restore();
+    expect(capture.lines('warn')).toEqual(['[NS:INIT] #x hello']);
+    expect(console.warn).toBe(original);
+  });
+
+  it('waitForEvent resolves with the next event and rejects on timeout', async () => {
+    const target = new EventTarget();
+    const next = waitForEvent(target, 'ping');
+    target.dispatchEvent(new CustomEvent('ping', { detail: 1 }));
+    await expect(next).resolves.toMatchObject({ detail: 1 });
+    await expect(waitForEvent(target, 'never', { timeout: 5 })).rejects.toThrow(/no "never" event/);
+  });
+
+  it('resetPageState() releases a held scroll lock', async () => {
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {}); // jsdom has no scrolling
+    const { lockBodyScroll } = await import('../overlay/scroll-lock.js');
+    lockBodyScroll();
+    expect(document.body.style.position).toBe('fixed');
+    resetPageState();
+    expect(document.body.style.position).toBe('');
+    scrollTo.mockRestore();
   });
 });

@@ -86,6 +86,14 @@ brief); no compatibility aliases (v2 rule).
   `isToggled` is `false`).
 - `isActionBusy(item, host?)` — scoped to one component element when `host` is given.
 - `/search`: `escapeHtml(text)`, `highlightHtml(html, term, opts)`.
+- `/testing`: `resetPageState()` (core's page-wide state — overlays, scroll lock, environment,
+  theme, responsive rules, global log level, style caches), `captureConsole()` (readable lines,
+  `%c` stripped) and `waitForEvent(target, name, { timeout })`. `mount({ container })` now removes
+  the element in `cleanup()` and connects a detached container; `mountBeforeUpgrade` throws on an
+  already-defined tag (it silently skipped the pre-upgrade path).
+- Packaging: a `./package.json` export, `engines.node >= 18`, `typescript` as an optional peer
+  dependency (the `/cem` types use it), and `CemPackageDoc` / `CORE_DECLARED_API` exported from
+  `/cem`.
 - `Logger.resetLevel()` on the public `Logger` type (drop a `setLevel()` and its persisted copy).
 - CEM type inference: `toList({ itemType: 'int' })` → `number[]`, `toCssLength` → `string`,
   `toFunction` → `Function | null`, a `toEnum` with no default or `isNullable` → `… | null`;
@@ -274,10 +282,20 @@ brief); no compatibility aliases (v2 rule).
   non-enumerable `window.components.*` accessors (loader hook, motion).
 - New `callSafely()` / `notifyEach()` (`src/logging/safe-call.ts`): run code core doesn't own and
   log a throw through the core logger.
+- Coverage is measured: `npm run test:coverage` (`@vitest/coverage-v8`; ~96% of lines today).
+  `src/ssr-entry-points.test.ts` imports every published entry point with no DOM. Direct unit
+  tests for `resolveFromAttribute` / `resolveFromProperty` and the composed-tree walk; a
+  cross-copy test pattern in `test/NOTES.md`.
 - CEM plugin keys extracted classes by module path + name, so a same-named class in another
   module (a demo, a test double) no longer receives the component's attributes.
 
 ### Docs
+
+- Review 2026-11-03: `docs/review/2026-11-03-code-review.md` (findings, decisions) and
+  `docs/review/2026-11-03-fix-plan.md` (what was done, what was left and why).
+- SPEC §6.6: components own `formResetCallback`; `formStateRestoreCallback` is intentionally
+  absent. Stale notes fixed (`observeEnvironment` doesn't fire on size alone, the size observer
+  is per copy, `/actions` SPEC references).
 
 - SPEC §12.9: pinned scroll lock and the cross-bundle state; §12.9 and README: changing the
   breakpoints at runtime moves only components' `env.breakpoint` — change them in SCSS

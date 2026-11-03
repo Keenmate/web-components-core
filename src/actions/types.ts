@@ -19,7 +19,7 @@ export type ActionSource =
 
 /**
  * One clickable item — an action button, a toolbar button, a menu item (SPEC
- * §12.11). Every dynamic field is a static value plus a separate
+ * §12.12). Every dynamic field is a static value plus a separate
  * `get*Callback(ctx)`; the callback wins when both are set. `Ctx` is the
  * surface context the component builds when it renders or opens the surface
  * (the row a context menu opened on, the picker's selection, …); `A` is the

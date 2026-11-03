@@ -575,6 +575,12 @@ flow: catch the callback's throw → log it at `error` → submit `''` →
 `setFormatError(err, label)` → emit a `*-error` event; the next successful
 format calls `setFormatError(null)`.
 
+**Form reset / restore.** Components implement the platform `formResetCallback()` themselves
+(core has nothing generic to reset — "the value" is a different input per component):
+multiselect resets to the markup's `selected` options, daterangepicker to its `value`
+attribute, dropzone clears its files. `formStateRestoreCallback` is intentionally absent:
+components submit through light-DOM hidden inputs (no `setFormValue` state to restore).
+
 ### 6.7 Responsive rules — partial configs per device class / breakpoint (page / tag / instance)
 
 Components decide behaviour from the environment, but apps want to tune those
