@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`dismissAllOverlays()` now reaches every component.** `ALL_GROUPS` was a plain `Symbol()`, so
+  each bundled copy of core had its own wildcard and a dismiss from one component (e.g. the
+  command palette) didn't close another's dropdown. It is now `Symbol.for('km-overlay-all-groups')`.
+  Reported by pure-css.
+- **`lockBodyScroll()` shares one lock across components.** The ref count and the saved body
+  style were module variables, so two components with their own copies of core could unlock
+  each other: closing a multiselect sheet restored page scroll under an open date picker. The
+  state now lives on `globalThis[Symbol.for('km-scroll-lock')]` (exported type `ScrollLockState`),
+  a documented shape pure-css can join.
+
+### Changed
+
+- **`lockBodyScroll()` pins `<body>`** (`position: fixed` at minus the scroll offset, plus
+  `overflow: hidden`) instead of only `overflow: hidden`, which iOS Safari ignores for touch
+  scrolling. The last release restores the body's inline styles and jumps back to the saved
+  position instantly, even under `html { scroll-behavior: smooth }`.
+
+### Docs
+
+- SPEC §12.9: pinned scroll lock and the cross-bundle state; §12.9 and README: changing the
+  breakpoints at runtime moves only components' `env.breakpoint` — change them in SCSS
+  (`$base-breakpoint-*`) so pure-css's `@media` rules agree.
+- `src/positioning/CLAUDE.md`: pure-css ports `anchor.ts` / `containing-block.ts`; flag changes
+  as "pure-css port affected".
+
 ## [1.0.0-rc17] - 2026-11-02
 
 ### Changed — BREAKING

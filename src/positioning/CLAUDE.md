@@ -16,3 +16,9 @@ tooltip option not a preset; the bespoke shadow-DOM platform was NOT ported (1.8
 handles it + the `platform` hatch — a component with a genuinely custom platform,
 like web-multiselect's narrowed fixed-position containing-block heuristic, passes
 it via that hatch). Tests mock `@floating-ui/dom` (jsdom has no layout).
+
+**Ported copy in pure-css.** `@keenmate/pure-css` ships `pureCss.position.anchor()`
+(`src/js/position.js`), a port of `anchor.ts` + `containing-block.ts` (from rc15 @
+1882e6f) over the same vendored Floating UI 1.8.0. When either file changes (options,
+defaults, step order, a fix) — or the pinned `@floating-ui/dom` version moves — add
+"pure-css port affected" to the CHANGELOG entry so the change is carried over.

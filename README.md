@@ -179,7 +179,9 @@ once every staged change has flushed and its `reinit()`/`update()` has run
 
 Width buckets (`env.breakpoint`) default to `mobile ≤ 768`, `tablet ≤ 1024`, `desktop` — the
 pure-css lines — and follow the base tokens `--base-breakpoint-mobile` / `--base-breakpoint-tablet`
-when the page defines them (read once); `configureBreakpoints()` overrides both.
+when the page defines them (read once); `configureBreakpoints()` overrides both. Changing the
+tokens at runtime moves only the components' buckets, not pure-css's compiled `@media` rules —
+change the breakpoints in SCSS (`$base-breakpoint-*`) so both agree.
 
 Components that swap a floating panel for a fullscreen sheet (or a modal) on
 smaller devices share one signal instead of each re-deriving "what is a phone."

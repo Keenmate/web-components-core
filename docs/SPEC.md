@@ -1262,7 +1262,10 @@ rc15). On the first browser snapshot the base tokens `--base-breakpoint-mobile` 
 `--base-breakpoint-tablet` (read from `getComputedStyle(document.documentElement)`,
 `768px` or unitless; absent / unparsable → the default) move those two lines, read
 once. `configureBreakpoints(map)` redefines the buckets globally and always wins
-over the tokens. SSR-safe: no `window`/`matchMedia` → a
+over the tokens. Overriding the tokens (or calling `configureBreakpoints`) at runtime moves
+components' `env.breakpoint` only — pure-css's compiled `@media` lines stay put. For the page
+and the components to agree, change the breakpoints at compile time (SCSS
+`$base-breakpoint-*`), which emits the matching tokens. SSR-safe: no `window`/`matchMedia` → a
 static desktop default + no-op unsubscribe. Detection is **feature-detection, not
 UA sniffing** — media queries are reliable AND already reactive.
 
@@ -1398,6 +1401,23 @@ width-aware (or any snapshot field) → `classifyDevice(env)` + your own branch.
 Overlay runtime helpers for the fullscreen tier: `lockBodyScroll()` (ref-counted
 body-scroll lock) and `observeKeyboardInset(panel)` (pin a fixed sheet above the
 soft keyboard via `visualViewport`).
+
+`lockBodyScroll()` **pins** `<body>` (since rc18): on the first lock it records
+`scrollX` / `scrollY` and the body's inline `position` / `top` / `left` / `right` /
+`width` / `overflow`, then sets `position: fixed; top: -scrollY; left: -scrollX;
+right: 0; width: 100%; overflow: hidden` — the page doesn't move, and iOS Safari
+(which ignores `overflow: hidden` for touch scrolling) can't scroll it either. The
+last release restores the styles and calls `scrollTo({ …, behavior: 'instant' })`,
+so a page with `html { scroll-behavior: smooth }` doesn't animate the jump back.
+
+**Cross-bundle state.** Every component bundles its own copy of core, so page-wide
+overlay state can't live in module variables:
+- the lock's count and snapshot live on `globalThis[Symbol.for('km-scroll-lock')]`
+  (`ScrollLockState`: `{ count, saved: { scrollX, scrollY, style } | null }`) — a
+  documented shape, so non-core code (pure-css) can join the same lock;
+- `ALL_GROUPS` (the `dismissAllOverlays()` wildcard of `km-overlay-activate`) is
+  `Symbol.for('km-overlay-all-groups')`, so a dismiss from one component's copy
+  reaches every other copy and outside listeners can compare against it.
 
 ### 12.10 Theme context (dark / light) — IMPLEMENTED (`src/environment/theme.ts`)
 
