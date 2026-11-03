@@ -180,6 +180,33 @@ brief); no compatibility aliases (v2 rule).
   trigger (found across shadow roots, resolved at each open), else `<body>`. New export
   `findOverlayContainer(trigger)` in `/positioning` for components that portal panels themselves.
   *pure-css port affected* (same default in `position.js` if it portals).
+- **Positioning / DOM:**
+  - `scrollIntoContainer()` with no container scrolls only the page (window `scrollTo` with the
+    same alignment rules) instead of `el.scrollIntoView()`, which also scrolled `overflow: hidden`
+    wrappers; with `stopAt` and no container below it, nothing scrolls (the outer scroller and
+    the page used to move); a percentage `scroll-padding` resolves against the container size
+    (`10%` was read as 10px).
+  - `createPopover()` forwards every `anchor()` option (object `offset`, `maxHeight`, `maxWidth`,
+    `flipPadding`, `arrow`, `autoUpdateOptions`, `shouldUseFixedContainingBlock`, the callbacks —
+    they were silently dropped); a destructured `destroy()` works and `open()` after `destroy()`
+    does nothing.
+  - `createTooltip()`: sets `aria-describedby` on the trigger while shown; Escape hides it; the
+    pointer leaving doesn't hide it while the trigger has focus, and the pointer may move onto
+    the tooltip (WCAG 1.4.13); a trigger removed while it shows takes the tooltip with it (it
+    stayed mounted with positioning running); a focus / `show()` after a hover no longer reuses
+    the old cursor position; `show()` after `destroy()` does nothing.
+  - `anchor()`: theme inheritance also copies `data-bs-theme` and restores the panel's own
+    attributes on `destroy()` (a reused panel kept a stale theme); `onDrift` is reported only for
+    `strategy: 'fixed'`; the arrow's offset uses its height on a top / bottom edge.
+  - Fixed containing blocks: the walk follows slots (a transformed wrapper around a slot affects
+    a slotted panel) and stops at a top-layer element (modal `<dialog>`, open popover); the drift
+    culprit is searched among the PANEL's ancestors first (a portaled panel's culprit was never
+    found) and matched by its padding-box origin (a bordered culprit was missed).
+    *pure-css port affected.*
+  - `css-var-lint`: names may contain `_` and non-ASCII, names inside comments are ignored, and
+    matching is case-sensitive like CSS.
+  - Motion presets are also adopted into the document when an element lives in a shadow root, so
+    `<html data-motion>` works even when every component is inside another element's shadow DOM.
 - **Upgrade order:**
   - `motion` and `themeSource` assigned before the element upgraded are applied (they were never
     picked up, and the own property hid the accessor for good);

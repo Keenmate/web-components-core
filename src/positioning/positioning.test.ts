@@ -561,3 +561,107 @@ describe('getFixedPositionOffsetParent', () => {
     spy.mockRestore();
   });
 });
+
+// Review 2026-11-03 (WP6b): D-07 / D-08 / D-10 / D-15 / D-16 / D-17 / D-25 / D-27.
+describe('positioning — review fixes', () => {
+  const lastAutoUpdate = () => vi.mocked(fui.autoUpdate).mock.calls.at(-1)![2] as () => void;
+
+  it('tooltip: describes its trigger while shown (aria-describedby), keeping existing ids', () => {
+    const trigger = document.createElement('button');
+    trigger.setAttribute('aria-describedby', 'hint');
+    document.body.append(trigger);
+    const tip = createTooltip({ trigger, content: 'hi' });
+    tip.show();
+    expect(trigger.getAttribute('aria-describedby')).toBe(`hint ${tip.element.id}`);
+    tip.hide();
+    expect(trigger.getAttribute('aria-describedby')).toBe('hint');
+  });
+
+  it('tooltip: Escape hides it', () => {
+    const trigger = document.createElement('button');
+    document.body.append(trigger);
+    const tip = createTooltip({ trigger, content: 'hi' });
+    tip.show();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(tip.isVisible).toBe(false);
+  });
+
+  it('tooltip: the pointer leaving does not hide it while the trigger has focus', () => {
+    const trigger = document.createElement('button');
+    document.body.append(trigger);
+    const tip = createTooltip({ trigger, content: 'hi' });
+    trigger.focus();
+    tip.show();
+    trigger.dispatchEvent(new MouseEvent('mouseleave'));
+    expect(tip.isVisible).toBe(true);
+  });
+
+  it('tooltip: a trigger removed while it shows takes the tooltip with it', () => {
+    const trigger = document.createElement('button');
+    document.body.append(trigger);
+    const tip = createTooltip({ trigger, content: 'hi' });
+    tip.show();
+    trigger.remove();
+    lastAutoUpdate()(); // the next positioning tick
+    expect(tip.isVisible).toBe(false);
+    expect(tip.element.isConnected).toBe(false);
+  });
+
+  it('tooltip: show() after destroy() does nothing', () => {
+    const trigger = document.createElement('button');
+    document.body.append(trigger);
+    const tip = createTooltip({ trigger, content: 'hi' });
+    tip.destroy();
+    tip.show();
+    expect(tip.isVisible).toBe(false);
+  });
+
+  it('popover: every anchor option is forwarded (maxHeight → a size() middleware)', () => {
+    const reference = document.createElement('button');
+    const panel = document.createElement('div');
+    document.body.append(reference);
+    createPopover({ reference, panel, maxHeight: { padding: 8 }, offset: { mainAxis: 6 } }).open();
+    expect(mw().map((m) => m.name)).toContain('size');
+    expect(vi.mocked(fui.offset)).toHaveBeenCalledWith({ mainAxis: 6 });
+  });
+
+  it('popover: a destructured destroy() works, and open() afterwards does nothing', () => {
+    const reference = document.createElement('button');
+    const panel = document.createElement('div');
+    document.body.append(reference);
+    const popover = createPopover({ reference, panel });
+    popover.open();
+    const { destroy } = popover;
+    destroy();
+    expect(panel.isConnected).toBe(false);
+    popover.open();
+    expect(popover.isOpen).toBe(false);
+  });
+
+  it('anchor: an inherited theme is removed from a reused panel when the anchor is destroyed', () => {
+    const themed = document.createElement('div');
+    themed.setAttribute('data-theme', 'dark');
+    themed.setAttribute('data-bs-theme', 'dark');
+    const reference = document.createElement('button');
+    themed.append(reference);
+    const floating = document.createElement('div');
+    document.body.append(themed, floating);
+    const handle = anchor(floating, reference, { inheritThemeFrom: reference });
+    expect(floating.getAttribute('data-theme')).toBe('dark');
+    expect(floating.getAttribute('data-bs-theme')).toBe('dark');
+    handle.destroy();
+    expect(floating.hasAttribute('data-theme')).toBe(false);
+    expect(floating.hasAttribute('data-bs-theme')).toBe(false);
+  });
+
+  it('anchor: onDrift is a fixed-strategy diagnosis — never called for absolute', async () => {
+    const floating = document.createElement('div');
+    const reference = document.createElement('button');
+    document.body.append(floating, reference);
+    const onDrift = vi.fn();
+    anchor(floating, reference, { strategy: 'absolute', onDrift });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(onDrift).not.toHaveBeenCalled();
+  });
+});

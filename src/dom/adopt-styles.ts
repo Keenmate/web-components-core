@@ -136,7 +136,11 @@ export interface StyleSlot {
 
 /** Options for {@link createStyleSlot}. */
 export interface StyleSlotOptions {
-  /** Insert at the start (`'first'`) or end (`'last'`) of the root. Default `'last'` (so it wins the cascade). */
+  /**
+   * Insert at the start (`'first'`) or end (`'last'`) of the root. Default `'last'`: it wins
+   * over the root's other `<style>` elements — but adopted stylesheets (`adoptStyles`) always
+   * cascade after every `<style>`, so beat those with `@layer` or specificity.
+   */
   position?: 'first' | 'last';
   /** Optional class on the `<style>` element (e.g. for debugging / removal). */
   cssClass?: string;

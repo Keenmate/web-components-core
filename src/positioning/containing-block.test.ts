@@ -174,3 +174,42 @@ describe('findContainingBlockCulprit', () => {
     expect(findContainingBlockCulprit(ref, 5, 5)).toBeNull();
   });
 });
+
+// Review 2026-11-03 D-06 / D-12 / D-24 (WP6b).
+describe('containing-block — review fixes', () => {
+  it('a portaled panel: the culprit is found among the PANEL’s ancestors', () => {
+    const wrapper = document.createElement('div'); // the transformed layer the panel was portaled into
+    const panel = document.createElement('div');
+    wrapper.append(panel);
+    const reference = document.createElement('button');
+    document.body.append(wrapper, reference);
+    stubStyles(new Map([[wrapper, { transform: 'scale(1)' }]]));
+    stubRect(wrapper, 40, 30);
+    stubRect(panel, 50, 50); // expected (10, 20) → drift (40, 30)
+    const report = detectFixedDrift({ panel, reference, expectedX: 10, expectedY: 20, offsetParent: window });
+    expect(report!.culprit).toBe(wrapper);
+  });
+
+  it('a culprit with a border is matched by its padding-box origin', () => {
+    const culprit = document.createElement('div');
+    const ref = document.createElement('button');
+    culprit.append(ref);
+    document.body.append(culprit);
+    stubStyles(new Map([[culprit, { borderLeftWidth: '3px', borderTopWidth: '3px' }]]));
+    stubRect(culprit, 47, 57);
+    expect(findContainingBlockCulprit(ref, 50, 60)).toBe(culprit);
+  });
+
+  it('a slotted floating element: the transformed wrapper around its slot is the offset parent', () => {
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const wrapper = document.createElement('div');
+    wrapper.append(document.createElement('slot'));
+    shadow.append(wrapper);
+    const floating = document.createElement('div');
+    host.append(floating); // light DOM, rendered inside `wrapper` through the slot
+    document.body.append(host);
+    stubStyles(new Map([[wrapper, { transform: 'matrix(1, 0, 0, 1, 0, 0)' }]]));
+    expect(getFixedPositionOffsetParent(floating)).toBe(wrapper);
+  });
+});

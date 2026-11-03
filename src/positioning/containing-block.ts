@@ -66,13 +66,32 @@ export function getFixedPositionOffsetParent(el: Element): Element | Window {
   // cell with `transform: scale(...)` on hover) would be returned as its own
   // offset parent, and Floating UI would compute element-relative coordinates
   // that render off-screen once applied as `position: fixed`.
-  let node: Element | null = composedParent(el);
+  let node: Element | null = flatParent(el);
   while (node) {
     if (node === document.body || node === document.documentElement) break;
     if (fixedContainingBlockProps(getComputedStyle(node)).length > 0) return node;
-    node = composedParent(node);
+    // A top-layer element (modal <dialog>, open popover) is laid out against the viewport:
+    // its ancestors' transforms don't reach anything inside it.
+    if (isTopLayer(node)) break;
+    node = flatParent(node);
   }
   return window;
+}
+
+/**
+ * The parent in the FLAT tree — where layout happens: a slotted node's slot first (a
+ * transform on the slot's wrapper applies to it), then the parent / the shadow host.
+ */
+function flatParent(node: Element): Element | null {
+  return (node as Element & { assignedSlot?: HTMLSlotElement | null }).assignedSlot ?? composedParent(node);
+}
+
+function isTopLayer(el: Element): boolean {
+  try {
+    return el.matches(':modal') || el.matches(':popover-open');
+  } catch {
+    return false; // an engine without these selectors has no top layer for them
+  }
 }
 
 /**
@@ -82,10 +101,14 @@ export function getFixedPositionOffsetParent(el: Element): Element | Window {
  * iframe, scrollbar gutter, …).
  */
 export function findContainingBlockCulprit(el: Element, driftX: number, driftY: number): Element | null {
-  for (let node: Element | null = el; node; node = composedParent(node)) {
+  for (let node: Element | null = el; node; node = flatParent(node)) {
     if (node === document.body || node === document.documentElement) break;
+    // The panel is offset by the containing block's PADDING box origin (inside its border).
     const rect = node.getBoundingClientRect();
-    if (Math.abs(rect.x - driftX) < 2 && Math.abs(rect.y - driftY) < 2) return node;
+    const style = getComputedStyle(node);
+    const x = rect.x + (parseFloat(style.borderLeftWidth) || 0);
+    const y = rect.y + (parseFloat(style.borderTopWidth) || 0);
+    if (Math.abs(x - driftX) < 2 && Math.abs(y - driftY) < 2) return node;
   }
   return null;
 }
@@ -158,7 +181,12 @@ export function detectFixedDrift(opts: {
   const driftY = rect.y - (originY + opts.expectedY);
   if (Math.abs(driftX) < tolerance && Math.abs(driftY) < tolerance) return null;
 
-  const culprit = findContainingBlockCulprit(opts.reference, driftX, driftY);
+  // The containing block that moved the panel is an ancestor of the PANEL (portaled or not);
+  // the reference's ancestors are the fallback for a panel rendered next to its trigger.
+  const panelParent = flatParent(opts.panel);
+  const culprit =
+    (panelParent ? findContainingBlockCulprit(panelParent, driftX, driftY) : null) ??
+    findContainingBlockCulprit(opts.reference, driftX, driftY);
   return {
     driftX,
     driftY,

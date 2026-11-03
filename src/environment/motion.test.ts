@@ -165,3 +165,18 @@ describe('motion — presets', () => {
     }
   });
 });
+
+// Review 2026-11-03 V-04.
+describe('adoptMotionStyles — page-level data-motion', () => {
+  it('an element inside a shadow root also adopts the presets into its document', async () => {
+    const { adoptMotionStyles, MOTION_CSS } = await import('./motion.js');
+    const host = document.createElement('div');
+    document.body.append(host);
+    const inner = document.createElement('span');
+    host.attachShadow({ mode: 'open' }).append(inner);
+    adoptMotionStyles(inner);
+    const inDocument = [...document.querySelectorAll('style')].some((s) => s.textContent === MOTION_CSS);
+    expect(inDocument).toBe(true);
+    host.remove();
+  });
+});

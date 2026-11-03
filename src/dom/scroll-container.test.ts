@@ -182,14 +182,48 @@ describe('scrollIntoContainer', () => {
     expect(box.scrollTo).toHaveBeenCalled();
   });
 
-  it('no container → the page gets the same request (scrollIntoView with block / inline), returns null', () => {
+  it('no container → the page (window) scrolls by the same rules, returns null', () => {
     const row = document.createElement('div');
     document.body.appendChild(row);
+    geometry(row, { top: 2000, height: 20 });
     row.scrollIntoView = vi.fn();
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     expect(scrollIntoContainer(row, { block: 'center', behavior: 'smooth' })).toBeNull();
-    expect(row.scrollIntoView).toHaveBeenCalledWith({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+    const centre = window.innerHeight / 2;
+    expect(scrollTo).toHaveBeenCalledWith({ top: 2010 - centre, left: 0, behavior: 'smooth' });
+    expect(row.scrollIntoView).not.toHaveBeenCalled(); // would also scroll overflow:hidden wrappers
+    scrollTo.mockRestore();
+  });
+
+  // Review D-04 / D-11.
+  it('no container below stopAt → nothing scrolls (not the outer scroller, not the page)', () => {
+    const { box, row } = scroller('auto', 150);
+    const inner = document.createElement('div');
+    box.appendChild(inner);
+    inner.appendChild(row);
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    row.scrollIntoView = vi.fn();
+    expect(scrollIntoContainer(row, { stopAt: inner })).toBeNull();
+    expect(box.scrollTo).not.toHaveBeenCalled();
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(row.scrollIntoView).not.toHaveBeenCalled();
+    scrollTo.mockRestore();
+  });
+
+  it('an overflow:hidden wrapper with no scroller is never scrolled', () => {
+    const { box, row } = scroller('hidden', 1500);
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     scrollIntoContainer(row);
-    expect(row.scrollIntoView).toHaveBeenLastCalledWith({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+    expect(box.scrollTo).not.toHaveBeenCalled(); // the page scrolls, the clip wrapper doesn't
+    scrollTo.mockRestore();
+  });
+
+  // Review D-18.
+  it('a percentage scroll-padding resolves against the container size', () => {
+    const { box, row } = scroller('auto', 120); // row at 120..140, view 100..300
+    box.style.scrollPaddingTop = '25%'; // 50px of 200 → view starts at 150
+    scrollIntoContainer(row);
+    expect(box.scrollTo).toHaveBeenCalledWith({ top: -30, left: 0, behavior: 'auto' });
   });
 
   it('shouldRevealContainer brings an off-screen container into the viewport first', () => {

@@ -16,19 +16,29 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** Every `--prefix-*` custom property a CSS string *reads* via `var(--prefix-…)`. */
+/** The rest of a custom-property name: any ident character — `_` and non-ASCII included. */
+const NAME_REST = '[\\w\\-\\u00A0-\\uFFFF]+';
+
+/** CSS without its comments (a `--x` mentioned in a comment is neither read nor declared). */
+function stripComments(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, '');
+}
+
+/** Every `--prefix-*` custom property a CSS string *reads* via `var(--prefix-…)`. Case-sensitive, like CSS. */
 export function extractConsumedCssVars(css: string, prefix: string): Set<string> {
   const found = new Set<string>();
-  const re = new RegExp(`var\\(\\s*(${escapeRegExp(prefix)}[a-z0-9-]+)`, 'gi');
+  css = stripComments(css);
+  const re = new RegExp(`var\\(\\s*(${escapeRegExp(prefix)}${NAME_REST})`, 'g');
   let m: RegExpExecArray | null;
   while ((m = re.exec(css))) if (m[1]) found.add(m[1]);
   return found;
 }
 
-/** Every `--prefix-*` custom property a CSS string *declares* (`--prefix-foo: …`), de-duped. */
+/** Every `--prefix-*` custom property a CSS string *declares* (`--prefix-foo: …`), de-duped. Case-sensitive. */
 export function extractDeclaredCssVars(css: string, prefix: string): string[] {
   const found = new Set<string>();
-  const re = new RegExp(`(${escapeRegExp(prefix)}[a-z0-9-]+)\\s*:`, 'gi');
+  css = stripComments(css);
+  const re = new RegExp(`(${escapeRegExp(prefix)}${NAME_REST})\\s*:`, 'g');
   let m: RegExpExecArray | null;
   while ((m = re.exec(css))) if (m[1]) found.add(m[1]);
   return [...found];

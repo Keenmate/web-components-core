@@ -54,11 +54,18 @@ export function isMotion(value: unknown): value is Motion {
   return typeof value === 'string' && (MOTION_VALUES as readonly string[]).includes(value);
 }
 
-/** Adopt the presets into the root `node` lives in (document or a shadow root). Idempotent, SSR-safe. */
+/**
+ * Adopt the presets into the root `node` lives in (document or a shadow root) AND into its
+ * document: a page-level `<html data-motion>` / `<section data-motion>` needs the rules in
+ * the document even when every component lives inside some other element's shadow root
+ * (the tokens then inherit into those roots). Idempotent, SSR-safe.
+ */
 export function adoptMotionStyles(node: Node): void {
   const root = node.getRootNode?.();
   // A document (9) or a shadow root (11) — adoptStyles falls back to <style> without adoptedStyleSheets.
   if (root && (root.nodeType === 9 || root.nodeType === 11)) adoptStyles(root as unknown as DocumentOrShadowRoot, MOTION_CSS);
+  const doc = node.ownerDocument;
+  if (doc && doc !== (root as unknown)) adoptStyles(doc, MOTION_CSS);
 }
 
 // ---------------------------------------------------------------------------

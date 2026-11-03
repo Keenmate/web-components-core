@@ -28,11 +28,28 @@ import type { AnchorHandle, AnchorOptions, Placement } from './types.js';
 
 type Reference = Parameters<typeof computePosition>[0];
 
-/** Copy the nearest `data-theme` from `source` onto `target` (self or ancestor, across shadow roots). */
-function inheritTheme(source: HTMLElement, target: HTMLElement): void {
-  const themed = composedClosest(source, '[data-theme]');
-  const theme = themed?.getAttribute('data-theme');
-  if (theme != null) target.setAttribute('data-theme', theme);
+/** The theme attributes a portaled layer inherits: pure-css / KeenMate's, and Bootstrap's. */
+const THEME_ATTRIBUTES = ['data-theme', 'data-bs-theme'] as const;
+
+/**
+ * Copy the nearest theme attributes from `source` onto `target` (self or ancestor, across
+ * shadow roots). Returns a restore: the panel element is often reused across opens, so its
+ * own attributes come back when the anchor is destroyed (a theme removed meanwhile must
+ * not stick to it).
+ */
+function inheritTheme(source: HTMLElement, target: HTMLElement): () => void {
+  const restores: (() => void)[] = [];
+  for (const name of THEME_ATTRIBUTES) {
+    const themed = composedClosest(source, `[${name}]`);
+    const theme = themed?.getAttribute(name);
+    if (theme == null) continue;
+    const previous = target.getAttribute(name);
+    target.setAttribute(name, theme);
+    restores.push(() => (previous === null ? target.removeAttribute(name) : target.setAttribute(name, previous)));
+  }
+  return () => {
+    for (const restore of restores) restore();
+  };
 }
 
 const OPPOSITE_SIDE = { top: 'bottom', right: 'left', bottom: 'top', left: 'right' } as const;
@@ -46,7 +63,9 @@ function positionArrow(el: HTMLElement, placement: Placement, data: { x?: number
   el.style.top = data.y != null ? `${data.y}px` : '';
   el.style.right = '';
   el.style.bottom = '';
-  el.style[staticSide] = `-${el.offsetWidth / 2}px`;
+  // Half the arrow sticks out past the panel edge: its height on a top / bottom edge, its width on a side.
+  const size = staticSide === 'top' || staticSide === 'bottom' ? el.offsetHeight : el.offsetWidth;
+  el.style[staticSide] = `-${size / 2}px`;
 }
 
 /**
@@ -132,7 +151,7 @@ export function anchor(
 ): AnchorHandle {
   const strategy = opts.strategy ?? 'fixed';
 
-  if (opts.inheritThemeFrom) inheritTheme(opts.inheritThemeFrom, floating);
+  const restoreTheme = opts.inheritThemeFrom ? inheritTheme(opts.inheritThemeFrom, floating) : undefined;
 
   floating.style.position = strategy;
   floating.style.left = '0';
@@ -184,7 +203,8 @@ export function anchor(
       const { onPlaced, onComputed, onDrift } = opts;
       if (onPlaced) callSafely(() => onPlaced(resolved), { source: floating, message: 'anchor onPlaced threw' });
       if (onComputed) callSafely(() => onComputed({ x, y, placement: resolved }), { source: floating, message: 'anchor onComputed threw' });
-      if (onDrift && reference instanceof Element) {
+      // Drift is a `position: fixed` diagnosis — an absolute panel is MEANT to sit in its offset parent.
+      if (onDrift && reference instanceof Element && strategy === 'fixed') {
         // Measure against the same frame floating-ui used: the fixed-CB offset parent
         // when the sugar is on, else the viewport. Only reports when actually drifted.
         const offsetParent = useFixedCB ? getFixedPositionOffsetParent(floating) : window;
@@ -205,9 +225,11 @@ export function anchor(
   return {
     update: run,
     destroy() {
+      if (isDestroyed) return;
       isDestroyed = true;
       cleanup?.();
       cleanup = undefined;
+      restoreTheme?.();
     },
   };
 }

@@ -64,6 +64,20 @@ export interface TooltipHandle {
   destroy(): void;
 }
 
+let tooltipSeq = 0;
+
+/** Add `id` to the element's space-separated `aria-describedby` (keeping what is there). */
+function addDescribedBy(el: Element, id: string): void {
+  const ids = (el.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean);
+  if (!ids.includes(id)) el.setAttribute('aria-describedby', [...ids, id].join(' '));
+}
+
+function removeDescribedBy(el: Element, id: string): void {
+  const ids = (el.getAttribute('aria-describedby') ?? '').split(/\s+/).filter((x) => x && x !== id);
+  if (ids.length) el.setAttribute('aria-describedby', ids.join(' '));
+  else el.removeAttribute('aria-describedby');
+}
+
 function normalizeDelay(delay: TooltipDelay | undefined): { show: number; hide: number } {
   if (typeof delay === 'number') return { show: delay, hide: delay };
   return { show: delay?.show ?? 0, hide: delay?.hide ?? 0 };
@@ -84,6 +98,9 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
 
   let handle: AnchorHandle | undefined;
   let visible = false;
+  let isDestroyed = false;
+  // The tooltip describes its trigger for assistive tech while it is shown (aria-describedby).
+  element.id ||= `km-tooltip-${++tooltipSeq}`;
   let showTimer: ReturnType<typeof setTimeout> | undefined;
   let hideTimer: ReturnType<typeof setTimeout> | undefined;
   let cursorRect: DOMRect | undefined;
@@ -119,9 +136,13 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     showTimer = hideTimer = undefined;
   };
 
+  const onKeydown = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape') hide(); // dismissible without moving the pointer or focus (WCAG 1.4.13)
+  };
+
   const show = (): void => {
     clearTimers();
-    if (visible) return;
+    if (visible || isDestroyed) return;
     opts.beforeShowCallback?.();
     visible = true;
     container().append(element);
@@ -131,7 +152,14 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
       strategy: opts.strategy,
       offset: opts.offset ?? 8,
       inheritThemeFrom: opts.inheritThemeFrom ?? opts.trigger,
+      // A trigger removed from the page while its tooltip shows (a re-rendered row) takes the
+      // tooltip with it, instead of leaving it mounted with positioning running.
+      beforeComputeCallback: () => {
+        if (!opts.trigger.isConnected) hide();
+      },
     });
+    addDescribedBy(opts.trigger, element.id);
+    document.addEventListener('keydown', onKeydown, true);
     // Ensure cursor tracking is live. For a pointer show it was already attached on
     // mouseenter (so cursorRect was seeded through the show delay); for an imperative
     // show() / focus show it's attached here. addEventListener is idempotent on the
@@ -145,12 +173,16 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     // Always detach cursor tracking — the listener may have been attached on
     // mouseenter while the show delay was still pending (never became visible).
     stopTrackingCursor();
+    // A later focus / show() places the tooltip at the trigger, not where the pointer last was.
+    cursorRect = undefined;
     if (!visible) return;
     visible = false;
     element.classList.remove(visibleClass);
     handle?.destroy();
     handle = undefined;
     element.remove();
+    removeDescribedBy(opts.trigger, element.id);
+    document.removeEventListener('keydown', onKeydown, true);
   };
 
   const scheduleShow = (): void => {
@@ -168,11 +200,20 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     if (opts.shouldFollowCursor) startTrackingCursor(event);
     scheduleShow();
   };
+  // The pointer leaving doesn't hide a tooltip whose trigger still has keyboard focus, and
+  // the pointer may move onto the tooltip itself (hoverable content, WCAG 1.4.13).
+  const onMouseLeave = (): void => {
+    if (opts.trigger.matches(':focus-within')) return;
+    scheduleHide();
+  };
+  const onFocusOut = (): void => scheduleHide();
 
   opts.trigger.addEventListener('mouseenter', onMouseEnter);
-  opts.trigger.addEventListener('mouseleave', scheduleHide);
+  opts.trigger.addEventListener('mouseleave', onMouseLeave);
   opts.trigger.addEventListener('focusin', scheduleShow);
-  opts.trigger.addEventListener('focusout', scheduleHide);
+  opts.trigger.addEventListener('focusout', onFocusOut);
+  element.addEventListener('mouseenter', clearTimers);
+  element.addEventListener('mouseleave', onMouseLeave);
 
   return {
     element,
@@ -182,10 +223,13 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     show,
     hide,
     destroy() {
+      isDestroyed = true;
       opts.trigger.removeEventListener('mouseenter', onMouseEnter);
-      opts.trigger.removeEventListener('mouseleave', scheduleHide);
+      opts.trigger.removeEventListener('mouseleave', onMouseLeave);
       opts.trigger.removeEventListener('focusin', scheduleShow);
-      opts.trigger.removeEventListener('focusout', scheduleHide);
+      opts.trigger.removeEventListener('focusout', onFocusOut);
+      element.removeEventListener('mouseenter', clearTimers);
+      element.removeEventListener('mouseleave', onMouseLeave);
       hide();
     },
   };

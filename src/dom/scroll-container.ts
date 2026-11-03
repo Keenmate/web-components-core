@@ -97,9 +97,11 @@ export function findScrollContainer(el: Element, options: FindScrollContainerOpt
   return null;
 }
 
-function px(value: string): number {
+/** A computed length in px; a percentage (`scroll-padding: 10%`) resolves against `base`. */
+function px(value: string, base = 0): number {
   const n = parseFloat(value);
-  return Number.isFinite(n) ? n : 0;
+  if (!Number.isFinite(n)) return 0;
+  return value.trim().endsWith('%') ? (n / 100) * base : n;
 }
 
 /**
@@ -125,6 +127,38 @@ function axisDelta(position: ScrollLogicalPosition, tStart: number, tEnd: number
   }
 }
 
+/** Scroll the page (window) so `el` sits in the viewport — only the page, never a clip wrapper. */
+function scrollPageTo(el: Element, view: Window, block: ScrollLogicalPosition, inline: ScrollLogicalPosition, behavior: ScrollBehavior): void {
+  const root = el.ownerDocument.documentElement;
+  const rootStyle = view.getComputedStyle(root);
+  const height = root.clientHeight || view.innerHeight;
+  const width = root.clientWidth || view.innerWidth;
+  const target = el.getBoundingClientRect();
+  const style = view.getComputedStyle(el);
+  const dy = axisDelta(
+    block,
+    target.top - px(style.scrollMarginTop),
+    target.bottom + px(style.scrollMarginBottom),
+    px(rootStyle.scrollPaddingTop, height),
+    height - px(rootStyle.scrollPaddingBottom, height),
+  );
+  const isRtl = rootStyle.direction === 'rtl';
+  const dx = axisDelta(
+    isRtl && inline === 'start' ? 'end' : isRtl && inline === 'end' ? 'start' : inline,
+    target.left - px(style.scrollMarginLeft),
+    target.right + px(style.scrollMarginRight),
+    px(rootStyle.scrollPaddingLeft, width),
+    width - px(rootStyle.scrollPaddingRight, width),
+  );
+  if (Math.abs(dy) >= MIN_DELTA || Math.abs(dx) >= MIN_DELTA) {
+    try {
+      view.scrollTo({ top: view.scrollY + dy, left: view.scrollX + dx, behavior });
+    } catch {
+      // No layout engine (jsdom) — nothing to scroll.
+    }
+  }
+}
+
 function isFullyInViewport(el: Element, view: Window): boolean {
   const rect = el.getBoundingClientRect();
   const root = el.ownerDocument.documentElement;
@@ -139,9 +173,11 @@ function isFullyInViewport(el: Element, view: Window): boolean {
  * `scroll-padding` and the element's `scroll-margin` (sticky headers are a CSS matter, as with
  * native scrolling). Nothing to move → no `scrollTo()` call.
  *
- * No container → `el.scrollIntoView({ block, inline, behavior })`: the page is the only scroller,
- * so it gets the same request (a `center` jump centres the row in the window; `nearest` moves the
- * page only if `el` is off-screen). Returns the container used, `null` for that fallback.
+ * No container → the PAGE scrolls (window `scrollTo`, the same alignment rules and the root's
+ * `scroll-padding`): a `center` jump centres the row in the window; `nearest` moves the page only
+ * if `el` is off-screen. Unlike `el.scrollIntoView()` this never scrolls an `overflow: hidden` /
+ * `clip` wrapper. With `stopAt` and no container below it, nothing scrolls — the caller asked to
+ * stay inside `stopAt`. Returns the container used, `null` for the page / no scroll.
  */
 export function scrollIntoContainer(el: Element, options: ScrollIntoContainerOptions = {}): HTMLElement | null {
   if (!isAvailable()) return null;
@@ -151,7 +187,7 @@ export function scrollIntoContainer(el: Element, options: ScrollIntoContainerOpt
   const container = options.container ?? findScrollContainer(el, options);
 
   if (!container) {
-    el.scrollIntoView?.({ block, inline, behavior });
+    if (!options.stopAt) scrollPageTo(el, view, block, inline, behavior);
     return null;
   }
 
@@ -164,10 +200,12 @@ export function scrollIntoContainer(el: Element, options: ScrollIntoContainerOpt
   const target = el.getBoundingClientRect();
   const targetStyle = view.getComputedStyle(el);
 
-  const viewTop = box.top + container.clientTop + px(boxStyle.scrollPaddingTop);
-  const viewBottom = box.top + container.clientTop + container.clientHeight - px(boxStyle.scrollPaddingBottom);
-  const viewLeft = box.left + container.clientLeft + px(boxStyle.scrollPaddingLeft);
-  const viewRight = box.left + container.clientLeft + container.clientWidth - px(boxStyle.scrollPaddingRight);
+  const h = container.clientHeight;
+  const w = container.clientWidth;
+  const viewTop = box.top + container.clientTop + px(boxStyle.scrollPaddingTop, h);
+  const viewBottom = box.top + container.clientTop + h - px(boxStyle.scrollPaddingBottom, h);
+  const viewLeft = box.left + container.clientLeft + px(boxStyle.scrollPaddingLeft, w);
+  const viewRight = box.left + container.clientLeft + w - px(boxStyle.scrollPaddingRight, w);
 
   const dy = axisDelta(
     block,

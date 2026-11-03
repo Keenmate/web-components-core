@@ -67,3 +67,15 @@ describe('lintCssVars', () => {
     expect(lintCssVars('.x{--ms-anything:1px}', { prefix: P, consumed: new Set() })).toEqual([]);
   });
 });
+
+// Review 2026-11-03 D-22.
+describe('css-var-lint — names, comments, case', () => {
+  it('a name may contain `_` and non-ASCII; comments are ignored; matching is case-sensitive', () => {
+    const css = `/* var(--ms-commented) --ms-in-comment: 1 */
+      .a { color: var(--ms-text_color); width: var(--ms-šířka); }
+      :host { --ms-Upper: 1; --ms-gap_x: 2px; }`;
+    expect([...extractConsumedCssVars(css, '--ms-')].sort()).toEqual(['--ms-text_color', '--ms-šířka']);
+    expect(extractDeclaredCssVars(css, '--ms-').sort()).toEqual(['--ms-Upper', '--ms-gap_x']);
+    expect(extractDeclaredCssVars(':host { --MS-x: 1 }', '--ms-')).toEqual([]);
+  });
+});
