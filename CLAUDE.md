@@ -179,7 +179,8 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
   `null` exempt). Watch the console when authoring a table. `toBool(mode)` takes a REQUIRED
   mode; `'presence'` (any value → true) is for `disabled` / `readonly` only.
 - Removing an attribute is reactive: it resets that input to its `default`
-  (absent == default), consistent with construction.
+  (absent == default), consistent with construction. `el.x = undefined` resets
+  it the same way on the property path.
 - Invalid values follow one rule on both paths: warn and keep the previous value
   (the default before any valid one). Converters flag a bad attribute string via
   `fromAttribute`'s `reportInvalid` argument; a reflected input then writes its

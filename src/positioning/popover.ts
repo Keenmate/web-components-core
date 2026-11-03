@@ -55,7 +55,7 @@ export interface PopoverOptions {
   /** Escape hatch: a custom floating-ui platform (e.g. a narrowed shadow-DOM containing-block heuristic). */
   platform?: Platform;
   /** Called after each placement with the resolved placement. */
-  placedCallback?(placement: Placement): void;
+  onPlaced?(placement: Placement): void;
 }
 
 /** Handle returned by {@link createPopover}. */
@@ -101,7 +101,7 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
         ...(opts.beforeComputeCallback ? { beforeComputeCallback: opts.beforeComputeCallback } : {}),
         ...(opts.platform ? { platform: opts.platform } : {}),
         ...(defaultTheme ? { inheritThemeFrom: defaultTheme } : {}),
-        ...(opts.placedCallback ? { placedCallback: opts.placedCallback } : {}),
+        ...(opts.onPlaced ? { onPlaced: opts.onPlaced } : {}),
       });
     },
     close() {

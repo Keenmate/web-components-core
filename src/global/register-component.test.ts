@@ -97,7 +97,7 @@ describe('live-instance registry', () => {
   });
 
   it('per-instance logging: enableLogging() makes only that element loud', () => {
-    const spy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const tag = freshTag();
     // Expose this.log through a tiny method so the test can drive it.
     class El extends BlissElement {
@@ -133,7 +133,7 @@ describe('live-instance registry', () => {
   });
 
   it('the instance log label prefers the element id, else a counter', () => {
-    const spy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const tag = freshTag();
     class El extends BlissElement {
       shout(): void {

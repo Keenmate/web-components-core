@@ -30,15 +30,15 @@ describe('anchor', () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
-    const placedCallback = vi.fn();
+    const onPlaced = vi.fn();
 
-    const handle = anchor(floating, reference, { placedCallback });
+    const handle = anchor(floating, reference, { onPlaced });
     await Promise.resolve(); // let computePosition resolve
 
     expect(floating.style.position).toBe('fixed');
     expect(floating.style.left).toBe('10px');
     expect(floating.style.top).toBe('20px');
-    expect(placedCallback).toHaveBeenCalledWith('bottom-start');
+    expect(onPlaced).toHaveBeenCalledWith('bottom-start');
 
     const cleanup = vi.mocked(fui.autoUpdate).mock.results[0]!.value as ReturnType<typeof vi.fn>;
     handle.destroy();
@@ -54,14 +54,14 @@ describe('anchor', () => {
     expect(vi.mocked(fui.shift)).toHaveBeenCalledWith({ padding: 8 });
   });
 
-  it('reports computed coordinates via computedCallback', async () => {
+  it('reports computed coordinates via onComputed', async () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
-    const computedCallback = vi.fn();
-    anchor(floating, reference, { computedCallback });
+    const onComputed = vi.fn();
+    anchor(floating, reference, { onComputed });
     await Promise.resolve();
-    expect(computedCallback).toHaveBeenCalledWith({ x: 10, y: 20, placement: 'bottom-start' });
+    expect(onComputed).toHaveBeenCalledWith({ x: 10, y: 20, placement: 'bottom-start' });
   });
 
   // Review D-14: callback throws used to become unhandled rejections that skipped the rest.
@@ -70,16 +70,16 @@ describe('anchor', () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
-    const computedCallback = vi.fn();
+    const onComputed = vi.fn();
     anchor(floating, reference, {
-      placedCallback: () => {
+      onPlaced: () => {
         throw new Error('placed boom');
       },
-      computedCallback,
+      onComputed,
     });
     await Promise.resolve();
     await Promise.resolve();
-    expect(computedCallback).toHaveBeenCalledOnce();
+    expect(onComputed).toHaveBeenCalledOnce();
     expect(error).toHaveBeenCalled();
     error.mockRestore();
   });
@@ -226,16 +226,16 @@ describe('anchor', () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
-    const placedCallback = vi.fn();
-    const computedCallback = vi.fn();
+    const onPlaced = vi.fn();
+    const onComputed = vi.fn();
 
-    const handle = anchor(floating, reference, { placedCallback, computedCallback });
+    const handle = anchor(floating, reference, { onPlaced, onComputed });
     handle.destroy(); // before computePosition's promise settles
     await Promise.resolve();
 
     expect(floating.style.left).toBe('0px');
-    expect(placedCallback).not.toHaveBeenCalled();
-    expect(computedCallback).not.toHaveBeenCalled();
+    expect(onPlaced).not.toHaveBeenCalled();
+    expect(onComputed).not.toHaveBeenCalled();
 
     handle.update(); // a no-op once destroyed
     expect(vi.mocked(fui.computePosition)).toHaveBeenCalledOnce();
@@ -266,36 +266,36 @@ describe('anchor', () => {
     expect(vi.mocked(fui.computePosition).mock.calls[0]![2]!.platform).toBe(platform);
   });
 
-  it('driftCallback reports when the panel lands away from where it was positioned', async () => {
+  it('onDrift reports when the panel lands away from where it was positioned', async () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
     // computePosition (mocked) writes x:10/y:20, but the panel actually renders at 100/100.
     floating.getBoundingClientRect = () =>
       ({ x: 100, y: 100, top: 100, left: 100, right: 100, bottom: 100, width: 0, height: 0, toJSON() {} }) as DOMRect;
-    const driftCallback = vi.fn();
+    const onDrift = vi.fn();
 
-    anchor(floating, reference, { driftCallback });
+    anchor(floating, reference, { onDrift });
     await Promise.resolve();
 
-    expect(driftCallback).toHaveBeenCalledOnce();
-    const report = driftCallback.mock.calls[0]![0] as { driftX: number; driftY: number };
+    expect(onDrift).toHaveBeenCalledOnce();
+    const report = onDrift.mock.calls[0]![0] as { driftX: number; driftY: number };
     expect(report.driftX).toBeCloseTo(90);
     expect(report.driftY).toBeCloseTo(80);
   });
 
-  it('driftCallback does not fire when the panel is on target', async () => {
+  it('onDrift does not fire when the panel is on target', async () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
     floating.getBoundingClientRect = () =>
       ({ x: 10, y: 20, top: 20, left: 10, right: 10, bottom: 20, width: 0, height: 0, toJSON() {} }) as DOMRect;
-    const driftCallback = vi.fn();
+    const onDrift = vi.fn();
 
-    anchor(floating, reference, { driftCallback });
+    anchor(floating, reference, { onDrift });
     await Promise.resolve();
 
-    expect(driftCallback).not.toHaveBeenCalled();
+    expect(onDrift).not.toHaveBeenCalled();
   });
 });
 

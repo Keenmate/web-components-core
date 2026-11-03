@@ -57,6 +57,31 @@ export const CORE_DECLARED_INPUTS: readonly CoreInput[] = [
   },
 ];
 
+/**
+ * BlissElement's own public API — the same on every component, so every manifest lists it
+ * (IDE completion, generated docs). Kept in sync with the class by a test
+ * (`core-declared.test.ts` checks every name exists on `BlissElement.prototype`).
+ */
+export const CORE_DECLARED_API: readonly ExtractedMember[] = [
+  { kind: 'field', name: 'isReady', privacy: 'public', readonly: true, type: { text: 'boolean' }, description: 'The first build is live (core, SPEC §6.3) — the `ready` event has fired.' },
+  { kind: 'method', name: 'whenReady', privacy: 'public', return: { type: { text: 'Promise<void>' } }, description: 'Resolves once the first build is live (also settles when the element is destroyed first). Never rejects.' },
+  { kind: 'method', name: 'release', privacy: 'public', return: { type: { text: 'void' } }, description: 'Build an element held by `defer` (SPEC §6.3), with everything assigned meanwhile.' },
+  { kind: 'method', name: 'setAttributes', privacy: 'public', parameters: [{ name: 'values', type: { text: 'Record<string, unknown>' } }], return: { type: { text: 'void' } }, description: 'Apply many inputs (by configKey or attribute name) as ONE rebuild / update.' },
+  { kind: 'method', name: 'batch', privacy: 'public', parameters: [{ name: 'fn', type: { text: '() => void' } }], return: { type: { text: 'void' } }, description: 'Run `fn` and coalesce every input change it makes into one rebuild / update.' },
+  { kind: 'method', name: 'flush', privacy: 'public', return: { type: { text: 'void' } }, description: 'Apply pending input writes synchronously, now (SPEC §12.7).' },
+  { kind: 'method', name: 'whenSettled', privacy: 'public', return: { type: { text: 'Promise<void>' } }, description: 'Resolves once every staged input change has been applied (SPEC §12.7).' },
+  { kind: 'method', name: 'destroy', privacy: 'public', return: { type: { text: 'void' } }, description: 'Final teardown (SPEC §6.5): the element is inert afterwards; idempotent.' },
+  { kind: 'field', name: 'isDestroyed', privacy: 'public', readonly: true, type: { text: 'boolean' }, description: '`destroy()` ran.' },
+  { kind: 'method', name: 'enableLogging', privacy: 'public', parameters: [{ name: 'level', type: { text: 'LogLevelDesc' }, optional: true }], return: { type: { text: 'void' } }, description: "Make this element's log output loud (default `debug`), on top of its component's level." },
+  { kind: 'method', name: 'disableLogging', privacy: 'public', return: { type: { text: 'void' } }, description: "Drop this element's logging override (back to its component's level)." },
+  { kind: 'field', name: 'form', privacy: 'public', readonly: true, type: { text: 'HTMLFormElement | null' }, description: 'The owning form (form-associated components).' },
+  { kind: 'field', name: 'validity', privacy: 'public', readonly: true, type: { text: 'ValidityState' }, description: 'Form validity (SPEC §6.6).' },
+  { kind: 'field', name: 'validationMessage', privacy: 'public', readonly: true, type: { text: 'string' }, description: 'Form validation message (SPEC §6.6).' },
+  { kind: 'field', name: 'willValidate', privacy: 'public', readonly: true, type: { text: 'boolean' }, description: 'Whether the element takes part in form validation.' },
+  { kind: 'method', name: 'checkValidity', privacy: 'public', return: { type: { text: 'boolean' } }, description: 'Form validity check (SPEC §6.6).' },
+  { kind: 'method', name: 'reportValidity', privacy: 'public', return: { type: { text: 'boolean' } }, description: 'Form validity check that reports to the user (SPEC §6.6).' },
+];
+
 /** Core-declared events, in manifest order. */
 export const CORE_DECLARED_EVENTS: readonly ExtractedEvent[] = [
   {
@@ -82,6 +107,10 @@ export function withCoreDeclared(meta: ExtractedClass): ExtractedClass {
     if (memberNames.has(input.member.name) || (input.attribute && attrNames.has(input.attribute.name))) continue;
     if (input.attribute) attributes.push({ ...input.attribute });
     members.push({ ...input.member });
+  }
+  // BlissElement's own API, on every table-driven class (the component's same-named member wins).
+  for (const api of CORE_DECLARED_API) {
+    if (!memberNames.has(api.name)) members.push({ ...api });
   }
   const events = [...meta.events, ...CORE_DECLARED_EVENTS.filter((e) => !eventNames.has(e.name)).map((e) => ({ ...e }))];
   return { ...meta, attributes, members, events };

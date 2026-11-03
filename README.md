@@ -94,7 +94,7 @@ The `to*` factory library sets both paths from the same inputs:
 
 | factory | for |
 | --- | --- |
-| `toEnum(values, { default?, shouldNullOnInvalid? })` | fixed string set |
+| `toEnum(values, { default?, isNullable? })` | fixed string set |
 | `toInt({ min?, max?, default? })` / `toFloat(...)` | numbers |
 | `toText({ shouldTrim?, isEmptyAllowed?, isNullable?, default? })` | strings (`isNullable` → optional string, absent/empty ⇒ `null`) |
 | `toBool('default-false' \| 'default-true' \| 'tristate' \| 'presence')` | booleans — mode required; `'presence'` is the native rule (`x="false"` is still `true`), meant for `disabled` / `readonly` |
@@ -107,7 +107,7 @@ The `to*` factory library sets both paths from the same inputs:
 | `toObject({ validate?, default? })` | plain non-array object |
 
 > Boolean options follow the house convention (`is`/`should`/`has`/`can`
-> prefixes): `shouldTrim`, `isEmptyAllowed`, `isNullable`, `shouldNullOnInvalid`.
+> prefixes): `shouldTrim`, `isEmptyAllowed`, `isNullable`.
 
 ## `BlissElement` — the base class
 
@@ -520,7 +520,7 @@ const menu = openMenu(entries, ctx, {
   at: { x: e.clientX, y: e.clientY },  // or an element
   host: this.shadowRoot,                // where it renders (styles adopted there)
   runAction: (item, { triggerElement, sourceEvent }) => this.activate(item, triggerElement, sourceEvent),
-  closeCallback: (reason) => { /* sync your state */ },
+  onClose: (reason) => { /* sync your state */ },
   returnFocusTo: this.bodyEl,
   shouldFocusFirst: isOpenedFromKeyboard,
 });

@@ -18,8 +18,8 @@ describe('toEnum', () => {
     expect(c.validate!(3)).toBe(false);
   });
 
-  it('exposes its values and supports shouldNullOnInvalid', () => {
-    const c = toEnum(SELECTION, { shouldNullOnInvalid: true });
+  it('exposes its values and supports isNullable', () => {
+    const c = toEnum(SELECTION, { isNullable: true });
     expect(c.values).toEqual(SELECTION);
     expect(c.fromAttribute!('nope', reader(), 'x')).toBeNull();
     // null is the unset value on the property path too; unknown strings are still rejected
@@ -433,5 +433,39 @@ describe('toCssLength', () => {
 
   it('an absent attribute is the default', () => {
     expect(toCssLength({ default: '10rem' }).fromAttribute!(null, reader(), 'x')).toBe('10rem');
+  });
+});
+
+// Review 2026-11-03 (WP4b).
+describe('toEnum / toList — rc19 contract', () => {
+  it('toEnum matches the attribute case-insensitively and resolves to the declared spelling', () => {
+    const c = toEnum(['small', 'Large'] as const);
+    expect(c.fromAttribute!('SMALL', reader(), 'x')).toBe('small');
+    expect(c.fromAttribute!('large', reader(), 'x')).toBe('Large');
+    expect(c.validate!('LARGE')).toBe(false); // the property path takes the declared value
+  });
+
+  it('toList round-trips items containing the separator through a JSON array', () => {
+    const c = toList();
+    const value = ['a,b', 'c'];
+    const attr = c.toAttribute!(value)!;
+    expect(attr).toBe('["a,b","c"]');
+    expect(c.fromAttribute!(attr, reader(), 'x')).toEqual(value);
+  });
+
+  it('toList: [] reflects as "[]" and reads back as empty, not as the default', () => {
+    const c = toList({ default: ['x'] });
+    expect(c.toAttribute!([])).toBe('[]');
+    expect(c.fromAttribute!('[]', reader(), 'x')).toEqual([]);
+  });
+
+  it('toList: a blank attribute is unset (the default), not [""]', () => {
+    expect(toList({ default: ['x'] }).fromAttribute!('   ', reader(), 'x')).toEqual(['x']);
+  });
+
+  it('toList: a JSON array with the wrong item type is invalid', () => {
+    let isInvalid = false;
+    toList({ itemType: 'int' }).fromAttribute!('["1"]', reader(), 'x', () => (isInvalid = true));
+    expect(isInvalid).toBe(true);
   });
 });

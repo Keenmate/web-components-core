@@ -6,7 +6,8 @@ dependency — the analyzer injects `typescript`). `blissInputsPlugin()` teaches
 events` tables (invisible to the stock analyzer). All extraction is in the pure,
 unit-tested `extractBlissClass(ts, node, sourceFile)`; the plugin is a thin
 analyze-then-`moduleLinkPhase`-merge wrapper. `blissAnalyzerConfig()` is the
-shared config preset. The plugin also recognizes core's `registerComponent()`
+shared config preset (it analyzes `index.ts` — where `registerComponent()` runs; it excludes
+only tests / specs / declarations). Extracted data is keyed by module path + class name. The plugin also recognizes core's `registerComponent()`
 (via `parseRegisterComponentCall` / `extractRegistrations`) as a custom-element
 definition — the stock analyzer only knows `customElements.define()` — so it sets
 `customElement`/`tagName` and adds the `custom-element-definition` export.
@@ -16,7 +17,9 @@ Core-declared inputs (not table rows) are added by the plugin via
 `withCoreDeclared()` (`core-declared.ts`): `defer`/`shouldDefer`,
 `theme-source`/`themeSource`, the `ready` event on every table-driven class;
 `responsive` + `responsiveCallback` only with a `static inputs` table
-(`ExtractedClass.hasInputTable`). Own declarations of the same name win. Keep
+(`ExtractedClass.hasInputTable`), plus `BlissElement`'s own public API (`CORE_DECLARED_API`:
+`release`, `destroy`, `whenReady`, …; a test fails if a name disappears from the class).
+Own declarations of the same name win. Keep
 `CORE_DECLARED_INPUTS` in sync when core adds a global attribute/property.
 **Source-of-truth split (SPEC §8 amendment):** the table +
 converter give the *structure* (attr↔prop, type, default, `shouldReflect`, enum

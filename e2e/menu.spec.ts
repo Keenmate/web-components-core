@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 
 // /menu openMenu() (SPEC §12.13) on a minimal file list:
 //   - context menu: role="menu", named divider, disabled (callback) + toggle (menuitemcheckbox)
-//     items, danger class; a leaf closes the menu, then runs runAction (closeCallback "action"
+//     items, danger class; a leaf closes the menu, then runs runAction (onClose "action"
 //     → beforeActionCallback → built-in → twin → event);
 //   - a toggle keeps the menu open and re-renders; Escape closes; beforeActionCallback vetoes;
 //   - submenus: static children (nested 2 levels) + lazy getChildrenCallback (loading row);
@@ -46,13 +46,13 @@ test('context menu: roles, named divider, disabled + toggle items, a leaf runs t
   await expect(menus(page)).toHaveCount(0);
   await expect.poll(() => steps(page)).toEqual([
     'openMenu()',
-    'closeCallback',
+    'onClose',
     'beforeActionCallback',
     'built-in',
     'onAction twin',
     'action event',
   ]);
-  expect(await details(page, 'closeCallback')).toEqual(['action']);
+  expect(await details(page, 'onClose')).toEqual(['action']);
   await expect(row(page, 'renamed-contract.docx')).toHaveCount(1);
 });
 
@@ -63,13 +63,13 @@ test('toggle keeps the menu open and re-renders; veto via beforeActionCallback',
   await expect(menus(page)).toHaveCount(1);
   await page.keyboard.press('Escape');
   await expect(menus(page)).toHaveCount(0);
-  expect(await details(page, 'closeCallback')).toEqual(['escape']);
+  expect(await details(page, 'onClose')).toEqual(['escape']);
 
   await page.evaluate(() => ((window as any).shouldVetoDelete = true));
   await reset(page);
   await row(page, 'report.pdf').click({ button: 'right' });
   await item(page, 'Delete').click();
-  await expect.poll(() => steps(page)).toEqual(['openMenu()', 'closeCallback', 'beforeActionCallback']);
+  await expect.poll(() => steps(page)).toEqual(['openMenu()', 'onClose', 'beforeActionCallback']);
   await expect(row(page, 'report.pdf')).toHaveCount(1);
 });
 
@@ -93,7 +93,7 @@ test('submenus (static + lazy) and outside-click dismiss', async ({ page }) => {
   await expect(menus(page)).toHaveCount(1);
   await page.mouse.click(600, 10); // outside, in view
   await expect(menus(page)).toHaveCount(0);
-  expect(await details(page, 'closeCallback')).toEqual(['outside-click']);
+  expect(await details(page, 'onClose')).toEqual(['outside-click']);
 });
 
 test('keyboard: Shift+F10 opens with focus, arrows skip disabled, → / ← submenus, shortcut, Tab closes', async ({ page }) => {
@@ -117,7 +117,7 @@ test('keyboard: Shift+F10 opens with focus, arrows skip disabled, → / ← subm
   await expect(item(page, 'Delete')).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(menus(page)).toHaveCount(0);
-  expect(await details(page, 'closeCallback')).toEqual(['tab']);
+  expect(await details(page, 'onClose')).toEqual(['tab']);
 
   await row(page, 'budget.xlsx').focus();
   await page.keyboard.press('Shift+F10');

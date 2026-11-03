@@ -76,8 +76,11 @@ function mergeByName<T extends { name?: string }>(existing: unknown[] | undefine
  * {@link ./config.blissAnalyzerConfig} which includes it.
  */
 export function blissInputsPlugin(): CemPlugin {
-  // className → extracted data, filled in analyzePhase, consumed in moduleLinkPhase.
+  // module path + className → extracted data, filled in analyzePhase, consumed in
+  // moduleLinkPhase. Keyed by module too, so a same-named class in another module (a test
+  // double, a demo) never receives this one's attributes.
   const extracted = new Map<string, ExtractedClass>();
+  const keyOf = (moduleDoc: CemModuleDoc, className: string): string => `${moduleDoc.path ?? ''}::${className}`;
   // className → tag name from a `registerComponent()` call (core §12.3), which
   // the stock analyzer does not recognize as a custom-element definition.
   const registrations = new Map<string, string>();
@@ -85,7 +88,7 @@ export function blissInputsPlugin(): CemPlugin {
   return {
     name: 'keenmate-bliss-inputs',
 
-    analyzePhase({ ts, node }) {
+    analyzePhase({ ts, node, moduleDoc }) {
       const tsApi = ts as typeof import('typescript');
       const n = node as import('typescript').Node;
       const reg = parseRegisterComponentCall(tsApi, n);
@@ -94,13 +97,13 @@ export function blissInputsPlugin(): CemPlugin {
       const meta = extractBlissClass(tsApi, n, n.getSourceFile());
       // Core-declared inputs / events (defer, theme-source, responsive, ready) are
       // not table rows — add them so every manifest documents them.
-      if (meta) extracted.set(meta.name, withCoreDeclared(meta));
+      if (meta) extracted.set(keyOf(moduleDoc, meta.name), withCoreDeclared(meta));
     },
 
     moduleLinkPhase({ moduleDoc }) {
       for (const decl of moduleDoc.declarations ?? []) {
         if (!decl.name) continue;
-        const meta = extracted.get(decl.name);
+        const meta = extracted.get(keyOf(moduleDoc, decl.name));
         if (meta) {
           if (meta.attributes.length) decl.attributes = mergeByName(decl.attributes, meta.attributes);
           if (meta.members.length) decl.members = mergeByName(decl.members, meta.members);

@@ -84,7 +84,7 @@ export function openMenu<Ctx, A extends string = string>(
   const styleRoot = (typeof ShadowRoot !== 'undefined' && host instanceof ShadowRoot
     ? host
     : host.getRootNode()) as Document | ShadowRoot;
-  const isCustom = typeof opts.renderMenu === 'function';
+  const isCustom = typeof opts.renderMenuCallback === 'function';
   const shouldDismissOutside = opts.shouldCloseOnOutsideInteraction ?? true;
 
   const records = new WeakMap<HTMLElement, ItemRecord<Ctx, A>>();
@@ -116,9 +116,9 @@ export function openMenu<Ctx, A extends string = string>(
   };
 
   const prepare = (raw: MenuEntry<Ctx, A> | string): MenuEntry<Ctx, A> | string => {
-    if (!opts.prepareItem) return raw;
+    if (!opts.prepareItemCallback) return raw;
     const entry = typeof raw === 'string' ? ({ action: raw } as MenuItem<Ctx, A>) : raw;
-    return isMenuDivider(entry) ? entry : opts.prepareItem(entry);
+    return isMenuDivider(entry) ? entry : opts.prepareItemCallback(entry);
   };
 
   /** Render `list` into a level. Returns the number of items rendered. */
@@ -166,7 +166,7 @@ export function openMenu<Ctx, A extends string = string>(
       addClasses(itemEl, resolved.cssClass);
       if (resolved.tooltip) itemEl.title = resolved.tooltip;
 
-      opts.renderItem?.(item, itemEl, ctx, resolved);
+      opts.renderItemCallback?.(item, itemEl, ctx, resolved);
       if (!itemEl.hasChildNodes()) {
         if (hasIcons) {
           const icon = document.createElement('span');
@@ -444,7 +444,7 @@ export function openMenu<Ctx, A extends string = string>(
     const record = focused ? records.get(focused)! : null;
 
     if (event.key === 'Tab') {
-      // A custom menu (renderMenu) may hold a form: Tab moves between its fields.
+      // A custom menu (renderMenuCallback) may hold a form: Tab moves between its fields.
       if (isCustom && inside >= 0) return;
       close('tab'); // focus returns, then the browser moves it on — no preventDefault
       return;
@@ -581,9 +581,9 @@ export function openMenu<Ctx, A extends string = string>(
     if (hadFocus && !isPointerAway && opts.returnFocusTo?.isConnected) {
       opts.returnFocusTo.focus({ preventScroll: true });
     }
-    // A throwing closeCallback must not escape close() (or the document listener that called it).
-    const { closeCallback } = opts;
-    if (closeCallback) callSafely(() => closeCallback(reason), { source: host, coreCategory: 'MENU', message: 'menu closeCallback threw' });
+    // A throwing onClose must not escape close() (or the document listener that called it).
+    const { onClose } = opts;
+    if (onClose) callSafely(() => onClose(reason), { source: host, coreCategory: 'MENU', message: 'menu onClose threw' });
   }
 
   // ── Open ───────────────────────────────────────────────────────────────
@@ -599,7 +599,7 @@ export function openMenu<Ctx, A extends string = string>(
   chain.push(rootLevel);
   let count = 0;
   if (isCustom) {
-    opts.renderMenu!(rootLevel.el, () => close('api'));
+    opts.renderMenuCallback!(rootLevel.el, () => close('api'));
     count = 1;
   } else {
     fillLevel(rootLevel, (n) => (count = n));

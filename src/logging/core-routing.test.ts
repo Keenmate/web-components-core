@@ -148,7 +148,7 @@ describe('instance line format', () => {
 describe('default level warn', () => {
   it('warnings visible, debug hidden — for component bundles and CORE', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const debug = vi.spyOn(console, 'log').mockImplementation(() => {});
     const ns = freshNs();
     const { bundle, make } = defineComponent({ namespace: ns });
     expect(bundle!.loggers.INIT.getLevel()).toBe(LOG_LEVELS.WARN);
@@ -162,7 +162,7 @@ describe('default level warn', () => {
 
   it('enableLogging() adds debug; disableLogging() silences warnings too', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const debug = vi.spyOn(console, 'log').mockImplementation(() => {});
     const { bundle, make } = defineComponent({ namespace: freshNs() });
     const el = make();
     bundle!.enableLogging();
@@ -239,7 +239,7 @@ describe('window.components.logging (page-wide switch)', () => {
   });
 
   it('a per-instance override still works on top of a silenced type', () => {
-    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const debug = vi.spyOn(console, 'log').mockImplementation(() => {});
     const { make } = defineComponent({ namespace: freshNs() });
     window.components!.logging!.disableLogging();
     const el = make('loud');

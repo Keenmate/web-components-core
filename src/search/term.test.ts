@@ -68,11 +68,11 @@ describe('prepareSearchTerm (getSearchTermCallback)', () => {
     }
   });
 
-  it('an object → none, reported via objectTermCallback', () => {
-    const objectTermCallback = vi.fn();
+  it('an object → none, reported via onObjectTerm', () => {
+    const onObjectTerm = vi.fn();
     const obj = { zip: '33500' };
-    expect(prepareSearchTerm('x', opts({ getSearchTermCallback: () => obj, objectTermCallback }))).toBe(NO_SEARCH_TERM);
-    expect(objectTermCallback).toHaveBeenCalledWith(obj);
+    expect(prepareSearchTerm('x', opts({ getSearchTermCallback: () => obj, onObjectTerm }))).toBe(NO_SEARCH_TERM);
+    expect(onObjectTerm).toHaveBeenCalledWith(obj);
   });
 
   it('receives the untrimmed term', () => {

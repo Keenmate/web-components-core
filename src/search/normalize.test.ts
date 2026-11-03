@@ -23,9 +23,25 @@ describe('normalizeSearchText', () => {
     expect(normalizeSearchText('ΟΔΟΣ', 'case-insensitive')).toBe(normalizeSearchText('οδος', 'case-insensitive'));
   });
 
-  it('case-insensitive lowercases but keeps diacritics', () => {
+  it('case-insensitive folds case but keeps diacritics', () => {
     expect(normalizeSearchText('Český', 'case-insensitive')).toBe('český');
-    expect(normalizeSearchText('Straße', 'case-insensitive')).toBe('straße');
+    // Review A-14: full case folding — `ß` ~ `SS`, Turkish `İ` ~ `i`.
+    expect(normalizeSearchText('Straße', 'case-insensitive')).toBe(normalizeSearchText('STRASSE', 'case-insensitive'));
+    expect(normalizeSearchText('İstanbul', 'case-insensitive')).toBe('istanbul');
+  });
+
+  // Review A-13.
+  it('normalized keeps the marks that are part of a letter in their script', () => {
+    expect(normalizeSearchText('किताब')).not.toBe(normalizeSearchText('कतब')); // Devanagari vowel sign
+    expect(normalizeSearchText('が')).not.toBe(normalizeSearchText('か')); // kana dakuten
+    expect(normalizeSearchText('Čeś')).toBe('ces'); // a lone mark after a Latin letter is a diacritic
+  });
+
+  it('normalized folds ligatures, full-width forms, no-break spaces and extra letters', () => {
+    expect(normalizeSearchText('ﬁle')).toBe('file');
+    expect(normalizeSearchText('ＡＢ')).toBe('ab');
+    expect(normalizeSearchText('a b')).toBe('a b');
+    expect(normalizeSearchText('Þór ŧ ĳ ŀ')).toBe('thor t ij l');
   });
 
   it('exact leaves the text unchanged (apart from NFC)', () => {

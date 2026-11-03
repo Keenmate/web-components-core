@@ -878,7 +878,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   /**
    * The `configKey`s for which a `null` in {@link config} is a deliberate
    * "clear/reset" signal (the input's converter admits `null` — nullable
-   * `toText`, tristate `toBool`, `toFunction`, `shouldNullOnInvalid` enums, or a
+   * `toText`, tristate `toBool`, `toFunction`, `isNullable` enums, or a
    * row with `default: null`), NOT an accident to be dropped.
    *
    * Derived once from the input table, this lets an engine-config assembler keep
@@ -1703,6 +1703,15 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
 
   /** Stage a JS-assigned value; `false` when the converter rejected it (warned, previous value kept). */
   #setFromProperty(def: InputDef, value: unknown): boolean {
+    // `el.x = undefined` resets the input — exactly like removing its attribute: the default
+    // (the converter's answer for "absent", else the row default), and it is no longer
+    // explicitly set, so page responsive rules reach it again.
+    if (value === undefined) {
+      const resolved = resolveFromAttribute(def, null, this as unknown as AttrReader);
+      this.#explicit.delete(def.configKey);
+      this.#stageExplicit(def, resolved, true);
+      return true;
+    }
     const resolved = resolveFromProperty(def, value);
     if (!resolved) {
       this.#warn(`rejected invalid value for property "${def.configKey}"; keeping previous value`, value);

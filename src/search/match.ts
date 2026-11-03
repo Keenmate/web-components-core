@@ -1,15 +1,23 @@
 import type { SearchMatch, SearchRange } from './types.js';
 
-const WORD_CHAR = /[\p{L}\p{N}]/u;
+/** A letter, digit, or a combining mark (part of the letter before it — Indic vowel signs). */
+const WORD_CHAR = /[\p{L}\p{N}\p{M}]/u;
 
-/** A word starts at `index` (start of text, or preceded by a non-letter/digit). */
-function isWordStart(text: string, index: number): boolean {
-  return index === 0 || !WORD_CHAR.test(text[index - 1] ?? '');
+/** The code point ending just before `index` (a surrogate pair is one character). */
+function codePointBefore(text: string, index: number): string {
+  const low = text.charCodeAt(index - 1);
+  const isLowSurrogate = low >= 0xdc00 && low <= 0xdfff;
+  return isLowSurrogate && index >= 2 ? text.slice(index - 2, index) : text.slice(index - 1, index);
 }
 
-/** A word ends at `index` (exclusive; end of text, or followed by a non-letter/digit). */
+/** A word starts at `index` (start of text, or preceded by a non-letter/digit/mark). */
+function isWordStart(text: string, index: number): boolean {
+  return index === 0 || !WORD_CHAR.test(codePointBefore(text, index));
+}
+
+/** A word ends at `index` (exclusive; end of text, or followed by a non-letter/digit/mark). */
 function isWordEnd(text: string, index: number): boolean {
-  return index === text.length || !WORD_CHAR.test(text[index] ?? '');
+  return index === text.length || !WORD_CHAR.test(String.fromCodePoint(text.codePointAt(index)!));
 }
 
 /**

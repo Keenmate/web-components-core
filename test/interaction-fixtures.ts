@@ -471,8 +471,8 @@ export class FxFiles extends BlissElement<{ action: FilesDetail }> {
       shouldFocusFirst,
       inheritThemeFrom: this,
       runAction: (item, inv) => this.#run(item, inv, ctx, source),
-      closeCallback: (reason) => {
-        step('closeCallback', reason);
+      onClose: (reason) => {
+        step('onClose', reason);
         if (this.menu === handle) this.menu = null;
       },
     });

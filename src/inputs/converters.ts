@@ -45,24 +45,28 @@ function parseJson<V>(
  * Exact-match against a fixed set of strings.
  *
  * Invalid or absent values fall back to `default` — or to `null` when
- * `shouldNullOnInvalid` is set. With `shouldNullOnInvalid` and no `default`,
+ * `isNullable` is set. With `isNullable` and no `default`,
  * `null` is the unset value on BOTH paths: removing the attribute and
  * assigning `el.x = null` clear the input alike (an unknown string is still
  * rejected on the property path).
  */
 export function toEnum<const T extends readonly string[]>(
   values: T,
-  opts: { default?: T[number]; shouldNullOnInvalid?: boolean } = {},
+  opts: { default?: T[number]; isNullable?: boolean } = {},
 ): EnumConverter<T[number]> {
   const set = new Set<string>(values);
-  const fallback = (opts.shouldNullOnInvalid ? null : opts.default ?? null) as T[number];
-  const isNullUnset = !!opts.shouldNullOnInvalid && opts.default === undefined;
+  // Attributes match case-insensitively (`size="LG"`) and resolve to the declared spelling.
+  const byLowerCase = new Map(values.map((v) => [v.toLowerCase(), v] as const));
+  const fallback = (opts.isNullable ? null : opts.default ?? null) as T[number];
+  const isNullUnset = !!opts.isNullable && opts.default === undefined;
   return {
     values,
     fromAttribute(raw, _el, _attr, reportInvalid) {
       if (raw === null) return (opts.default ?? fallback) as T[number];
       const value = raw.trim();
       if (set.has(value)) return value as T[number];
+      const canonical = byLowerCase.get(value.toLowerCase());
+      if (canonical !== undefined) return canonical as T[number];
       reportInvalid?.(`expected one of ${values.join(' | ')}`);
       return fallback;
     },
@@ -136,7 +140,7 @@ function toNumber(
  * With `isNullable: true` the "unset" value is `null` instead of `''` — an
  * absent or empty attribute resolves to `null`, so callers can distinguish
  * "not set" from "set to empty" (an optional string). `null` is the same
- * absent-sentinel `toEnum`'s `shouldNullOnInvalid` uses. To clear a nullable
+ * absent-sentinel `toEnum`'s `isNullable` uses. To clear a nullable
  * input via the property path, assign `null` (assigning `''` is still rejected,
  * like non-nullable). `isEmptyAllowed` and `isNullable` are orthogonal: the
  * former keeps `''` as a value; the latter sets the unset sentinel to `null`.
@@ -331,7 +335,12 @@ export function toCssLength(
 /**
  * Delimited list (CSV / pipe-list) of strings or ints, with optional exact
  * `requiredCount` validation. A malformed item, or a length mismatch, falls
- * back to `default`.
+ * back to `default`. A blank attribute is "unset" (the default).
+ *
+ * An item that contains the separator can't be written as a plain list, so the
+ * attribute also takes a JSON array (`tags='["a,b","c"]'`), and reflection writes
+ * one whenever an item contains the separator. An empty list reflects as `[]`
+ * (a blank attribute would read back as the default).
  */
 export function toList<E extends string | number = string>(opts: {
   itemType?: 'string' | 'int';
@@ -344,19 +353,34 @@ export function toList<E extends string | number = string>(opts: {
   const itemType = opts.itemType ?? 'string';
   // A fresh copy per resolve — instances must not share (and mutate) one default array.
   const fallback = (): E[] => (opts.default ? [...opts.default] : []);
+  const isItem = itemType === 'int' ? (v: unknown) => typeof v === 'number' && Number.isInteger(v) : (v: unknown) => typeof v === 'string';
+  const parseJsonList = (raw: string): (string | number)[] | null => {
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      return Array.isArray(parsed) && parsed.every(isItem) ? parsed : null;
+    } catch {
+      return null;
+    }
+  };
   const parse = (raw: string): E[] | null => {
-    const parts = raw.split(separator).map((p) => (opts.shouldTrim === false ? p : p.trim()));
-    let items: (string | number)[] = parts;
-    if (itemType === 'int') {
-      items = parts.map((p) => (INTEGER.test(p.trim()) ? Number(p) : Number.NaN));
-      if (items.some((n) => Number.isNaN(n as number))) return null;
+    let items: (string | number)[] | null;
+    if (raw.trim().startsWith('[')) {
+      items = parseJsonList(raw.trim());
+      if (items === null) return null;
+    } else {
+      const parts = raw.split(separator).map((p) => (opts.shouldTrim === false ? p : p.trim()));
+      items = parts;
+      if (itemType === 'int') {
+        items = parts.map((p) => (INTEGER.test(p.trim()) ? Number(p) : Number.NaN));
+        if (items.some((n) => Number.isNaN(n as number))) return null;
+      }
     }
     if (opts.requiredCount != null && items.length !== opts.requiredCount) return null;
     return items as E[];
   };
   return {
     fromAttribute(raw, _el, _attr, reportInvalid) {
-      if (raw === null || raw === '') return fallback();
+      if (raw === null || raw.trim() === '') return fallback();
       const items = parse(raw);
       if (items !== null) return items;
       reportInvalid?.(
@@ -369,11 +393,12 @@ export function toList<E extends string | number = string>(opts: {
     validate(value): value is E[] {
       if (!Array.isArray(value)) return false;
       if (opts.requiredCount != null && value.length !== opts.requiredCount) return false;
-      const ok = itemType === 'int' ? (v: unknown) => typeof v === 'number' && Number.isInteger(v) : (v: unknown) => typeof v === 'string';
-      return value.every(ok);
+      return value.every(isItem);
     },
     toAttribute(value) {
-      return Array.isArray(value) ? value.join(separator) : null;
+      if (!Array.isArray(value)) return null;
+      const needsJson = value.length === 0 || value.some((v) => String(v).includes(separator) || String(v).trim().startsWith('['));
+      return needsJson ? JSON.stringify(value) : value.join(separator);
     },
   };
 }

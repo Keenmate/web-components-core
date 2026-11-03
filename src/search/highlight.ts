@@ -1,5 +1,5 @@
 import { findRegexMatches, findTextMatches } from './match.js';
-import { normalizeSearchText } from './normalize.js';
+import { foldWithSourceMap } from './normalize.js';
 import type { ActiveSearchTerm, HighlightResult, SearchBehavior, SearchMatch, SearchRange } from './types.js';
 
 /**
@@ -23,19 +23,8 @@ export function findHighlightRanges(
   if (term.kind === 'regex') return { text, ranges: findRegexMatches(text, term.re) };
 
   const nfc = text.normalize('NFC');
-  let folded = '';
-  const start: number[] = []; // nfc start index of each folded char's source code point
-  const end: number[] = []; // ...and its end index
-  for (let i = 0; i < nfc.length; ) {
-    const ch = String.fromCodePoint(nfc.codePointAt(i)!);
-    const f = normalizeSearchText(ch, opts.behavior);
-    for (let k = 0; k < f.length; k++) {
-      start.push(i);
-      end.push(i + ch.length);
-    }
-    folded += f;
-    i += ch.length;
-  }
+  // folded + the nfc [start, end) of each folded char's source code point
+  const { folded, start, end } = foldWithSourceMap(nfc, opts.behavior);
 
   const match = opts.match === 'regex' ? 'contains' : opts.match;
   const ranges: SearchRange[] = [];
@@ -52,25 +41,35 @@ export function findHighlightRanges(
   return { text: nfc, ranges };
 }
 
+/** Escape text for HTML (`&`, `<`, `>`, `"`, `'`) — element content and quoted attribute values. */
+export function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (ch) => HTML_ESCAPES[ch]!);
+}
+
+const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
 export interface WrapRangesOptions {
   /** Inserted before each range. Default `<mark>`. */
   open?: string;
   /** Inserted after each range. Default `</mark>`. */
   close?: string;
   /**
-   * Applied to every slice of `text` (marked and unmarked), not to `open` / `close`. Pass an
-   * HTML escaper when `text` is plain text; omit it when `text` is already trusted HTML.
+   * Applied to every slice of `text` (marked and unmarked), not to `open` / `close`.
+   * Default {@link escapeHtml}: `text` is plain text, so the result is safe HTML. For text that
+   * is ALREADY HTML use {@link highlightHtml} — escaping it would show its tags, and not
+   * escaping it would let a range cut through a tag or an entity.
    */
   escape?: (s: string) => string;
 }
 
 /**
- * Wrap `ranges` of `text` in `open` / `close` (default `<mark>…</mark>`). Use with
+ * Wrap `ranges` of the plain `text` in `open` / `close` (default `<mark>…</mark>`), escaping
+ * every slice of `text` for HTML (see {@link WrapRangesOptions.escape}). Use with
  * {@link findHighlightRanges}: `wrapRanges(r.text, r.ranges)`. Ranges must be sorted;
  * overlapping parts and empty ranges are skipped.
  */
 export function wrapRanges(text: string, ranges: readonly SearchRange[], opts: WrapRangesOptions = {}): string {
-  const { open = '<mark>', close = '</mark>', escape = (s: string) => s } = opts;
+  const { open = '<mark>', close = '</mark>', escape = escapeHtml } = opts;
   let out = '';
   let last = 0;
   for (const [a, b] of ranges) {
@@ -80,4 +79,77 @@ export function wrapRanges(text: string, ranges: readonly SearchRange[], opts: W
     last = b;
   }
   return out + escape(text.slice(last));
+}
+
+const ENTITY = /^&(?:#(\d+)|#x([0-9a-f]+)|([a-z][a-z0-9]*));/i;
+const NAMED_ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+
+/**
+ * Highlight `term` in a label that is already TRUSTED HTML (e.g. `<b>Praha</b> &amp; okolí`),
+ * returning HTML. Tags are kept as they are and never marked; each run of text between tags
+ * is matched on its decoded text (entities count as the one character they stand for and are
+ * never split), so a `<mark>` can't land inside a tag or an entity. A match that spans a tag
+ * boundary (`Pra<b>ha</b>`) isn't highlighted. Only for HTML you trust — for plain text use
+ * {@link findHighlightRanges} + {@link wrapRanges}, which escapes.
+ */
+export function highlightHtml(
+  html: string,
+  term: ActiveSearchTerm,
+  opts: { behavior: SearchBehavior; match: SearchMatch; open?: string; close?: string },
+): string {
+  if (term.kind === 'none' || !html) return html;
+  const { open = '<mark>', close = '</mark>' } = opts;
+  let out = '';
+  for (const part of html.split(/(<[^>]*>)/)) {
+    if (part.startsWith('<') || part === '') {
+      out += part; // a tag (or an empty split) — untouched
+      continue;
+    }
+    out += highlightTextRun(part.normalize('NFC'), term, opts, open, close);
+  }
+  return out;
+}
+
+/** One run of HTML text (no tags): decode entities with a source map, highlight, map back. */
+function highlightTextRun(
+  raw: string,
+  term: ActiveSearchTerm,
+  opts: { behavior: SearchBehavior; match: SearchMatch },
+  open: string,
+  close: string,
+): string {
+  let decoded = '';
+  const from: number[] = []; // raw start of each decoded UTF-16 unit
+  const to: number[] = []; // ...and its raw end
+  for (let i = 0; i < raw.length; ) {
+    const entity = raw[i] === '&' ? ENTITY.exec(raw.slice(i)) : null;
+    if (entity) {
+      const code = entity[1] ? Number(entity[1]) : entity[2] ? Number.parseInt(entity[2], 16) : undefined;
+      // An unknown named entity becomes U+FFFC: one character that matches nothing.
+      const ch = code !== undefined ? String.fromCodePoint(code) : NAMED_ENTITIES[entity[3]!.toLowerCase()] ?? '￼';
+      for (let k = 0; k < ch.length; k++) {
+        from.push(i);
+        to.push(i + entity[0].length);
+      }
+      decoded += ch;
+      i += entity[0].length;
+    } else {
+      from.push(i);
+      to.push(i + 1);
+      decoded += raw[i];
+      i += 1;
+    }
+  }
+  const result = findHighlightRanges(decoded, term, opts);
+  if (result.text !== decoded || result.ranges.length === 0) return raw; // NFC moved the text: leave it
+  let out = '';
+  let last = 0;
+  for (const [a, b] of result.ranges) {
+    const rawStart = Math.max(from[a]!, last);
+    const rawEnd = to[b - 1]!;
+    if (rawEnd <= rawStart) continue;
+    out += raw.slice(last, rawStart) + open + raw.slice(rawStart, rawEnd) + close;
+    last = rawEnd;
+  }
+  return out + raw.slice(last);
 }

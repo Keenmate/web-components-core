@@ -77,7 +77,7 @@ describe('extractBlissClasses', () => {
     expect(byKey.tags!.type).toEqual({ text: 'string[]' });
     expect(byKey.options!.type).toEqual({ text: 'unknown[]' });
     expect(byKey.meta!.type).toEqual({ text: 'object' });
-    expect(byKey.onPick!.type).toEqual({ text: 'Function' });
+    expect(byKey.onPick!.type).toEqual({ text: 'Function | null' });
     // property-only inputs (no attribute) produce a member but no attribute
     expect(cls!.attributes.map((a) => a.name)).not.toContain('options');
     expect(byKey.options!.attribute).toBeUndefined();

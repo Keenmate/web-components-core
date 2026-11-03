@@ -7,7 +7,7 @@
  * The one rule: **`null` is PRESERVED, never blanket-deleted.** A value is only
  * ever `null` in `config` when its input descriptor admits `null` — i.e. the
  * author declared `null` a meaningful, cleared state (nullable `toText`, tristate
- * `toBool`, `toFunction`, a `shouldNullOnInvalid` enum, or a `default: null`
+ * `toBool`, `toFunction`, a `isNullable` enum, or a `default: null`
  * row). Forwarding that `null` is what lets a cleared field reset: the engine
  * resolves it with the mechanism it already has (`?? DEFAULT` for defaulted
  * fields, direct-assign for clearable ones). Dropping it — the old per-component

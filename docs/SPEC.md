@@ -167,14 +167,14 @@ Common cases stay one-liners; the converter is where "ensure the value is
 correct" is enforced. Naming: `to<Type>` — "convert the raw value to a …".
 
 ```ts
-toEnum(values, { default?, shouldNullOnInvalid? })  // exact-match (attribute trimmed) against the set; invalid → default (or null; with no default, el.x = null clears it too)
+toEnum(values, { default?, isNullable? })  // match (attribute trimmed, case-insensitive → declared spelling) against the set; invalid → default (or null; with no default, el.x = null clears it too)
 toInt({ min?, max?, default? })                // the WHOLE (trimmed) attribute is a base-10 integer + range-check; "12px" / "1.9" / "1e3" / "0x10" are invalid
 toFloat({ min?, max?, default? })              // the whole attribute is a finite decimal ("1.5", "-2e3"); "1.5em" / "1,5" / "Infinity" are invalid
 toCssLength({ default?, allowNegative?, keywords? })  // a CSS length for style-only inputs: "12px" | "2rem" | "50%" | calc(…) | var(…); bare number attr → px
 toText({ shouldTrim?, isEmptyAllowed?, isNullable?, default? })  // string (NOT toString). isNullable:true → absent/empty is null (optional string), not ''
 toBool('default-false' | 'default-true' | 'tristate' | 'presence')  // mode REQUIRED; presence = native rule (any value, "false" too → true) — for disabled/readonly only
 toBytes({ default? })                          // binary units, case-insensitive: "10mb" → 10485760, "300 kB", "1.5G", "5MiB"; "1.2.3mb" / "1.5b" invalid
-toList({ itemType: 'string' | 'int', separator?, requiredCount? }) // CSV / pipe-list (int items: whole-string integers), with optional fixed-length validation
+toList({ itemType: 'string' | 'int', separator?, requiredCount? }) // CSV / pipe-list or a JSON array (int items: whole-string integers), optional fixed length; reflects JSON when an item holds the separator, [] as "[]"
 toCustom(parseFn)                              // wrap any bespoke parser  (month-names, 'auto'|0..6)
 toFunction()                                   // callback: property-only, validates typeof === 'function'
 toValue({ validate?, default? })               // rich value; property = validate, attribute = JSON, reflects JSON
@@ -338,7 +338,8 @@ converter answers a missing attribute with a concrete value other than the row's
 never applies, because the converter's answer wins and `default` fills in only for
 `undefined`. A `null` answer is exempt — the null-clear "unset, the engine decides" sentinel,
 where `default` documents the engine's value. Removing an attribute is reactive — it resets
-that input to its `default` (absent == default).
+that input to its `default` (absent == default). Assigning `el.x = undefined` does the same
+on the property path (since rc19): the absent value, and the input is no longer explicit.
 
 **Invalid values — one rule for both paths: warn and keep the previous value.**
 A property value `validate` rejects, and an attribute value the converter reports
@@ -372,7 +373,7 @@ The `partial` handed to `update()`, and the config an engine receives, carry
 
 A value is only ever `null` in `config` when the input's descriptor admits
 `null` (nullable `toText`, tristate `toBool`, `toFunction`, a
-`shouldNullOnInvalid` enum, or a `default: null` row — see
+`isNullable` enum, or a `default: null` row — see
 `clearableConfigKeys`). So **null is always intentional; never drop it.**
 
 **Component side.** Assemble the engine config with
@@ -997,7 +998,7 @@ anchor(floating: HTMLElement, reference: HTMLElement | VirtualElement, opts: {
   lockPlacement?: boolean;            // keep first placement unless it must flip
   shouldAutoUpdate?: boolean;         // default true
   inheritThemeFrom?: HTMLElement;     // copy data-theme onto `floating` (C-CS-10)
-  placedCallback?(placement: Placement): void;
+  onPlaced?(placement: Placement): void;
 }): { update(): void; destroy(): void };
 
 createTooltip(opts: { trigger; container; content; placement?; offset?; delay?; cssClass?; visibleClass? }): TooltipHandle;
@@ -1563,7 +1564,7 @@ have to re-implement the same rules to agree with it. The rules move here once, 
 
 - `getSearchTermCallback({ term, target, behavior, match })` → `PreparedSearchTerm`. For
   built-in search (`target: 'internal'`) a string is used as-is (not normalized again) and a
-  RegExp is matched raw (made stateless); an object is unusable there (`objectTermCallback`, the
+  RegExp is matched raw (made stateless); an object is unusable there (`onObjectTerm`, the
   component warns). For `target: 'callback'` anything goes.
 - `searchCallback(ctx)` — the consumer's engine (FlexSearch, a server).
   `SearchCallbackContext<T, TTerm>` = `{ term, signal, entries }`: the term to search
@@ -1588,14 +1589,24 @@ moves here when a second component needs it (web-treeview,
 index map back, so `ces` marks `Čes` in `Český`, `ss` marks a whole `ß`, and combining marks
 after a match stay inside it. The ranges index into the **returned** `text` — an NFD
 `Zli\u0301n` comes back as NFC `Zlín`; ranges applied to the original would cut before the
-accent. `wrapRanges(text, ranges, { open, close, escape })` builds the markup; escaping is
-the caller's decision (web-multiselect renders trusted display HTML unescaped, a component
-rendering plain text passes an escaper).
+accent. `wrapRanges(text, ranges, { open, close, escape })` builds the markup from PLAIN
+text and escapes every slice with `escapeHtml` by default (since rc19 — it used to insert
+the text raw, so a label like `<img onerror=…>` was an XSS path). A label that is already
+trusted HTML (web-multiselect's display HTML) goes through `highlightHtml(html, term,
+{ behavior, match, open?, close? })`: tags are kept and never marked, each run of text is
+matched on its decoded text (an entity is one character and never split), so a `<mark>` can't
+land inside a tag or an entity; a match spanning a tag boundary isn't highlighted.
+
+**Folding.** One routine backs `normalizeSearchText` and the highlight map. `normalized`
+uses compatibility decomposition (ligatures, full-width forms, no-break spaces fold) and
+strips combining marks only after Latin / Greek / Cyrillic letters — Devanagari vowel signs
+and kana dakuten are part of the letter and stay; `case-insensitive` folds `ß` → `ss` and
+`İ` → `i`. Word boundaries are per code point, and a combining mark is part of the word.
 
 **API** (`@keenmate/web-components-core/search`, not re-exported from the root):
 `normalizeSearchText`, `findTextMatches`, `matchesText`, `findRegexMatches`,
 `statelessRegex`, `NO_SEARCH_TERM`, `createRegexCompiler`, `prepareSearchTerm`,
-`matchesSearchTerm`, `findHighlightRanges`, `wrapRanges`; types `SearchBehavior`,
+`matchesSearchTerm`, `findHighlightRanges`, `wrapRanges`, `highlightHtml`, `escapeHtml`; types `SearchBehavior`,
 `SearchMatch`, `SearchTermContext`, `PreparedSearchTerm`, `SearchEntry`,
 `SearchCallbackContext`, `ActiveSearchTerm`, `SearchRange`, `HighlightResult`,
 `RegexCompiler`, `PrepareSearchTermOptions`, `WrapRangesOptions`. No dependencies.
@@ -1653,13 +1664,13 @@ root / element the levels are appended to; the stylesheet is adopted into its ro
 `runAction(item, { triggerElement, sourceEvent })` (the component's wrapper over core
 `runAction()` — a leaf closes the menu first, then runs; a `shouldCloseOnClick: false`
 item runs and its level re-renders when the returned promise settles),
-`closeCallback(reason)` (`'action' | 'escape' | 'tab' | 'outside-click' | 'scroll' | 'blur' |
-'overlay' | 'api'`), `renderItem(item, el, ctx, resolved)` (fill-or-fall-through),
-`renderMenu(el, close)` (full custom content; core still positions + dismisses),
-`defaults` / `prepareItem` (built-in state / rewrite, every level), `placement`,
+`onClose(reason)` (`'action' | 'escape' | 'tab' | 'outside-click' | 'scroll' | 'blur' |
+'overlay' | 'api'`), `renderItemCallback(item, el, ctx, resolved)` (fill-or-fall-through),
+`renderMenuCallback(el, close)` (full custom content; core still positions + dismisses),
+`defaults` / `prepareItemCallback` (built-in state / rewrite, every level), `placement`,
 `offset`, `cssClass`, `shouldFocusFirst`, `returnFocusTo`,
 `shouldCloseOnOutsideInteraction` (default `true`), `overlayGroup`, `loadingText`,
-`inheritThemeFrom`. No visible item → nothing rendered, a closed handle, no `closeCallback`.
+`inheritThemeFrom`. No visible item → nothing rendered, a closed handle, no `onClose`.
 
 **Decisions.** Icons are inserted as HTML (developer-supplied, like action buttons);
 label and shortcut are text. Items are `div[role=menuitem][tabindex=-1]` (not buttons —

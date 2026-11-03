@@ -72,7 +72,7 @@ describe('createLoggers', () => {
   });
 
   it('forInstance: instance override logs while the type stays silent', () => {
-    const spy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const bundle = createLoggers('NSINST1');
     bundle.disableLogging(); // type-level silent
 

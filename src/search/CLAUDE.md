@@ -12,7 +12,12 @@ Invariants (multiselect's e2e suite depends on them — a change here is a behav
   instance's last valid one (`createRegexCompiler`, one per component instance).
 - A `getSearchTermCallback` string is used as-is, never normalized again.
 - Highlight ranges index into the RETURNED text (NFC for text terms), not the input.
-- Word char = `[\p{L}\p{N}]`; text matches are non-overlapping.
+- Word char = `[\p{L}\p{N}\p{M}]` per code point (astral letters and combining marks are part
+  of a word); text matches are non-overlapping.
+- One fold routine (`foldWithSourceMap`) backs both `normalizeSearchText` and highlighting,
+  so the two never disagree. `normalized` strips only diacritics on Latin / Greek / Cyrillic
+  letters (Indic vowel signs, kana dakuten are kept); `case-insensitive` folds `ß` → `ss`, `İ` → `i`.
+- `wrapRanges` escapes HTML by default; trusted-HTML labels go through `highlightHtml`.
 - No per-item cache here (component-owned) until a second component needs it.
 
 Tests use `\u` escapes for decomposed text so editors can't silently normalize fixtures.

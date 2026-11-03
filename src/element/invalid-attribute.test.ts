@@ -205,3 +205,24 @@ describe('invalid attribute values', () => {
     expect(el.getAttribute('size')).toBe('sm');
   });
 });
+
+// Review 2026-11-03 I-08 (WP4b): `el.x = undefined` resets to the default.
+describe('property reset', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+    vi.restoreAllMocks();
+  });
+
+  it('assigning undefined resets an input to its default, like removing the attribute', async () => {
+    const el = make('<invalid-element page-size="5"></invalid-element>');
+    el.pageSize = 7;
+    expect(el.pageSize).toBe(7);
+    el.pageSize = undefined;
+    expect(el.pageSize).toBe(10);
+    el.size = 'lg';
+    el.size = undefined;
+    await el.whenSettled();
+    expect(el.size).toBe('sm');
+    expect(el.getAttribute('size')).toBe('sm'); // reflected
+  });
+});

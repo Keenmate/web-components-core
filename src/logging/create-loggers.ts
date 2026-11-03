@@ -25,8 +25,11 @@ export interface Logger {
   info(...args: unknown[]): void;
   warn(...args: unknown[]): void;
   error(...args: unknown[]): void;
+  /** Set the level; persisted to localStorage (`km-log:NS:CAT`) unless `persist` is `false`. */
   setLevel(level: LogLevelDesc, persist?: boolean): void;
   getLevel(): number;
+  /** Drop the level set by `setLevel()` (and its persisted copy): back to the bundle's default. */
+  resetLevel(): void;
 }
 
 export type { LogLevelDesc };
@@ -108,10 +111,14 @@ function toLevelNum(desc: LogLevelDesc): number {
   return LOG_LEVELS[desc.toUpperCase() as keyof typeof LOG_LEVELS] ?? LOG_LEVELS.SILENT;
 }
 
-/** [method, its level, the `console` method to emit through]. `trace` uses `debug` to avoid stack spam. */
-const INSTANCE_METHODS: readonly [keyof InstanceLogger, number, 'debug' | 'info' | 'warn' | 'error'][] = [
-  ['trace', LOG_LEVELS.TRACE, 'debug'],
-  ['debug', LOG_LEVELS.DEBUG, 'debug'],
+/**
+ * [method, its level, the `console` method to emit through]. `trace` / `debug` go through
+ * `console.log`, like the type loggers (log-core): Chrome hides `console.debug` ("Verbose")
+ * by default, so `el.enableLogging()` output would be invisible; `console.trace` would spam stacks.
+ */
+const INSTANCE_METHODS: readonly [keyof InstanceLogger, number, 'log' | 'info' | 'warn' | 'error'][] = [
+  ['trace', LOG_LEVELS.TRACE, 'log'],
+  ['debug', LOG_LEVELS.DEBUG, 'log'],
   ['info', LOG_LEVELS.INFO, 'info'],
   ['warn', LOG_LEVELS.WARN, 'warn'],
   ['error', LOG_LEVELS.ERROR, 'error'],

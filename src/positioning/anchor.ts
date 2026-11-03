@@ -181,15 +181,15 @@ export function anchor(
         middleware = buildMiddleware(opts, false);
       }
       // Each callback is isolated: one that throws is logged and the others still run.
-      const { placedCallback, computedCallback, driftCallback } = opts;
-      if (placedCallback) callSafely(() => placedCallback(resolved), { source: floating, message: 'anchor placedCallback threw' });
-      if (computedCallback) callSafely(() => computedCallback({ x, y, placement: resolved }), { source: floating, message: 'anchor computedCallback threw' });
-      if (driftCallback && reference instanceof Element) {
+      const { onPlaced, onComputed, onDrift } = opts;
+      if (onPlaced) callSafely(() => onPlaced(resolved), { source: floating, message: 'anchor onPlaced threw' });
+      if (onComputed) callSafely(() => onComputed({ x, y, placement: resolved }), { source: floating, message: 'anchor onComputed threw' });
+      if (onDrift && reference instanceof Element) {
         // Measure against the same frame floating-ui used: the fixed-CB offset parent
         // when the sugar is on, else the viewport. Only reports when actually drifted.
         const offsetParent = useFixedCB ? getFixedPositionOffsetParent(floating) : window;
         const report = detectFixedDrift({ panel: floating, reference, expectedX: x, expectedY: y, offsetParent });
-        if (report) callSafely(() => driftCallback(report), { source: floating, message: 'anchor driftCallback threw' });
+        if (report) callSafely(() => onDrift(report), { source: floating, message: 'anchor onDrift threw' });
       }
     }).catch((error: unknown) => {
       // computePosition itself rejected (a detached reference, a throwing platform hook):

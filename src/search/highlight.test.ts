@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NO_SEARCH_TERM, createRegexCompiler, findHighlightRanges, prepareSearchTerm, wrapRanges } from './index.js';
+import { NO_SEARCH_TERM, createRegexCompiler, escapeHtml, findHighlightRanges, highlightHtml, prepareSearchTerm, wrapRanges } from './index.js';
 import type { SearchBehavior, SearchMatch } from './index.js';
 
 /** Prepare `term` the default way and return the wrapped label. */
@@ -88,5 +88,36 @@ describe('wrapRanges', () => {
 
   it('skips empty and overlapping parts', () => {
     expect(wrapRanges('abcdef', [[1, 1], [1, 3], [2, 4]])).toBe('a<mark>bc</mark><mark>d</mark>ef');
+  });
+});
+
+// Review 2026-11-03 A-04 / A-11 (WP5).
+describe('highlight — safety and Unicode', () => {
+  const term = (text: string) => prepareSearchTerm(text, { behavior: 'normalized', match: 'contains', regex: createRegexCompiler() });
+
+  it('wrapRanges escapes plain text by default (no XSS through a label)', () => {
+    const label = '<img src=x onerror=alert(1)> Praha';
+    const r = findHighlightRanges(label, term('praha'), { behavior: 'normalized', match: 'contains' });
+    expect(wrapRanges(r.text, r.ranges)).toBe('&lt;img src=x onerror=alert(1)&gt; <mark>Praha</mark>');
+  });
+
+  it('escapeHtml escapes the five HTML characters', () => {
+    expect(escapeHtml(`<a href="x">'&'</a>`)).toBe('&lt;a href=&quot;x&quot;&gt;&#39;&amp;&#39;&lt;/a&gt;');
+  });
+
+  it('highlightHtml marks text in trusted HTML without touching tags or entities', () => {
+    const opts = { behavior: 'normalized' as const, match: 'contains' as const };
+    expect(highlightHtml('<b class="amp">Praha</b> &amp; okolí', term('amp'), opts)).toBe('<b class="amp">Praha</b> &amp; okolí');
+    expect(highlightHtml('<b>Praha</b> &amp; okolí', term('okoli'), opts)).toBe('<b>Praha</b> &amp; <mark>okolí</mark>');
+    expect(highlightHtml('Tom &amp; Jerry', term('&'), opts)).toBe('Tom <mark>&amp;</mark> Jerry');
+    expect(highlightHtml('Brno', NO_SEARCH_TERM, opts)).toBe('Brno');
+  });
+
+  it('a word start after an astral letter or a combining mark is not a word start', () => {
+    const r = findHighlightRanges('𝐀bc abc', prepareSearchTerm('bc', { behavior: 'exact', match: 'word-starts-with', regex: createRegexCompiler() }), {
+      behavior: 'exact',
+      match: 'word-starts-with',
+    });
+    expect(r.ranges).toEqual([]);
   });
 });

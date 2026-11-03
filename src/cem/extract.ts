@@ -30,9 +30,14 @@ export interface ExtractedAttribute {
 }
 
 export interface ExtractedMember {
-  kind: 'field';
+  kind: 'field' | 'method';
   name: string;
   privacy: 'public';
+  /** A read-only field (a getter without a setter). */
+  readonly?: boolean;
+  /** Methods: the parameters and return type. */
+  parameters?: { name: string; type?: ExtractedType; optional?: boolean }[];
+  return?: { type: ExtractedType };
   type?: ExtractedType;
   default?: string;
   attribute?: string;
@@ -114,7 +119,15 @@ function leadingComment(ts: TS, node: Node, sf: SourceFile): string | undefined 
   const full = sf.getFullText();
   const ranges = ts.getLeadingCommentRanges(full, node.getFullStart());
   if (!ranges || ranges.length === 0) return undefined;
-  const raw = full.slice(ranges[ranges.length - 1]!.pos, ranges[ranges.length - 1]!.end);
+  // The closest comment; for `//` lines, the whole run of consecutive `//` lines above the row.
+  let first = ranges.length - 1;
+  if (ranges[first]!.kind === ts.SyntaxKind.SingleLineCommentTrivia) {
+    while (first > 0 && ranges[first - 1]!.kind === ts.SyntaxKind.SingleLineCommentTrivia) first--;
+  }
+  const raw = ranges
+    .slice(first)
+    .map((r) => full.slice(r.pos, r.end))
+    .join('\n');
   const cleaned = raw
     .replace(/^\/\*\*?/, '')
     .replace(/\*\/$/, '')
@@ -169,15 +182,21 @@ function typeFromConverter(ts: TS, expr: Expression | undefined, sf: SourceFile)
       // ArrayLiteralExpression (which misses both the `as const` and the shared
       // identifier forms components actually use).
       const arr = args[0] ? resolveArrayLiteral(ts, args[0], sf) : undefined;
+      // `isNullable` (or no default: an absent attribute is null, "the engine decides") admits null.
+      const opts = args[1] && ts.isObjectLiteralExpression(args[1]) ? args[1] : undefined;
+      const isNullable = (opts && boolOf(ts, propOf(ts, opts, 'isNullable')) === true) || !(opts && propOf(ts, opts, 'default'));
+      const orNull = isNullable ? ' | null' : '';
       if (arr) {
         const members = arr.elements
           .map((el) => stringOf(ts, el))
           .filter((v): v is string => v !== undefined)
           .map((v) => `'${v}'`);
-        if (members.length) return { text: members.join(' | ') };
+        if (members.length) return { text: members.join(' | ') + orNull };
       }
-      return { text: 'string' };
+      return { text: 'string' + orNull };
     }
+    case 'toCssLength':
+      return { text: 'string' };
     case 'toInt':
     case 'toFloat':
     case 'toBytes':
@@ -191,8 +210,11 @@ function typeFromConverter(ts: TS, expr: Expression | undefined, sf: SourceFile)
       const mode = stringOf(ts, args[0]);
       return { text: mode === 'tristate' ? 'boolean | null' : 'boolean' };
     }
-    case 'toList':
-      return { text: 'string[]' };
+    case 'toList': {
+      const opts = args[0] && ts.isObjectLiteralExpression(args[0]) ? args[0] : undefined;
+      const itemType = opts ? stringOf(ts, propOf(ts, opts, 'itemType')) : undefined;
+      return { text: itemType === 'int' ? 'number[]' : 'string[]' };
+    }
     case 'toObjectArray':
       return { text: 'unknown[]' };
     case 'toObject':
@@ -200,7 +222,7 @@ function typeFromConverter(ts: TS, expr: Expression | undefined, sf: SourceFile)
     case 'toValue':
       return { text: 'unknown' };
     case 'toFunction':
-      return { text: 'Function' };
+      return { text: 'Function | null' };
     case 'toCustom':
       return { text: 'unknown' };
     default:
@@ -208,12 +230,30 @@ function typeFromConverter(ts: TS, expr: Expression | undefined, sf: SourceFile)
   }
 }
 
-/** The default value's source text: the row's `default`, else the converter's `default` option. */
+/** What `toBool(mode)` resolves a missing attribute to — its default, implied by the mode. */
+const BOOL_MODE_DEFAULTS: Record<string, string> = {
+  presence: 'false',
+  'default-false': 'false',
+  'default-true': 'true',
+  tristate: 'null',
+};
+
+/**
+ * The default value's source text: the row's `default`, else the converter's `default` option,
+ * else what the converter implies (`toBool` mode, `toText` → `''`).
+ */
 function defaultText(ts: TS, row: ObjectLiteralExpression, converter: Expression | undefined, sf: SourceFile): string | undefined {
   const rowDefault = propOf(ts, row, 'default');
   if (rowDefault) return rowDefault.getText(sf);
   if (converter) {
     const call = unwrap(ts, converter);
+    if (ts.isCallExpression(call) && ts.isIdentifier(call.expression)) {
+      const name = call.expression.text;
+      if (name === 'toBool') {
+        const mode = stringOf(ts, call.arguments[0]);
+        if (mode && BOOL_MODE_DEFAULTS[mode]) return BOOL_MODE_DEFAULTS[mode];
+      }
+    }
     if (ts.isCallExpression(call)) {
       for (const arg of call.arguments) {
         if (ts.isObjectLiteralExpression(arg)) {

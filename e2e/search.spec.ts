@@ -9,7 +9,7 @@ import type { Page } from '@playwright/test';
 //   - regex match: one compiler per instance keeps the last valid pattern while typing;
 //   - highlight returns NFC text whose ranges wrap correctly (NFD input), and escapes HTML;
 //   - getSearchTermCallback: a returned RegExp is used raw (separator-insensitive part numbers);
-//     a returned object is unusable for built-in search → no term + objectTermCallback.
+//     a returned object is unusable for built-in search → no term + onObjectTerm.
 //
 // Fixture: test/search.html
 
@@ -80,7 +80,7 @@ test('getSearchTermCallback: a RegExp is used raw (separator-insensitive part nu
   expect(without.hits).toEqual(['HA-324/56', 'XHA-324/56-B']);
 });
 
-test('getSearchTermCallback returning an object → no built-in term + objectTermCallback', async ({ page }) => {
+test('getSearchTermCallback returning an object → no built-in term + onObjectTerm', async ({ page }) => {
   const r = await page.evaluate(() => {
     const s = (window as any).search;
     const seen: unknown[] = [];
@@ -89,7 +89,7 @@ test('getSearchTermCallback returning an object → no built-in term + objectTer
       match: 'contains',
       regex: s.createRegexCompiler(),
       getSearchTermCallback: (t: string) => ({ zip: t.replace(/\s/g, '') }),
-      objectTermCallback: (o: unknown) => seen.push(o),
+      onObjectTerm: (o: unknown) => seen.push(o),
     });
     return { kind: term.kind, seen, lodz: s.normalizeSearchText('Łódź') };
   });

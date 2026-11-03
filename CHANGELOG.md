@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — BREAKING
+
+These change component code or page-visible output. Each component updates once (see the rc19
+brief); no compatibility aliases (v2 rule).
+
+- **Notification hooks are named `on*`; `*Callback` means "you decide".** Renamed options:
+
+  | Before | After | Where |
+  |---|---|---|
+  | `closeCallback(reason)` | `onClose(reason)` | `openMenu` |
+  | `placedCallback(placement)` | `onPlaced(placement)` | `anchor`, `createPopover` |
+  | `computedCallback({ x, y, placement })` | `onComputed(…)` | `anchor` |
+  | `driftCallback(report)` | `onDrift(report)` | `anchor` |
+  | `objectTermCallback(term)` | `onObjectTerm(term)` | `prepareSearchTerm` |
+  | `renderItem` / `renderMenu` / `prepareItem` | `renderItemCallback` / `renderMenuCallback` / `prepareItemCallback` | `openMenu` |
+
+  *pure-css port affected* (the `anchor()` option names).
+- **`toEnum({ shouldNullOnInvalid })` is `toEnum({ isNullable })`** — the name said "null on
+  invalid", but an invalid value keeps the previous one; the option means "null is the unset
+  value", the same as `toText({ isNullable })`.
+- **`wrapRanges()` escapes HTML by default** (`escape` defaults to the new `escapeHtml`). It used
+  to insert the label raw, so `wrapRanges(r.text, r.ranges)` on a label like
+  `<img src=x onerror=…>` was an XSS path. A label that is already trusted HTML goes through the
+  new **`highlightHtml(html, term, opts)`**, which marks text runs only (never inside a tag or an
+  entity). Pass `escape: (s) => s` to get the old behaviour.
+- **`el.x = undefined` resets an input to its default**, like removing its attribute, and the
+  input is no longer "explicitly set" (page responsive rules reach it again). Most converters
+  used to reject `undefined` with a warning; `toFunction` / validate-less converters stored it.
+- **`toEnum` attributes match case-insensitively** (`size="LG"` → `'lg'`, the declared spelling);
+  the property path still takes the declared value.
+- **`toList`:** an item containing the separator round-trips through a JSON-array attribute
+  (`tags='["a,b","c"]'`, written by reflection when needed); `[]` reflects as `"[]"` (a blank
+  attribute read back as the default); a blank attribute is the default, not `['']`.
+- **Search folding** (`normalizeSearchText`, matching and highlighting, one shared routine):
+  `case-insensitive` folds `ß` → `ss` and `İ` → `i`; `normalized` folds ligatures, full-width
+  forms and no-break spaces and strips combining marks only after Latin / Greek / Cyrillic letters
+  (Devanagari vowel signs and kana dakuten are part of the letter and stay); word boundaries are
+  per code point and a combining mark is part of the word.
+- **Instance `debug` / `trace` lines go through `console.log`** (like the type loggers): Chrome
+  hides `console.debug` by default, so `el.enableLogging()` output was invisible. Tests that spy
+  on `console.debug` for instance lines spy on `console.log` now.
+- **CEM:** `blissAnalyzerConfig()` no longer excludes `**/index.ts` — that is where a component
+  calls `registerComponent()`, so tag names were never recognised from it (it now excludes
+  `*.test.ts`, `*.spec.ts`, `*.d.ts`). Every manifest also lists `BlissElement`'s own API
+  (`release`, `destroy`, `whenReady`, `whenSettled`, `flush`, `setAttributes`, `batch`,
+  `enableLogging`, `validity`, …) — expect larger generated docs.
+
 ### Added
 
 - **`toCssLength({ default?, allowNegative?, keywords? })`** — a converter for inputs that only end
@@ -29,6 +76,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ResolvedActionItem.isToggle` — the item has a toggle state (render it checkbox-like even while
   `isToggled` is `false`).
 - `isActionBusy(item, host?)` — scoped to one component element when `host` is given.
+- `/search`: `escapeHtml(text)`, `highlightHtml(html, term, opts)`.
+- `Logger.resetLevel()` on the public `Logger` type (drop a `setLevel()` and its persisted copy).
+- CEM type inference: `toList({ itemType: 'int' })` → `number[]`, `toCssLength` → `string`,
+  `toFunction` → `Function | null`, a `toEnum` with no default or `isNullable` → `… | null`;
+  `toBool` defaults come from the mode; a run of `//` comment lines above a row is kept whole.
 
 ### Fixed
 
@@ -184,6 +236,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   non-enumerable `window.components.*` accessors (loader hook, motion).
 - New `callSafely()` / `notifyEach()` (`src/logging/safe-call.ts`): run code core doesn't own and
   log a throw through the core logger.
+- CEM plugin keys extracted classes by module path + name, so a same-named class in another
+  module (a demo, a test double) no longer receives the component's attributes.
 
 ### Docs
 

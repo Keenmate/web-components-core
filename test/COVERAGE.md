@@ -183,7 +183,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | matchesSearchTerm lazy prepared value skipped for regex | ✓ | `search.spec.ts` | `search.html` |
 | Regex compiler keeps last valid pattern | ✓ | `search.spec.ts` | `search.html` |
 | findHighlightRanges NFC text from NFD input; wrapRanges escape | ✓ | `search.spec.ts` | `search.html` |
-| getSearchTermCallback RegExp raw; object → none + objectTermCallback | ✓ | `search.spec.ts` | `search.html` |
+| getSearchTermCallback RegExp raw; object → none + onObjectTerm | ✓ | `search.spec.ts` | `search.html` |
 
 ## 13. Real-browser regressions
 

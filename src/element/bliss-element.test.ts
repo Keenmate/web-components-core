@@ -125,10 +125,10 @@ class ReflectElement extends BlissElement {
 }
 define('reflect-element', ReflectElement as unknown as CustomElementConstructor);
 
-// A nullable enum (`shouldNullOnInvalid`, no default): null is the unset value.
+// A nullable enum (`isNullable`, no default): null is the unset value.
 class NullableEnumElement extends BlissElement {
   protected static override inputs: readonly InputDef[] = [
-    { configKey: 'size', attribute: 'size', converter: toEnum(['sm', 'lg'] as const, { shouldNullOnInvalid: true }), shouldReflect: true },
+    { configKey: 'size', attribute: 'size', converter: toEnum(['sm', 'lg'] as const, { isNullable: true }), shouldReflect: true },
   ];
   peek(): Readonly<Record<string, unknown>> {
     return this.config;

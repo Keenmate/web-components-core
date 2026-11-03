@@ -8,7 +8,7 @@ export interface MenuPoint {
 }
 
 /**
- * Why a menu closed (the argument of {@link OpenMenuOptions.closeCallback}):
+ * Why a menu closed (the argument of {@link OpenMenuOptions.onClose}):
  * - `'action'` — a leaf item ran (and doesn't keep the menu open)
  * - `'escape'` — Escape on the root menu
  * - `'tab'` — Tab / Shift+Tab (focus leaves the menu)
@@ -48,24 +48,24 @@ export interface OpenMenuOptions<Ctx, A extends string = string> {
    */
   runAction?(item: MenuItem<Ctx, A>, invocation: MenuInvocation): unknown;
   /** Called once when the menu closes, with the reason. Not called when nothing was shown. */
-  closeCallback?(reason: MenuCloseReason): void;
+  onClose?(reason: MenuCloseReason): void;
   /**
    * Fill one item element yourself. Runs after the element got its classes /
    * ARIA / `data-*`; when you leave it empty the default content (icon, label,
    * shortcut) is rendered.
    */
-  renderItem?(item: MenuItem<Ctx, A>, element: HTMLElement, ctx: Ctx, resolved: ResolvedActionItem<A>): void;
+  renderItemCallback?(item: MenuItem<Ctx, A>, element: HTMLElement, ctx: Ctx, resolved: ResolvedActionItem<A>): void;
   /**
    * Take over the whole menu: fill `menuElement` yourself. Core still
    * positions it and dismisses it (outside press, scroll, blur, Escape, Tab);
-   * `entries`, `renderItem` and item keyboard navigation are not used.
+   * `entries`, `renderItemCallback` and item keyboard navigation are not used.
    * Call `close()` to dismiss it (reason `'api'`).
    */
-  renderMenu?(menuElement: HTMLElement, close: () => void): void;
+  renderMenuCallback?(menuElement: HTMLElement, close: () => void): void;
   /** A component's built-in state for an item (see `resolveMenuEntries`). */
   defaults?(item: MenuItem<Ctx, A>): Partial<ResolvedActionItem<A>> | undefined;
   /** Rewrite an item before it is resolved, at every level (e.g. give a built-in its submenu). */
-  prepareItem?(item: MenuItem<Ctx, A>): MenuItem<Ctx, A>;
+  prepareItemCallback?(item: MenuItem<Ctx, A>): MenuItem<Ctx, A>;
   /** Root placement. Default `'bottom-start'`. */
   placement?: Placement;
   /** Root offset from `at`. Default `0` for a point, `4` for an element. */

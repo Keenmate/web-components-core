@@ -25,7 +25,10 @@ export interface BlissAnalyzerConfig {
 export interface BlissAnalyzerOptions {
   /** Source globs to analyze. Default: `['src/**\/*.ts']`. */
   globs?: string[];
-  /** Globs to skip. Default: tests, declarations, and the barrel. */
+  /**
+   * Globs to skip. Default: tests and declarations. `index.ts` is analyzed — it is where a
+   * component calls `registerComponent()`, the tag-name declaration the plugin reads.
+   */
   exclude?: string[];
   /** Output directory for `custom-elements.json`. Default: `'.'`. */
   outdir?: string;
@@ -43,7 +46,7 @@ export interface BlissAnalyzerOptions {
 export function blissAnalyzerConfig(options: BlissAnalyzerOptions = {}): BlissAnalyzerConfig {
   return {
     globs: options.globs ?? ['src/**/*.ts'],
-    exclude: options.exclude ?? ['**/*.test.ts', '**/*.d.ts', '**/index.ts'],
+    exclude: options.exclude ?? ['**/*.test.ts', '**/*.spec.ts', '**/*.d.ts'],
     outdir: options.outdir ?? '.',
     plugins: [blissInputsPlugin(), ...(options.plugins ?? [])],
     ...(options.extra ?? {}),

@@ -24,6 +24,9 @@ function runPlugin(source: string, declarations: { kind: string; name: string }[
 }
 
 const names = (list: { name?: string }[] | undefined) => (list ?? []).map((x) => x.name);
+/** Members that are inputs (writable fields) — BlissElement's own API (CORE_DECLARED_API) is listed apart. */
+const inputMembers = (list: { name?: string; kind?: string; readonly?: boolean }[] | undefined) =>
+  (list ?? []).filter((m) => m.kind === 'field' && !m.readonly);
 
 describe('core-declared CEM entries', () => {
   it('the plugin adds defer / theme-source / motion / responsive / responsiveCallback / ready to a class with an input table', () => {
@@ -34,7 +37,7 @@ describe('core-declared CEM entries', () => {
       [{ kind: 'class', name: 'Widget' }],
     );
     expect(names(decl!.attributes)).toEqual(['label', 'defer', 'theme-source', 'motion', 'responsive']);
-    expect(names(decl!.members)).toEqual(['label', 'shouldDefer', 'themeSource', 'motion', 'responsive', 'responsiveCallback']);
+    expect(names(inputMembers(decl!.members))).toEqual(['label', 'shouldDefer', 'themeSource', 'motion', 'responsive', 'responsiveCallback']);
     expect(names(decl!.events)).toEqual(['ready']);
     const responsive = decl!.members.find((m: { name: string }) => m.name === 'responsive');
     expect(responsive).toMatchObject({ attribute: 'responsive', type: { text: 'ResponsiveMap | null' } });
@@ -50,7 +53,7 @@ describe('core-declared CEM entries', () => {
     const [meta] = parse(`class Grid extends BlissElement { static events = [{ name: 'row-click' }]; }`);
     const out = withCoreDeclared(meta!);
     expect(names(out.attributes)).toEqual(['defer', 'theme-source', 'motion']);
-    expect(names(out.members)).toEqual(['shouldDefer', 'themeSource', 'motion']);
+    expect(names(inputMembers(out.members))).toEqual(['shouldDefer', 'themeSource', 'motion']);
     expect(names(out.events)).toEqual(['row-click', 'ready']);
   });
 
@@ -68,5 +71,27 @@ describe('core-declared CEM entries', () => {
 
   it('classes without tables are untouched', () => {
     expect(parse(`class Plain extends HTMLElement {}`)).toEqual([]);
+  });
+});
+
+// Review 2026-11-03 L-08: BlissElement's own API is in every manifest, and stays in sync.
+describe('core-declared API', () => {
+  it('every CORE_DECLARED_API name exists on BlissElement.prototype', async () => {
+    const { BlissElement } = await import('../element/bliss-element.js');
+    const { CORE_DECLARED_API } = await import('./core-declared.js');
+    const own = new Set(Object.getOwnPropertyNames(BlissElement.prototype));
+    for (const api of CORE_DECLARED_API) expect(own.has(api.name), api.name).toBe(true);
+  });
+
+  it('the plugin lists them on a component class; the component’s own member wins', () => {
+    const [decl] = runPlugin(
+      `class Widget extends BlissElement {
+        static inputs = [{ configKey: 'label', attribute: 'label', converter: toText() }];
+      }`,
+      [{ kind: 'class', name: 'Widget' }],
+    );
+    const release = decl!.members.find((m: { name: string }) => m.name === 'release');
+    expect(release).toMatchObject({ kind: 'method', return: { type: { text: 'void' } } });
+    expect(decl!.members.find((m: { name: string }) => m.name === 'whenReady')).toMatchObject({ kind: 'method' });
   });
 });

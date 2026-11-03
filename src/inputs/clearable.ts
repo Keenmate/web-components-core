@@ -18,7 +18,7 @@
  *   `null` included (`toValue()` / `toCustom()` with no `validate`), so it is
  *   clearable too: an assigned `null` really is in `#config`.
  * - ATTRIBUTE path — `fromAttribute(null) === null` means an absent/removed
- *   attribute resolves to `null`: `toEnum({ shouldNullOnInvalid })` with no
+ *   attribute resolves to `null`: `toEnum({ isNullable })` with no
  *   default, nullable `toText`. (`fromAttribute` is contractually called with
  *   `null` whenever an attribute is absent, so probing it with `null` is always
  *   safe — every converter must already handle it.)
