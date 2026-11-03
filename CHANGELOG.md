@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `overflow: hidden`) instead of only `overflow: hidden`, which iOS Safari ignores for touch
   scrolling. The last release restores the body's inline styles and jumps back to the saved
   position instantly, even under `html { scroll-behavior: smooth }`.
+  **Other code that pins `<body>` itself** (pure-css's modal / panel lock) must join the shared
+  state — count on `globalThis[Symbol.for('km-scroll-lock')]`, pin only on 0→1 and unpin only on
+  1→0. Two independent pinning locks released out of order leave the page stuck pinned.
 
 ### Docs
 
