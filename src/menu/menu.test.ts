@@ -229,6 +229,17 @@ describe('submenus', () => {
     expect(p.getAttribute('aria-expanded')).toBe('false');
   });
 
+  // Review A-01: the anchor used to be created after the empty level had already collapsed.
+  it('a submenu whose children are all hidden opens nothing and leaks no positioning', () => {
+    open([{ id: 'p', text: 'P', children: [{ id: 'h', text: 'H', isVisible: false }] }]);
+    const p = byId('p');
+    p.dispatchEvent(new MouseEvent('mouseenter'));
+    p.dispatchEvent(new MouseEvent('mouseenter'));
+    expect(levels()).toHaveLength(1);
+    expect(p.getAttribute('aria-expanded')).toBe('false');
+    expect(anchors).toHaveLength(1); // only the root level is positioned
+  });
+
   it('entering the submenu cancels the collapse', () => {
     vi.useFakeTimers();
     open([{ id: 'p', text: 'P', children: [{ id: 'p1', text: 'P1' }] }]);
@@ -422,6 +433,30 @@ describe('dismiss + cleanup', () => {
     expect(handle.isOpen).toBe(true);
     key('Escape');
     expect(closeCallback).toHaveBeenCalledWith('escape');
+  });
+
+  // Review A-16.
+  it('a throwing closeCallback is logged and does not escape close()', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { handle } = open(basic, {
+      closeCallback: () => {
+        throw new Error('close boom');
+      },
+    });
+    expect(() => handle.close()).not.toThrow();
+    expect(levels()).toHaveLength(0);
+    expect(error).toHaveBeenCalled();
+    error.mockRestore();
+  });
+
+  // Review A-15.
+  it('a rejected runAction on a closing item is logged, not left unhandled', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    open(basic, { runAction: () => Promise.reject(new Error('action failed')) });
+    byId('a').click();
+    await flush();
+    expect(error.mock.calls.some((args) => args.some((x) => x instanceof Error && x.message === 'action failed'))).toBe(true);
+    error.mockRestore();
   });
 
   it('close() removes every level, destroys positioning and all document / window listeners', () => {

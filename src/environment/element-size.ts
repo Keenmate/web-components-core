@@ -22,6 +22,7 @@
  */
 
 import { once } from '../dom/once.js';
+import { callSafely } from '../logging/safe-call.js';
 import { createThrottle, type Throttle } from '../dom/throttle.js';
 
 /** An element's border-box size in CSS px (matches `getBoundingClientRect()`). */
@@ -88,8 +89,11 @@ function fire(sub: Subscription): void {
   const size = sub.pendingSize;
   if (!size) return;
   sub.lastFired = size;
-  sub.listener(size, sub.el);
+  // A throwing listener is logged; the other subscriptions (and entries) still get their fire.
+  callSafely(() => sub.listener(size, sub.el), SIZE_LOG);
 }
+
+const SIZE_LOG = { message: 'element size listener threw' } as const;
 
 /** The shared observer's callback — fan out each entry to its target's subscriptions. */
 function onResize(entries: ResizeObserverEntry[]): void {
@@ -134,7 +138,7 @@ export function observeElementSize(
     const size = measure(el);
     sub.lastFired = size;
     sub.throttle.markRun();
-    listener(size, el);
+    callSafely(() => listener(size, el), SIZE_LOG);
   }
 
   const observer = ensureObserver();

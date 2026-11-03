@@ -199,6 +199,27 @@ describe('runAction', () => {
     expect(btn.hasAttribute('aria-busy')).toBe(false);
   });
 
+  // Review A-15 / A-17.
+  it('a throwing action-event handler is logged; runAction still resolves true', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const ok = await runAction({
+      detail: detail({ action: 'save' }),
+      emitAction: () => {
+        throw new Error('listener boom');
+      },
+    });
+    expect(ok).toBe(true);
+    expect(error).toHaveBeenCalledOnce();
+    error.mockRestore();
+  });
+
+  it('puts back an aria-busy the trigger already had', async () => {
+    const btn = document.createElement('button');
+    btn.setAttribute('aria-busy', 'false');
+    await runAction({ detail: detail({ action: 'save' }, btn), emitAction: () => {} });
+    expect(btn.getAttribute('aria-busy')).toBe('false');
+  });
+
   it('a throwing onClick is logged; the built-in and the event still run', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const emitAction = vi.fn();

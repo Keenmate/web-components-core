@@ -33,7 +33,8 @@ export interface LoaderRenderContext {
  * A loader render hook — the instance `renderLoadingCallback` and the page-wide
  * `window.components.renderLoaderCallback` share this shape. Fill
  * `containerElement`; optionally return a cleanup run when the loader is removed
- * (stop timers / animations). Nodes the hook appended are removed for you.
+ * (stop timers / animations). Nodes the hook appended before returning are removed for you;
+ * nodes it appends later (asynchronously) are its cleanup's job.
  */
 export type RenderLoaderCallback = (ctx: LoaderRenderContext) => void | (() => void);
 
@@ -136,8 +137,8 @@ export function renderLoader(
 
   const before = new Set<Node>(Array.from(containerElement.childNodes));
   const added = (): Node[] => Array.from(containerElement.childNodes).filter((n) => !before.has(n));
-  const discard = (): void => {
-    for (const node of added()) node.parentNode?.removeChild(node);
+  const discard = (nodes: Node[]): void => {
+    for (const node of nodes) node.parentNode?.removeChild(node);
   };
 
   const instanceHook =
@@ -159,7 +160,7 @@ export function renderLoader(
       isDrawn = true;
     } catch (error) {
       coreLog(host, 'UI', 'ELEMENT').error(`${name} threw — drawing the default loader`, error);
-      discard();
+      discard(added());
     }
     break; // the highest-precedence hook decides; a throwing one falls back to the default
   }
@@ -170,6 +171,10 @@ export function renderLoader(
     span.setAttribute('aria-hidden', 'true');
     containerElement.appendChild(span);
   }
+  // What THIS render added, recorded now: nodes the component (or another loader) appends
+  // to the container later are not ours to remove. A hook that appends later (async)
+  // removes those in its cleanup.
+  const owned = added();
 
   let isRemoved = false;
   return () => {
@@ -180,7 +185,7 @@ export function renderLoader(
     } catch (error) {
       coreLog(host, 'UI', 'ELEMENT').error('loader cleanup threw', error);
     }
-    discard();
+    discard(owned);
     restoreAttribute(containerElement, 'role', prevRole);
     restoreAttribute(containerElement, 'aria-label', prevLabel);
   };

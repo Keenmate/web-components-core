@@ -31,7 +31,7 @@
 import { createFrameScheduler } from '../dom/frame-scheduler.js';
 import { once } from '../dom/once.js';
 import { createThrottle } from '../dom/throttle.js';
-import { coreLog } from '../logging/element-logger.js';
+import { callSafely, notifyEach } from '../logging/safe-call.js';
 
 /** The primary pointing device: `coarse` = touch/stylus, `fine` = mouse/trackpad. */
 export type PointerType = 'coarse' | 'fine' | 'none';
@@ -356,14 +356,10 @@ function recompute(): void {
  * from hearing the change.
  */
 function notifyAll(channel: Set<EnvironmentListener>, snapshot: EnvironmentSnapshot): void {
-  for (const listener of [...channel]) {
-    try {
-      listener(snapshot);
-    } catch (error) {
-      coreLog(null, 'UI', 'ELEMENT').error('environment listener threw', error);
-    }
-  }
+  notifyEach(channel, snapshot, LISTENER_LOG);
 }
+
+const LISTENER_LOG = { message: 'environment listener threw' } as const;
 
 /** Fire the current snapshot at every continuous-viewport subscriber. */
 function fireViewport(): void {
@@ -475,11 +471,14 @@ function subscribe(channel: Set<EnvironmentListener>, listener: EnvironmentListe
   const first = subscriberCount() === 0;
   channel.add(listener);
   if (first) start();
-  if (opts.shouldFireImmediately !== false) listener(getEnvironment());
-  return once(() => {
+  const unsubscribe = once(() => {
     channel.delete(listener);
     if (subscriberCount() === 0) stop();
   });
+  // A throwing first call is logged like any later one; the subscription stands and
+  // the caller still gets its unsubscribe (a rethrow here would leak the listener).
+  if (opts.shouldFireImmediately !== false) callSafely(() => listener(getEnvironment()), LISTENER_LOG);
+  return unsubscribe;
 }
 
 /**

@@ -64,6 +64,37 @@ describe('anchor', () => {
     expect(computedCallback).toHaveBeenCalledWith({ x: 10, y: 20, placement: 'bottom-start' });
   });
 
+  // Review D-14: callback throws used to become unhandled rejections that skipped the rest.
+  it('a throwing callback is logged; the other callbacks still run', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const floating = document.createElement('div');
+    const reference = document.createElement('button');
+    document.body.append(floating, reference);
+    const computedCallback = vi.fn();
+    anchor(floating, reference, {
+      placedCallback: () => {
+        throw new Error('placed boom');
+      },
+      computedCallback,
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(computedCallback).toHaveBeenCalledOnce();
+    expect(error).toHaveBeenCalled();
+    error.mockRestore();
+  });
+
+  it('a rejected computePosition is logged, not left unhandled', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(fui.computePosition).mockReturnValueOnce(Promise.reject(new Error('no layout')));
+    const floating = document.createElement('div');
+    const reference = document.createElement('button');
+    anchor(floating, reference);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(error.mock.calls.some((args) => args.some((a) => a instanceof Error && a.message === 'no layout'))).toBe(true);
+    error.mockRestore();
+  });
+
   it('appends a size() height-cap for maxHeight and an arrow() last', () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');

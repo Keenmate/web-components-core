@@ -120,6 +120,12 @@ function realMethod(methodName: string): LogFn {
 
 const defaultMethodFactory: MethodFactory = (methodName) => realMethod(methodName);
 
+/** Whether `input` is a level `setLevel()` accepts (a level name, any case, or a rank 0–5). */
+export function isLogLevel(input: unknown): input is LogLevelDesc {
+    if (typeof input === 'string') return (LOG_LEVELS as Record<string, number>)[input.toUpperCase()] !== undefined;
+    return typeof input === 'number' && input >= 0 && input <= LOG_LEVELS.SILENT;
+}
+
 /** Coerce a name/number level descriptor to its numeric rank, or throw. */
 function normalizeLevel(input: LogLevelDesc): number {
     let level: LogLevelDesc = input;

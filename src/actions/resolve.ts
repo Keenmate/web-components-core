@@ -189,6 +189,7 @@ export async function runAction<Ctx, A extends string>(opts: RunActionOptions<Ct
   if (busyItems.has(key)) return false;
   busyItems.add(key);
   const trigger = detail.triggerElement;
+  const previousBusy = trigger?.getAttribute('aria-busy') ?? null;
   trigger?.setAttribute('aria-busy', 'true');
   try {
     const gate = await runBeforeCallback(opts.beforeActionCallback, detail, 'beforeActionCallback', detail);
@@ -207,10 +208,17 @@ export async function runAction<Ctx, A extends string>(opts: RunActionOptions<Ct
         coreLog(detail, 'UI', 'ACTIONS').error(`built-in action "${detail.action}" threw`, error);
       }
     }
-    opts.emitAction(detail);
+    try {
+      opts.emitAction(detail);
+    } catch (error) {
+      // The action already ran; a throwing notification must not turn it into a rejection.
+      coreLog(detail, 'UI', 'ACTIONS').error(`action "${detail.action}" event handler threw`, error);
+    }
     return true;
   } finally {
     busyItems.delete(key);
-    trigger?.removeAttribute('aria-busy');
+    // Put back an aria-busy the trigger already had (e.g. its own loading state).
+    if (previousBusy === null) trigger?.removeAttribute('aria-busy');
+    else trigger?.setAttribute('aria-busy', previousBusy);
   }
 }

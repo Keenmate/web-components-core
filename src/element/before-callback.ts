@@ -66,7 +66,11 @@ export function runBeforeCallbackSync<Ctx, V = unknown>(
   try {
     const result = fn(ctx);
     if (result && typeof (result as PromiseLike<unknown>).then === 'function') {
-      coreLog(logSource, 'UI', 'ELEMENT').warn(`${name} must be synchronous; a returned Promise is ignored (continuing)`);
+      coreLog(logSource, 'UI', 'ELEMENT').warn(
+        `${name} must be synchronous here; a returned Promise is ignored (continuing) — resolving to false cannot cancel`,
+      );
+      // Nobody awaits it: report a rejection instead of leaving it unhandled.
+      Promise.resolve(result).then(undefined, (error: unknown) => report(name, error, logSource));
       return CONTINUE;
     }
     return interpret<V>(result);

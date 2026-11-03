@@ -40,12 +40,22 @@ export function resolveFromAttribute(
 
 /**
  * Property path: `converter.validate(value)` → resolved value, or `null` when
- * the value is rejected. A converter without `validate` accepts any value.
+ * the value is rejected. A converter without `validate` accepts any value. A
+ * `validate` that throws counts as a rejection (the caller warns and keeps the
+ * previous value), the same rule the attribute path applies to a throwing parse.
  *
  * @internal BlissElement plumbing — exported, but not part of the stable API.
  */
 export function resolveFromProperty(def: InputDef, value: unknown): Resolved | null {
   const conv = def.converter;
-  if (conv?.validate && !conv.validate(value)) return null;
+  if (conv?.validate) {
+    let isValid: boolean;
+    try {
+      isValid = conv.validate(value);
+    } catch {
+      isValid = false;
+    }
+    if (!isValid) return null;
+  }
   return { configKey: def.configKey, field: def.field, value, on: def.on ?? 'update' };
 }

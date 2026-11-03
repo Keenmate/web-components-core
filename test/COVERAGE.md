@@ -193,6 +193,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | Throwing environment listener doesn't stop others (discrete + viewport) | ✓ | `core-regressions.spec.ts` | `regressions.html` |
 | Throwing theme listener doesn't stop others | ✓ | `core-regressions.spec.ts` | `regressions.html` |
 | setAttributes() warns about a non-input key (other keys still apply) | ✓ | `core-regressions.spec.ts` | `regressions.html` |
+| Invalid `motion` first in markup keeps the later attributes (upgrade + parser) — review E-01 | ✓ | `core-regressions.spec.ts` | `regressions.html` |
 
 ## 13b. Container scroll (`scrollIntoContainer` / `findScrollContainer`)
 

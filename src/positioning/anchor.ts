@@ -21,6 +21,8 @@ import {
   type Platform,
 } from '@floating-ui/dom';
 import { composedClosest } from '../dom/composed-tree.js';
+import { coreLog } from '../logging/element-logger.js';
+import { callSafely } from '../logging/safe-call.js';
 import { detectFixedDrift, getFixedPositionOffsetParent } from './containing-block.js';
 import type { AnchorHandle, AnchorOptions, Placement } from './types.js';
 
@@ -160,7 +162,7 @@ export function anchor(
   let isDestroyed = false;
   const run = (): void => {
     if (isDestroyed) return;
-    opts.beforeComputeCallback?.();
+    if (opts.beforeComputeCallback) callSafely(opts.beforeComputeCallback, { source: floating, message: 'anchor beforeComputeCallback threw' });
     void computePosition(reference, floating, {
       placement,
       strategy,
@@ -178,15 +180,21 @@ export function anchor(
         flipEnabled = false;
         middleware = buildMiddleware(opts, false);
       }
-      opts.placedCallback?.(resolved);
-      opts.computedCallback?.({ x, y, placement: resolved });
-      if (opts.driftCallback && reference instanceof Element) {
+      // Each callback is isolated: one that throws is logged and the others still run.
+      const { placedCallback, computedCallback, driftCallback } = opts;
+      if (placedCallback) callSafely(() => placedCallback(resolved), { source: floating, message: 'anchor placedCallback threw' });
+      if (computedCallback) callSafely(() => computedCallback({ x, y, placement: resolved }), { source: floating, message: 'anchor computedCallback threw' });
+      if (driftCallback && reference instanceof Element) {
         // Measure against the same frame floating-ui used: the fixed-CB offset parent
         // when the sugar is on, else the viewport. Only reports when actually drifted.
         const offsetParent = useFixedCB ? getFixedPositionOffsetParent(floating) : window;
         const report = detectFixedDrift({ panel: floating, reference, expectedX: x, expectedY: y, offsetParent });
-        if (report) opts.driftCallback(report);
+        if (report) callSafely(() => driftCallback(report), { source: floating, message: 'anchor driftCallback threw' });
       }
+    }).catch((error: unknown) => {
+      // computePosition itself rejected (a detached reference, a throwing platform hook):
+      // log it instead of leaving an unhandled rejection that bypasses the core logger.
+      coreLog(floating, 'UI', 'ELEMENT').error('anchor: computing the position failed', error);
     });
   };
 

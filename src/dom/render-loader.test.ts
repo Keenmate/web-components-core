@@ -45,6 +45,25 @@ describe('renderLoader — default', () => {
     expect(box.getAttribute('role')).toBe('presentation');
     expect(box.hasAttribute('aria-label')).toBe(false);
   });
+
+  // Review D-01: remove() used to diff the container when it ran, deleting anything added since.
+  it('remove() keeps nodes the component appended after the loader was drawn', () => {
+    const remove = renderLoader(host, box, 'rows', { prefix: 'x', label: '' });
+    const row = document.createElement('div');
+    box.appendChild(row); // the data arrived; the component renders its rows, then drops the loader
+    remove();
+    expect(Array.from(box.childNodes)).toEqual([row]);
+  });
+
+  it('two overlapping loaders each remove only their own node', () => {
+    const removeA = renderLoader(host, box, 'a', { prefix: 'a', label: '' });
+    const removeB = renderLoader(host, box, 'b', { prefix: 'b', label: '' });
+    removeA();
+    expect(box.querySelector('.b-loader')).not.toBeNull();
+    expect(box.querySelector('.a-loader')).toBeNull();
+    removeB();
+    expect(box.childNodes.length).toBe(0);
+  });
 });
 
 describe('renderLoader — precedence', () => {

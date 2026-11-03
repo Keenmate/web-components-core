@@ -21,7 +21,17 @@ export function createMicrotaskScheduler(): MicrotaskScheduler {
     scheduled = false;
     const batch = [...tasks];
     tasks.clear();
-    for (const task of batch) task();
+    // Every task runs even when one throws (a throw used to drop the rest of the
+    // batch); the first error is rethrown once the batch is done.
+    let firstError: { error: unknown } | undefined;
+    for (const task of batch) {
+      try {
+        task();
+      } catch (error) {
+        firstError ??= { error };
+      }
+    }
+    if (firstError) throw firstError.error;
   };
 
   return {

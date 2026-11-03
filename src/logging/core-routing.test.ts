@@ -254,6 +254,22 @@ describe('window.components.logging (page-wide switch)', () => {
     const all = window.components!.logging!.getCategories();
     expect(all).toEqual(expect.arrayContaining(['CORE:ELEMENT', 'CORE:ACTIONS', 'CORE:MENU', 'CORE:THEME', `${ns}:INIT`, `${ns}:FILE`]));
   });
+
+  // Review L-01: a bad level used to be stored first, so every later createLoggers() threw.
+  it('an invalid level throws at the call and is not stored; later components still load', () => {
+    const g = window.components!.logging!;
+    g.setLogLevel('error');
+    expect(() => g.setLogLevel('verbose' as never)).toThrow(/invalid level "verbose"/);
+    const { bundle } = defineComponent({ namespace: freshNs() });
+    expect(bundle!.loggers.UI.getLevel()).toBe(LOG_LEVELS.ERROR); // the last valid level
+  });
+
+  it('a bad level stored by an older copy of core is ignored at registration', () => {
+    const state = (globalThis as unknown as Record<symbol, { level: unknown }>)[Symbol.for('@keenmate/web-components-core:logging')]!;
+    state.level = 'verbose';
+    expect(() => defineComponent({ namespace: freshNs() })).not.toThrow();
+    state.level = undefined;
+  });
 });
 
 describe('former console call sites', () => {
@@ -337,7 +353,7 @@ describe('former console call sites', () => {
       '[CORE:ELEMENT] beforeDeleteCallback threw — treated as reject',
     ]);
     expect(consoleLines(warn)).toEqual([
-      `[${ns}:UI] #ms beforeDragStartCallback must be synchronous; a returned Promise is ignored (continuing)`,
+      `[${ns}:UI] #ms beforeDragStartCallback must be synchronous here; a returned Promise is ignored (continuing) — resolving to false cannot cancel`,
     ]);
   });
 

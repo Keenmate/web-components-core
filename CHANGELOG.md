@@ -23,6 +23,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   768 / 1024. The table is now shared on `globalThis`, and the call fires `km-breakpoints-change`
   on `document` (new export `BREAKPOINTS_CHANGE_EVENT`) so components already watching the
   environment re-resolve their breakpoint.
+- **An invalid `motion` attribute no longer wipes out the attributes after it.** With
+  `<x motion="bogus" label="hi">` in markup, writing back the kept level drained the browser's
+  queue of the remaining initial attributes while the reflect guard was on, so `label` and every
+  later attribute were dropped at upgrade. The guard now skips only the attribute core is writing.
+  The same applies to any write-back or reflection during upgrade.
+- **Code that throws no longer leaves an element half-activated.** A throwing `connect()` or first
+  `environmentChanged()` / `viewportChanged()` / theme hook used to skip the remaining
+  subscriptions and the `ready` announcement (`whenReady()` hung), and a throwing first
+  environment listener leaked the page's shared media-query listeners. Activation now runs every
+  step, announces `ready`, and rethrows the first error afterwards. Also:
+  - a `flush()` called from inside `reinit()` / `update()` is a no-op (a retried `reinit()` that
+    called it recursed without bound);
+  - the keys of an `update(partial)` that threw are applied again on the next flush;
+  - a converter whose `toAttribute` throws (circular data, BigInt) leaves the attribute alone
+    instead of throwing out of the setter or skipping the first build;
+  - a `validate` that throws counts as an invalid value (warn, keep the previous one);
+  - `destroy()` called from inside `connect()` or a hook stops the rest of the activation;
+  - `whenReady()` settles when the element is destroyed before it was ready;
+  - a throwing `disabledChanged()` on a retried build no longer skips activation.
+- **One throwing listener no longer silences the others:** `observeEnvironment` / `observeViewport`
+  (including the immediate first call, which now never leaks the subscription),
+  `observeElementSize`, page-wide `window.components.motion`, and the microtask scheduler, which
+  used to drop every task after a throwing one in the same batch.
+- **`window.components.logging.setLogLevel('verbose')` no longer breaks the page.** The bad level
+  was stored before it was checked, so every component loaded afterwards (from any copy of core)
+  threw at import. It now throws at the call, and nothing is stored. A bad level left by an
+  older copy is ignored. New export: `isLogLevel()`.
+- **`renderLoader()`'s `remove()` keeps nodes added after the loader.** It worked out "what the
+  loader added" when `remove()` ran, so rows the component rendered before removing the loader,
+  or a second loader, were deleted too. It now removes only what the render added.
+- **Menus:** hovering a submenu whose children are all hidden no longer leaks its positioning
+  (a live `autoUpdate` per hover). A rejected `runAction` on an item that closes the menu, and a
+  throwing `closeCallback`, are logged instead of escaping.
+- **`runAction()`:** a throwing `action` event handler is logged and `runAction` still resolves
+  `true`; an `aria-busy` the trigger already had is put back afterwards.
+- **`anchor()`:** a throwing `placedCallback` / `computedCallback` / `driftCallback` /
+  `beforeComputeCallback` is logged and the others still run; a rejected `computePosition` is
+  logged instead of becoming an unhandled rejection. *pure-css port affected.*
+- **`runBeforeCallbackSync()`:** a returned Promise that rejects is reported instead of being
+  left unhandled, and the warning now says that resolving it to `false` cannot cancel.
 
 ### Changed
 

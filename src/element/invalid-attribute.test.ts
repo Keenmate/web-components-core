@@ -169,4 +169,39 @@ describe('invalid attribute values', () => {
     expect(el.legacy).toBe(3);
     expect(warn).not.toHaveBeenCalled();
   });
+
+  // Review E-09: a throwing validate used to escape the property setter.
+  it('a converter whose validate throws: the property write is rejected like an invalid value', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const el = make() as Host;
+    const def = (InvalidElement as unknown as { inputs: InputDef[] }).inputs.find((d) => d.configKey === 'explodes')!;
+    const original = def.converter!.validate;
+    (def.converter as Converter<unknown>).validate = (() => {
+      throw new Error('validate boom');
+    }) as never;
+    try {
+      expect(() => (el.explodes = 'z')).not.toThrow();
+      expect(el.explodes).toBe('x');
+      expect(warnings(warn).some((l) => l.includes('rejected invalid value for property "explodes"'))).toBe(true);
+    } finally {
+      (def.converter as Converter<unknown>).validate = original as never;
+    }
+  });
+
+  // Review E-01: a write-back during upgrade drains the browser's queued replay of the
+  // remaining initial attributes inside the same call; the guard must skip only its own name.
+  it('an invalid core attribute first in markup does not swallow the attributes after it', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const el = make('<invalid-element motion="bogus" label="hi" page-size="5"></invalid-element>');
+    expect(el.label).toBe('hi');
+    expect(el.pageSize).toBe(5);
+    expect(el.hasAttribute('motion')).toBe(false); // written back to the kept level (auto)
+  });
+
+  it('an invalid reflected input first in markup does not swallow the attributes after it', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const el = make('<invalid-element size="huge" label="hi"></invalid-element>');
+    expect(el.label).toBe('hi');
+    expect(el.getAttribute('size')).toBe('sm');
+  });
 });

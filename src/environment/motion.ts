@@ -17,6 +17,7 @@
  */
 
 import { adoptStyles } from '../dom/adopt-styles.js';
+import { notifyEach } from '../logging/safe-call.js';
 
 /** Motion levels. `auto` = no override: follow the page / section / OS. */
 export const MOTION_VALUES = ['auto', 'none', 'snappy', 'smooth'] as const;
@@ -81,7 +82,8 @@ function setLevel(value: unknown): void {
   const next: Motion = isMotion(value) ? value : 'auto';
   if (next === s.level) return;
   s.level = next;
-  for (const listener of [...s.listeners]) listener(next);
+  // A throwing listener is logged and skipped — the other elements still follow the level.
+  notifyEach(s.listeners, next, { message: 'page motion listener threw' });
 }
 
 /**

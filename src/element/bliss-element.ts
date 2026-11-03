@@ -229,7 +229,21 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * connect.
    */
   #preUpgradeKeys: Set<string> | null = null;
-  #reflecting = false;
+  /**
+   * The attribute core is writing itself right now (reflection / write-back), so its
+   * `attributeChangedCallback` doesn't feed back in. Only THAT name is skipped: a write
+   * made during upgrade drains the browser's queued replay of the other initial
+   * attributes inside the same call, and those must still be processed.
+   */
+  #reflectingAttribute: string | null = null;
+  /**
+   * The partial of an `update()` that threw. Kept apart from `#pending` (like
+   * `#hasFailedReinit`) so {@link whenSettled} doesn't wait on a flush nothing
+   * schedules; merged into the next flush's partial.
+   */
+  #failedPartial: Record<string, unknown> | null = null;
+  /** `reinit()` / `update()` is running — a nested flush is a no-op (see #flush). */
+  #isApplying = false;
   /** `connect()` ran and `disconnect()` hasn't yet — keeps the two balanced when a build throws. */
   #isActive = false;
   /**
@@ -315,7 +329,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   // ── lifecycle ──────────────────────────────────────────────────────────
 
   attributeChangedCallback(name: string, _old: string | null, raw: string | null): void {
-    if (this.#reflecting) return;
+    if (name === this.#reflectingAttribute) return;
     // Global `dir` is observed for every component (not an input). Route runtime
     // changes to the directionChanged() hook — but only post-connect: the initial
     // attribute is consumed by the first build, and firing before connect would
@@ -349,7 +363,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
         this.#motion = raw ?? 'auto';
       } else {
         this.#warn(`rejected invalid value for attribute ${MOTION_ATTRIBUTE}="${raw}" (expected ${MOTION_VALUES.join(' | ')}); keeping "${this.#motion}"`);
-        this.#withoutReflect(() => {
+        this.#withoutReflect(MOTION_ATTRIBUTE, () => {
           if (this.#motion === 'auto') this.removeAttribute(MOTION_ATTRIBUTE);
           else this.setAttribute(MOTION_ATTRIBUTE, this.#motion);
         });
@@ -451,27 +465,44 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   #activate(): void {
     if (this.#isDestroyed || this.#isActive || !this.isConnected || this.#isHeld()) return;
     this.#isActive = true;
-    this.connect();
+    // Every step runs even when an earlier one throws: a throwing connect() or first
+    // environmentChanged() must not leave the remaining subscriptions unmade or `ready`
+    // never announced. The first error is rethrown at the end (to whoever connected /
+    // flushed), the same contract as a throwing reinit(). A destroy() from inside a
+    // step stops the rest — destroy() already tore down what had started.
+    let firstError: { error: unknown } | undefined;
+    const step = (run: () => void): boolean => {
+      if (this.#isDestroyed) return false;
+      try {
+        run();
+      } catch (error) {
+        firstError ??= { error };
+      }
+      return !this.#isDestroyed;
+    };
+    if (!step(() => this.connect())) return this.#rethrow(firstError);
     // Subscribe to device/viewport/orientation ONLY when the subclass opts in by
     // overriding environmentChanged — no global listeners for elements that don't
     // care. The subscribe fires immediately, so the hook gets the current snapshot
     // on connect, then again on every change until disconnect.
     if (this.environmentChanged !== BlissElement.prototype.environmentChanged) {
-      this.#envUnsub = observeEnvironment((env) => this.environmentChanged(env));
+      if (!step(() => (this.#envUnsub = observeEnvironment((env) => this.environmentChanged(env), { shouldFireImmediately: false })))) return this.#rethrow(firstError);
+      if (!step(() => this.environmentChanged(getEnvironment()))) return this.#rethrow(firstError);
     }
     // Same opt-in gate for the throttled continuous-viewport channel — a separate
     // subscription so an element pays the ~30ms size stream only if it overrides
     // viewportChanged, not merely environmentChanged.
     if (this.viewportChanged !== BlissElement.prototype.viewportChanged) {
-      this.#viewportUnsub = observeViewport((env) => this.viewportChanged(env));
+      if (!step(() => (this.#viewportUnsub = observeViewport((env) => this.viewportChanged(env), { shouldFireImmediately: false })))) return this.#rethrow(firstError);
+      if (!step(() => this.viewportChanged(getEnvironment()))) return this.#rethrow(firstError);
     }
     // Per-element size (own box, via a shared ResizeObserver) — same opt-in gate.
     // shouldFireImmediately: false so the first fire carries the real laid-out box (RO's initial
     // delivery), not a 0×0 read taken before layout during connect.
     if (this.sizeChanged !== BlissElement.prototype.sizeChanged) {
-      this.#sizeUnsub = observeElementSize(this, (size) => this.sizeChanged(size), { shouldFireImmediately: false });
+      if (!step(() => (this.#sizeUnsub = observeElementSize(this, (size) => this.sizeChanged(size), { shouldFireImmediately: false })))) return this.#rethrow(firstError);
     }
-    this.#subscribeTheme();
+    if (!step(() => this.#subscribeTheme())) return this.#rethrow(firstError);
     if (!this.#isReady && !this.#isReadyScheduled) {
       // Announce on a microtask, not synchronously (SPEC §6.3): an element built
       // during upgrade (createElement of a defined tag, `define()` after parsing,
@@ -483,6 +514,12 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
         if (!this.#isDestroyed) this.#announceReady();
       });
     }
+    this.#rethrow(firstError);
+  }
+
+  /** Rethrow a hook error collected while finishing a multi-step operation. */
+  #rethrow(collected: { error: unknown } | undefined): void {
+    if (collected) throw collected.error;
   }
 
   /**
@@ -492,7 +529,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    */
   #announceReady(): void {
     this.#isReady = true;
-    this.#withoutReflect(() => this.setAttribute(READY_ATTRIBUTE, ''));
+    this.#withoutReflect(READY_ATTRIBUTE, () => this.setAttribute(READY_ATTRIBUTE, ''));
     try {
       this.internals?.states?.add(READY_ATTRIBUTE);
     } catch {
@@ -610,10 +647,12 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   /**
    * Resolves once the first build is live (right after the `ready` event); at
    * once when it already is. Never rejects — a throwing first build keeps it
-   * pending until a later flush succeeds.
+   * pending until a later flush succeeds. {@link destroy} settles it too (the
+   * element will never become ready): check {@link isDestroyed} after awaiting
+   * if the element may be destroyed meanwhile.
    */
   whenReady(): Promise<void> {
-    if (this.#isReady) return Promise.resolve();
+    if (this.#isReady || this.#isDestroyed) return Promise.resolve();
     return new Promise<void>((resolve) => this.#readyResolvers.push(resolve));
   }
 
@@ -763,9 +802,13 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#cancelRemovalCheck?.();
     this.#cancelRemovalCheck = undefined;
     this.#pending = null;
+    this.#failedPartial = null;
     this.#pendingReinit = false;
     this.#hasFailedReinit = false;
     this.#resolveSettled();
+    const readyResolvers = this.#readyResolvers;
+    this.#readyResolvers = [];
+    for (const resolve of readyResolvers) resolve();
     untrackInstance(this.localName, this);
     this.#stopResponsive();
     this.#motionUnsub?.();
@@ -1051,7 +1094,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       return;
     }
     this.#themeSource = next;
-    this.#withoutReflect(() => this.removeAttribute(THEME_SOURCE_ATTRIBUTE));
+    this.#withoutReflect(THEME_SOURCE_ATTRIBUTE, () => this.removeAttribute(THEME_SOURCE_ATTRIBUTE));
     this.#resubscribeTheme();
   }
 
@@ -1610,8 +1653,16 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   #reflect(def: InputDef, value: unknown): void {
     const { attribute, converter } = def;
     if (!def.shouldReflect || !attribute || !converter?.toAttribute) return;
-    const attrVal = converter.toAttribute(value as never);
-    this.#withoutReflect(() => {
+    let attrVal: string | null;
+    try {
+      attrVal = converter.toAttribute(value as never);
+    } catch (err) {
+      // The value is already staged; a value the converter can't serialise (circular
+      // data, BigInt) just isn't mirrored to the attribute.
+      this.#warn(`converter for "${def.configKey}" threw serialising it to attribute ${attribute}; attribute left as it was`, err);
+      return;
+    }
+    this.#withoutReflect(attribute, () => {
       if (attrVal === null) this.removeAttribute(attribute);
       else this.setAttribute(attribute, attrVal);
     });
@@ -1656,13 +1707,14 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     }
   }
 
-  /** Write our own attribute without `attributeChangedCallback` feeding it back in. */
-  #withoutReflect(write: () => void): void {
-    this.#reflecting = true;
+  /** Write our own attribute `name` without its `attributeChangedCallback` feeding it back in. */
+  #withoutReflect(name: string, write: () => void): void {
+    const previous = this.#reflectingAttribute;
+    this.#reflectingAttribute = name;
     try {
       write();
     } finally {
-      this.#reflecting = false;
+      this.#reflectingAttribute = previous;
     }
   }
 
@@ -1937,6 +1989,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     }
     if (!this.isConnected) return; // hold until connected
     if (this.#isHeld()) return; // hold until release() (SPEC §6.3)
+    // A flush() from inside reinit()/update() (an imperative method's `this.flush()`)
+    // is a no-op: the hook is already applying the batch, and writes it stages are
+    // picked up by the next (microtask) flush. Without this a retried reinit() that
+    // calls flush() would retry itself without bound.
+    if (this.#isApplying) return;
     this.#isReleased = true; // building now — a later `defer` never re-holds
     // Responsive rules (SPEC §6.7) see the batch's base changes; the first build gets them too.
     // Whatever this stages is consumed right below, so the queued microtask is dropped.
@@ -1944,7 +2001,9 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#scheduler.cancel();
     const isRetry = this.#hasFailedReinit;
     const reinit = this.#pendingReinit || isRetry;
-    const partial = this.#pending;
+    // Keys of a patch that threw last time ride along (a rebuild absorbs them anyway).
+    const partial = this.#failedPartial ? { ...this.#failedPartial, ...(this.#pending ?? {}) } : this.#pending;
+    this.#failedPartial = null;
     this.#pendingReinit = false;
     this.#pending = null;
     // The partial carries EFFECTIVE values (a base write under an instance rule keeps the rule's value).
@@ -1957,6 +2016,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       this.#deferredReflect = null;
     }
     this.#explicitKeys = null; // the batch ends here
+    this.#isApplying = true;
     try {
       // A reinit rebuilds from full config, so it absorbs any update keys in the batch.
       if (reinit) this.reinit();
@@ -1965,15 +2025,23 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       // Rethrow (no silent swallow), but don't wedge: rebuild on the next flush,
       // and still release whenSettled() waiters in `finally`.
       if (reinit) this.#hasFailedReinit = true;
+      // A failed patch keeps its keys for the next flush (whatever triggers it), so
+      // they're applied again instead of leaving `config` and the rendered state apart.
+      else if (partial) this.#failedPartial = partial;
       throw err;
     } finally {
+      this.#isApplying = false;
       this.#resolveSettled();
     }
     this.#hasFailedReinit = false;
     if (reinit) this.#hasBuilt = true;
-    this.#syncDisabled(reinit);
-    // A rebuild that finally succeeded while connected activates what the failed one skipped.
-    if (isRetry) this.#activate();
+    try {
+      this.#syncDisabled(reinit);
+    } finally {
+      // A rebuild that finally succeeded while connected activates what the failed one
+      // skipped — even when disabledChanged() threw.
+      if (isRetry) this.#activate();
+    }
   }
 
   /** Resolve everyone awaiting {@link whenSettled} for the flush that just ran. */

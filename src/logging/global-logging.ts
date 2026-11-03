@@ -18,7 +18,7 @@
  * (`window.components['web-x'].logging.setLogLevel(…)`) simply sets that
  * bundle's levels again, so it wins for that component.
  */
-import type { LogLevelDesc } from './log-core.js';
+import { isLogLevel, type LogLevelDesc } from './log-core.js';
 
 /** The page-wide controls — same method names as a component's `logging` entry. */
 export interface GlobalLoggingControls {
@@ -58,6 +58,11 @@ function state(): GlobalLoggingState {
       controls: undefined as unknown as GlobalLoggingControls,
     };
     const applyAll = (level: LogLevelDesc): void => {
+      // Check BEFORE storing: a stored bad level would make every later createLoggers()
+      // (any lazily loaded component, any copy of core) throw at registration.
+      if (!isLogLevel(level)) {
+        throw new TypeError(`window.components.logging: invalid level "${String(level)}" (expected trace | debug | info | warn | error | silent)`);
+      }
       created.level = level;
       for (const bundle of created.bundles) bundle.setLogLevel(level);
     };
@@ -107,7 +112,8 @@ export function publishGlobalLogging(): void {
 export function registerGlobalLoggingTarget(bundle: GlobalLoggingTarget): void {
   const s = state();
   s.bundles.add(bundle);
-  if (s.level !== undefined) bundle.setLogLevel(s.level);
+  // isLogLevel: the shared state may come from an older copy of core that stored a bad level.
+  if (s.level !== undefined && isLogLevel(s.level)) bundle.setLogLevel(s.level);
   publishGlobalLogging();
 }
 

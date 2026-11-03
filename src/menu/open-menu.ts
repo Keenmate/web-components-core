@@ -10,6 +10,7 @@ import { getMenuChildren, isMenuDivider, resolveMenuEntries } from '../actions/r
 import type { MenuEntry, MenuItem, ResolvedActionItem } from '../actions/types.js';
 import { adoptStyles } from '../dom/adopt-styles.js';
 import { coreLog } from '../logging/element-logger.js';
+import { callSafely } from '../logging/safe-call.js';
 import { registerOverlay, type OverlayHandle } from '../overlay/active-overlay.js';
 import { anchor } from '../positioning/anchor.js';
 import type { AnchorHandle } from '../positioning/types.js';
@@ -298,6 +299,9 @@ export function openMenu<Ctx, A extends string = string>(
       }
       if (shouldFocus) focusItem(enabledItems(level)[0]);
     });
+    // A static list with no visible entries collapsed the level synchronously above —
+    // never position a level that is already gone (its anchor would never be destroyed).
+    if (!chain.includes(level)) return;
     level.position = anchor(level.el, owner, {
       placement: 'right-start',
       offset: { mainAxis: 0, crossAxis: -4 },
@@ -352,7 +356,13 @@ export function openMenu<Ctx, A extends string = string>(
     } catch (error) {
       coreLog(host, 'UI', 'MENU').error('menu runAction threw', error);
     }
-    if (!isKeptOpen) return;
+    if (!isKeptOpen) {
+      // Nobody awaits a closed menu's action: log a rejection instead of leaving it unhandled.
+      if (isThenable(result)) {
+        Promise.resolve(result).catch((error: unknown) => coreLog(host, 'UI', 'MENU').error('menu runAction rejected', error));
+      }
+      return;
+    }
     const level = chain.find((l) => l.el.contains(itemEl));
     const refresh = (): void => {
       if (!isOpen || !level || !chain.includes(level)) return;
@@ -514,7 +524,9 @@ export function openMenu<Ctx, A extends string = string>(
     if (hadFocus && !isPointerAway && opts.returnFocusTo?.isConnected) {
       opts.returnFocusTo.focus({ preventScroll: true });
     }
-    opts.closeCallback?.(reason);
+    // A throwing closeCallback must not escape close() (or the document listener that called it).
+    const { closeCallback } = opts;
+    if (closeCallback) callSafely(() => closeCallback(reason), { source: host, coreCategory: 'MENU', message: 'menu closeCallback threw' });
   }
 
   // ── Open ───────────────────────────────────────────────────────────────

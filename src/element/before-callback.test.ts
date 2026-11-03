@@ -53,6 +53,17 @@ describe('runBeforeCallbackSync', () => {
     warn.mockRestore();
   });
 
+  // Review I-04.
+  it('a returned Promise that rejects is reported, not left unhandled', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    runBeforeCallbackSync(() => Promise.reject(new Error('async boom')), {}, 'beforeDragStartCallback');
+    await new Promise((r) => setTimeout(r, 0));
+    expect(error).toHaveBeenCalled();
+    warn.mockRestore();
+    error.mockRestore();
+  });
+
   it('a throw rejects', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     expect(runBeforeCallbackSync(() => { throw new Error('x'); }, {})).toEqual({ isRejected: true });

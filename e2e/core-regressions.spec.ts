@@ -131,3 +131,35 @@ test('setAttributes() warns about a key that is not an input instead of dropping
   expect(result.updates).toEqual([{ label: 'ok' }]); // the real input still applies
   expect(result.warnings.some((w) => w.includes('setAttributes: "data" is not an input of <regression-renamed-el>'))).toBe(true);
 });
+
+// Review 2026-11-03 E-01: the write-back of an invalid core attribute runs while the browser
+// still has the other initial attributes queued; they used to be swallowed by the reflect guard.
+// Both orders: parsed before define (upgrade) and created by the parser for a defined tag.
+for (const when of ['upgrade', 'defined'] as const) {
+  test(`an invalid motion attribute first in markup keeps the attributes after it (${when})`, async ({ page }) => {
+    const result = await page.evaluate((when) => {
+      const { BlissElement, define, toText, toInt } = (window as any).core;
+      const tag = `regression-motion-${when}`;
+      class MotionFirst extends BlissElement {
+        static inputs = [
+          { configKey: 'label', attribute: 'label', converter: toText({ default: '' }) },
+          { configKey: 'pageSize', attribute: 'page-size', converter: toInt({ default: 1 }) },
+        ];
+      }
+      const original = console.warn;
+      console.warn = () => {};
+      try {
+        const host = document.createElement('div');
+        document.body.appendChild(host);
+        if (when === 'defined') define(tag, MotionFirst);
+        host.innerHTML = `<${tag} motion="bogus" label="hi" page-size="5"></${tag}>`;
+        if (when === 'upgrade') define(tag, MotionFirst);
+        const el = host.firstElementChild as any;
+        return { label: el.label, pageSize: el.pageSize, hasMotion: el.hasAttribute('motion') };
+      } finally {
+        console.warn = original;
+      }
+    }, when);
+    expect(result).toEqual({ label: 'hi', pageSize: 5, hasMotion: false });
+  });
+}
