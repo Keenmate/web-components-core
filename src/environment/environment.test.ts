@@ -275,6 +275,29 @@ describe('observeEnvironment', () => {
     unsub();
   });
 
+  it('configureBreakpoints() through another copy of core moves this copy too', async () => {
+    installMatchMedia({ ...DESKTOP });
+    setWidth(800);
+    const seen: string[] = [];
+    const unsub = observeEnvironment((env) => seen.push(env.breakpoint));
+    vi.resetModules();
+    const other = await import('./environment.js'); // a second module instance = another bundle
+    expect(other.configureBreakpoints).not.toBe(configureBreakpoints);
+    other.configureBreakpoints({ mobile: 900, desktop: Infinity });
+    expect(seen).toEqual(['tablet', 'mobile']); // heard km-breakpoints-change
+    expect(getEnvironment().breakpoint).toBe('mobile');
+    unsub();
+  });
+
+  it('a copy that subscribes later uses the page-wide table', async () => {
+    installMatchMedia({ ...DESKTOP });
+    setWidth(800);
+    configureBreakpoints({ mobile: 900, desktop: Infinity });
+    vi.resetModules();
+    const other = await import('./environment.js');
+    expect(other.getEnvironment().breakpoint).toBe('mobile');
+  });
+
   it('re-resolves the cached breakpoint when only viewport subscribers are live', () => {
     installMatchMedia({ ...DESKTOP });
     setWidth(800);

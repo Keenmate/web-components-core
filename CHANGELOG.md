@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   each other: closing a multiselect sheet restored page scroll under an open date picker. The
   state now lives on `globalThis[Symbol.for('km-scroll-lock')]` (exported type `ScrollLockState`),
   a documented shape pure-css can join.
+- **`configureBreakpoints()` applies to every component.** The breakpoint table was a module
+  variable, so a call through the app's copy of core left every component's own copy on
+  768 / 1024. The table is now shared on `globalThis`, and the call fires `km-breakpoints-change`
+  on `document` (new export `BREAKPOINTS_CHANGE_EVENT`) so components already watching the
+  environment re-resolve their breakpoint.
 
 ### Changed
 

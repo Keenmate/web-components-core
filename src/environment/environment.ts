@@ -124,15 +124,40 @@ export const BREAKPOINT_TOKENS = {
   tablet: '--base-breakpoint-tablet',
 } as const;
 
-/** Breakpoints as `[name, maxWidth]` sorted ascending by width; last entry is the catch-all. */
-let breakpoints: Array<[string, number]> = sortBreakpoints(DEFAULT_BREAKPOINTS);
+/**
+ * Page-wide breakpoint table. It lives on `globalThis` (not in this module) because every
+ * component bundles its own copy of core: `configureBreakpoints()` through one copy must
+ * move every component's buckets.
+ */
+interface BreakpointState {
+  /** Breakpoints as `[name, maxWidth]` sorted ascending by width; last entry is the catch-all. */
+  breakpoints: Array<[string, number]>;
+  /**
+   * The lines are settled: the base tokens were read (first browser snapshot) or
+   * {@link configureBreakpoints} set them explicitly — which always wins over the tokens.
+   */
+  isSettled: boolean;
+}
+
+const BREAKPOINT_STATE_KEY = Symbol.for('@keenmate/web-components-core:breakpoints');
+
+function breakpointState(): BreakpointState {
+  const g = globalThis as unknown as Record<symbol, BreakpointState | undefined>;
+  return (g[BREAKPOINT_STATE_KEY] ??= { breakpoints: sortBreakpoints(DEFAULT_BREAKPOINTS), isSettled: false });
+}
 
 /**
- * The breakpoint lines are settled: the base tokens were read (first browser
- * snapshot) or {@link configureBreakpoints} set them explicitly — which always
- * wins over the tokens.
+ * `document` event fired by {@link configureBreakpoints}, so the other copies of core
+ * (each caching its own snapshot) recompute. `detail.source` is the sending copy.
  */
-let breakpointsSettled = false;
+export const BREAKPOINTS_CHANGE_EVENT = 'km-breakpoints-change';
+
+/** This copy of core's identity, so it ignores its own {@link BREAKPOINTS_CHANGE_EVENT}. */
+const COPY_ID = {};
+
+function onBreakpointsChange(e: Event): void {
+  if ((e as CustomEvent<{ source?: unknown }>).detail?.source !== COPY_ID) recompute();
+}
 
 /** Parse a token value like `768px` / `768` → 768; anything else (absent, `48em`, junk) → `undefined`. */
 function parsePx(raw: string | undefined | null): number | undefined {
@@ -150,9 +175,10 @@ function parsePx(raw: string | undefined | null): number | undefined {
  * {@link configureBreakpoints} call is never overridden.
  */
 function readBreakpointTokens(): void {
-  if (breakpointsSettled) return;
+  const state = breakpointState();
+  if (state.isSettled) return;
   if (typeof document === 'undefined' || !document.documentElement || typeof getComputedStyle !== 'function') return;
-  breakpointsSettled = true;
+  state.isSettled = true;
   let style: CSSStyleDeclaration;
   try {
     style = getComputedStyle(document.documentElement);
@@ -162,7 +188,7 @@ function readBreakpointTokens(): void {
   const mobile = parsePx(style.getPropertyValue(BREAKPOINT_TOKENS.mobile));
   const tablet = parsePx(style.getPropertyValue(BREAKPOINT_TOKENS.tablet));
   if (mobile === undefined && tablet === undefined) return;
-  breakpoints = sortBreakpoints({
+  state.breakpoints = sortBreakpoints({
     ...DEFAULT_BREAKPOINTS,
     ...(mobile !== undefined ? { mobile } : {}),
     ...(tablet !== undefined ? { tablet } : {}),
@@ -186,6 +212,7 @@ function sortBreakpoints(map: BreakpointMap): Array<[string, number]> {
 }
 
 function resolveBreakpoint(width: number): string {
+  const { breakpoints } = breakpointState();
   for (const [name, max] of breakpoints) {
     if (width <= max) return name;
   }
@@ -382,6 +409,7 @@ function start(): void {
   ];
   for (const mql of mqls) addMqlListener(mql);
   if (typeof window.addEventListener === 'function') window.addEventListener('resize', onResize);
+  if (typeof document !== 'undefined') document.addEventListener(BREAKPOINTS_CHANGE_EVENT, onBreakpointsChange);
   current = computeSnapshot();
 }
 
@@ -392,6 +420,7 @@ function stop(): void {
   if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
     window.removeEventListener('resize', onResize);
   }
+  if (typeof document !== 'undefined') document.removeEventListener(BREAKPOINTS_CHANGE_EVENT, onBreakpointsChange);
   resizeFrame.cancel(); // a queued frame would re-cache a snapshot nobody observes
   viewportThrottle.cancel();
   current = null;
@@ -461,12 +490,17 @@ function subscribe(channel: Set<EnvironmentListener>, listener: EnvironmentListe
  * `{ mobile: 768, tablet: 1024, desktop: Infinity }`, with the `mobile` / `tablet`
  * lines taken from the `--base-breakpoint-mobile` / `--base-breakpoint-tablet`
  * tokens when the page defines them. An explicit call here always wins over the
- * tokens.
+ * tokens. Page-wide across every copy of core: the table is shared on `globalThis` and
+ * the other copies hear {@link BREAKPOINTS_CHANGE_EVENT}.
  */
 export function configureBreakpoints(map: BreakpointMap): void {
-  breakpointsSettled = true;
-  breakpoints = sortBreakpoints(map);
+  const state = breakpointState();
+  state.isSettled = true;
+  state.breakpoints = sortBreakpoints(map);
   if (subscriberCount() > 0) recompute();
+  if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
+    document.dispatchEvent(new CustomEvent(BREAKPOINTS_CHANGE_EVENT, { detail: { source: COPY_ID } }));
+  }
 }
 
 // ── device classification (capability, not width) ──────────────────────────
@@ -525,7 +559,8 @@ export function __resetEnvironment(): void {
   subscribers.clear();
   viewportSubscribers.clear();
   stop();
-  breakpoints = sortBreakpoints(DEFAULT_BREAKPOINTS);
-  breakpointsSettled = false;
+  const state = breakpointState();
+  state.breakpoints = sortBreakpoints(DEFAULT_BREAKPOINTS);
+  state.isSettled = false;
   osCache = undefined;
 }

@@ -68,6 +68,7 @@ export {
   observeEnvironment,
   observeViewport,
   configureBreakpoints,
+  BREAKPOINTS_CHANGE_EVENT,
   classifyDevice,
   TABLET_MIN_SHORT_SIDE,
 } from './environment/environment.js';

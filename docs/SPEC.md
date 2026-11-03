@@ -1417,7 +1417,14 @@ overlay state can't live in module variables:
   documented shape, so non-core code (pure-css) can join the same lock;
 - `ALL_GROUPS` (the `dismissAllOverlays()` wildcard of `km-overlay-activate`) is
   `Symbol.for('km-overlay-all-groups')`, so a dismiss from one component's copy
-  reaches every other copy and outside listeners can compare against it.
+  reaches every other copy and outside listeners can compare against it;
+- the breakpoint table (`configureBreakpoints()`, the tokens read once) lives on
+  `globalThis[Symbol.for('@keenmate/web-components-core:breakpoints')]`, and
+  `configureBreakpoints()` fires `km-breakpoints-change` (`BREAKPOINTS_CHANGE_EVENT`) on
+  `document` so the other copies recompute their cached snapshot.
+
+Rule for new page-wide state in core: never a module variable — a `Symbol.for` key on
+`globalThis` (plus a `document` event when the other copies cache something).
 
 ### 12.10 Theme context (dark / light) — IMPLEMENTED (`src/environment/theme.ts`)
 
