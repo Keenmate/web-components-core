@@ -17,8 +17,9 @@ export interface MenuPoint {
  * - `'blur'` — the window lost focus
  * - `'overlay'` — another KM overlay opened (`registerOverlay` coordination)
  * - `'api'` — `handle.close()`
+ * - `'empty'` — a keep-open item's refresh left no visible item
  */
-export type MenuCloseReason = 'action' | 'escape' | 'tab' | 'outside-click' | 'scroll' | 'blur' | 'overlay' | 'api';
+export type MenuCloseReason = 'action' | 'escape' | 'tab' | 'outside-click' | 'scroll' | 'blur' | 'overlay' | 'api' | 'empty';
 
 /** What activated an item — handed to {@link OpenMenuOptions.runAction}. */
 export interface MenuInvocation {

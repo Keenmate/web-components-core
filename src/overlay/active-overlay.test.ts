@@ -191,3 +191,117 @@ describe('active-overlay coordination', () => {
     other.__resetOverlays();
   });
 });
+
+// Review 2026-11-03 V-09 / V-12 (WP7): the overlay tree.
+describe('active-overlay nesting', () => {
+  afterEach(() => {
+    __resetOverlays();
+    document.body.replaceChildren();
+  });
+
+  /** A panel element with a trigger inside (where a nested overlay is opened from). */
+  function panel(): { el: HTMLElement; trigger: HTMLElement } {
+    const el = document.createElement('div');
+    const trigger = document.createElement('button');
+    el.append(trigger);
+    document.body.append(el);
+    return { el, trigger };
+  }
+
+  it('a child opened from inside its parent does not dismiss the parent; siblings still close', () => {
+    const modal = panel();
+    const dismissModal = vi.fn();
+    const dismissSibling = vi.fn();
+    const hModal = registerOverlay(dismissModal, undefined, { getElement: () => modal.el });
+    registerOverlay(dismissSibling); // another, unrelated dropdown
+    hModal.activate();
+    expect(dismissSibling).toHaveBeenCalledTimes(1);
+
+    const dropdown = registerOverlay(vi.fn());
+    dropdown.activate({ trigger: modal.trigger });
+    expect(dismissModal).not.toHaveBeenCalled();
+    expect(dismissSibling).toHaveBeenCalledTimes(2);
+  });
+
+  it('recursive: modal → dropdown → context menu; closing the dropdown closes the menu, not the modal', () => {
+    const modal = panel();
+    const dropdown = panel();
+    modal.el.append(dropdown.el);
+    const order: string[] = [];
+    // Registered as each one opens (a closed participant also hears dismissals — a no-op for it).
+    const hModal = registerOverlay(() => order.push('modal'), undefined, { getElement: () => modal.el });
+    hModal.activate();
+    const hDropdown = registerOverlay(() => order.push('dropdown'), undefined, { getElement: () => dropdown.el });
+    hDropdown.activate({ trigger: modal.trigger });
+    const hMenu = registerOverlay(() => order.push('menu'));
+    hMenu.activate({ trigger: dropdown.trigger });
+    expect(order).toEqual([]); // nobody dismissed an ancestor
+
+    hDropdown.deactivate();
+    expect(order).toEqual(['menu']);
+    hModal.deactivate();
+    expect(order).toEqual(['menu']); // the dropdown already closed itself
+  });
+
+  it('closing a parent closes its whole subtree, deepest first', () => {
+    const modal = panel();
+    const dropdown = panel();
+    modal.el.append(dropdown.el);
+    const order: string[] = [];
+    const hModal = registerOverlay(() => order.push('modal'), undefined, { getElement: () => modal.el });
+    hModal.activate();
+    registerOverlay(() => order.push('dropdown'), undefined, { getElement: () => dropdown.el }).activate({ trigger: modal.trigger });
+    registerOverlay(() => order.push('menu')).activate({ trigger: dropdown.trigger });
+    hModal.deactivate();
+    expect(order).toEqual(['menu', 'dropdown']);
+  });
+
+  it('the parent is found across shadow roots and across copies of core', async () => {
+    const modal = panel();
+    const host = document.createElement('div');
+    modal.el.append(host);
+    const shadowTrigger = document.createElement('button');
+    host.attachShadow({ mode: 'open' }).append(shadowTrigger);
+    const dismissModal = vi.fn();
+    registerOverlay(dismissModal, undefined, { getElement: () => modal.el }).activate();
+
+    vi.resetModules();
+    const other = await import('./active-overlay.js'); // another component's copy of core
+    other.registerOverlay(vi.fn()).activate({ trigger: shadowTrigger });
+    expect(dismissModal).not.toHaveBeenCalled();
+  });
+
+  it('an activation from outside code can name ancestors itself', () => {
+    const modal = panel();
+    const dismissModal = vi.fn();
+    const hModal = registerOverlay(dismissModal, undefined, { getElement: () => modal.el });
+    hModal.activate();
+    const seen: unknown[] = [];
+    onOverlayActivated((_source, _group, ancestors) => seen.push(...ancestors));
+    notifyOverlayActivated('pure-css-menu', undefined, seen); // empty — dismisses the modal
+    expect(dismissModal).toHaveBeenCalledTimes(1);
+  });
+
+  it('dismissAllOverlays(undefined) crosses every group, like no argument', () => {
+    const a = vi.fn();
+    const b = vi.fn();
+    registerOverlay(a, 'A');
+    registerOverlay(b);
+    dismissAllOverlays(undefined);
+    expect(a).toHaveBeenCalledTimes(1);
+    expect(b).toHaveBeenCalledTimes(1);
+  });
+
+  it('an overlay dismissed by another activation leaves the tree even if it never deactivates', () => {
+    const first = panel();
+    const second = panel();
+    const hFirst = registerOverlay(vi.fn(), undefined, { getElement: () => first.el });
+    const hSecond = registerOverlay(vi.fn(), undefined, { getElement: () => second.el });
+    hFirst.activate();
+    hSecond.activate(); // dismisses `first`, whose handler does nothing
+    const seen: unknown[][] = [];
+    onOverlayActivated((_source, _group, ancestors) => seen.push([...ancestors]));
+    registerOverlay(vi.fn()).activate({ trigger: first.trigger }); // `first` is closed: not a parent any more
+    expect(seen).toEqual([[]]);
+  });
+});

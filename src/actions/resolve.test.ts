@@ -31,7 +31,16 @@ describe('resolveActionItem', () => {
       isDisabled: false,
       isDanger: false,
       isToggled: false,
+      isToggle: false,
     });
+  });
+
+  // Review A-20.
+  it('isToggle: the item (or its built-in default) defines a toggle state', () => {
+    expect(resolveActionItem({ id: 't', isToggled: false }, ctx).isToggle).toBe(true);
+    expect(resolveActionItem({ id: 't', getIsToggledCallback: () => true }, ctx).isToggle).toBe(true);
+    expect(resolveActionItem({ id: 't' }, ctx, { isToggled: false }).isToggle).toBe(true);
+    expect(resolveActionItem({ id: 't' }, ctx).isToggle).toBe(false);
   });
 
   it('callback wins over static, static over component defaults', () => {
@@ -263,5 +272,73 @@ describe('runAction', () => {
     expect(emitAction).toHaveBeenCalledOnce();
     expect(error).toHaveBeenCalledOnce();
     error.mockRestore();
+  });
+});
+
+// Review 2026-11-03 (WP7): A-06 / A-07 / A-18 / A-19 / A-25.
+describe('actions — review fixes', () => {
+  function detail(item: ActionItem<RowCtx>, element?: object): ActionEventDetail<RowCtx> {
+    const d = { ...ctx, action: item.action ?? 'custom', id: item.id, item, source: 'row-toolbar', triggerElement: undefined, dataset: {} } as ActionEventDetail<RowCtx>;
+    if (element) Object.defineProperty(d, 'element', { value: element, enumerable: false });
+    return d;
+  }
+
+  it('a labelled divider at the top is a group heading and is kept', () => {
+    const out = resolveMenuEntries([menuDivider('Recent'), { id: 'a', text: 'A' }, menuDivider(), { id: 'b', text: 'B' }], ctx);
+    expect(out.map((e) => (e.kind === 'divider' ? `--${e.text ?? ''}` : e.resolved.id))).toEqual(['--Recent', 'a', '--', 'b']);
+    // an unlabelled leading divider is still dropped
+    expect(resolveMenuEntries([menuDivider(), { id: 'a', text: 'A' }], ctx)).toHaveLength(1);
+  });
+
+  it('null / undefined entries (conditional items) are skipped', () => {
+    const entries = [null, { id: 'a', text: 'A' }, undefined] as unknown as MenuEntry<RowCtx>[];
+    expect(resolveMenuEntries(entries, ctx)).toHaveLength(1);
+    expect(normalizeActionItems([null, 'add'] as unknown as string[])).toEqual([{ action: 'add' }]);
+  });
+
+  it('the busy guard is per component: one instance running an item does not block another', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const shared: ActionItem<RowCtx> = { id: 'save', onClick: () => gate };
+    const hostA = {};
+    const hostB = {};
+    const first = runAction({ detail: detail(shared, hostA), emitAction: () => {} });
+    await Promise.resolve();
+    expect(isActionBusy(shared, hostA)).toBe(true);
+    expect(isActionBusy(shared, hostB)).toBe(false);
+    expect(isActionBusy(shared)).toBe(true); // no host: busy anywhere
+    const secondOnClick = vi.fn();
+    await expect(runAction({ detail: detail({ id: 'other', onClick: secondOnClick }, hostB), emitAction: () => {} })).resolves.toBe(true);
+    release();
+    await first;
+  });
+
+  it('a string-shorthand item (fresh object each render) is still guarded by its id', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const host = {};
+    const first = runAction({ detail: detail({ id: 'save', onClick: () => gate }, host), emitAction: () => {} });
+    await Promise.resolve();
+    await expect(runAction({ detail: detail({ id: 'save' }, host), emitAction: () => {} })).resolves.toBe(false);
+    release();
+    await first;
+  });
+
+  it('a disabled item does not run', async () => {
+    const onClick = vi.fn();
+    const emitAction = vi.fn();
+    await expect(runAction({ detail: detail({ id: 'x', isDisabled: true, onClick }), emitAction })).resolves.toBe(false);
+    await expect(runAction({ detail: detail({ id: 'y', getIsDisabledCallback: () => true, onClick }), emitAction })).resolves.toBe(false);
+    expect(onClick).not.toHaveBeenCalled();
+    expect(emitAction).not.toHaveBeenCalled();
+  });
+
+  it('a value returned by beforeActionCallback (other than false) warns and the action continues', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const emitAction = vi.fn();
+    await runAction({ detail: detail({ id: 'x' }), beforeActionCallback: () => ({ replaced: true }), emitAction });
+    expect(emitAction).toHaveBeenCalledOnce();
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 });

@@ -127,4 +127,10 @@ export interface ResolvedActionItem<A extends string = string> {
   isDisabled: boolean;
   isDanger: boolean;
   isToggled: boolean;
+  /**
+   * The item HAS a toggle state (it defines `isToggled`, `getIsToggledCallback`, or its
+   * built-in default does) — render it as a checkbox-like item (`menuitemcheckbox`,
+   * `aria-pressed`), even while `isToggled` is `false`.
+   */
+  isToggle: boolean;
 }

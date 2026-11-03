@@ -16,6 +16,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `toBytes()` accepts single-letter and IEC units (`k`, `m`, `g`, `t`, `KiB`, `MiB`, …), still
   binary (1024-based).
 - `isLogLevel(value)` — whether a value is a level `setLevel()` accepts.
+- **Nested overlays (step 1 of the overlay tree).** A context menu opened inside a dropdown, or a
+  dropdown inside a modal, no longer dismisses its parent. `registerOverlay(onDismiss, group,
+  { getElement })` names the overlay's panel and `activate({ trigger })` finds the parent (the
+  nearest open overlay containing the trigger, across shadow roots and across components); the
+  `km-overlay-activate` detail carries the opener's `ancestors`, which are never dismissed.
+  Closing an overlay dismisses the ones opened inside it, deepest first. Backwards compatible: an
+  activation without `ancestors` (older code, pure-css) behaves as before. `/menu` joins
+  automatically. New types `RegisterOverlayOptions`, `ActivateOverlayOptions`;
+  `notifyOverlayActivated(source, group, ancestors?)`; `onOverlayActivated` handlers also get
+  `ancestors`. SPEC §12.9.
+- `ResolvedActionItem.isToggle` — the item has a toggle state (render it checkbox-like even while
+  `isToggled` is `false`).
+- `isActionBusy(item, host?)` — scoped to one component element when `host` is given.
 
 ### Fixed
 
@@ -71,6 +84,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`anchor()`:** a throwing `placedCallback` / `computedCallback` / `driftCallback` /
   `beforeComputeCallback` is logged and the others still run; a rejected `computePosition` is
   logged instead of becoming an unhandled rejection. *pure-css port affected.*
+- **Menus (`openMenu`):**
+  - the keyboard is the menu's only while focus is in it, on its opener, or nowhere in
+    particular: focus in an unrelated field (a pinned menu beside a form, a right-click menu over
+    an editor) keeps Enter / Space / arrows / letters — only Escape still closes the menu;
+  - Tab inside a custom `renderMenu` menu moves between its fields instead of closing it;
+  - right-to-left: submenus open to the left and ← / → are mirrored (the opener's `dir`);
+  - hover intent: crossing a sibling item on the way into an open submenu no longer collapses it;
+    the sibling's own submenu opens after the same short delay;
+  - with two menus open, one Escape closes only the topmost (a page-wide stack of open menus);
+  - a keep-open item whose refresh hides every item closes the menu (new reason `'empty'`);
+  - submenu levels are named by their item (`aria-label`) and a loading level is `aria-busy`.
+- **Actions:**
+  - a labelled divider at the top of a menu (a group heading) is kept;
+  - `null` / `undefined` entries (`cond && item`) are skipped instead of throwing;
+  - the busy guard is per component element, and by `id` when the item has one — one instance's
+    pending item no longer blocks the same item in another instance, and string-shorthand items
+    (a fresh object per render) are guarded at all;
+  - `runAction()` doesn't run a disabled item;
+  - a value returned by `beforeActionCallback` other than `false` / `true` warns (an action has
+    nothing to replace — only cancelling applies).
 - **`runBeforeCallbackSync()`:** a returned Promise that rejects is reported instead of being
   left unhandled, and the warning now says that resolving it to `false` cannot cancel.
 - **More page-wide state is shared by every copy of core** (each component bundles its own):

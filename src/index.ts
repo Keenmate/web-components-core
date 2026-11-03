@@ -134,7 +134,7 @@ export {
   OVERLAY_ACTIVATE_EVENT,
   ALL_GROUPS,
 } from './overlay/active-overlay.js';
-export type { OverlayHandle, OverlayActivateDetail } from './overlay/active-overlay.js';
+export type { ActivateOverlayOptions, OverlayHandle, OverlayActivateDetail, RegisterOverlayOptions } from './overlay/active-overlay.js';
 
 // Logging (SPEC §12.1) — engine is vendored (no `loglevel` dependency); see log-core.ts.
 export { createLoggers, DEFAULT_CATEGORIES, DEFAULT_ENABLED_LEVEL, DEFAULT_LOG_LEVEL } from './logging/create-loggers.js';

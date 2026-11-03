@@ -1431,8 +1431,26 @@ overlay state can't live in module variables:
   `configureBreakpoints()` fires `km-breakpoints-change` (`BREAKPOINTS_CHANGE_EVENT`) on
   `document` so the other copies recompute their cached snapshot.
 
-Rule for new page-wide state in core: never a module variable — a `Symbol.for` key on
-`globalThis` (plus a `document` event when the other copies cache something).
+Rule for new page-wide state in core: never a module variable — `sharedState(key, init)`
+(`src/global/shared-state.ts`: a `Symbol.for` key on `globalThis`), plus a `document`
+event when the other copies cache something. A published key is a contract: never rename
+it; an incompatible shape change takes a new key with a version suffix (`…:name@2`).
+
+**Overlay tree (since rc18, step 1).** Overlays nest: modal → dropdown → context menu →
+submenu, any depth. The `km-overlay-activate` detail gains an optional `ancestors` array
+(the opener's ancestor sources, parent first); a participant whose source is in it is not
+dismissed. Core computes it: `registerOverlay(onDismiss, group, { getElement })` names the
+overlay's panel, and `activate({ trigger })` finds the parent — the nearest OPEN overlay
+whose panel contains the trigger (composed walk, across shadow roots), from a page-wide
+registry (`sharedState('open-overlays')`) every copy of core shares; `activate({ parent })`
+overrides it. The rules:
+1. opening never dismisses an ancestor; group exclusivity applies to everything else;
+2. `deactivate()` (closing) dismisses the overlays opened inside it, deepest first;
+3. an overlay dismissed by another activation leaves the tree even if its handler never
+   deactivates (it can't become a parent afterwards);
+4. an activation without `ancestors` (older code, pure-css) behaves exactly as before.
+`/menu` registers its root level and passes its opener. Step 2 (Escape / outside clicks
+routed to the deepest overlay, focus restore, `popover` / `tooltip` options) follows.
 
 ### 12.10 Theme context (dark / light) — IMPLEMENTED (`src/environment/theme.ts`)
 

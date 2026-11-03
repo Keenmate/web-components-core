@@ -9,6 +9,8 @@
 import { getMenuChildren, isMenuDivider, resolveMenuEntries } from '../actions/resolve.js';
 import type { MenuEntry, MenuItem, ResolvedActionItem } from '../actions/types.js';
 import { adoptStyles } from '../dom/adopt-styles.js';
+import { composedClosest } from '../dom/composed-tree.js';
+import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { coreLog } from '../logging/element-logger.js';
 import { callSafely } from '../logging/safe-call.js';
 import { registerOverlay, type OverlayHandle } from '../overlay/active-overlay.js';
@@ -51,6 +53,12 @@ function isThenable<T>(value: unknown): value is PromiseLike<T> {
   return !!value && typeof (value as PromiseLike<T>).then === 'function';
 }
 
+/**
+ * The open menus, oldest first, page-wide (every copy of core): with two menus open, only
+ * the last one handles the keyboard, so one Escape closes one menu.
+ */
+const openMenuStack = (): object[] => sharedState(sharedStateKey('open-menus'), () => [] as object[]);
+
 /** The focused element, descending into shadow roots. */
 function deepActiveElement(): Element | null {
   let active: Element | null = document.activeElement;
@@ -83,6 +91,15 @@ export function openMenu<Ctx, A extends string = string>(
   const chain: Level<Ctx, A>[] = [];
   let isOpen = true;
   let collapseTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Hover intent: a sibling's submenu opens after a short delay while another submenu is open. */
+  let openTimer: ReturnType<typeof setTimeout> | null = null;
+  const hostElement = typeof ShadowRoot !== 'undefined' && host instanceof ShadowRoot ? host.host : (host as Element);
+  /** The element the menu was opened from (focus returns there). */
+  const opener: Element = opts.returnFocusTo ?? (opts.at instanceof Element ? opts.at : hostElement);
+  /** Right-to-left (the opener's `dir`): submenus open to the left and ← / → swap. */
+  const isRtl = composedClosest(opener, '[dir]')?.getAttribute('dir')?.toLowerCase() === 'rtl';
+  /** This menu's place in the page-wide stack of open menus — only the topmost handles keys. */
+  const menuToken = {};
   let overlay: OverlayHandle | null = null;
   let detachListeners: (() => void) | null = null;
 
@@ -108,6 +125,7 @@ export function openMenu<Ctx, A extends string = string>(
   const renderLevel = (level: Level<Ctx, A>, list: Entries<Ctx, A>): number => {
     const el = level.el;
     el.textContent = '';
+    el.removeAttribute('aria-busy');
     const resolvedEntries = resolveMenuEntries(list.map(prepare), ctx, opts.defaults, host);
     // Any icon at this level → every item gets the icon column, so labels line up.
     const hasIcons = resolvedEntries.some((e) => e.kind === 'item' && !!e.resolved.icon);
@@ -129,12 +147,8 @@ export function openMenu<Ctx, A extends string = string>(
       const itemEl = document.createElement('div');
       itemEl.className = ITEM;
       // A toggle (defines its toggle state) is a menuitemcheckbox; the rest are menuitems.
-      const isToggle =
-        item.isToggled !== undefined ||
-        typeof item.getIsToggledCallback === 'function' ||
-        opts.defaults?.(item)?.isToggled !== undefined;
-      itemEl.setAttribute('role', isToggle ? 'menuitemcheckbox' : 'menuitem');
-      if (isToggle) itemEl.setAttribute('aria-checked', String(resolved.isToggled));
+      itemEl.setAttribute('role', resolved.isToggle ? 'menuitemcheckbox' : 'menuitem');
+      if (resolved.isToggle) itemEl.setAttribute('aria-checked', String(resolved.isToggled));
       itemEl.tabIndex = -1;
       itemEl.dataset.action = resolved.action;
       if (resolved.id !== undefined) itemEl.dataset.id = resolved.id;
@@ -189,6 +203,7 @@ export function openMenu<Ctx, A extends string = string>(
     loading.setAttribute('role', 'none');
     loading.textContent = opts.loadingText ?? '…';
     level.el.replaceChildren(loading);
+    level.el.setAttribute('aria-busy', 'true'); // cleared when the items are rendered
   };
 
   /**
@@ -243,6 +258,8 @@ export function openMenu<Ctx, A extends string = string>(
   const cancelCollapse = (): void => {
     if (collapseTimer !== null) clearTimeout(collapseTimer);
     collapseTimer = null;
+    if (openTimer !== null) clearTimeout(openTimer);
+    openTimer = null;
   };
 
   const scheduleCollapse = (depth: number): void => {
@@ -285,6 +302,9 @@ export function openMenu<Ctx, A extends string = string>(
     };
     chain.push(level);
     owner.setAttribute('aria-expanded', 'true');
+    // The submenu is named by the item that opened it (WAI-ARIA menu pattern).
+    const ownerLabel = record.resolved.text;
+    if (ownerLabel) level.el.setAttribute('aria-label', ownerLabel);
     level.el.addEventListener('mouseenter', cancelCollapse);
     level.el.addEventListener('mouseleave', () => {
       const index = chain.indexOf(level);
@@ -303,7 +323,7 @@ export function openMenu<Ctx, A extends string = string>(
     // never position a level that is already gone (its anchor would never be destroyed).
     if (!chain.includes(level)) return;
     level.position = anchor(level.el, owner, {
-      placement: 'right-start',
+      placement: isRtl ? 'left-start' : 'right-start',
       offset: { mainAxis: 0, crossAxis: -4 },
       shift: 8,
       maxHeight: { padding: 8 },
@@ -320,8 +340,18 @@ export function openMenu<Ctx, A extends string = string>(
     cancelCollapse();
     const record = records.get(itemEl)!;
     if (!record.resolved.isDisabled) itemEl.focus({ preventScroll: true });
-    if (record.hasChildren && !record.resolved.isDisabled) openSubmenu(depth, itemEl, false);
-    else if (chain[depth + 1]) scheduleCollapse(depth + 1);
+    const openChild = chain[depth + 1];
+    if (record.hasChildren && !record.resolved.isDisabled) {
+      // Hover intent: with ANOTHER item's submenu open, the pointer may only be crossing
+      // this item on its way there — open this submenu after the same short delay instead
+      // of collapsing the other one at once. Entering the open submenu cancels it.
+      if (openChild && openChild.owner !== itemEl) {
+        openTimer = setTimeout(() => {
+          openTimer = null;
+          if (isOpen) openSubmenu(depth, itemEl, false);
+        }, SUBMENU_HIDE_DELAY);
+      } else openSubmenu(depth, itemEl, false);
+    } else if (openChild) scheduleCollapse(depth + 1);
   };
 
   const onItemLeave = (itemEl: HTMLElement): void => {
@@ -369,7 +399,13 @@ export function openMenu<Ctx, A extends string = string>(
       const wasFocused = level.el.contains(deepActiveElement());
       const key = `${record.resolved.action}\u0000${record.resolved.id ?? ''}`;
       collapseFrom(chain.indexOf(level) + 1);
-      fillLevel(level, () => {
+      fillLevel(level, (count) => {
+        // Every item of the menu is hidden now: don't leave an empty box open.
+        if (count === 0) {
+          if (level === chain[0]) close('empty');
+          else collapseFrom(chain.indexOf(level));
+          return;
+        }
         if (!wasFocused) return;
         const same = enabledItems(level).find((el) => {
           const r = records.get(el)!.resolved;
@@ -388,23 +424,38 @@ export function openMenu<Ctx, A extends string = string>(
 
   const onKeydown = (event: KeyboardEvent): void => {
     if (!isOpen || event.isComposing) return;
+    // Two menus open (a context menu over a pinned one): only the topmost one handles keys.
+    const stack = openMenuStack();
+    if (stack[stack.length - 1] !== menuToken) return;
     const path = event.composedPath();
-    let depth = chain.findIndex((l) => path.includes(l.el));
-    if (depth < 0) depth = chain.length - 1;
+    const inside = chain.findIndex((l) => path.includes(l.el));
+    // Keyboard-modal only while focus is in the menu, on its opener, or nowhere in
+    // particular (the body). Focus in an unrelated field (a pinned menu beside a form, a
+    // right-click menu over an editor) keeps its keys — only Escape still closes the menu.
+    const isTargetNeutral = path[0] === document.body || path[0] === document.documentElement || path[0] === hostElement;
+    if (inside < 0 && !path.includes(opener) && !isTargetNeutral) {
+      if (event.key === 'Escape' && shouldDismissOutside) close('escape');
+      return;
+    }
+    const depth = inside < 0 ? chain.length - 1 : inside;
     const level = chain[depth]!;
     const focused = (path.find((n) => n instanceof HTMLElement && records.has(n) && level.el.contains(n)) ??
       null) as HTMLElement | null;
     const record = focused ? records.get(focused)! : null;
 
     if (event.key === 'Tab') {
+      // A custom menu (renderMenu) may hold a form: Tab moves between its fields.
+      if (isCustom && inside >= 0) return;
       close('tab'); // focus returns, then the browser moves it on — no preventDefault
       return;
     }
+    // Logical keys: in a right-to-left menu ← opens a submenu and → goes back.
+    const key = isRtl && event.key === 'ArrowRight' ? 'ArrowLeft' : isRtl && event.key === 'ArrowLeft' ? 'ArrowRight' : event.key;
     if (isCustom) {
       if (event.key !== 'Escape') return;
       close('escape');
     } else {
-      switch (event.key) {
+      switch (key) {
         case 'ArrowDown':
         case 'ArrowUp': {
           const items = enabledItems(level);
@@ -454,7 +505,7 @@ export function openMenu<Ctx, A extends string = string>(
             if (records.get(hit)!.hasChildren) openSubmenu(d, hit, true);
             else activate(hit, event);
             event.preventDefault();
-            event.stopPropagation();
+            event.stopImmediatePropagation();
             return;
           }
           return;
@@ -462,7 +513,7 @@ export function openMenu<Ctx, A extends string = string>(
       }
     }
     event.preventDefault();
-    event.stopPropagation();
+    event.stopImmediatePropagation();
   };
 
   // ── Dismiss ────────────────────────────────────────────────────────────
@@ -491,8 +542,11 @@ export function openMenu<Ctx, A extends string = string>(
       scrollRoot?.addEventListener('scroll', onScroll, true);
       window.addEventListener('wheel', onScroll, { capture: true, passive: true });
       window.addEventListener('blur', onBlur);
-      overlay = registerOverlay(() => close('overlay'), opts.overlayGroup);
-      overlay.activate();
+      // In the page-wide overlay tree (SPEC §12.9): a menu opened from inside another
+      // overlay (a context menu in a dropdown) is its child and doesn't dismiss it.
+      overlay = registerOverlay(() => close('overlay'), opts.overlayGroup, { getElement: () => chain[0]?.el });
+      const hostElement = typeof ShadowRoot !== 'undefined' && host instanceof ShadowRoot ? host.host : (host as Element);
+      overlay.activate({ trigger: opts.returnFocusTo ?? (opts.at instanceof Element ? opts.at : hostElement) });
     }
     detachListeners = () => {
       document.removeEventListener('keydown', onKeydown, true);
@@ -511,6 +565,9 @@ export function openMenu<Ctx, A extends string = string>(
   function close(reason: MenuCloseReason): void {
     if (!isOpen) return;
     isOpen = false;
+    const stack = openMenuStack();
+    const at = stack.indexOf(menuToken);
+    if (at >= 0) stack.splice(at, 1);
     const active = deepActiveElement();
     const hadFocus = chain.some((l) => l.el.contains(active));
     cancelCollapse();
@@ -558,6 +615,7 @@ export function openMenu<Ctx, A extends string = string>(
       update() {},
     };
   }
+  openMenuStack().push(menuToken); // only once it really opens (close() removes it)
   wireLevel(rootLevel);
   host.appendChild(rootLevel.el);
 

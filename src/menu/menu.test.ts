@@ -489,3 +489,107 @@ describe('dismiss + cleanup', () => {
     expect(anchors[0]!.opts).toMatchObject({ placement: 'top-start', offset: 4 });
   });
 });
+
+// Review 2026-11-03 (WP7): A-02 / A-03 / A-05 / A-08 / A-09 / A-10 and the overlay tree.
+describe('menu — review fixes', () => {
+  const nested: MenuEntry<Ctx>[] = [
+    { id: 'p', text: 'P', children: [{ id: 'p1', text: 'P1' }] },
+    { id: 'q', text: 'Q', children: [{ id: 'q1', text: 'Q1' }] },
+    { id: 'r', text: 'R' },
+  ];
+
+  it('focus in an unrelated input keeps its keys; Escape still closes', () => {
+    const { runAction, handle } = open(basic);
+    const input = document.createElement('input');
+    document.body.append(input);
+    input.focus();
+    const press = (k: string) => {
+      const e = new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, cancelable: true });
+      input.dispatchEvent(e);
+      return e;
+    };
+    expect(press('Enter').defaultPrevented).toBe(false);
+    expect(press('ArrowDown').defaultPrevented).toBe(false);
+    press('a'); // item "a" has shortcut "a" — typing in the input must not run it
+    expect(runAction).not.toHaveBeenCalled();
+    expect(handle.isOpen).toBe(true);
+    press('Escape');
+    expect(handle.isOpen).toBe(false);
+  });
+
+  it('Tab inside a custom (renderMenu) menu moves between its fields instead of closing', () => {
+    const { handle } = open(basic, {
+      renderMenu: (el) => {
+        el.innerHTML = '<input class="f1"><input class="f2">';
+      },
+    });
+    levels()[0]!.querySelector<HTMLInputElement>('.f1')!.focus();
+    key('Tab');
+    expect(handle.isOpen).toBe(true);
+  });
+
+  it('right-to-left: submenus open to the left, and ← / → are mirrored', () => {
+    host.setAttribute('dir', 'rtl');
+    open(nested);
+    key('ArrowDown');
+    expect(active()).toBe(byId('p'));
+    key('ArrowLeft'); // ← opens in RTL
+    expect(levels()).toHaveLength(2);
+    expect(anchors.at(-1)!.opts).toMatchObject({ placement: 'left-start' });
+    key('ArrowRight'); // → goes back in RTL
+    expect(levels()).toHaveLength(1);
+    host.removeAttribute('dir');
+  });
+
+  it('hover intent: crossing a sibling with its own submenu does not collapse the open one at once', () => {
+    vi.useFakeTimers();
+    open(nested);
+    byId('p').dispatchEvent(new MouseEvent('mouseenter'));
+    expect(levels()).toHaveLength(2);
+    byId('q').dispatchEvent(new MouseEvent('mouseenter')); // on the way to P's submenu
+    expect(levels()[1]!.querySelector('[data-id="p1"]')).not.toBeNull(); // P's submenu still open
+    levels()[1]!.dispatchEvent(new MouseEvent('mouseenter')); // reached it — cancels Q
+    vi.advanceTimersByTime(500);
+    expect(levels()[1]!.querySelector('[data-id="p1"]')).not.toBeNull();
+  });
+
+  it('hover intent: resting on the sibling opens its submenu after the delay', () => {
+    vi.useFakeTimers();
+    open(nested);
+    byId('p').dispatchEvent(new MouseEvent('mouseenter'));
+    byId('q').dispatchEvent(new MouseEvent('mouseenter'));
+    vi.advanceTimersByTime(200);
+    expect(levels()[1]!.querySelector('[data-id="q1"]')).not.toBeNull();
+  });
+
+  it('a keep-open refresh that hides every item closes the menu (reason "empty")', async () => {
+    let isVisible = true;
+    const entries: MenuEntry<Ctx>[] = [{ id: 'once', shouldCloseOnClick: false, getIsVisibleCallback: () => isVisible }];
+    const { handle, closeCallback } = open(entries, { runAction: () => void (isVisible = false) });
+    byId('once').click();
+    await flush();
+    expect(handle.isOpen).toBe(false);
+    expect(closeCallback).toHaveBeenCalledWith('empty');
+  });
+
+  it('two open menus: one Escape closes only the topmost', () => {
+    const first = open(basic, { shouldCloseOnOutsideInteraction: false });
+    const second = open(basic);
+    key('Escape');
+    expect(second.handle.isOpen).toBe(false);
+    expect(first.handle.isOpen).toBe(true);
+    key('Escape');
+    expect(first.handle.isOpen).toBe(false);
+  });
+
+  it('a menu opened from inside another overlay does not dismiss it (overlay tree)', () => {
+    const panelEl = document.createElement('div');
+    const trigger = document.createElement('button');
+    panelEl.append(trigger);
+    document.body.append(panelEl);
+    const dismissDropdown = vi.fn();
+    registerOverlay(dismissDropdown, undefined, { getElement: () => panelEl }).activate();
+    open(basic, { returnFocusTo: trigger });
+    expect(dismissDropdown).not.toHaveBeenCalled();
+  });
+});
