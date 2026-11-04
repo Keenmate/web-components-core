@@ -18,10 +18,10 @@ afterEach(() => {
 });
 
 describe('renderLoader — default', () => {
-  it('draws <span class="<prefix>-loader"> and sets role=status + aria-label', () => {
+  it('draws <span class="<prefix>__loader"> and sets role=status + aria-label', () => {
     renderLoader(host, box, 'overlay', { prefix: 'wtv', label: 'Loading…' });
     const span = box.querySelector('span')!;
-    expect(span.className).toBe('wtv-loader');
+    expect(span.className).toBe('wtv__loader');
     expect(span.getAttribute('aria-hidden')).toBe('true');
     expect(box.getAttribute('role')).toBe('status');
     expect(box.getAttribute('aria-label')).toBe('Loading…');
@@ -59,8 +59,8 @@ describe('renderLoader — default', () => {
     const removeA = renderLoader(host, box, 'a', { prefix: 'a', label: '' });
     const removeB = renderLoader(host, box, 'b', { prefix: 'b', label: '' });
     removeA();
-    expect(box.querySelector('.b-loader')).not.toBeNull();
-    expect(box.querySelector('.a-loader')).toBeNull();
+    expect(box.querySelector('.b__loader')).not.toBeNull();
+    expect(box.querySelector('.a__loader')).toBeNull();
     removeB();
     expect(box.childNodes.length).toBe(0);
   });
@@ -79,7 +79,7 @@ describe('renderLoader — precedence', () => {
     expect(page).not.toHaveBeenCalled();
     expect(inst).toHaveBeenCalledWith({ component: 'div', context: 'search', containerElement: box, element: host, label: 'Searching' });
     expect(box.textContent).toBe('inst');
-    expect(box.querySelector('.x-loader')).toBeNull();
+    expect(box.querySelector('.x__loader')).toBeNull();
     expect(box.getAttribute('role')).toBe('status');
   });
 
@@ -93,7 +93,7 @@ describe('renderLoader — precedence', () => {
   it('an explicit null option ignores the host property', () => {
     (host as unknown as { renderLoadingCallback: unknown }).renderLoadingCallback = vi.fn();
     renderLoader(host, box, 'overlay', { prefix: 'x', label: 'L', renderLoadingCallback: null });
-    expect(box.querySelector('.x-loader')).not.toBeNull();
+    expect(box.querySelector('.x__loader')).not.toBeNull();
   });
 
   it('page hook draws when there is no instance hook; its cleanup + nodes go on remove()', () => {
@@ -122,7 +122,7 @@ describe('renderLoader — precedence', () => {
     });
     expect(err).toHaveBeenCalled();
     expect(box.textContent).toBe('');
-    expect(box.querySelector('.x-loader')).not.toBeNull();
+    expect(box.querySelector('.x__loader')).not.toBeNull();
   });
 });
 
@@ -144,6 +144,6 @@ describe('window.components.renderLoadingCallback', () => {
     (window.components as Record<string, unknown>).renderLoadingCallback = 'nope';
     expect(window.components!.renderLoadingCallback).toBeUndefined();
     renderLoader(host, box, 'overlay', { prefix: 'x', label: 'L' });
-    expect(box.querySelector('.x-loader')).not.toBeNull();
+    expect(box.querySelector('.x__loader')).not.toBeNull();
   });
 });

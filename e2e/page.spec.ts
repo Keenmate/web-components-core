@@ -14,7 +14,7 @@ import type { Page } from './fixtures';
  *     core's invalid-attribute warning routed to the element's INIT logger (reflected value
  *     written back) or to CORE:ELEMENT for a tag without a bundle; page switch
  *     (enable/disable, CORE included), per instance enable, per tag level, per category
- *   - PG03 loader: instance hook > page hook > default <span class="<prefix>-loader"> with
+ *   - PG03 loader: instance hook > page hook > default <span class="<prefix>__loader"> with
  *     role/aria-label; a throwing instance hook is logged and falls back to the default (the
  *     previous hook's cleanup runs); remove() restores the container (attributes + children)
  *   - PG04 adoptStyles shares one CSSStyleSheet across instances; createStyleSlot replaces in

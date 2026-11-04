@@ -80,7 +80,7 @@
             if (!s || !el.isLoading) return null;
             if (s.querySelector('[data-hook="instance"]')) return 'instance';
             if (s.querySelector('[data-hook="page"]')) return 'page';
-            if (s.querySelector('.fxpg-loader')) return 'default';
+            if (s.querySelector('.fxpg__loader')) return 'default';
             return '?';
         };
         const loaderState = (el) => {

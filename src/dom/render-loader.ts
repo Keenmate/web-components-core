@@ -6,7 +6,7 @@
  * Precedence, highest first:
  * 1. the instance `renderLoadingCallback` (same name in every component);
  * 2. the page-wide `window.components.renderLoadingCallback`;
- * 3. the default `<span class="<prefix>-loader">`, drawn by the component's CSS
+ * 3. the default `<span class="<prefix>__loader">`, drawn by the component's CSS
  *    from its `--<prefix>-loader-*` tokens (chained to `--base-loader-*`).
  *
  * The container always gets `role="status"` + `aria-label` (the component's
@@ -43,7 +43,7 @@ export type RenderLoaderCallback = (ctx: LoaderRenderContext) => void | (() => v
 export interface RenderLoaderOptions {
   /** Accessible label for the container (`aria-label`); empty → no `aria-label`. */
   label: string;
-  /** Component CSS prefix — the default element is `<span class="<prefix>-loader">`. */
+  /** Component CSS prefix — the default element is `<span class="<prefix>__loader">`. */
   prefix: string;
   /**
    * The instance hook. Omitted → read from `host.renderLoadingCallback` (the
@@ -161,7 +161,7 @@ export function renderLoader(
   if (!isDrawn) {
     const doc = containerElement.ownerDocument;
     const span = doc.createElement('span');
-    span.className = `${prefix}-loader`;
+    span.className = `${prefix}__loader`;
     span.setAttribute('aria-hidden', 'true');
     containerElement.appendChild(span);
   }

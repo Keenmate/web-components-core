@@ -1792,7 +1792,7 @@ renderLoadingCallback? }) → remove()`. Precedence, highest first:
    from the option when the key is present (`null` = none), else from
    `host.renderLoadingCallback` (the generated `BlissElement` property);
 2. the **page-wide `window.components.renderLoadingCallback`**;
-3. the **default** `<span class="<prefix>-loader" aria-hidden="true">`, drawn by
+3. the **default** `<span class="<prefix>__loader" aria-hidden="true">`, drawn by
    the component's CSS.
 
 Both hooks are `RenderLoaderCallback = (ctx: LoaderRenderContext) => void | (() => void)`
@@ -1831,7 +1831,7 @@ manifest):
   --x-loader-duration: var(--base-loader-duration, 0.8s);
   --x-loader-size: var(--base-loader-size, 1.25em);
 }
-.x-loader {
+.x__loader {
   display: inline-block;
   inline-size: var(--x-loader-size); block-size: var(--x-loader-size);
   mask: var(--x-loader-icon) center / contain no-repeat;
@@ -1841,6 +1841,8 @@ manifest):
 @keyframes x-loader-spin { to { transform: rotate(var(--x-loader-rotate)); } }
 ```
 
+The class is BEM (`<prefix>__loader`, an element of the component block); the tokens and the
+keyframes keep the hyphenated `<prefix>-loader-*` names (custom properties, not classes).
 The four lines + keyframes are base-css-variables' drawing contract verbatim (its
 README → Loader); `display: inline-block` is only needed where the element is
 otherwise inline. The icon fallback is the contract's default data URI, so the

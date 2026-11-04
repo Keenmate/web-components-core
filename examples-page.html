@@ -164,7 +164,7 @@ window.components.logging.getCategories();          // ['CORE:ELEMENT', …, 'PG
                 <code>remove()</code>. Precedence, highest first: the <strong>instance</strong>
                 <code>renderLoadingCallback</code> (same name in every component, read from the host), then the
                 <strong>page-wide</strong> <code>window.components.renderLoadingCallback</code>, then the
-                <strong>default</strong> <code>&lt;span class="&lt;prefix&gt;-loader" aria-hidden="true"&gt;</code>, which the
+                <strong>default</strong> <code>&lt;span class="&lt;prefix&gt;__loader" aria-hidden="true"&gt;</code>, which the
                 component draws with its own CSS — core ships none; the demo copies SPEC §12.14's drawing rule with
                 <code>--pgd-loader-*</code> tokens chained to <code>--base-loader-*</code>. Only the highest present hook
                 runs; a hook that throws is logged and the default is drawn instead, so a loading state is never blank.
@@ -451,7 +451,7 @@ a.shadowRoot.querySelectorAll('style.pgd-custom').length;                    // 
             if (!s || !el.isLoading) return '—';
             if (s.querySelector('[data-hook="instance"]')) return 'instance hook';
             if (s.querySelector('[data-hook="page"]')) return 'page hook';
-            if (s.querySelector('.pgd-loader')) return 'default <span class="pgd-loader">';
+            if (s.querySelector('.pgd__loader')) return 'default <span class="pgd__loader">';
             return '?';
         };
         function render3() {

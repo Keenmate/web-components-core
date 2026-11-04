@@ -39,6 +39,11 @@ brief); no compatibility aliases (v2 rule).
   `renderLoaderCallback`): the same name as the instance hook, like every other page-wide setting.
   The `RenderLoaderCallback` type keeps its name (it types `renderLoader()`'s hook). Copies of core
   share one hook state, so a page with an older component bundle still works under either name.
+- **The default loader is `<span class="<prefix>__loader">`** (was `<prefix>-loader`): BEM like every
+  other class a component styles, so the rulebook naming checks (C-NC-8 / C-CSS-7) pass. Components
+  rename their `.x-loader` selector to `.x__loader` when they move to this core; the
+  `--x-loader-*` tokens and the `x-loader-spin` keyframes keep their names. Each component bundles
+  its own core, so a published component keeps its spinner until it is rebuilt.
 - **`openMenu({ loadingText })` is `openMenu({ labels: { loading } })`** (`/menu`, new
   `MenuLabels` type): menu UI strings follow the `labels` convention. No component passed it.
 - **`menuDivider()` is `createMenuDivider()`** (`/actions`): the rulebook's `create` = factory

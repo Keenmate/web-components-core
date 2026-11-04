@@ -55,7 +55,7 @@ const SHARED_CSS = `
   .pg-status { display: flex; align-items: center; gap: .4rem; min-height: 1.6rem; margin-top: .35rem;
                color: var(--kmwc-info-color, #0369a1); }
   /* SPEC §12.14 — the loader drawing rule every component copies (core ships no loader CSS). */
-  .pgd-loader {
+  .pgd__loader {
     display: inline-block;
     inline-size: var(--pgd-loader-size); block-size: var(--pgd-loader-size);
     mask: var(--pgd-loader-icon) center / contain no-repeat;

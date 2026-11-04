@@ -54,7 +54,7 @@ export { createMicrotaskScheduler } from './dom/microtask-scheduler.js';
 export type { MicrotaskScheduler } from './dom/microtask-scheduler.js';
 export { adoptStyles, createStyleSlot } from './dom/adopt-styles.js';
 export type { StyleSlot, StyleSlotOptions } from './dom/adopt-styles.js';
-// Shared loader (SPEC §12.14): instance renderLoadingCallback > window.components.renderLoadingCallback > <prefix>-loader span.
+// Shared loader (SPEC §12.14): instance renderLoadingCallback > window.components.renderLoadingCallback > <prefix>__loader span.
 export { renderLoader, publishLoaderHook } from './dom/render-loader.js';
 export type { LoaderRenderContext, RenderLoaderCallback, RenderLoaderOptions } from './dom/render-loader.js';
 // Container scroll (SPEC §12.15): scroll the one container around an element, never the page.
