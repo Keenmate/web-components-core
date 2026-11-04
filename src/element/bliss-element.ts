@@ -15,6 +15,7 @@ import { resolveFromAttribute, resolveFromProperty, type Resolved } from '../inp
 import { deriveClearableKeys } from '../inputs/clearable.js';
 import { collectEngineConfig } from '../inputs/engine-config.js';
 import type { AttrReader, InputDef } from '../inputs/types.js';
+import { toValue } from '../inputs/converters.js';
 
 /** A reader for "no attribute present" — probing a converter's absent value. */
 const ABSENT_ATTRIBUTES: AttrReader = { getAttribute: () => null, hasAttribute: () => false };
@@ -79,18 +80,27 @@ import {
 } from './events.js';
 import {
   hasPageRules,
+  isResponsiveCallbackSetting,
   isResponsiveMap,
+  isResponsiveMapSetting,
+  mergeResponsiveMap,
+  mergeResponsiveRule,
   onResponsiveChange,
-  RESPONSIVE_MAP_AXES,
   readPageRules,
   responsiveValueEqual,
   RESPONSIVE_ATTRIBUTE,
-  RESPONSIVE_RESERVED_KEYS,
+  RESPONSIVE_CALLBACK_EXPECTED,
+  RESPONSIVE_MAP_EXPECTED,
   type ResponsiveCallback,
   type ResponsiveContext,
   type ResponsiveMap,
-  type ResponsiveMapAxis,
+  type ResponsiveMergeContext,
 } from './responsive.js';
+
+/** The `responsive` attribute: JSON, a map or `null`; blank / absent → no map (through the standard JSON converter). */
+const RESPONSIVE_ATTRIBUTE_CONVERTER = toValue<ResponsiveMap | null>({
+  validate: (value): value is ResponsiveMap | null => value === null || isResponsiveMap(value),
+});
 
 /**
  * A plain-object event detail is shallow-copied before `emit()` attaches the component
@@ -715,8 +725,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   }
 
   set responsive(value: ResponsiveMap | null | undefined) {
-    if (value != null && !isResponsiveMap(value)) {
-      this.#warn('rejected invalid value for property "responsive" (an object { device?, breakpoint? }, or null); keeping previous value', value);
+    if (!isResponsiveMapSetting(value)) {
+      this.#warn(`rejected invalid value for property "responsive" (${RESPONSIVE_MAP_EXPECTED}); keeping previous value`, value);
       return;
     }
     this.#responsiveMap = value ?? undefined;
@@ -735,8 +745,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   }
 
   set responsiveCallback(value: ResponsiveCallback | null | undefined) {
-    if (value != null && typeof value !== 'function') {
-      this.#warn('rejected invalid value for property "responsiveCallback" (a function, or null); keeping previous value', value);
+    if (!isResponsiveCallbackSetting(value)) {
+      this.#warn(`rejected invalid value for property "responsiveCallback" (${RESPONSIVE_CALLBACK_EXPECTED}); keeping previous value`, value);
       return;
     }
     this.#responsiveCallback = value ?? undefined;
@@ -1869,126 +1879,31 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#warn(message, ...detail);
   }
 
-  /** The `responsive` attribute (JSON) → the instance map; invalid JSON warns and keeps the previous map. */
+  /**
+   * The `responsive` attribute (JSON) → the instance map, through the standard JSON
+   * converter: absent / blank / `null` → no map; malformed or not a map → warn and keep
+   * the previous map.
+   */
   #setResponsiveFromAttribute(raw: string | null): void {
-    if (raw === null || raw.trim() === '') {
-      this.responsive = null;
-      return;
-    }
-    let parsed: unknown;
-    let isValid = true;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      isValid = false;
-    }
-    if (!isValid || (parsed !== null && !isResponsiveMap(parsed))) {
+    let isInvalid = false;
+    const parsed = RESPONSIVE_ATTRIBUTE_CONVERTER.fromAttribute!(raw, this as unknown as AttrReader, RESPONSIVE_ATTRIBUTE, () => {
+      isInvalid = true;
+    });
+    if (isInvalid) {
       this.#warn(`rejected invalid value for attribute ${RESPONSIVE_ATTRIBUTE}="${raw}" (a JSON object { "device"?, "breakpoint"? }); keeping previous value`);
       return;
     }
-    this.responsive = parsed as ResponsiveMap | null;
+    this.responsive = parsed ?? null;
   }
 
-  /**
-   * Merge one rule result into `out`: each key validated by its input's converter;
-   * unknown / reserved / invalid keys warn and are skipped. Returns `true` when the
-   * result is `null` (the instance opt-out signal; the caller decides if it counts).
-   * Unknown keys from the GLOBAL page layers are skipped silently — a page-wide rule
-   * legitimately names inputs only some components have.
-   */
-  #mergeRule(result: unknown, label: string, out: Record<string, unknown>, isGlobal = false): boolean {
-    if (result === null) return true;
-    if (result === undefined) return false;
-    if (!isResponsiveMap(result)) {
-      this.#warnResponsiveOnce(`${label} returned a non-object; ignored`, result);
-      return false;
-    }
-    for (const [key, value] of Object.entries(result)) {
-      if (value === undefined) continue;
-      if (RESPONSIVE_RESERVED_KEYS.has(key)) {
-        this.#warnResponsiveOnce(`${label}: reserved key "${key}" skipped`);
-        continue;
-      }
-      const def = this.#byConfigKey.get(key);
-      if (!def) {
-        if (!isGlobal) this.#warnResponsiveOnce(`${label}: unknown key "${key}" skipped`);
-        continue;
-      }
-      const resolvedRule = resolveFromProperty(def, value);
-      if (!resolvedRule) {
-        this.#warnResponsiveOnce(`${label}: invalid value for "${key}" skipped`, value);
-        continue;
-      }
-      // The browser disables a form-associated host by its own `disabled` ATTRIBUTE, and
-      // responsive overrides never reflect — so an override could only half-disable it.
-      if (def.attribute === 'disabled' && (this.constructor as { formAssociated?: boolean }).formAssociated) {
-        this.#warnResponsiveOnce(`${label}: "${key}" can't be set by a responsive rule (disabling must reflect to the attribute); skipped`);
-        continue;
-      }
-      out[key] = resolvedRule.value; // normalized, like an assigned value
-      // Same rule as an explicit write (SPEC §6.2): the input's batch values come along,
-      // at this layer, unless this rule names them itself.
-      if (def.getBatchValuesCallback) this.#mergeBatchValues(def, resolvedRule.value, result as Record<string, unknown>, label, out);
-    }
-    return false;
-  }
-
-  /** {@link #mergeRule}: add the values `source`'s `getBatchValuesCallback` implies for `value`. */
-  #mergeBatchValues(source: InputDef, value: unknown, rule: Record<string, unknown>, label: string, out: Record<string, unknown>): void {
-    let implied: Record<string, unknown> | null | undefined;
-    try {
-      implied = source.getBatchValuesCallback!(value as never, this.#base);
-    } catch (err) {
-      this.#warnResponsiveOnce(`${label}: getBatchValuesCallback of "${source.configKey}" threw; no other inputs set`, err);
-      return;
-    }
-    if (!implied) return;
-    for (const [key, v] of Object.entries(implied)) {
-      if (key === source.configKey || rule[key] !== undefined) continue; // the rule's own value wins
-      const def = this.#byConfigKey.get(key);
-      const resolvedImplied = def ? resolveFromProperty(def, v) : null;
-      if (!resolvedImplied) continue;
-      out[key] = resolvedImplied.value;
-    }
-  }
-
-  /**
-   * Merge one responsive map (SPEC §6.7) into `out`: the `breakpoint` entry
-   * (width bucket) first, then the `device` entry (`classifyDevice`) over it —
-   * device wins on the same key. Any other top-level key (e.g. the pre-rc15
-   * `{ mobile: … }` shape) warns once per element and is ignored; a non-object
-   * axis likewise. Returns `true` when either axis entry is `null` (the instance
-   * opt-out signal; the caller decides if it counts).
-   */
-  #mergeMap(
-    map: ResponsiveMap,
-    deviceClass: string,
-    breakpoint: string,
-    label: string,
-    out: Record<string, unknown>,
-    isGlobal = false,
-  ): boolean {
-    const unknown = Object.keys(map).filter((key) => !(RESPONSIVE_MAP_AXES as readonly string[]).includes(key));
-    if (unknown.length > 0) {
-      this.#warnResponsiveOnce(
-        `${label}: unknown top-level key(s) ${unknown.map((k) => `"${k}"`).join(', ')} ignored — a responsive map is { device?: { <deviceClass>: {…} }, breakpoint?: { <breakpoint>: {…} } }`,
-      );
-    }
-    let isNull = false;
-    const axes: Array<[ResponsiveMapAxis, string]> = [
-      ['breakpoint', breakpoint],
-      ['device', deviceClass],
-    ];
-    for (const [axis, key] of axes) {
-      const entries = map[axis];
-      if (entries == null) continue;
-      if (!isResponsiveMap(entries)) {
-        this.#warnResponsiveOnce(`${label}.${axis} must be an object; ignored`, entries);
-        continue;
-      }
-      if (this.#mergeRule((entries as Record<string, unknown>)[key], `${label}.${axis}.${key}`, out, isGlobal)) isNull = true;
-    }
-    return isNull;
+  /** What {@link mergeResponsiveRule} / {@link mergeResponsiveMap} need from this element. */
+  #mergeContext(): ResponsiveMergeContext {
+    return {
+      getInput: (key) => this.#byConfigKey.get(key),
+      base: this.#base,
+      isFormAssociated: !!(this.constructor as { formAssociated?: boolean }).formAssociated,
+      warn: (message, ...detail) => this.#warnResponsiveOnce(message, ...detail),
+    };
   }
 
   /** Call a rule callback; a throw is logged and counts as `undefined`. */
@@ -2023,6 +1938,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     const pageOut: Record<string, unknown> = {};
     let isOptOut = false;
     if (hasAny) {
+      const merge = this.#mergeContext();
       const env = getEnvironment();
       const deviceClass = classifyDevice(env);
       const ctx: ResponsiveContext = {
@@ -2035,28 +1951,28 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       };
       // Instance layers first (they decide the opt-out): map → callback.
       if (this.#responsiveMap) {
-        if (this.#mergeMap(this.#responsiveMap, deviceClass, env.breakpoint, `<${tag}> responsive`, instance)) isOptOut = true;
+        if (mergeResponsiveMap(merge, this.#responsiveMap, deviceClass, env.breakpoint, `<${tag}> responsive`, instance)) isOptOut = true;
       }
       if (this.#responsiveCallback) {
         const label = `<${tag}> responsiveCallback`;
-        if (this.#mergeRule(this.#runRuleCallback(this.#responsiveCallback, ctx, label), label, instance)) isOptOut = true;
+        if (mergeResponsiveRule(merge, this.#runRuleCallback(this.#responsiveCallback, ctx, label), label, instance)) isOptOut = true;
       }
       if (!isOptOut) {
         // Page layers, later wins: global map → global callback → per-tag map → per-tag callback.
         // A page-level `null` is the same as `undefined`.
         if (page.globalMap) {
-          this.#mergeMap(page.globalMap, deviceClass, env.breakpoint, 'window.components.responsive', pageOut, true);
+          mergeResponsiveMap(merge, page.globalMap, deviceClass, env.breakpoint, 'window.components.responsive', pageOut, true);
         }
         if (page.globalCallback) {
           const label = 'window.components.responsiveCallback';
-          this.#mergeRule(this.#runRuleCallback(page.globalCallback, ctx, label), label, pageOut, true);
+          mergeResponsiveRule(merge, this.#runRuleCallback(page.globalCallback, ctx, label), label, pageOut, true);
         }
         if (page.tagMap) {
-          this.#mergeMap(page.tagMap, deviceClass, env.breakpoint, `window.components['${tag}'].responsive`, pageOut);
+          mergeResponsiveMap(merge, page.tagMap, deviceClass, env.breakpoint, `window.components['${tag}'].responsive`, pageOut);
         }
         if (page.tagCallback) {
           const label = `window.components['${tag}'].responsiveCallback`;
-          this.#mergeRule(this.#runRuleCallback(page.tagCallback, ctx, label), label, pageOut);
+          mergeResponsiveRule(merge, this.#runRuleCallback(page.tagCallback, ctx, label), label, pageOut);
         }
       }
     }

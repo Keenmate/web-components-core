@@ -15,12 +15,15 @@
  * Precedence (later wins, key by key): global map → global callback → per-tag map
  * → per-tag callback → INSTANCE attributes/properties → instance map → instance
  * callback. This module holds the types, the page-wide state (shared across
- * bundled core copies via `Symbol.for`) and the pure layer merge; the element side
- * lives in `bliss-element.ts`.
+ * bundled core copies via `Symbol.for`), the setting validation and the pure layer merge
+ * ({@link mergeResponsiveRule} / {@link mergeResponsiveMap}); the element side — which
+ * layers to run, when, and staging the result — lives in `bliss-element.ts`.
  */
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import type { DeviceClass, EnvironmentSnapshot } from '../environment/environment.js';
 import { coreLog } from '../logging/element-logger.js';
+import { resolveFromProperty } from '../inputs/apply.js';
+import type { InputDef } from '../inputs/types.js';
 
 /**
  * The declarative form of a responsive rule — partial configs on two explicit axes:
@@ -137,16 +140,16 @@ function defineRuleAccessors(
   const preMap = adopt(MAP_KEY);
   const preCallback = adopt(CALLBACK_KEY);
   const setMap = (value: unknown): void => {
-    if (value != null && !isResponsiveMap(value)) {
-      coreLog(undefined, 'INIT', 'ELEMENT').warn(`${label}.responsive must be an object { device?, breakpoint? } (or null); keeping previous value`, value);
+    if (!isResponsiveMapSetting(value)) {
+      coreLog(undefined, 'INIT', 'ELEMENT').warn(`${label}.responsive must be ${RESPONSIVE_MAP_EXPECTED}; keeping previous value`, value);
       return;
     }
     store.setMap(value ?? undefined);
     notify();
   };
   const setCallback = (value: unknown): void => {
-    if (value != null && typeof value !== 'function') {
-      coreLog(undefined, 'INIT', 'ELEMENT').warn(`${label}.responsiveCallback must be a function (or null); keeping previous value`, value);
+    if (!isResponsiveCallbackSetting(value)) {
+      coreLog(undefined, 'INIT', 'ELEMENT').warn(`${label}.responsiveCallback must be ${RESPONSIVE_CALLBACK_EXPECTED}; keeping previous value`, value);
       return;
     }
     store.setCallback((value as ResponsiveCallback | null) ?? undefined);
@@ -269,4 +272,154 @@ export function __resetResponsive(): void {
   s.callback = undefined;
   // The once-per-page warnings about the page-wide rules (BlissElement#warnResponsiveOnce).
   sharedState(sharedStateKey('responsive-page-warnings'), () => new Set<string>()).clear();
+}
+
+// ---------------------------------------------------------------------------
+// Setting validation — shared by the page / tag accessors and the element setters
+// ---------------------------------------------------------------------------
+
+/** What a `responsive` setting accepts (for warnings). */
+export const RESPONSIVE_MAP_EXPECTED = 'an object { device?, breakpoint? }, or null';
+/** What a `responsiveCallback` setting accepts (for warnings). */
+export const RESPONSIVE_CALLBACK_EXPECTED = 'a function, or null';
+
+/** A valid `responsive` setting: a map, or `null` / `undefined` (clear). */
+export function isResponsiveMapSetting(value: unknown): value is ResponsiveMap | null | undefined {
+  return value == null || isResponsiveMap(value);
+}
+
+/** A valid `responsiveCallback` setting: a function, or `null` / `undefined` (clear). */
+export function isResponsiveCallbackSetting(value: unknown): value is ResponsiveCallback | null | undefined {
+  return value == null || typeof value === 'function';
+}
+
+// ---------------------------------------------------------------------------
+// The layer merge — pure: everything element-specific comes in through the context
+// ---------------------------------------------------------------------------
+
+/** What {@link mergeResponsiveRule} / {@link mergeResponsiveMap} need from the element. */
+export interface ResponsiveMergeContext {
+  /** The input row for a configKey; `undefined` = the component has no such input. */
+  getInput(configKey: string): InputDef | undefined;
+  /** The element's base config (what `getBatchValuesCallback` sees). */
+  readonly base: Readonly<Record<string, unknown>>;
+  /** The host is form-associated: `disabled` can't be set by a rule (it must reflect). */
+  readonly isFormAssociated: boolean;
+  /** Report a problem with a rule (the element dedupes and logs it). */
+  warn(message: string, ...detail: unknown[]): void;
+}
+
+/**
+ * Merge one rule result into `out`: each key validated by its input's converter;
+ * unknown / reserved / invalid keys warn and are skipped. Returns `true` when the
+ * result is `null` (the instance opt-out signal; the caller decides if it counts).
+ * Unknown keys from the GLOBAL page layers are skipped silently — a page-wide rule
+ * legitimately names inputs only some components have.
+ */
+export function mergeResponsiveRule(
+  ctx: ResponsiveMergeContext,
+  result: unknown,
+  label: string,
+  out: Record<string, unknown>,
+  isGlobal = false,
+): boolean {
+  if (result === null) return true;
+  if (result === undefined) return false;
+  if (!isResponsiveMap(result)) {
+    ctx.warn(`${label} returned a non-object; ignored`, result);
+    return false;
+  }
+  for (const [key, value] of Object.entries(result)) {
+    if (value === undefined) continue;
+    if (RESPONSIVE_RESERVED_KEYS.has(key)) {
+      ctx.warn(`${label}: reserved key "${key}" skipped`);
+      continue;
+    }
+    const def = ctx.getInput(key);
+    if (!def) {
+      if (!isGlobal) ctx.warn(`${label}: unknown key "${key}" skipped`);
+      continue;
+    }
+    const resolved = resolveFromProperty(def, value);
+    if (!resolved) {
+      ctx.warn(`${label}: invalid value for "${key}" skipped`, value);
+      continue;
+    }
+    // The browser disables a form-associated host by its own `disabled` ATTRIBUTE, and
+    // responsive overrides never reflect — so an override could only half-disable it.
+    if (def.attribute === 'disabled' && ctx.isFormAssociated) {
+      ctx.warn(`${label}: "${key}" can't be set by a responsive rule (disabling must reflect to the attribute); skipped`);
+      continue;
+    }
+    out[key] = resolved.value; // normalized, like an assigned value
+    // Same rule as an explicit write (SPEC §6.2): the input's batch values come along,
+    // at this layer, unless this rule names them itself.
+    if (def.getBatchValuesCallback) mergeBatchValues(ctx, def, resolved.value, result as Record<string, unknown>, label, out);
+  }
+  return false;
+}
+
+/** {@link mergeResponsiveRule}: add the values `source`'s `getBatchValuesCallback` implies for `value`. */
+function mergeBatchValues(
+  ctx: ResponsiveMergeContext,
+  source: InputDef,
+  value: unknown,
+  rule: Record<string, unknown>,
+  label: string,
+  out: Record<string, unknown>,
+): void {
+  let implied: Record<string, unknown> | null | undefined;
+  try {
+    implied = source.getBatchValuesCallback!(value as never, ctx.base as never);
+  } catch (err) {
+    ctx.warn(`${label}: getBatchValuesCallback of "${source.configKey}" threw; no other inputs set`, err);
+    return;
+  }
+  if (!implied) return;
+  for (const [key, v] of Object.entries(implied)) {
+    if (key === source.configKey || rule[key] !== undefined) continue; // the rule's own value wins
+    const def = ctx.getInput(key);
+    const resolved = def ? resolveFromProperty(def, v) : null;
+    if (!resolved) continue;
+    out[key] = resolved.value;
+  }
+}
+
+/**
+ * Merge one responsive map into `out`: the `breakpoint` entry (width bucket) first, then
+ * the `device` entry (`classifyDevice`) over it — device wins on the same key. Any other
+ * top-level key (e.g. the pre-rc15 `{ mobile: … }` shape) warns and is ignored; a
+ * non-object axis likewise. Returns `true` when either axis entry is `null` (the instance
+ * opt-out signal; the caller decides if it counts).
+ */
+export function mergeResponsiveMap(
+  ctx: ResponsiveMergeContext,
+  map: ResponsiveMap,
+  deviceClass: string,
+  breakpoint: string,
+  label: string,
+  out: Record<string, unknown>,
+  isGlobal = false,
+): boolean {
+  const unknown = Object.keys(map).filter((key) => !(RESPONSIVE_MAP_AXES as readonly string[]).includes(key));
+  if (unknown.length > 0) {
+    ctx.warn(
+      `${label}: unknown top-level key(s) ${unknown.map((k) => `"${k}"`).join(', ')} ignored — a responsive map is { device?: { <deviceClass>: {…} }, breakpoint?: { <breakpoint>: {…} } }`,
+    );
+  }
+  let isNull = false;
+  const axes: Array<[ResponsiveMapAxis, string]> = [
+    ['breakpoint', breakpoint],
+    ['device', deviceClass],
+  ];
+  for (const [axis, key] of axes) {
+    const entries = map[axis];
+    if (entries == null) continue;
+    if (!isResponsiveMap(entries)) {
+      ctx.warn(`${label}.${axis} must be an object; ignored`, entries);
+      continue;
+    }
+    if (mergeResponsiveRule(ctx, (entries as Record<string, unknown>)[key], `${label}.${axis}.${key}`, out, isGlobal)) isNull = true;
+  }
+  return isNull;
 }

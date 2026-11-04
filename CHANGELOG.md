@@ -366,6 +366,11 @@ brief); no compatibility aliases (v2 rule).
 
 ### Internal
 
+- Responsive rules (review I-16): the layer merge moved out of `BlissElement` into
+  `responsive.ts` as pure functions (`mergeResponsiveRule`, `mergeResponsiveMap`) over a small
+  context, with DOM-free unit tests; one setting validator (`isResponsiveMapSetting` /
+  `isResponsiveCallbackSetting`) for the page, tag and element setters; the `responsive`
+  attribute parses through the standard `toValue()` JSON converter. No behaviour change.
 - A repeated `createLoggers()` / `createPerfLogger()` of one namespace replaces its entry in the
   page-wide bundle list instead of adding another (same copy of core, same categories), so the
   list no longer grows for the life of the page. Review L-15.
