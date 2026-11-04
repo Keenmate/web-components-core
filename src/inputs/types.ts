@@ -35,6 +35,14 @@ export interface Converter<V> {
    * never invalid — it means "unset".
    */
   fromAttribute?(raw: string | null, el: AttrReader, attr: string, reportInvalid?: (reason?: string) => void): V;
+  /**
+   * Property path, before {@link validate}: adjust a JS-assigned value the way
+   * {@link fromAttribute} adjusts a string — trim it, map `''` to the fallback — so both
+   * paths store the same value for the same input (review I-09). Returns the value to
+   * validate and store; a throw counts as a rejection. Optional: without it the value is
+   * validated as assigned.
+   */
+  normalize?(value: unknown): unknown;
   /** Property path: is this JS-assigned value acceptable? (callbacks, arrays, objects). */
   validate?(value: unknown): value is V;
   /** Optional reflect `V` → attribute string (`null` removes the attribute). */

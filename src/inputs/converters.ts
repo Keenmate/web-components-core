@@ -135,14 +135,14 @@ function toNumber(
 /**
  * String input. Named `toText` — NOT `toString` — to avoid colliding with
  * `Object.prototype.toString`. Empty strings fall back to `default` unless
- * `isEmptyAllowed` is set.
+ * `isEmptyAllowed` is set — on BOTH paths: `label=""` and `el.label = ''` store the
+ * same value, and `shouldTrim` trims assigned strings too (`normalize`, review I-09).
  *
  * With `isNullable: true` the "unset" value is `null` instead of `''` — an
  * absent or empty attribute resolves to `null`, so callers can distinguish
  * "not set" from "set to empty" (an optional string). `null` is the same
- * absent-sentinel `toEnum`'s `isNullable` uses. To clear a nullable
- * input via the property path, assign `null` (assigning `''` is still rejected,
- * like non-nullable). `isEmptyAllowed` and `isNullable` are orthogonal: the
+ * absent-sentinel `toEnum`'s `isNullable` uses. `el.x = null` and `el.x = ''`
+ * clear a nullable input. `isEmptyAllowed` and `isNullable` are orthogonal: the
  * former keeps `''` as a value; the latter sets the unset sentinel to `null`.
  */
 export function toText(opts?: { shouldTrim?: boolean; isEmptyAllowed?: boolean; default?: string }): Converter<string>;
@@ -152,14 +152,22 @@ export function toText(
 ): Converter<string | null> {
   const isNullable = opts.isNullable === true;
   const fallback = opts.default ?? (isNullable ? null : '');
-  const normalize = (s: string): string => (opts.shouldTrim ? s.trim() : s);
+  const trim = (s: string): string => (opts.shouldTrim ? s.trim() : s);
+  /** The same adjustment on both paths: trim (with `shouldTrim`), `''` → the fallback. */
+  const adjust = (s: string): string | null => {
+    const t = trim(s);
+    return !opts.isEmptyAllowed && t === '' ? fallback : t;
+  };
   return {
     fromAttribute(raw) {
-      if (raw === null) return fallback;
-      const s = normalize(raw);
-      return !opts.isEmptyAllowed && s === '' ? fallback : s;
+      return raw === null ? fallback : adjust(raw);
+    },
+    // `el.label = ''` resolves like `label=""` (review I-09): the fallback, not a rejection.
+    normalize(value) {
+      return typeof value === 'string' ? adjust(value) : value;
     },
     validate(value): value is string | null {
+      if (value === fallback) return true;
       if (value === null) return isNullable;
       return typeof value === 'string' && (opts.isEmptyAllowed === true || value !== '');
     },

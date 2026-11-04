@@ -1914,7 +1914,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
         if (!isGlobal) this.#warnResponsiveOnce(`${label}: unknown key "${key}" skipped`);
         continue;
       }
-      if (!resolveFromProperty(def, value)) {
+      const resolvedRule = resolveFromProperty(def, value);
+      if (!resolvedRule) {
         this.#warnResponsiveOnce(`${label}: invalid value for "${key}" skipped`, value);
         continue;
       }
@@ -1924,10 +1925,10 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
         this.#warnResponsiveOnce(`${label}: "${key}" can't be set by a responsive rule (disabling must reflect to the attribute); skipped`);
         continue;
       }
-      out[key] = value;
+      out[key] = resolvedRule.value; // normalized, like an assigned value
       // Same rule as an explicit write (SPEC §6.2): the input's batch values come along,
       // at this layer, unless this rule names them itself.
-      if (def.getBatchValuesCallback) this.#mergeBatchValues(def, value, result as Record<string, unknown>, label, out);
+      if (def.getBatchValuesCallback) this.#mergeBatchValues(def, resolvedRule.value, result as Record<string, unknown>, label, out);
     }
     return false;
   }
@@ -1945,8 +1946,9 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     for (const [key, v] of Object.entries(implied)) {
       if (key === source.configKey || rule[key] !== undefined) continue; // the rule's own value wins
       const def = this.#byConfigKey.get(key);
-      if (!def || !resolveFromProperty(def, v)) continue;
-      out[key] = v;
+      const resolvedImplied = def ? resolveFromProperty(def, v) : null;
+      if (!resolvedImplied) continue;
+      out[key] = resolvedImplied.value;
     }
   }
 

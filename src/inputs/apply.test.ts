@@ -45,3 +45,34 @@ describe('resolveFromProperty', () => {
     expect(resolveFromProperty(throwing, 1)).toBeNull();
   });
 });
+
+// Review I-09: the property path stores what the attribute path stores for the same input.
+describe('resolveFromProperty — converter.normalize', () => {
+  const absent: AttrReader = { getAttribute: () => null, hasAttribute: () => false };
+  const both = (def: InputDef, raw: string) => ({
+    attribute: resolveFromAttribute(def, raw, absent).value,
+    property: resolveFromProperty(def, raw)?.value,
+  });
+
+  it("toText: '' and trimming agree on both paths", () => {
+    const withDefault: InputDef = { configKey: 'label', attribute: 'label', converter: toText({ shouldTrim: true, default: 'Search...' }) };
+    expect(both(withDefault, '')).toEqual({ attribute: 'Search...', property: 'Search...' });
+    expect(both(withDefault, '   ')).toEqual({ attribute: 'Search...', property: 'Search...' });
+    expect(both(withDefault, '  hi ')).toEqual({ attribute: 'hi', property: 'hi' });
+    const plain: InputDef = { configKey: 'note', attribute: 'note', converter: toText() };
+    expect(both(plain, '')).toEqual({ attribute: '', property: '' }); // used to be rejected on the property path
+    const nullable: InputDef = { configKey: 'hint', attribute: 'hint', converter: toText({ isNullable: true }) };
+    expect(both(nullable, '')).toEqual({ attribute: null, property: null });
+    const keepsEmpty: InputDef = { configKey: 'sep', attribute: 'sep', converter: toText({ isEmptyAllowed: true, default: ',' }) };
+    expect(both(keepsEmpty, '')).toEqual({ attribute: '', property: '' });
+  });
+
+  it('a throwing normalize is a rejection; non-strings still go through validate', () => {
+    const def: InputDef = {
+      configKey: 'x',
+      converter: { normalize: () => { throw new Error('nope'); }, validate: (v): v is string => typeof v === 'string' },
+    };
+    expect(resolveFromProperty(def, 'a')).toBeNull();
+    expect(resolveFromProperty({ configKey: 'y', converter: toText() }, 5)).toBeNull();
+  });
+});

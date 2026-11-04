@@ -102,6 +102,9 @@ export interface Converter<V> {
    *  Call reportInvalid for an unusable present value (§6: warn + keep previous). */
   fromAttribute?(raw: string | null, el: AttrReader, attr: string,
                  reportInvalid?: (reason?: string) => void): V;
+  /** property path, before validate: adjust an assigned value the way fromAttribute
+   *  adjusts a string (trim, '' → fallback), so both paths store the same value (rc19). */
+  normalize?(value: unknown): unknown;
   /** property path: is this JS-assigned value acceptable? (callbacks, arrays, objects). */
   validate?(value: unknown): value is V;
   /** optional reflect V → attribute string. */
@@ -205,7 +208,8 @@ Every factory calls `reportInvalid(reason)` when a *present* attribute value
 can't be used (`page-size="abc"`, `mode="exel"`, malformed JSON, …), so core can
 warn and keep the previous value (§6). Never reported: an absent/removed
 attribute, `toText` (any string is text; `''` without `isEmptyAllowed` is
-"unset"), `toBool('presence')` (any value means on), a blank list/JSON. A custom
+"unset" — on the property path too: `el.label = ''` stores the fallback like `label=""`, and
+`shouldTrim` trims assigned strings, through `normalize`, review I-09), `toBool('presence')` (any value means on), a blank list/JSON. A custom
 converter that doesn't call it keeps the old behaviour — its fallback applies
 silently. `toCustom(parse)` passes `reportInvalid` to `parse` as a 2nd argument.
 

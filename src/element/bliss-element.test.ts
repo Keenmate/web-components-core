@@ -386,6 +386,23 @@ describe('BlissElement', () => {
   });
 });
 
+// Review I-09: a framework binding that clears a text field assigns ''.
+describe("a text input cleared through the property", () => {
+  it("el.label = '' resolves like label=\"\" (the default), with no warning", () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const el = new TestElement();
+    document.body.appendChild(el);
+    const view = el as unknown as { placeholder: string };
+    view.placeholder = 'Find a city';
+    view.placeholder = '';
+    expect(view.placeholder).toBe('Search...');
+    el.setAttribute('placeholder', '');
+    expect(view.placeholder).toBe('Search...');
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});
+
 describe('row-level default', () => {
   class RowDefaultElement extends BlissElement {
     protected static override inputs: readonly InputDef[] = [

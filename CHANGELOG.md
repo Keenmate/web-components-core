@@ -330,6 +330,12 @@ brief); no compatibility aliases (v2 rule).
   gains `presentation` / `isFullscreen` keys, and re-emitting the same object carries the current
   extras instead of stale ones. The `on<Name>` twin and the event still get the same object.
   Arrays and class instances are unchanged (context attached in place). Review I-03.
+- **`el.label = ''` clears a text input instead of being rejected.** `toText` treated the two
+  paths differently: `label=""` fell back to the default, but assigning `''` warned and kept the
+  old text (so a framework binding could never clear it), and `shouldTrim` didn't trim assigned
+  strings. Both paths now store the same value. Converters get an optional
+  `normalize(value)` for the property path (run before `validate`) to make this possible for
+  custom converters too; responsive rules and batch values go through it as well. Review I-09.
 - **Number attributes are parsed strictly.** The whole (trimmed) attribute must be the number:
   `toInt` rejects `"12px"`, `"1.9"`, `"1e3"`, `"0x10"` and `"1,5"`, which used to become 12, 1, 1, 0
   and 1 silently; `toFloat` rejects `"1.5em"`, `"1,5"` and `"Infinity"` (the property path already
