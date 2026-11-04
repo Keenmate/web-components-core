@@ -66,7 +66,7 @@ export const CORE_DECLARED_API: readonly ExtractedMember[] = [
   { kind: 'field', name: 'isReady', privacy: 'public', readonly: true, type: { text: 'boolean' }, description: 'The first build is live (core, SPEC §6.3) — the `ready` event has fired.' },
   { kind: 'method', name: 'whenReady', privacy: 'public', return: { type: { text: 'Promise<void>' } }, description: 'Resolves once the first build is live (also settles when the element is destroyed first). Never rejects.' },
   { kind: 'method', name: 'release', privacy: 'public', return: { type: { text: 'void' } }, description: 'Build an element held by `defer` (SPEC §6.3), with everything assigned meanwhile.' },
-  { kind: 'method', name: 'setAttributes', privacy: 'public', parameters: [{ name: 'values', type: { text: 'Record<string, unknown>' } }], return: { type: { text: 'void' } }, description: 'Apply many inputs (by configKey or attribute name) as ONE rebuild / update.' },
+  { kind: 'method', name: 'setAttributes', privacy: 'public', parameters: [{ name: 'values', type: { text: 'Record<string, unknown>' } }], return: { type: { text: 'InputRejection[]' } }, description: 'Apply many inputs (by configKey or attribute name) as ONE rebuild / update. Returns the values it refused (each also fires `input-rejected`).' },
   { kind: 'method', name: 'batch', privacy: 'public', parameters: [{ name: 'fn', type: { text: '() => void' } }], return: { type: { text: 'void' } }, description: 'Run `fn` and coalesce every input change it makes into one rebuild / update.' },
   { kind: 'method', name: 'flush', privacy: 'public', return: { type: { text: 'void' } }, description: 'Apply pending input writes synchronously, now (SPEC §12.7).' },
   { kind: 'method', name: 'whenSettled', privacy: 'public', return: { type: { text: 'Promise<void>' } }, description: 'Resolves once every staged input change has been applied (SPEC §12.7).' },
@@ -89,6 +89,11 @@ export const CORE_DECLARED_EVENTS: readonly ExtractedEvent[] = [
     name: 'ready',
     description:
       'Fired once after the first live build (core, SPEC §6.3), on the microtask after it; also the `ready` attribute, `:state(ready)`, `isReady` and `whenReady()`. Twin callback `onReady`.',
+  },
+  {
+    name: 'input-rejected',
+    description:
+      'Fired when a written value is refused (core, SPEC §6): an invalid attribute or property value, or an unknown `setAttributes()` key. The element warns and keeps its previous value. Detail `{ configKey, attribute?, value, reason?, kept, source }`. Twin callback `onInputRejected`.',
   },
 ];
 

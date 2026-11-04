@@ -24,7 +24,8 @@ export { collectEngineConfig } from './inputs/engine-config.js';
 export { deriveClearableKeys, isClearableConverter, isClearableInput } from './inputs/clearable.js';
 
 // Reactive element base
-export { BlissElement } from './element/bliss-element.js';
+export { BlissElement, INPUT_REJECTED_EVENT } from './element/bliss-element.js';
+export type { InputRejection } from './element/bliss-element.js';
 export { dispatch } from './element/dispatch.js';
 export type { DispatchOptions } from './element/dispatch.js';
 export { defaultEventProperty, normalizeEventDefs } from './element/events.js';

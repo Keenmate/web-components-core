@@ -80,11 +80,13 @@ export function normalizeEventDefs(
 
 /**
  * Events core fires for EVERY component, whatever its table declares: `ready`
- * (twin `onReady`, SPEC §6.3). A subclass entry of the same name wins (its
- * property / flags override), so declaring `ready` for docs is harmless.
+ * (twin `onReady`, SPEC §6.3) and `input-rejected` (twin `onInputRejected`, SPEC §6).
+ * A subclass entry of the same name wins (its property / flags override), so
+ * declaring them for docs is harmless.
  */
 const CORE_EVENTS: readonly NormalizedEventDef[] = [
   { name: 'ready', property: 'onReady', bubbles: undefined, composed: undefined, cancelable: undefined },
+  { name: 'input-rejected', property: 'onInputRejected', bubbles: undefined, composed: undefined, cancelable: undefined },
 ];
 
 /**

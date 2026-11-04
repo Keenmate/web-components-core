@@ -100,6 +100,15 @@ no compatibility aliases (v2 rule).
 
 ### Added
 
+- **Refused writes are reported: the `input-rejected` event** (twin `onInputRejected`, every
+  component). `setAttribute()` and a property assignment can't return anything, so an invalid
+  value only ever reached the console. Now each refused write also fires `input-rejected`
+  synchronously (it has fired when the write returns) with `{ configKey, attribute?, value,
+  reason?, kept, source }`, and **`setAttributes()` returns the rejections of its call** (`[]` when
+  everything applied; unknown keys included). Covers table inputs and the core-declared `motion` /
+  `responsive` / `responsiveCallback`; a value assigned before upgrade reports on the next
+  microtask. New exports `INPUT_REJECTED_EVENT`, type `InputRejection`; the CEM lists the event on
+  every component. Demo: `examples-inputs.html` IN02. SPEC §6.
 - **`toCssLength({ default?, allowNegative?, keywords? })`** — a converter for inputs that only end
   up in a style or a CSS variable: `"12px"`, `"2rem"`, `"50%"`, `calc(…)`, `var(…)`, validated with
   `CSS.supports` in the browser. A bare number attribute means pixels (`max-width="120"` →

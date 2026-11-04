@@ -115,3 +115,25 @@ test.describe('invalid values', () => {
     expect(ok).toMatchObject({ before: 5, after: 8, attr: '8' });
   });
 });
+
+test.describe('input-rejected (SPEC §6)', () => {
+  test('a refused write fires the event before it returns; setAttributes() returns the list', async ({ page }) => {
+    const out = await page.evaluate(() => {
+      const el = document.getElementById('el2') as HTMLElement & { count: number; setAttributes(v: object): unknown[] };
+      const seen: unknown[] = [];
+      el.addEventListener('input-rejected', (e) => seen.push({ ...(e as CustomEvent).detail }));
+      el.setAttribute('limit', 'abc');
+      const afterAttr = seen.length;
+      el.count = 99;
+      const afterProp = seen.length;
+      const returned = el.setAttributes({ count: 2, colour: 'red' });
+      return { seen, afterAttr, afterProp, returned: returned.map((r) => ({ ...(r as object) })), count: el.count };
+    });
+    expect(out.afterAttr).toBe(1);
+    expect(out.afterProp).toBe(2);
+    expect(out.seen[0]).toEqual({ configKey: 'limit', attribute: 'limit', value: 'abc', reason: 'expected an integer', kept: 50, source: 'attribute' });
+    expect(out.seen[1]).toEqual({ configKey: 'count', value: 99, kept: 5, source: 'property' });
+    expect(out.returned).toEqual([{ configKey: 'colour', value: 'red', reason: 'not an input of <fx-inputs>', kept: undefined, source: 'property' }]);
+    expect(out.count).toBe(2);
+  });
+});

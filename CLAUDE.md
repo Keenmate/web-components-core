@@ -186,7 +186,9 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
 - Invalid values follow one rule on both paths: warn and keep the previous value
   (the default before any valid one). Converters flag a bad attribute string via
   `fromAttribute`'s `reportInvalid` argument; a reflected input then writes its
-  current value back (SPEC §6).
+  current value back (SPEC §6). Every refusal also fires the core `input-rejected`
+  event, synchronously (`setAttributes()` returns them too) — a new rejection path
+  goes through `#reject()`, not a bare warning.
 - Docs/IntelliSense are **secondary** and fed from JSDoc comments (BlissFramework
   C-CEM-13 format), *not* from the parser structure. Converter introspection
   (e.g. `toEnum(...).values`) is optional and nothing depends on it.

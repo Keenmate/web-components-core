@@ -29,7 +29,7 @@ const inputMembers = (list: { name?: string; kind?: string; readonly?: boolean }
   (list ?? []).filter((m) => m.kind === 'field' && !m.readonly);
 
 describe('core-declared CEM entries', () => {
-  it('the plugin adds defer / theme-source / motion / responsive / responsiveCallback / ready to a class with an input table', () => {
+  it('the plugin adds defer / theme-source / motion / responsive / responsiveCallback / ready / input-rejected to a class with an input table', () => {
     const [decl] = runPlugin(
       `class Widget extends BlissElement {
         static inputs = [{ configKey: 'label', attribute: 'label', converter: toText() }];
@@ -38,7 +38,7 @@ describe('core-declared CEM entries', () => {
     );
     expect(names(decl!.attributes)).toEqual(['label', 'defer', 'theme-source', 'motion', 'responsive']);
     expect(names(inputMembers(decl!.members))).toEqual(['label', 'shouldDefer', 'themeSource', 'motion', 'responsive', 'responsiveCallback']);
-    expect(names(decl!.events)).toEqual(['ready']);
+    expect(names(decl!.events)).toEqual(['ready', 'input-rejected']);
     const responsive = decl!.members.find((m: { name: string }) => m.name === 'responsive');
     expect(responsive).toMatchObject({ attribute: 'responsive', type: { text: 'ResponsiveMap | null' } });
     expect(responsive.description).toMatch(/device class/i);
@@ -49,12 +49,12 @@ describe('core-declared CEM entries', () => {
     expect(defer).toMatchObject({ fieldName: 'shouldDefer', type: { text: 'boolean' } });
   });
 
-  it('an events-only class gets defer / theme-source / motion / ready but no responsive', () => {
+  it('an events-only class gets defer / theme-source / motion / ready / input-rejected but no responsive', () => {
     const [meta] = parse(`class Grid extends BlissElement { static events = [{ name: 'row-click' }]; }`);
     const out = withCoreDeclared(meta!);
     expect(names(out.attributes)).toEqual(['defer', 'theme-source', 'motion']);
     expect(names(inputMembers(out.members))).toEqual(['shouldDefer', 'themeSource', 'motion']);
-    expect(names(out.events)).toEqual(['row-click', 'ready']);
+    expect(names(out.events)).toEqual(['row-click', 'ready', 'input-rejected']);
   });
 
   it("a component's own declaration of the same name wins (no duplicate)", () => {

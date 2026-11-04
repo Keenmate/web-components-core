@@ -125,6 +125,14 @@ el.removeAttribute('count');     // → default 3</pre></div>
                 markup alone. Warnings go through the element's logger (<code>[CORE:ELEMENT] tag#id</code>, default level
                 <code>warn</code>); the log below captures them from the console.
             </p>
+            <p>
+                The page is told too: every refused write fires <strong><code>input-rejected</code></strong> (twin
+                <code>onInputRejected</code>, bubbles, not composed) <em>before the write returns</em>, with
+                <code>{ configKey, attribute?, value, reason?, kept, source }</code>, and <code>setAttributes()</code>
+                returns the list of what it refused. <code>setAttribute()</code> and a property assignment can't return
+                anything (the browser's API), so a framework wrapper listens for the event to surface the error or
+                revert its own bound value to <code>kept</code>.
+            </p>
             <div class="grid-2">
                 <div>
                     <core-demo-inputs id="in02-el" count="5"></core-demo-inputs>
@@ -138,6 +146,7 @@ el.removeAttribute('count');     // → default 3</pre></div>
                         <button data-op="prop-tags-string"><code>el.tags = 'a,b'</code> — not an array</button>
                         <button data-op="prop-label-empty"><code>el.label = ''</code></button>
                         <button data-op="attr-count-8"><code>setAttribute('count', '8')</code> — valid</button>
+                        <button data-op="set-attributes"><code>setAttributes({ count: 3, limit: 'x', colour: 'red' })</code></button>
                     </div>
                 </div>
                 <div>
@@ -154,7 +163,13 @@ const toPercent = toCustom((raw, reportInvalid) =&gt; {
 }, { validate: (v) =&gt; typeof v === 'number' &amp;&amp; v &gt;= 0 &amp;&amp; v &lt;= 100, toAttribute: String });
 
 el.setAttribute('count', 'abc'); // warn · count stays 5 · reflected → attribute rewritten to "5"
-el.count = 99;                   // warn · count stays 5 (max: 10)</pre></div>
+el.count = 99;                   // warn · count stays 5 (max: 10)
+
+// The page hears every refusal — synchronously, before the write returns:
+el.addEventListener('input-rejected', (e) =&gt; {
+  e.detail; // { configKey: 'count', value: 99, kept: 5, source: 'property' }
+});
+el.setAttributes({ count: 3, limit: 'x' }); // → [{ configKey: 'limit', value: 'x', kept: 50, … }]</pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -479,17 +494,33 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
             'prop-tags-string': { code: "el.tags = 'a,b'", key: 'tags', attr: 'tags', run: () => { el2.tags = 'a,b'; } },
             'prop-label-empty': { code: "el.label = ''", key: 'label', attr: 'label', run: () => { el2.label = ''; } },
             'attr-count-8': { code: "setAttribute('count', '8')", key: 'count', attr: 'count', run: () => el2.setAttribute('count', '8') },
+            'set-attributes': {
+                code: "setAttributes({ count: 3, limit: 'x', colour: 'red' })",
+                key: 'count',
+                attr: 'count',
+                run: () => { lastReturn2 = el2.setAttributes({ count: 3, limit: 'x', colour: 'red' }); },
+            },
         };
+        // What the page hears: the input-rejected event (detail = { configKey, attribute?, value, reason?, kept, source }).
+        let rejected2 = [];
+        let lastReturn2 = null;
+        el2.addEventListener('input-rejected', (e) => rejected2.push(e.detail));
+        const fmtRejection = (r) =>
+            `{ configKey: '${r.configKey}'${r.attribute ? `, attribute: '${r.attribute}'` : ''}, value: ${fmt(r.value)}${r.reason ? `, reason: '${r.reason}'` : ''}, kept: ${fmt(r.kept)}, source: '${r.source}' }`;
         $('in02-buttons').addEventListener('click', async (e) => {
             const btn = e.target.closest('button');
             if (!btn) return;
             const op = OPS2[btn.dataset.op];
             const before = el2[op.key];
+            rejected2 = [];
+            lastReturn2 = null;
             const warnings = captureWarnings(op.run);
             await el2.whenSettled();
             log(log2, `› <code>${esc(op.code)}</code>`, 'action');
             for (const w of warnings) log(log2, `  ⚠ ${esc(w)}`, 'warn');
-            if (!warnings.length) log(log2, '  ✓ accepted (no warning)', 'ok');
+            for (const r of rejected2) log(log2, `  ◆ input-rejected ${esc(fmtRejection(r))}`, 'info');
+            if (lastReturn2) log(log2, `  ↩ returned [${lastReturn2.map((r) => `'${r.configKey}'`).join(', ')}]`, 'info');
+            if (!warnings.length) log(log2, '  ✓ accepted (no warning, no event)', 'ok');
             log(log2, `  el.${op.key}: ${esc(fmt(before))} → <strong>${esc(fmt(el2[op.key]))}</strong> · attribute ${esc(fmtAttr(el2.getAttribute(op.attr)))}`, 'muted');
         });
 

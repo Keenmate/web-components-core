@@ -137,6 +137,29 @@ export const READY_ATTRIBUTE = 'ready';
 /** The core-provided event fired once the first build is live; twin `onReady`. */
 const READY_EVENT = 'ready';
 
+/** The core-provided event fired when a written value is rejected; twin `onInputRejected` (SPEC §6). */
+export const INPUT_REJECTED_EVENT = 'input-rejected';
+
+/**
+ * A value an element refused (SPEC §6): the detail of the `input-rejected` event and an
+ * entry of what {@link BlissElement.setAttributes} returns. The element warned and kept
+ * its previous value (`kept`, what the getter now returns).
+ */
+export interface InputRejection {
+  /** The input's `configKey` (or the key passed to `setAttributes()` when it names no input). */
+  configKey: string;
+  /** The attribute, when the value came in through one. */
+  attribute?: string;
+  /** The rejected value: the raw string on the attribute path, the assigned value otherwise. */
+  value: unknown;
+  /** Why, when the converter says (`'expected an integer'`). */
+  reason?: string;
+  /** The value the input kept. `undefined` for a key that names no input. */
+  kept: unknown;
+  /** Which entry point it came through. */
+  source: 'attribute' | 'property';
+}
+
 /**
  * The properties core declares on every element (besides the input table), in ONE
  * place: `observedAttributes`, {@link BlissElement.setAttributes} (by property or
@@ -285,6 +308,10 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   #failedPartial: Record<string, unknown> | null = null;
   /** `reinit()` / `update()` is running — a nested flush is a no-op (see #flush). */
   #isApplying = false;
+  /** True until the constructor returns: `input-rejected` waits for a microtask then (see #reject). */
+  #isConstructing = true;
+  /** Rejections of the running `setAttributes()` call, returned to its caller. */
+  #rejections: InputRejection[] | null = null;
   /** `connect()` ran and `disconnect()` hasn't yet — keeps the two balanced when a build throws. */
   #isActive = false;
   /**
@@ -372,6 +399,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       const raw = isAttributeRouted && attribute ? this.getAttribute(attribute) : null;
       if (attribute && raw !== null) this.attributeChangedCallback(attribute, null, raw);
     }
+    this.#isConstructing = false;
   }
 
   // ── lifecycle ──────────────────────────────────────────────────────────
@@ -410,7 +438,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       if (raw === null || isMotion(raw)) {
         this.#motion = raw ?? 'auto';
       } else {
-        this.#warn(`rejected invalid value for attribute ${MOTION_ATTRIBUTE}="${raw}" (expected ${MOTION_VALUES.join(' | ')}); keeping "${this.#motion}"`);
+        const reason = `expected ${MOTION_VALUES.join(' | ')}`;
+        this.#reject(
+          { configKey: 'motion', attribute: MOTION_ATTRIBUTE, value: raw, reason, kept: this.#motion, source: 'attribute' },
+          `rejected invalid value for attribute ${MOTION_ATTRIBUTE}="${raw}" (${reason}); keeping "${this.#motion}"`,
+        );
         this.#withoutReflect(MOTION_ATTRIBUTE, () => {
           if (this.#motion === 'auto') this.removeAttribute(MOTION_ATTRIBUTE);
           else this.setAttribute(MOTION_ATTRIBUTE, this.#motion);
@@ -437,7 +469,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
         reason ??= r;
       });
     } catch (err) {
-      this.#warn(`converter for "${def.configKey}" threw parsing attribute ${name}="${raw}"; keeping previous value`, err);
+      this.#reject(
+        { configKey: def.configKey, attribute: name, value: raw, reason: 'the converter threw', kept: this.#config[def.configKey], source: 'attribute' },
+        `converter for "${def.configKey}" threw parsing attribute ${name}="${raw}"; keeping previous value`,
+        err,
+      );
       this.#restoreAttribute(def);
       return;
     }
@@ -445,7 +481,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       // Same rule as the property path: warn, keep the current value (the default
       // before any valid value), stage nothing — and it isn't an explicit write, so
       // a batch value (getBatchValuesCallback) may still set this input.
-      this.#warn(
+      this.#reject(
+        { configKey: def.configKey, attribute: name, value: raw, reason, kept: this.#config[def.configKey], source: 'attribute' },
         `rejected invalid value for attribute ${name}="${raw}"${reason ? ` (${reason})` : ''}; keeping previous value`,
         this.#config[def.configKey],
       );
@@ -726,7 +763,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
 
   set responsive(value: ResponsiveMap | null | undefined) {
     if (!isResponsiveMapSetting(value)) {
-      this.#warn(`rejected invalid value for property "responsive" (${RESPONSIVE_MAP_EXPECTED}); keeping previous value`, value);
+      this.#reject(
+        { configKey: 'responsive', value, reason: `expected ${RESPONSIVE_MAP_EXPECTED}`, kept: this.responsive, source: 'property' },
+        `rejected invalid value for property "responsive" (${RESPONSIVE_MAP_EXPECTED}); keeping previous value`,
+        value,
+      );
       return;
     }
     this.#responsiveMap = value ?? undefined;
@@ -746,7 +787,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
 
   set responsiveCallback(value: ResponsiveCallback | null | undefined) {
     if (!isResponsiveCallbackSetting(value)) {
-      this.#warn(`rejected invalid value for property "responsiveCallback" (${RESPONSIVE_CALLBACK_EXPECTED}); keeping previous value`, value);
+      this.#reject(
+        { configKey: 'responsiveCallback', value, reason: `expected ${RESPONSIVE_CALLBACK_EXPECTED}`, kept: this.responsiveCallback, source: 'property' },
+        `rejected invalid value for property "responsiveCallback" (${RESPONSIVE_CALLBACK_EXPECTED}); keeping previous value`,
+        value,
+      );
       return;
     }
     this.#responsiveCallback = value ?? undefined;
@@ -762,30 +807,46 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * a `shouldDefer: false` release applies after the other keys. Any
    * other key is not an input of this element: it warns and is skipped — a
    * renamed or misspelled key must never be dropped silently.
+   *
+   * Returns what was refused — invalid values and unknown keys, one
+   * {@link InputRejection} each (`[]` when everything applied). Each also fires
+   * `input-rejected`, like any other write.
    */
-  setAttributes(values: Record<string, unknown>): void {
-    // A `shouldDefer: false` / `defer` release is applied LAST, so the build it
-    // triggers already has every other value of this call (one build, not two).
-    let release: [string, unknown] | undefined;
-    for (const [key, value] of Object.entries(values)) {
-      const def = this.#byConfigKey.get(key) ?? this.#byAttribute.get(key);
-      if (def) {
-        this.#setFromProperty(def, value);
-        continue;
+  setAttributes(values: Record<string, unknown>): InputRejection[] {
+    const outer = this.#rejections;
+    const rejections: InputRejection[] = [];
+    this.#rejections = rejections;
+    try {
+      // A `shouldDefer: false` / `defer` release is applied LAST, so the build it
+      // triggers already has every other value of this call (one build, not two).
+      let release: [string, unknown] | undefined;
+      for (const [key, value] of Object.entries(values)) {
+        const def = this.#byConfigKey.get(key) ?? this.#byAttribute.get(key);
+        if (def) {
+          this.#setFromProperty(def, value);
+          continue;
+        }
+        const coreProperty = CORE_PROPERTY_BY_KEY.get(key);
+        if (coreProperty === 'shouldDefer') {
+          release = [coreProperty, value];
+          continue;
+        }
+        if (coreProperty) {
+          (this as unknown as Record<string, unknown>)[coreProperty] = value;
+          continue;
+        }
+        this.#reject(
+          { configKey: key, value, reason: `not an input of <${this.localName}>`, kept: undefined, source: 'property' },
+          `setAttributes: "${key}" is not an input of <${this.localName}> (not a configKey or attribute); skipped`,
+          value,
+        );
       }
-      const coreProperty = CORE_PROPERTY_BY_KEY.get(key);
-      if (coreProperty === 'shouldDefer') {
-        release = [coreProperty, value];
-        continue;
-      }
-      if (coreProperty) {
-        (this as unknown as Record<string, unknown>)[coreProperty] = value;
-        continue;
-      }
-      this.#warn(`setAttributes: "${key}" is not an input of <${this.localName}> (not a configKey or attribute); skipped`, value);
+      if (release) (this as unknown as Record<string, unknown>)[release[0]] = release[1];
+    } finally {
+      this.#rejections = outer;
     }
-    if (release) (this as unknown as Record<string, unknown>)[release[0]] = release[1];
     this.#flushNow();
+    return rejections;
   }
 
   /** Run `fn` and coalesce every input change it makes into a single reinit/update. */
@@ -1182,7 +1243,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   set motion(value: Motion | null | undefined) {
     const next = value ?? 'auto';
     if (!isMotion(next)) {
-      this.#warn(`rejected invalid motion ${JSON.stringify(value)} (expected ${MOTION_VALUES.join(' | ')}); keeping "${this.#motion}"`);
+      const reason = `expected ${MOTION_VALUES.join(' | ')}`;
+      this.#reject(
+        { configKey: 'motion', value, reason, kept: this.#motion, source: 'property' },
+        `rejected invalid motion ${JSON.stringify(value)} (${reason}); keeping "${this.#motion}"`,
+      );
       return;
     }
     // Route through the attribute so both entry points share one path.
@@ -1675,6 +1740,23 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   }
 
   /**
+   * A written value was refused (SPEC §6): warn as before, hand it to the running
+   * `setAttributes()`, and fire `input-rejected` (+ `onInputRejected`) — synchronously, so
+   * `el.x = bad` has been reported when the assignment returns. A rejection during the
+   * constructor (a value assigned before upgrade) fires on the next microtask instead: the
+   * subclass's fields, `createController()` and listeners aren't there yet.
+   */
+  #reject(rejection: InputRejection, message: string, ...detail: unknown[]): void {
+    this.#warn(message, ...detail);
+    this.#rejections?.push(rejection);
+    const fire = (): void => {
+      this.emit(INPUT_REJECTED_EVENT as keyof TEvents & string, rejection as never);
+    };
+    if (this.#isConstructing) queueMicrotask(fire);
+    else fire();
+  }
+
+  /**
    * Take a value assigned before upgrade (an own data property shadowing the
    * accessor about to be installed) off the instance, so it can be re-applied
    * through that accessor.
@@ -1763,7 +1845,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     }
     const resolved = resolveFromProperty(def, value);
     if (!resolved) {
-      this.#warn(`rejected invalid value for property "${def.configKey}"; keeping previous value`, value);
+      this.#reject(
+        { configKey: def.configKey, value, kept: this.#config[def.configKey], source: 'property' },
+        `rejected invalid value for property "${def.configKey}"; keeping previous value`,
+        value,
+      );
       return false;
     }
     this.#explicit.add(def.configKey);
@@ -1898,7 +1984,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       isInvalid = true;
     });
     if (isInvalid) {
-      this.#warn(`rejected invalid value for attribute ${RESPONSIVE_ATTRIBUTE}="${raw}" (a JSON object { "device"?, "breakpoint"? }); keeping previous value`);
+      const reason = 'expected a JSON object { "device"?, "breakpoint"? }';
+      this.#reject(
+        { configKey: 'responsive', attribute: RESPONSIVE_ATTRIBUTE, value: raw, reason, kept: this.responsive, source: 'attribute' },
+        `rejected invalid value for attribute ${RESPONSIVE_ATTRIBUTE}="${raw}" (a JSON object { "device"?, "breakpoint"? }); keeping previous value`,
+      );
       return;
     }
     this.responsive = parsed ?? null;

@@ -37,6 +37,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | Invalid property value (toInt range, toEnum): warn, keep | ✓ | `inputs.spec.ts` | `inputs.html` |
 | Valid write after invalid ones is accepted silently | ✓ | `inputs.spec.ts` | `inputs.html` |
 | Invalid value BEFORE any valid one keeps the default | ✗ | | |
+| `input-rejected` fires before the write returns (attribute + property); `setAttributes()` returns the list | ✓ | `inputs.spec.ts` | `inputs.html` |
 
 ## 2. Reactivity & batching
 

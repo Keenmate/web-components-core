@@ -369,6 +369,21 @@ other line. *(Amended: these warnings used to bypass the loggers via a direct
 `console.warn`; that exception was revoked — core has no direct `console` calls,
 §12.1.)*
 
+**The page is told: `input-rejected`.** `setAttribute()` and a property assignment
+can't return anything (the browser's API), so every refused write also fires the
+core event **`input-rejected`** (twin `onInputRejected`; bubbles, not composed),
+synchronously — it has fired when the write returns — with an `InputRejection`
+detail `{ configKey, attribute?, value, reason?, kept, source: 'attribute' |
+'property' }`: `value` is the raw string on the attribute path, `kept` what the
+getter now returns, `reason` the converter's `reportInvalid` text (attribute path;
+`validate()` only answers yes / no). It covers table inputs, the core-declared
+`motion` / `responsive` / `responsiveCallback`, and unknown `setAttributes()` keys
+(`kept: undefined`). **`setAttributes()` returns the rejections of its call**
+(`[]` when everything applied). A rejection during the constructor (a value assigned
+before upgrade) fires on the next microtask. Not reported here: a bad value from a
+responsive rule or a `getBatchValuesCallback` (page / component configuration, not
+a write — they keep their warning only).
+
 ### 6.1 The null-clear contract (`BlissElement` ↔ engine)
 
 The `partial` handed to `update()`, and the config an engine receives, carry

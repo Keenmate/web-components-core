@@ -25,6 +25,9 @@ with every API change in this one release so each component migrates once.
 - **Renames (BREAKING).** Notification hooks are `on*` (`onClose`, `onPlaced`, `onDrift`, …),
   `createMenuDivider()`, `openMenu({ labels: { loading } })`, `toEnum({ isNullable })`, the page hook
   `renderLoadingCallback`, and the default loader class `<prefix>__loader`.
+- **Refused values are reported.** Every invalid attribute / property write fires `input-rejected`
+  (`{ configKey, value, reason?, kept, … }`) before it returns, and `setAttributes()` returns the list,
+  so a framework wrapper can surface the error instead of only a console warning.
 - **Safer inputs.** Strict number parsing, `el.x = undefined` resets, `toText` accepts `''`, new
   `toCssLength()`; `wrapRanges()` escapes by default, with `highlightHtml()` for trusted labels.
 
@@ -156,6 +159,18 @@ after `createElement` / append / the import still catches it. Latched — a late
 
 ```css
 x-comp[defer]:not([ready]) { min-height: 2.5rem; visibility: hidden; }
+```
+
+**Refused values are reported** (every component): an invalid attribute or property
+value warns and keeps the previous value, and fires **`input-rejected`** (+
+`onInputRejected`) before the write returns, so a framework wrapper can surface it or
+revert its bound value. `setAttributes()` returns the same list:
+
+```js
+el.addEventListener('input-rejected', (e) => {
+  e.detail; // { configKey: 'limit', attribute: 'limit', value: 'abc', reason: 'expected an integer', kept: 50, source: 'attribute' }
+});
+const rejected = el.setAttributes({ limit: 'x', colour: 'red' }); // [{ configKey: 'limit', … }, { configKey: 'colour', … }]
 ```
 
 **Disabled**: core implements `formDisabledCallback` for form-associated elements.
@@ -654,7 +669,7 @@ explain the main ones; [SPEC](docs/SPEC.md) has the design notes.
 |---|---|
 | Converters | `toBool`, `toBytes`, `toCssLength`, `toCustom`, `toEnum`, `toFloat`, `toFunction`, `toInt`, `toList`, `toObject`, `toObjectArray`, `toText`, `toValue` |
 | Input plumbing (engine / test code) | `resolveFromAttribute` / `resolveFromProperty` (run one value through a row's converter), `collectEngineConfig` (config for an engine, keeping meaningful `null`s), `deriveClearableKeys` / `isClearableInput` / `isClearableConverter` (which inputs a `null` clears) |
-| Element | `BlissElement`, `define(tag, Class)` (define once), `dispatch(target, name, detail)` (the free event helper under `emit()`), `defaultEventProperty(name)` (`'node-select'` → `'onNodeSelect'`), `withComponentContext(detail, controller, element, extras?)` / `COMPONENT_CONTEXT_KEYS` (the non-enumerable `controller` / `element`); `normalizeEventDefs` is internal plumbing |
+| Element | `BlissElement`, `INPUT_REJECTED_EVENT` (`'input-rejected'`, a refused write), `define(tag, Class)` (define once), `dispatch(target, name, detail)` (the free event helper under `emit()`), `defaultEventProperty(name)` (`'node-select'` → `'onNodeSelect'`), `withComponentContext(detail, controller, element, extras?)` / `COMPONENT_CONTEXT_KEYS` (the non-enumerable `controller` / `element`); `normalizeEventDefs` is internal plumbing |
 | Before-callbacks | `runBeforeCallback` (async; `false` cancels, a value replaces), `runBeforeCallbackSync`, `runBeforeCallbackEager` (stays synchronous for a sync hook) |
 | Registration | `registerComponent(tag, Class, opts)` (`window.components[tag]`), `getInstances(tag)`, `getRegisteredTags()` — page-wide, across copies of core |
 | DOM | `adoptStyles(root, ...css)` / `createStyleSlot(root)` (style injection), `renderLoader(host, container, context, opts)` / `publishLoaderHook()` (loading states), `scrollIntoContainer` / `findScrollContainer` (container scroll), `createMicrotaskScheduler()` (coalesce a burst into one run), `resolveEnumAttribute(raw, values, fallback)` |
