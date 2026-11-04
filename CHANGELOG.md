@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ExtractedType` → **`ExtractedTypeAnnotation`**. Components that re-export `PointerType`
   (multiselect, daterangepicker) rename the re-export. No alias (v2 rule).
 
+### Fixed
+
+- **`/menu` toggled-item colour falls back to `--base-primary-color`.** It read
+  `--base-accent-color`, renamed in base-css-variables 2.0.0, so the base fallback never
+  resolved and `check:vars` in components flagged it.
+
 ## [1.0.0-rc18] - 2026-11-04
 
 ### Changed — BREAKING
