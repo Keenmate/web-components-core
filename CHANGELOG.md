@@ -349,6 +349,15 @@ brief); no compatibility aliases (v2 rule).
   (`$base-breakpoint-*`) so pure-css's `@media` rules agree.
 - `src/positioning/CLAUDE.md`: pure-css ports `anchor.ts` / `containing-block.ts`; flag changes
   as "pure-css port affected".
+- `examples-motion.html`: MO02 rebuilt as "closest wins" with a layer for each of page level,
+  author `<html data-motion>`, section, inner box and the element's own `motion`. A live table
+  shows each component's effective level, which layer decided it and the measured speed, plus the
+  `data-motion` attributes core wrote. An OS reduced-motion callout above the first demo shows the
+  live status and how to override it in DevTools.
+- `examples-page.html`: the logging demo covers the coalescing levels (`resetLogging()` per page,
+  type and element; `A.enableLogging('error')`).
+- SPEC §6 (an equal write still dispatches), §12.5 (`emit()` copies the detail), §12.13
+  (arrow keys skip disabled items).
 
 ## [1.0.0-rc17] - 2026-11-02
 
