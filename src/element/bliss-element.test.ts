@@ -452,6 +452,22 @@ describe('BlissElement batching', () => {
     expect(el.updates[0]).toEqual({ placeholder: 'x' });
   });
 
+  it('an equal write still dispatches — re-setting a value re-triggers it (E-13, by design)', () => {
+    const el = new TestElement();
+    document.body.appendChild(el);
+    const view = el as unknown as { placeholder: string; optionHeight: number };
+    el.updates.length = 0;
+    const reinits = el.reinits;
+
+    view.placeholder = view.placeholder;
+    el.flush();
+    expect(el.updates).toEqual([{ placeholder: 'Search...' }]);
+
+    view.optionHeight = view.optionHeight;
+    el.flush();
+    expect(el.reinits).toBe(reinits + 1);
+  });
+
   it('flush() is a no-op when nothing is pending', () => {
     const el = new TestElement();
     document.body.appendChild(el);

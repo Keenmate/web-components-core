@@ -303,6 +303,12 @@ properties/callbacks — so everything is reactive by construction:
   batch), otherwise `update(partial)` with just the changed `update` keys.
   A change is always staged into `config` before either hook fires, and
   `on:'none'` inputs are stored without firing either hook.
+- **An equal write still dispatches** (review E-13, by design). `el.x = el.x`, or an attribute
+  set to the value it already has, runs the pipeline like any other accepted write: `reinit()`
+  for an `on:'reinit'` input, `update()` with the key for an `on:'update'` one. Re-setting a value
+  is the way to re-trigger it (`el.initialDate = sameDate` jumps back after the user navigated
+  away; a mutated array re-assigned refreshes). Frameworks already skip unchanged props, so this
+  costs nothing in practice. A component that wants to skip an equal value compares in `update()`.
 - **Reactivity contract** declared per input (`on`) and enforced
   centrally — no input can be added that forgets to parse, validate, or
   react.
