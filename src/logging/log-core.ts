@@ -155,23 +155,29 @@ function realMethod(methodName: string): LogFn {
 
 const defaultMethodFactory: MethodFactory = (methodName) => realMethod(methodName);
 
+/** Level `enableLogging()` applies when called with no argument (element, type and page alike). */
+export const DEFAULT_ENABLED_LEVEL: LogLevelDesc = 'debug';
+
+/**
+ * The numeric rank (0 trace … 5 silent) of a level given as a name (any case) or a rank, or
+ * `undefined` when it isn't one. The one level parser in core (review L-17): `isLogLevel`,
+ * `setLevel()`, instance loggers and `isLoggingEnabled` all go through it.
+ */
+export function toLogLevelNumber(input: unknown): number | undefined {
+    if (typeof input === 'string') return (LOG_LEVELS as Record<string, number>)[input.toUpperCase()];
+    return typeof input === 'number' && Number.isInteger(input) && input >= 0 && input <= LOG_LEVELS.SILENT ? input : undefined;
+}
+
 /** Whether `input` is a level `setLevel()` accepts (a level name, any case, or a rank 0–5). */
 export function isLogLevel(input: unknown): input is LogLevelDesc {
-    if (typeof input === 'string') return (LOG_LEVELS as Record<string, number>)[input.toUpperCase()] !== undefined;
-    return typeof input === 'number' && input >= 0 && input <= LOG_LEVELS.SILENT;
+    return toLogLevelNumber(input) !== undefined;
 }
 
 /** Coerce a name/number level descriptor to its numeric rank, or throw. */
 function normalizeLevel(input: LogLevelDesc): number {
-    let level: LogLevelDesc = input;
-    const table = LOG_LEVELS as Record<string, number>;
-    if (typeof level === 'string' && table[level.toUpperCase()] !== undefined) {
-        level = table[level.toUpperCase()]!;
-    }
-    if (typeof level === 'number' && level >= 0 && level <= LOG_LEVELS.SILENT) {
-        return level;
-    }
-    throw new TypeError(`setLevel() called with an invalid level: ${String(input)}`);
+    const level = toLogLevelNumber(input);
+    if (level === undefined) throw new TypeError(`setLevel() called with an invalid level: ${String(input)}`);
+    return level;
 }
 
 // ── logger ───────────────────────────────────────────────────────────────────

@@ -143,7 +143,7 @@ export { getGlobalLogging } from './logging/global-logging.js';
 export type { GlobalLoggingControls } from './logging/global-logging.js';
 export { coreLogging, CORE_LOG_CATEGORIES } from './logging/element-logger.js';
 export type { CoreLogCategory } from './logging/element-logger.js';
-export { setLogPersistKeyPrefix, getLogPersistKeyPrefix, isLogLevel, LOG_LEVELS } from './logging/log-core.js';
+export { setLogPersistKeyPrefix, getLogPersistKeyPrefix, isLogLevel, toLogLevelNumber, LOG_LEVELS } from './logging/log-core.js';
 export type { LogLevelName } from './logging/log-core.js';
 export { createPerfLogger } from './logging/perf-logger.js';
 export type { PerfLogger } from './logging/perf-logger.js';

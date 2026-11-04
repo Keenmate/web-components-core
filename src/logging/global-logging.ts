@@ -21,7 +21,7 @@
  * ONE controls object. A bundle from an older copy of core (no `setPageLevel`) still gets
  * the page level pushed as its level, the way it always did.
  */
-import { isLogLevel, type LogLevelDesc } from './log-core.js';
+import { DEFAULT_ENABLED_LEVEL, isLogLevel, type LogLevelDesc } from './log-core.js';
 import { sharedState } from '../global/shared-state.js';
 
 /** The page-wide controls — same method names as a component's `logging` entry. */
@@ -75,7 +75,7 @@ function createControls(s: GlobalLoggingState): GlobalLoggingControls {
     for (const bundle of s.bundles) applyTo(bundle, level);
   };
   return {
-    enableLogging: (level = 'debug') => applyAll(level),
+    enableLogging: (level = DEFAULT_ENABLED_LEVEL) => applyAll(level),
     disableLogging: () => applyAll('silent'),
     setLogLevel: (level) => applyAll(level),
     resetLogging: () => applyAll(undefined),

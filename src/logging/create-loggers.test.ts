@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getLogger, LOG_LEVELS } from './log-core.js';
+import { getLogger, isLogLevel, LOG_LEVELS, toLogLevelNumber } from './log-core.js';
 import { DEFAULT_CATEGORIES, createLoggers, type LogLevelDesc } from './create-loggers.js';
 
 afterEach(() => {
@@ -113,5 +113,22 @@ describe('createLoggers', () => {
     const args = spy.mock.calls[0]!;
     expect(args[0]).toBe('%c[NSIDEMP:INIT]'); // single prefix, not doubled
     expect(args[1]).toContain('color:');
+  });
+});
+
+// Review L-17: one level parser for every caller.
+describe('toLogLevelNumber / isLogLevel', () => {
+  it('reads names in any case and whole ranks 0-5; anything else is undefined', () => {
+    expect(toLogLevelNumber('debug')).toBe(LOG_LEVELS.DEBUG);
+    expect(toLogLevelNumber('SILENT')).toBe(LOG_LEVELS.SILENT);
+    expect(toLogLevelNumber(4)).toBe(4);
+    for (const bad of ['verbose', 2.5, -1, 6, null, undefined, {}]) {
+      expect(toLogLevelNumber(bad)).toBeUndefined();
+      expect(isLogLevel(bad)).toBe(false);
+    }
+  });
+
+  it('setLevel() rejects what the parser rejects', () => {
+    expect(() => getLogger('L17:CAT').setLevel(2.5 as never, false)).toThrow(/invalid level/);
   });
 });

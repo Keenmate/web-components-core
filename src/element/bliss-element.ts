@@ -67,7 +67,7 @@ import { trackInstance, untrackInstance } from '../global/instances.js';
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { coreLog, getElementLoggers, setInstanceLogLevelSource } from '../logging/element-logger.js';
 import type { InstanceLogger, LogLevelDesc } from '../logging/create-loggers.js';
-import { LOG_LEVELS, isLogLevel } from '../logging/log-core.js';
+import { DEFAULT_ENABLED_LEVEL, LOG_LEVELS, isLogLevel, toLogLevelNumber } from '../logging/log-core.js';
 import { dispatch, type DispatchOptions } from './dispatch.js';
 import { withComponentContext, type ComponentContext, type EmitDetail } from './context.js';
 import {
@@ -946,7 +946,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * page → `warn`). The seam a Ctrl-Alt-C overlay calls after the user picks one instance.
    * An invalid level warns and changes nothing.
    */
-  enableLogging(level: LogLevelDesc = 'debug'): void {
+  enableLogging(level: LogLevelDesc = DEFAULT_ENABLED_LEVEL): void {
     if (!isLogLevel(level)) {
       this.#warn(`enableLogging: invalid level "${String(level)}" (expected trace | debug | info | warn | error | silent)`);
       return;
@@ -966,10 +966,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
 
   /** Whether this element has its own log level that prints something (set, and not `silent`). */
   get isLoggingEnabled(): boolean {
-    const level = this.#logLevel;
-    if (level == null) return false;
-    const rank = typeof level === 'number' ? level : LOG_LEVELS[level.toUpperCase() as keyof typeof LOG_LEVELS];
-    return rank !== LOG_LEVELS.SILENT;
+    const rank = toLogLevelNumber(this.#logLevel);
+    return rank !== undefined && rank !== LOG_LEVELS.SILENT;
   }
 
   /**

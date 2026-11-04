@@ -10,7 +10,7 @@
  * for why. Consumers depend only on the {@link Logger} / {@link LogLevelDesc}
  * surface below, never on the engine internals.
  */
-import { LOG_LEVELS, getLogger, isLogLevel, type LogLevelDesc, type CoreLogger } from './log-core.js';
+import { DEFAULT_ENABLED_LEVEL, LOG_LEVELS, getLogger, isLogLevel, toLogLevelNumber, type LogLevelDesc, type CoreLogger } from './log-core.js';
 import { registerGlobalLoggingTarget } from './global-logging.js';
 
 /**
@@ -38,8 +38,7 @@ export type { LogLevelDesc };
 /** Baseline categories. A component uses these as-is, redefines, or extends them. */
 export const DEFAULT_CATEGORIES = ['INIT', 'DATA', 'UI'] as const;
 
-/** Level `enableLogging()` applies when called with no argument. */
-export const DEFAULT_ENABLED_LEVEL: LogLevelDesc = 'debug';
+export { DEFAULT_ENABLED_LEVEL };
 
 /**
  * The level used when no level is set anywhere — element, component type (category) or
@@ -106,12 +105,6 @@ interface CategoryMeta {
   logger: CoreLogger;
 }
 
-/** Resolve a level descriptor (name or number) to its numeric value. */
-function toLevelNum(desc: LogLevelDesc): number {
-  if (typeof desc === 'number') return desc;
-  return LOG_LEVELS[desc.toUpperCase() as keyof typeof LOG_LEVELS] ?? LOG_LEVELS.SILENT;
-}
-
 /**
  * [method, its level, the `console` method to emit through]. `trace` / `debug` go through
  * `console.log`, like the type loggers (log-core): Chrome hides `console.debug` ("Verbose")
@@ -141,7 +134,7 @@ function makeInstanceLogger(meta: CategoryMeta, instanceId: InstanceLabel, getOv
     out[name] = (...args: unknown[]): void => {
       const override = getOverride();
       // The closest level that is set: the element's own, else the category's effective level.
-      const effective = override != null && isLogLevel(override) ? toLevelNum(override) : meta.logger.getLevel();
+      const effective = toLogLevelNumber(override) ?? meta.logger.getLevel();
       if (methodLevel < effective) return;
       // Looked up per call (not bound once), so a console replaced later — a test
       // spy, a log collector — still receives the line.

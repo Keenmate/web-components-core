@@ -349,6 +349,9 @@ brief); no compatibility aliases (v2 rule).
 
 ### Internal
 
+- One log-level parser, `toLogLevelNumber()` (exported): `isLogLevel`, `setLevel()`, instance
+  loggers and `isLoggingEnabled` all use it; a fractional rank (`2.5`) is no longer a level.
+  `DEFAULT_ENABLED_LEVEL` lives in `log-core` and is used by every `enableLogging()`. Review L-17.
 - New `sharedState(key, init)` (`src/global/shared-state.ts`): the one way to keep page-wide state
   on `globalThis[Symbol.for(key)]`. Every existing shared state moved onto it with its key
   unchanged (`km-scroll-lock`, `km-overlay-all-groups` and the `@keenmate/web-components-core:*`
