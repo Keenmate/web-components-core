@@ -70,12 +70,27 @@ export function matchesText(text: string, term: string, match: SearchMatch): boo
   }
 }
 
-/** Ranges `[start, end)` of every non-empty `re` match in `text`, regardless of its flags. */
+const isHighSurrogate = (code: number): boolean => code >= 0xd800 && code <= 0xdbff;
+const isLowSurrogate = (code: number): boolean => code >= 0xdc00 && code <= 0xdfff;
+
+/**
+ * Ranges `[start, end)` of every non-empty `re` match in `text`, regardless of its flags.
+ * Typed patterns have no `u` flag (multiselect parity), so `.` can match half of a surrogate
+ * pair; a boundary inside a pair is widened to the whole character (an emoji is never split
+ * into two U+FFFD), and ranges that then overlap are merged (review A-12).
+ */
 export function findRegexMatches(text: string, re: RegExp): SearchRange[] {
   const global = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');
   const ranges: SearchRange[] = [];
   for (const m of text.matchAll(global)) {
-    if (m[0].length > 0) ranges.push([m.index, m.index + m[0].length]);
+    if (m[0].length === 0) continue;
+    let start = m.index;
+    let end = m.index + m[0].length;
+    if (start > 0 && isLowSurrogate(text.charCodeAt(start)) && isHighSurrogate(text.charCodeAt(start - 1))) start--;
+    if (end < text.length && isHighSurrogate(text.charCodeAt(end - 1)) && isLowSurrogate(text.charCodeAt(end))) end++;
+    const prev = ranges[ranges.length - 1];
+    if (prev && start < prev[1]) prev[1] = Math.max(prev[1], end);
+    else ranges.push([start, end]);
   }
   return ranges;
 }

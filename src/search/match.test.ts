@@ -54,6 +54,14 @@ describe('findRegexMatches', () => {
     expect(findRegexMatches('abc', /x*/)).toEqual([]);
     expect(findRegexMatches('abc', /^/)).toEqual([]);
   });
+
+  it('never splits a surrogate pair: boundaries widen, overlapping ranges merge (A-12)', () => {
+    const text = 'a😀b';
+    expect(findRegexMatches(text, /./)).toEqual([[0, 1], [1, 3], [3, 4]]);
+    expect(findRegexMatches(text, /\uDE00b/)).toEqual([[1, 4]]); // starts on the low half
+    expect(findRegexMatches(text, /a\uD83D/)).toEqual([[0, 3]]); // ends on the high half
+    expect(findRegexMatches('\uDE00x', /./)).toEqual([[0, 1], [1, 2]]); // a lone half stays as is
+  });
 });
 
 describe('statelessRegex', () => {

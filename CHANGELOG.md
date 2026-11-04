@@ -101,6 +101,10 @@ brief); no compatibility aliases (v2 rule).
 
 ### Fixed
 
+- **Regex highlights no longer split an emoji.** Typed patterns have no `u` flag, so `.` could
+  match half of a surrogate pair and the highlight rendered as two `�`. `findRegexMatches` now
+  widens a boundary inside a pair to the whole character and merges ranges that then overlap.
+  Pattern meaning is unchanged. Review A-12.
 - **`dismissAllOverlays()` now reaches every component.** `ALL_GROUPS` was a plain `Symbol()`, so
   each bundled copy of core had its own wildcard and a dismiss from one component (e.g. the
   command palette) didn't close another's dropdown. It is now `Symbol.for('km-overlay-all-groups')`.
