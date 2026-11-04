@@ -140,8 +140,8 @@ interface BreakpointState {
   /** Breakpoints as `[name, maxWidth]` sorted ascending by width; last entry is the catch-all. */
   breakpoints: Array<[string, number]>;
   /**
-   * The lines are settled: the base tokens were read (first browser snapshot) or
-   * {@link configureBreakpoints} set them explicitly — which always wins over the tokens.
+   * The lines are settled: the base tokens were found, the page finished loading without them
+   * (defaults kept), or {@link configureBreakpoints} set them explicitly — which always wins.
    */
   isSettled: boolean;
 }
@@ -174,31 +174,67 @@ function parsePx(raw: string | undefined | null): number | undefined {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
+/** This copy is waiting for the window `load` event to take its final token read. */
+let isWaitingForLoad = false;
+
 /**
- * Read `--base-breakpoint-mobile` / `--base-breakpoint-tablet` from the root
- * element's computed style (browser only), once, on the first snapshot. Absent or
- * unparsable tokens keep the {@link DEFAULT_BREAKPOINTS}; an explicit
+ * Read `--base-breakpoint-mobile` / `--base-breakpoint-tablet` from the root element's
+ * computed style (browser only). Found → applied and settled. Not found while the page is
+ * still loading → kept on the defaults and read again on the next snapshot, and one final
+ * time on the window `load` event, then settled whatever it finds (review V-13: a stylesheet
+ * injected by JS or still downloading used to lock in the defaults for good). Not found
+ * after load → defaults, settled. Bounded: nothing is read after the page has loaded.
+ * Absent or unparsable tokens keep the {@link DEFAULT_BREAKPOINTS}; an explicit
  * {@link configureBreakpoints} call is never overridden.
  */
 function readBreakpointTokens(): void {
   const state = breakpointState();
   if (state.isSettled) return;
   if (typeof document === 'undefined' || !document.documentElement || typeof getComputedStyle !== 'function') return;
-  state.isSettled = true;
+  if (applyBreakpointTokens(state)) return;
+  if (document.readyState === 'complete' || typeof window === 'undefined' || typeof window.addEventListener !== 'function') {
+    state.isSettled = true;
+    return;
+  }
+  if (isWaitingForLoad) return;
+  isWaitingForLoad = true;
+  window.addEventListener(
+    'load',
+    () => {
+      isWaitingForLoad = false;
+      const s = breakpointState();
+      if (s.isSettled) return;
+      const found = applyBreakpointTokens(s);
+      s.isSettled = true;
+      if (!found) return;
+      // The lines moved after snapshots were taken: re-resolve here and in every other copy.
+      if (subscriberCount() > 0) recompute();
+      if (typeof CustomEvent === 'function') {
+        document.dispatchEvent(new CustomEvent(BREAKPOINTS_CHANGE_EVENT, { detail: { source: COPY_ID } }));
+      }
+    },
+    { once: true },
+  );
+}
+
+/** Read the tokens once; when either is set, apply it and settle. Returns whether one was found. */
+function applyBreakpointTokens(state: BreakpointState): boolean {
   let style: CSSStyleDeclaration;
   try {
     style = getComputedStyle(document.documentElement);
   } catch {
-    return;
+    return false;
   }
   const mobile = parsePx(style.getPropertyValue(BREAKPOINT_TOKENS.mobile));
   const tablet = parsePx(style.getPropertyValue(BREAKPOINT_TOKENS.tablet));
-  if (mobile === undefined && tablet === undefined) return;
+  if (mobile === undefined && tablet === undefined) return false;
   state.breakpoints = sortBreakpoints({
     ...DEFAULT_BREAKPOINTS,
     ...(mobile !== undefined ? { mobile } : {}),
     ...(tablet !== undefined ? { tablet } : {}),
   });
+  state.isSettled = true;
+  return true;
 }
 
 /** Discrete-change subscribers: notified only when a *category* field flips (see {@link environmentEqual}). */
@@ -579,6 +615,7 @@ export function __viewportSubscriberCount(): number {
 
 /** Test-only: detach listeners and reset breakpoints + cache to defaults. */
 export function __resetEnvironment(): void {
+  isWaitingForLoad = false;
   subscribers.clear();
   viewportSubscribers.clear();
   stop();

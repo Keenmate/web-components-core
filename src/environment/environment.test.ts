@@ -184,12 +184,58 @@ describe('breakpoints', () => {
       expect(getEnvironment().breakpoint).toBe('tablet'); // unitless 1200 accepted
     });
 
-    it('reads the tokens once — a later change is not picked up', () => {
+    it('after the page has loaded: absent tokens settle on the defaults, a later change is not picked up', () => {
       installMatchMedia({ ...DESKTOP });
       setWidth(700);
       expect(getEnvironment().breakpoint).toBe('mobile');
       root().setProperty('--base-breakpoint-mobile', '600px');
       expect(getEnvironment().breakpoint).toBe('mobile');
+    });
+
+    // Review V-13: CSS applied late during page load (Vite dev injects it from JS) used to lock in the defaults.
+    describe('while the page is still loading', () => {
+      let readyState: ReturnType<typeof vi.spyOn>;
+      beforeEach(() => {
+        readyState = vi.spyOn(document, 'readyState', 'get').mockReturnValue('loading');
+      });
+      afterEach(() => readyState.mockRestore());
+
+      it('keeps re-reading until the tokens are found', () => {
+        installMatchMedia({ ...DESKTOP });
+        setWidth(700);
+        expect(getEnvironment().breakpoint).toBe('mobile'); // no tokens yet → defaults
+        root().setProperty('--base-breakpoint-mobile', '600px');
+        expect(getEnvironment().breakpoint).toBe('tablet'); // found → applied and settled
+        root().setProperty('--base-breakpoint-mobile', '650px');
+        setWidth(620);
+        expect(getEnvironment().breakpoint).toBe('tablet'); // settled: 600 stays
+      });
+
+      it('takes a final read on load, notifies subscribers when the bucket moved, then stops', () => {
+        installMatchMedia({ ...DESKTOP });
+        setWidth(700);
+        const seen: string[] = [];
+        const unsub = observeEnvironment((env) => seen.push(env.breakpoint));
+        root().setProperty('--base-breakpoint-mobile', '600px'); // arrives, but nothing re-reads yet
+        readyState.mockReturnValue('complete');
+        window.dispatchEvent(new Event('load'));
+        expect(seen).toEqual(['mobile', 'tablet']);
+        root().setProperty('--base-breakpoint-mobile', '800px');
+        setWidth(701);
+        window.dispatchEvent(new Event('resize'));
+        expect(getEnvironment().breakpoint).toBe('tablet'); // locked after load
+        unsub();
+      });
+
+      it('no tokens by load → the defaults, settled', () => {
+        installMatchMedia({ ...DESKTOP });
+        setWidth(700);
+        getEnvironment();
+        readyState.mockReturnValue('complete');
+        window.dispatchEvent(new Event('load'));
+        root().setProperty('--base-breakpoint-mobile', '600px');
+        expect(getEnvironment().breakpoint).toBe('mobile');
+      });
     });
 
     it('configureBreakpoints() wins over the tokens', () => {

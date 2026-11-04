@@ -133,6 +133,11 @@ brief); no compatibility aliases (v2 rule).
 
 ### Fixed
 
+- **Breakpoint tokens applied late are picked up.** The `--base-breakpoint-*` tokens were read
+  once, on the first snapshot; CSS injected from JS (Vite dev) or still downloading locked in
+  the defaults for the session. They are now re-read while missing and the page is still
+  loading, plus one final read on the window `load` event (subscribers are notified if the
+  bucket moved), then settled. Nothing is read after load. Review V-13.
 - **A soft keyboard no longer turns a tablet into a phone.** `classifyDevice` used the shorter
   viewport side, and where the keyboard shrinks the viewport (Firefox Android, older Chrome,
   `interactive-widget=resizes-content`) a landscape tablet read as `mobile`, so an `auto`

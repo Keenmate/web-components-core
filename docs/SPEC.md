@@ -1294,8 +1294,11 @@ last. `getEnvironment()` is the synchronous companion read (for `reinit()` /
 Infinity }` (pure-css `$mobile-breakpoint` / `$tablet-breakpoint`; was 640 before
 rc15). On the first browser snapshot the base tokens `--base-breakpoint-mobile` /
 `--base-breakpoint-tablet` (read from `getComputedStyle(document.documentElement)`,
-`768px` or unitless; absent / unparsable → the default) move those two lines, read
-once. `configureBreakpoints(map)` redefines the buckets globally and always wins
+`768px` or unitless; absent / unparsable → the default) move those two lines. They are
+settled once found; while absent and the page is still loading they are re-read on each
+snapshot and one final time on the window `load` event (subscribers notified if the bucket
+moved), then settled — nothing is read after load (rc19, review V-13: CSS injected by JS, as
+in Vite dev, used to lock in the defaults). `configureBreakpoints(map)` redefines the buckets globally and always wins
 over the tokens. Overriding the tokens (or calling `configureBreakpoints`) at runtime moves
 components' `env.breakpoint` only — pure-css's compiled `@media` lines stay put. For the page
 and the components to agree, change the breakpoints at compile time (SCSS
@@ -1456,7 +1459,7 @@ overlay state can't live in module variables:
 - `ALL_GROUPS` (the `dismissAllOverlays()` wildcard of `km-overlay-activate`) is
   `Symbol.for('km-overlay-all-groups')`, so a dismiss from one component's copy
   reaches every other copy and outside listeners can compare against it;
-- the breakpoint table (`configureBreakpoints()`, the tokens read once) lives on
+- the breakpoint table (`configureBreakpoints()`, the tokens settled by page load) lives on
   `globalThis[Symbol.for('@keenmate/web-components-core:breakpoints')]`, and
   `configureBreakpoints()` fires `km-breakpoints-change` (`BREAKPOINTS_CHANGE_EVENT`) on
   `document` so the other copies recompute their cached snapshot.
