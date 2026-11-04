@@ -1,53 +1,37 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Theme context — web-components-core</title>
-    <!-- Count the theme context's MutationObservers (classic script → runs before the
-         modules load core). Only observers watching the theme signal attributes count,
-         so other page scripts don't inflate the number. -->
-    <script>
-        (function () {
-            const Original = window.MutationObserver;
-            const live = new Set();
-            let created = 0;
-            const listeners = new Set();
-            const notify = () => listeners.forEach((fn) => fn());
-            window.MutationObserver = class extends Original {
-                observe(target, opts) {
-                    if (opts && opts.attributeFilter && opts.attributeFilter.includes('data-bs-theme')) {
-                        if (!this.__theme) { this.__theme = true; created += 1; }
-                        live.add(this);
-                        notify();
-                    }
-                    return super.observe(target, opts);
+<meta name="kmwc:title" content="Theme context">
+<meta name="kmwc:subtitle" content="Dark / light detected <strong>once per page</strong> and mirrored onto every <code>BlissElement</code> host as <code>data-context-theme</code> — so component CSS uses plain <code>:host([data-context-theme=&quot;dark&quot;])</code> instead of <code>:host-context(.dark)</code>, which Firefox doesn't support and Safari only partly. Force it globally with <code>setThemeMode()</code>, per component with <code>data-theme</code>, or point a component at a section with <code>theme-source</code>. See <strong>SPEC §12.10</strong>.">
+<meta name="kmwc:entry" content="none">
+<!-- Count the theme context's MutationObservers (classic script → runs before the
+     modules load core). Only observers watching the theme signal attributes count,
+     so other page scripts don't inflate the number. -->
+<script>
+    (function () {
+        const Original = window.MutationObserver;
+        const live = new Set();
+        let created = 0;
+        const listeners = new Set();
+        const notify = () => listeners.forEach((fn) => fn());
+        window.MutationObserver = class extends Original {
+            observe(target, opts) {
+                if (opts && opts.attributeFilter && opts.attributeFilter.includes('data-bs-theme')) {
+                    if (!this.__theme) { this.__theme = true; created += 1; }
+                    live.add(this);
+                    notify();
                 }
-                disconnect() {
-                    if (live.delete(this)) notify();
-                    return super.disconnect();
-                }
-            };
-            window.__themeObservers = {
-                get created() { return created; },
-                get live() { return live.size; },
-                onChange(fn) { listeners.add(fn); },
-            };
-        })();
-    </script>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <a href="index.html" class="back-link">← Back to Examples</a>
-            <h1>Theme context</h1>
-            <p class="subtitle">Dark / light detected <strong>once per page</strong> and mirrored onto every
-                <code>BlissElement</code> host as <code>data-context-theme</code> — so component CSS uses plain
-                <code>:host([data-context-theme="dark"])</code> instead of <code>:host-context(.dark)</code>, which
-                Firefox doesn't support and Safari only partly. Force it globally with <code>setThemeMode()</code>,
-                per component with <code>data-theme</code>, or point a component at a section with
-                <code>theme-source</code>. See <strong>SPEC §12.10</strong>.</p>
-        </header>
+                return super.observe(target, opts);
+            }
+            disconnect() {
+                if (live.delete(this)) notify();
+                return super.disconnect();
+            }
+        };
+        window.__themeObservers = {
+            get created() { return created; },
+            get live() { return live.size; },
+            onChange(fn) { listeners.add(fn); },
+        };
+    })();
+</script>
 
         <!-- ============================================================= -->
         <!-- TH01 · Page detection                                         -->
@@ -205,7 +189,6 @@ getThemeContext();      // the detected page scheme: 'dark' | 'light' | null
 :host([data-theme="dark"])  { color-scheme: dark; }
 :host([data-theme="light"]) { color-scheme: light; }</pre></div>
         </div>
-    </div>
 
     <!-- The demo web component (registers <theme-card>). -->
     <script type="module" src="examples-theme-card.ts"></script>
@@ -281,6 +264,3 @@ getThemeContext();      // the detected page scheme: 'dark' | 'light' | null
 
         customElements.whenDefined('theme-card').then(refreshStats);
     </script>
-
-</body>
-</html>

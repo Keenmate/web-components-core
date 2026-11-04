@@ -1,31 +1,16 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Search — web-components-core</title>
-    <style>
-        /* The result list a search box would render — the demo's output. */
-        .results { list-style: none; margin: .8rem 0 0; padding: 0; display: grid;
-                   grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: .35rem .8rem; }
-        .results li { padding: .3rem .5rem; border-radius: var(--kmwc-radius-sm); background: var(--kmwc-main-bg);
-                      border: 1px solid var(--kmwc-border-color); }
-        .results li.is-miss { opacity: .35; }
-        .results li small { color: var(--kmwc-text-color-3); margin-inline-start: .4rem; }
-        /* The highlight under test (same look as the kit's spotlight match). */
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <a href="index.html" class="back-link">← Back to Examples</a>
-            <h1>Search</h1>
-            <p class="subtitle">The built-in search rules every component with a search box shares, from
-                <code>@keenmate/web-components-core/search</code>: <strong>normalization</strong>
-                (<code>search-behavior</code>), <strong>where the term matches</strong> (<code>search-match</code>),
-                term preparation, and highlighting that follows the same rules. Pure functions; a component adds the
-                per-item cache and the UI. See <strong>SPEC §12.11</strong>.</p>
-        </header>
+<meta name="kmwc:title" content="Search">
+<meta name="kmwc:subtitle" content="The built-in search rules every component with a search box shares, from <code>@keenmate/web-components-core/search</code>: <strong>normalization</strong> (<code>search-behavior</code>), <strong>where the term matches</strong> (<code>search-match</code>), term preparation, and highlighting that follows the same rules. Pure functions; a component adds the per-item cache and the UI. See <strong>SPEC §12.11</strong>.">
+<meta name="kmwc:entry" content="none">
+<style>
+    /* The result list a search box would render — the demo's output. */
+    .results { list-style: none; margin: .8rem 0 0; padding: 0; display: grid;
+               grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: .35rem .8rem; }
+    .results li { padding: .3rem .5rem; border-radius: var(--kmwc-radius-sm); background: var(--kmwc-main-bg);
+                  border: 1px solid var(--kmwc-border-color); }
+    .results li.is-miss { opacity: .35; }
+    .results li small { color: var(--kmwc-text-color-3); margin-inline-start: .4rem; }
+    /* The highlight under test (same look as the kit's spotlight match). */
+</style>
 
         <!-- ============================================================= -->
         <!-- SE01 · Playground                                             -->
@@ -237,7 +222,6 @@ searchCallback = (t, signal, { searchTerm, entries }) => {
 // types: SearchBehavior, SearchMatch, SearchTermContext, PreparedSearchTerm,
 //        SearchEntry, SearchCallbackContext, ActiveSearchTerm, SearchRange, HighlightResult</pre></div>
         </div>
-    </div>
 
     <script type="module">
         import {
@@ -467,6 +451,3 @@ searchCallback = (t, signal, { searchTerm, entries }) => {
         runCallback();
 
     </script>
-
-</body>
-</html>

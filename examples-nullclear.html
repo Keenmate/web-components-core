@@ -1,23 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Null-clear contract — web-components-core</title>
-    <style>
-        nullclear-card { display: block; max-width: 20rem; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <a href="index.html" class="back-link">← Back to Examples</a>
-            <h1>The null-clear contract</h1>
-            <p class="subtitle">How <code>BlissElement</code> hands a <em>cleared</em> input to an engine —
-                <code>null</code> means “reset”, <code>undefined</code> means “leave alone”. Assemble the engine
-                config with <code>this.engineConfig(exclude)</code> (→ <code>collectEngineConfig</code>) so the clear
-                signal survives. See <strong>SPEC §6.1</strong>.</p>
-        </header>
+<meta name="kmwc:title" content="The null-clear contract">
+<meta name="kmwc:subtitle" content="How <code>BlissElement</code> hands a <em>cleared</em> input to an engine — <code>null</code> means “reset”, <code>undefined</code> means “leave alone”. Assemble the engine config with <code>this.engineConfig(exclude)</code> (→ <code>collectEngineConfig</code>) so the clear signal survives. See <strong>SPEC §6.1</strong>.">
+<meta name="kmwc:entry" content="none">
+<style>
+    nullclear-card { display: block; max-width: 20rem; }
+</style>
 
         <!-- ============================================================= -->
         <!-- NC01 · The two sentinels                                      -->
@@ -124,7 +110,6 @@ if (updates.y !== undefined) this._y = updates.y ?? DEFAULT;// defaulted: null �
                 merge; don't strip the null back out.
             </div>
         </div>
-    </div>
 
     <!-- The demo web component (registers <nullclear-card>). -->
     <script type="module" src="examples-nullclear-card.ts"></script>
@@ -192,6 +177,3 @@ if (updates.y !== undefined) this._y = updates.y ?? DEFAULT;// defaulted: null �
             card.removeAttribute('focused-node-class');
         });
     </script>
-
-</body>
-</html>

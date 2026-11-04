@@ -1,71 +1,56 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reactive inputs — web-components-core</title>
-    <style>
-        /* IN04 animated diagram (examples-whensettled-anim.ts) — page illustration only. */
-        .anim-say { min-height: 3.2rem; } /* the narration .note keeps its height between steps */
-        .anim-lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: .9rem; }
-        .anim-lane { min-width: 0; padding: .6rem; border-radius: var(--kmwc-radius-md); background: var(--kmwc-main-bg);
-                     border: 1px solid var(--kmwc-border-color); }
-        .anim-lane-title { margin: 0 0 .5rem; font-size: .92rem; }
-        .anim-track { display: grid; grid-template-columns: 6.2rem minmax(0, 1fr); gap: .5rem; align-items: start;
-                      padding: .45rem 0; border-top: 1px dashed var(--kmwc-border-color); }
-        @media (max-width: 480px) { .anim-track { grid-template-columns: minmax(0, 1fr); gap: .25rem; } }
-        .anim-track-label { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em;
-                            color: var(--kmwc-text-color-3); padding-top: .2rem; }
-        .anim-track-body { min-width: 0; }
-        .anim-code { margin: 0; padding: .35rem .45rem; border-radius: var(--kmwc-radius-sm); background: var(--kmwc-code-bg);
-                     color: var(--kmwc-code-text-color); font: .74rem/1.5 var(--kmwc-mono-font-family);
-                     white-space: pre-wrap; overflow-wrap: anywhere; transition: box-shadow .3s; }
-        .anim-code.is-parked { box-shadow: 0 0 0 2px var(--kmwc-warning-color); }
-        .anim-line { display: block; padding: 0 .3rem; border-radius: 3px; opacity: .6; transition: background .3s, opacity .3s; }
-        .anim-line.is-current { opacity: 1; background: color-mix(in srgb, var(--kmwc-accent-color) 45%, transparent); }
-        .anim-code.is-parked .anim-line.is-current { background: color-mix(in srgb, var(--kmwc-warning-color) 55%, transparent); }
-        .anim-code-status { font-size: .76rem; margin-top: .3rem; color: var(--kmwc-text-color-2); }
-        .anim-code-status[data-mod="parked"] { color: var(--kmwc-warning-color); font-weight: 600; }
-        .anim-code-status[data-mod="running"] { color: var(--kmwc-info-color); }
-        .anim-result { display: inline-block; margin-top: .35rem; padding: .2rem .5rem; border-radius: var(--kmwc-radius-sm);
-                       font: 600 .76rem var(--kmwc-mono-font-family); animation: anim-pop .35s ease-out; }
-        .anim-result.is-bad { color: var(--kmwc-danger-color); background: color-mix(in srgb, var(--kmwc-danger-color) 14%, transparent); }
-        .anim-result.is-ok { color: var(--kmwc-success-color); background: color-mix(in srgb, var(--kmwc-success-color) 16%, transparent); }
-        .anim-queue { display: flex; flex-wrap: wrap; gap: .35rem; min-height: 1.6rem; align-items: center; }
-        .anim-token { padding: .15rem .55rem; border-radius: 999px; font: .74rem var(--kmwc-mono-font-family);
-                      border: 1px solid var(--kmwc-accent-border-color); background: var(--kmwc-accent-light-bg);
-                      color: var(--kmwc-text-color-1); animation: anim-pop .35s ease-out; transition: opacity .3s, background .3s; }
-        .anim-token.is-running { background: var(--kmwc-accent-color); color: var(--kmwc-text-color-on-accent);
-                                 box-shadow: 0 0 0 3px var(--kmwc-accent-shadow-color); }
-        .anim-token.is-done { opacity: .5; text-decoration: line-through; animation: none; }
-        .anim-comp, .anim-screen { display: flex; gap: .6rem; align-items: center; padding: .25rem; border-radius: var(--kmwc-radius-sm);
-                                   transition: box-shadow .3s; }
-        .anim-comp.is-active { box-shadow: 0 0 0 2px var(--kmwc-accent-color); }
-        .anim-comp.is-staged .anim-comp-note { color: var(--kmwc-warning-color); }
-        .anim-screen.is-painted { box-shadow: 0 0 0 2px var(--kmwc-success-color); }
-        .anim-screen.is-painted .anim-screen-note { color: var(--kmwc-success-color); font-weight: 600; }
-        .anim-bars { flex: 0 0 3.2rem; display: flex; flex-direction: column; gap: 2px; padding: 3px;
-                     border: 1px solid var(--kmwc-border-color-strong); border-radius: 4px; background: var(--kmwc-main-bg); }
-        .anim-bar { height: 3px; border-radius: 1px; background: var(--kmwc-text-color-4); transition: opacity .4s, transform .4s; }
-        .anim-bar:not(.is-on) { opacity: 0; transform: scaleX(.2); }
-        .anim-bar--new.is-on { background: var(--kmwc-success-color); }
-        @keyframes anim-pop { from { transform: scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
-        @media (prefers-reduced-motion: reduce) {
-            #anim-settled *, #anim-settled *::before { transition: none !important; animation: none !important; }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <a href="index.html" class="back-link">← Back to Examples</a>
-            <h1>Reactive inputs</h1>
-            <p class="subtitle">Core's headline: every public input of a <code>BlissElement</code> — attribute, property
-                or callback — is ONE row of a <code>static inputs</code> table. Its converter parses the attribute
-                <em>and</em> validates the property, so both entry points share one pipeline:
-                parse/validate → stage → coalesce → <code>reinit()</code> or <code>update(partial)</code>.
-                See <strong>SPEC §4–§6, §12.7</strong> and <code>docs/reactivity-and-batching.md</code>.</p>
-        </header>
+<meta name="kmwc:title" content="Reactive inputs">
+<meta name="kmwc:subtitle" content="Core's headline: every public input of a <code>BlissElement</code> — attribute, property or callback — is ONE row of a <code>static inputs</code> table. Its converter parses the attribute <em>and</em> validates the property, so both entry points share one pipeline: parse/validate → stage → coalesce → <code>reinit()</code> or <code>update(partial)</code>. See <strong>SPEC §4–§6, §12.7</strong> and <code>docs/reactivity-and-batching.md</code>.">
+<meta name="kmwc:entry" content="none">
+<style>
+    /* IN04 animated diagram (examples-whensettled-anim.ts) — page illustration only. */
+    .anim-say { min-height: 3.2rem; } /* the narration .note keeps its height between steps */
+    .anim-lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: .9rem; }
+    .anim-lane { min-width: 0; padding: .6rem; border-radius: var(--kmwc-radius-md); background: var(--kmwc-main-bg);
+                 border: 1px solid var(--kmwc-border-color); }
+    .anim-lane-title { margin: 0 0 .5rem; font-size: .92rem; }
+    .anim-track { display: grid; grid-template-columns: 6.2rem minmax(0, 1fr); gap: .5rem; align-items: start;
+                  padding: .45rem 0; border-top: 1px dashed var(--kmwc-border-color); }
+    @media (max-width: 480px) { .anim-track { grid-template-columns: minmax(0, 1fr); gap: .25rem; } }
+    .anim-track-label { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em;
+                        color: var(--kmwc-text-color-3); padding-top: .2rem; }
+    .anim-track-body { min-width: 0; }
+    .anim-code { margin: 0; padding: .35rem .45rem; border-radius: var(--kmwc-radius-sm); background: var(--kmwc-code-bg);
+                 color: var(--kmwc-code-text-color); font: .74rem/1.5 var(--kmwc-mono-font-family);
+                 white-space: pre-wrap; overflow-wrap: anywhere; transition: box-shadow .3s; }
+    .anim-code.is-parked { box-shadow: 0 0 0 2px var(--kmwc-warning-color); }
+    .anim-line { display: block; padding: 0 .3rem; border-radius: 3px; opacity: .6; transition: background .3s, opacity .3s; }
+    .anim-line.is-current { opacity: 1; background: color-mix(in srgb, var(--kmwc-accent-color) 45%, transparent); }
+    .anim-code.is-parked .anim-line.is-current { background: color-mix(in srgb, var(--kmwc-warning-color) 55%, transparent); }
+    .anim-code-status { font-size: .76rem; margin-top: .3rem; color: var(--kmwc-text-color-2); }
+    .anim-code-status[data-mod="parked"] { color: var(--kmwc-warning-color); font-weight: 600; }
+    .anim-code-status[data-mod="running"] { color: var(--kmwc-info-color); }
+    .anim-result { display: inline-block; margin-top: .35rem; padding: .2rem .5rem; border-radius: var(--kmwc-radius-sm);
+                   font: 600 .76rem var(--kmwc-mono-font-family); animation: anim-pop .35s ease-out; }
+    .anim-result.is-bad { color: var(--kmwc-danger-color); background: color-mix(in srgb, var(--kmwc-danger-color) 14%, transparent); }
+    .anim-result.is-ok { color: var(--kmwc-success-color); background: color-mix(in srgb, var(--kmwc-success-color) 16%, transparent); }
+    .anim-queue { display: flex; flex-wrap: wrap; gap: .35rem; min-height: 1.6rem; align-items: center; }
+    .anim-token { padding: .15rem .55rem; border-radius: 999px; font: .74rem var(--kmwc-mono-font-family);
+                  border: 1px solid var(--kmwc-accent-border-color); background: var(--kmwc-accent-light-bg);
+                  color: var(--kmwc-text-color-1); animation: anim-pop .35s ease-out; transition: opacity .3s, background .3s; }
+    .anim-token.is-running { background: var(--kmwc-accent-color); color: var(--kmwc-text-color-on-accent);
+                             box-shadow: 0 0 0 3px var(--kmwc-accent-shadow-color); }
+    .anim-token.is-done { opacity: .5; text-decoration: line-through; animation: none; }
+    .anim-comp, .anim-screen { display: flex; gap: .6rem; align-items: center; padding: .25rem; border-radius: var(--kmwc-radius-sm);
+                               transition: box-shadow .3s; }
+    .anim-comp.is-active { box-shadow: 0 0 0 2px var(--kmwc-accent-color); }
+    .anim-comp.is-staged .anim-comp-note { color: var(--kmwc-warning-color); }
+    .anim-screen.is-painted { box-shadow: 0 0 0 2px var(--kmwc-success-color); }
+    .anim-screen.is-painted .anim-screen-note { color: var(--kmwc-success-color); font-weight: 600; }
+    .anim-bars { flex: 0 0 3.2rem; display: flex; flex-direction: column; gap: 2px; padding: 3px;
+                 border: 1px solid var(--kmwc-border-color-strong); border-radius: 4px; background: var(--kmwc-main-bg); }
+    .anim-bar { height: 3px; border-radius: 1px; background: var(--kmwc-text-color-4); transition: opacity .4s, transform .4s; }
+    .anim-bar:not(.is-on) { opacity: 0; transform: scaleX(.2); }
+    .anim-bar--new.is-on { background: var(--kmwc-success-color); }
+    @keyframes anim-pop { from { transform: scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) {
+        #anim-settled *, #anim-settled *::before { transition: none !important; animation: none !important; }
+    }
+</style>
 
         <!-- ============================================================= -->
         <!-- IN01 · One input table                                        -->
@@ -360,7 +345,6 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
                 </tbody>
             </table>
         </div>
-    </div>
 
     <!-- The demo web components (register <core-demo-inputs>, <core-demo-reactivity>, <core-demo-presets>). -->
     <script type="module" src="examples-inputs-card.ts"></script>
@@ -700,6 +684,3 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
         await el5.whenSettled();
         state5();
     </script>
-
-</body>
-</html>

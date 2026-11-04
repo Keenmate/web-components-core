@@ -1,36 +1,23 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Popovers — web-components-core</title>
-    <link rel="stylesheet" href="examples-positioning.css">
-    <style>
-        /* Room below the trigger so you can scroll it near an edge and watch
-           flip / lockPlacement:'freeze' behave. */
-        .po-stage { padding-bottom: 50vh; }
-        /* The 360px reference the matchWidth modes measure against. */
-        #po-btn { width: 360px; max-width: 100%; }
-        /* Panel content. `auto auto` → the list is content-sized (narrow), so
-           matchWidth:none is visibly narrower than min/exact rather than
-           stretching to ~reference width. */
-        .demo-panel dl { margin: 0; display: grid; grid-template-columns: auto auto; gap: 0.15rem 0.75rem; justify-content: start; }
-        .demo-panel dt { color: var(--kmwc-text-color-3); }
-        .demo-panel dd { margin: 0; font-family: var(--kmwc-mono-font-family); color: var(--kmwc-text-color-1); }
-        /* The long line wraps normally, so its max-content width (wide) drives the
-           panel under none/min, while exact clamps the panel and wraps the line. */
-        .demo-panel .po-long { margin: 0.6rem 0 0; color: var(--kmwc-accent-color); }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <a href="index.html" class="back-link">← Back to Examples</a>
-            <h1>Popovers</h1>
-            <p class="subtitle">The <code>createPopover()</code> preset — a portaled dropdown/panel anchored to a
-                reference, with width-matching and placement locking. The dropdown shape the five components used to
-                re-wrap ~15 different ways.</p>
-        </header>
+<meta name="kmwc:title" content="Popovers">
+<meta name="kmwc:subtitle" content="The <code>createPopover()</code> preset — a portaled dropdown/panel anchored to a reference, with width-matching and placement locking. The dropdown shape the five components used to re-wrap ~15 different ways.">
+<meta name="kmwc:entry" content="none">
+<link rel="stylesheet" href="examples-positioning.css">
+<style>
+    /* Room below the trigger so you can scroll it near an edge and watch
+       flip / lockPlacement:'freeze' behave. */
+    .po-stage { padding-bottom: 50vh; }
+    /* The 360px reference the matchWidth modes measure against. */
+    #po-btn { width: 360px; max-width: 100%; }
+    /* Panel content. `auto auto` → the list is content-sized (narrow), so
+       matchWidth:none is visibly narrower than min/exact rather than
+       stretching to ~reference width. */
+    .demo-panel dl { margin: 0; display: grid; grid-template-columns: auto auto; gap: 0.15rem 0.75rem; justify-content: start; }
+    .demo-panel dt { color: var(--kmwc-text-color-3); }
+    .demo-panel dd { margin: 0; font-family: var(--kmwc-mono-font-family); color: var(--kmwc-text-color-1); }
+    /* The long line wraps normally, so its max-content width (wide) drives the
+       panel under none/min, while exact clamps the panel and wraps the line. */
+    .demo-panel .po-long { margin: 0.6rem 0 0; color: var(--kmwc-accent-color); }
+</style>
 
         <!-- ============================================================= -->
         <!-- PO01 · Playground                                             -->
@@ -119,7 +106,6 @@ const pop = createPopover({
 
 pop.open(); pop.close(); pop.isOpen; pop.destroy();</pre></div>
         </div>
-    </div>
 
     <script type="module">
         import { createPopover } from '/src/positioning/index.ts';
@@ -199,6 +185,3 @@ pop.open(); pop.close(); pop.isOpen; pop.destroy();</pre></div>
         $('po-offset').addEventListener('input', () => { $('po-offset-out').innerHTML = `${$('po-offset').value}&nbsp;px`; build(); });
         $('po-shift').addEventListener('input', () => { $('po-shift-out').innerHTML = `${$('po-shift').value}&nbsp;px`; build(); });
     </script>
-
-</body>
-</html>

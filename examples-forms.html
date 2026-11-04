@@ -1,32 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forms — web-components-core</title>
-    <style>
-        /* Demo visual: the dashed outline marks a form's boundary (inside vs outside the <form>). */
-        .fo-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: .8rem; margin: 0; padding: .9rem; min-width: 0;
-                   border: 2px dashed var(--kmwc-border-color-strong); border-radius: var(--kmwc-radius-md); }
-        /* Native pseudo-classes match a form-associated host — page CSS needs nothing from core. */
-        core-demo-field:invalid { outline: 2px solid var(--kmwc-danger-color); outline-offset: 3px; border-radius: var(--kmwc-radius-sm); }
-        core-demo-field:disabled { opacity: .8; }
-        core-demo-field:not(:defined) { visibility: hidden; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <a href="index.html" class="back-link">← Back to Examples</a>
-            <h1>Forms</h1>
-            <p class="subtitle">What a form-associated <code>BlissElement</code> (<code>static formAssociated = true</code>)
-                gets from core: <code>el.form</code> and the protected <code>internals</code>, the disabled state
-                (the reflected <code>isDisabled</code> input + <code>&lt;fieldset disabled&gt;</code>, SPEC §6.4) and the
-                constraint-validation API with <code>setFormatError()</code> (SPEC §6.6). The demos use
-                <code>&lt;core-demo-field&gt;</code>, a small quantity field that follows the KeenMate submission
-                convention: its value is submitted by a <strong>light-DOM hidden <code>&lt;input&gt;</code></strong> it
-                renders as its own child — the host never calls <code>internals.setFormValue()</code>.</p>
-        </header>
+<meta name="kmwc:title" content="Forms">
+<meta name="kmwc:subtitle" content="What a form-associated <code>BlissElement</code> (<code>static formAssociated = true</code>) gets from core: <code>el.form</code> and the protected <code>internals</code>, the disabled state (the reflected <code>isDisabled</code> input + <code>&lt;fieldset disabled&gt;</code>, SPEC §6.4) and the constraint-validation API with <code>setFormatError()</code> (SPEC §6.6). The demos use <code>&lt;core-demo-field&gt;</code>, a small quantity field that follows the Keenmate submission convention: its value is submitted by a <strong>light-DOM hidden <code>&lt;input&gt;</code></strong> it renders as its own child — the host never calls <code>internals.setFormValue()</code>.">
+<meta name="kmwc:entry" content="none">
+<style>
+    /* Demo visual: the dashed outline marks a form's boundary (inside vs outside the <form>). */
+    .fo-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: .8rem; margin: 0; padding: .9rem; min-width: 0;
+               border: 2px dashed var(--kmwc-border-color-strong); border-radius: var(--kmwc-radius-md); }
+    /* Native pseudo-classes match a form-associated host — page CSS needs nothing from core. */
+    core-demo-field:invalid { outline: 2px solid var(--kmwc-danger-color); outline-offset: 3px; border-radius: var(--kmwc-radius-sm); }
+    core-demo-field:disabled { opacity: .8; }
+    core-demo-field:not(:defined) { visibility: hidden; }
+</style>
 
         <!-- ============================================================= -->
         <!-- FO01 · Form association & el.form                             -->
@@ -236,7 +219,6 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
                 <code>internals</code> directly — <code>setFormatError(null)</code> clears every flag).
             </div>
         </div>
-    </div>
 
     <!-- The demo web components (<core-demo-field>, <core-demo-plain>). -->
     <script type="module" src="examples-forms-card.ts"></script>
@@ -396,5 +378,3 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
             render();
         }
     </script>
-</body>
-</html>

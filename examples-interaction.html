@@ -1,37 +1,22 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Events &amp; interaction — web-components-core</title>
-    <style>
-        /* IA01 light-DOM parent around the emitter — page illustration. */
-        .ia-parent { padding: .6rem; border-radius: var(--kmwc-radius-lg); border: 2px dashed var(--kmwc-border-color-strong); }
-        .ia-parent-title { font: 600 .75rem var(--kmwc-mono-font-family); color: var(--kmwc-text-color-3); margin-bottom: .4rem; }
+<meta name="kmwc:title" content="Events &amp; interaction">
+<meta name="kmwc:subtitle" content="How a <code>BlissElement</code> talks to the page: typed events through <code>emit()</code> and their <code>on&lt;Name&gt;</code> twins (SPEC §12.5), one contract for every <code>before*Callback</code>, clickable items and the single <code>action</code> event from <code>/actions</code> (§12.12), and the shared context / dropdown menu from <code>/menu</code> (§12.13). Every demo is a small demo element that reports what it does into the timeline under it.">
+<meta name="kmwc:entry" content="none">
+<style>
+    /* IA01 light-DOM parent around the emitter — page illustration. */
+    .ia-parent { padding: .6rem; border-radius: var(--kmwc-radius-lg); border: 2px dashed var(--kmwc-border-color-strong); }
+    .ia-parent-title { font: 600 .75rem var(--kmwc-mono-font-family); color: var(--kmwc-text-color-3); margin-bottom: .4rem; }
 
-        /* IA04 · page-wide menu theme (the public --km-menu-* layer, on :root) */
-        :root.ia-menu-theme {
-            --km-menu-bg: light-dark(#fffbeb, #292524);
-            --km-menu-hover-bg: light-dark(#fde68a, #78350f);
-            --km-menu-border-radius: 12px;
-            --km-menu-border: 1px solid #f59e0b;
-            --km-menu-padding: 6px;
-            --km-menu-item-padding: 8px 14px;
-            --km-menu-divider-label-color: #b45309;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <a href="index.html" class="back-link">← Back to Examples</a>
-            <h1>Events &amp; interaction</h1>
-            <p class="subtitle">How a <code>BlissElement</code> talks to the page: typed events through
-                <code>emit()</code> and their <code>on&lt;Name&gt;</code> twins (SPEC §12.5), one contract for every
-                <code>before*Callback</code>, clickable items and the single <code>action</code> event from
-                <code>/actions</code> (§12.12), and the shared context / dropdown menu from <code>/menu</code>
-                (§12.13). Every demo is a small demo element that reports what it does into the timeline under it.</p>
-        </header>
+    /* IA04 · page-wide menu theme (the public --km-menu-* layer, on :root) */
+    :root.ia-menu-theme {
+        --km-menu-bg: light-dark(#fffbeb, #292524);
+        --km-menu-hover-bg: light-dark(#fde68a, #78350f);
+        --km-menu-border-radius: 12px;
+        --km-menu-border: 1px solid #f59e0b;
+        --km-menu-padding: 6px;
+        --km-menu-item-padding: 8px 14px;
+        --km-menu-divider-label-color: #b45309;
+    }
+</style>
 
         <!-- ============================================================= -->
         <!-- IA01 · emit()                                                 -->
@@ -326,7 +311,6 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
                 twin's return value is ignored.
             </div>
         </div>
-    </div>
 
     <script type="module">
         import { setTraceSink } from '/examples-interaction-card.ts';
@@ -603,5 +587,3 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
             }, true);
         }
     </script>
-</body>
-</html>

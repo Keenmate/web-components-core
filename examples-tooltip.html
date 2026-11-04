@@ -1,42 +1,28 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tooltips — web-components-core</title>
-    <link rel="stylesheet" href="examples-positioning.css">
-    <style>
-        /* TT02 — a pyramid of trigger cards, so you can watch a follow-cursor
-           tooltip hand off from one element to the next as the pointer crosses
-           between them (and confirm each neighbour seeds its own cursor rect). */
-        .pyramid {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1rem;
-        }
-        .pyramid-row {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-        .pyramid .pos-trigger {
-            min-width: 6.5rem;
-            padding-block: 1.1rem;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <a href="index.html" class="back-link">← Back to Examples</a>
-            <h1>Tooltips</h1>
-            <p class="subtitle">The <code>createTooltip()</code> preset from
-                <code>@keenmate/web-components-core/positioning</code> — hover/focus, delays, placements,
-                follow-cursor, shadow-scoped containers — plus a small <code>&lt;tooltip-card&gt;</code>
-                <code>BlissElement</code> that drives it through the real component lifecycle.</p>
-        </header>
+<meta name="kmwc:title" content="Tooltips">
+<meta name="kmwc:subtitle" content="The <code>createTooltip()</code> preset from <code>@keenmate/web-components-core/positioning</code> — hover/focus, delays, placements, follow-cursor, shadow-scoped containers — plus a small <code>&lt;tooltip-card&gt;</code> <code>BlissElement</code> that drives it through the real component lifecycle.">
+<meta name="kmwc:entry" content="none">
+<link rel="stylesheet" href="examples-positioning.css">
+<style>
+    /* TT02 — a pyramid of trigger cards, so you can watch a follow-cursor
+       tooltip hand off from one element to the next as the pointer crosses
+       between them (and confirm each neighbour seeds its own cursor rect). */
+    .pyramid {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+    .pyramid-row {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .pyramid .pos-trigger {
+        min-width: 6.5rem;
+        padding-block: 1.1rem;
+    }
+</style>
 
         <!-- ============================================================= -->
         <!-- TT01 · Placements                                             -->
@@ -198,7 +184,6 @@ tip.element;  tip.isVisible;             // the tooltip node + state</pre></div>
                 trigger rect there.
             </div>
         </div>
-    </div>
 
     <!-- The demo web component (registers <tooltip-card>). -->
     <script type="module" src="examples-tooltip-card.ts"></script>
@@ -274,6 +259,3 @@ tip.element;  tip.isVisible;             // the tooltip node + state</pre></div>
             delay: { show: 0, hide: 0 },
         });
     </script>
-
-</body>
-</html>

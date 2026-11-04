@@ -1,34 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lifecycle — web-components-core</title>
-    <style>
-        /* LC03 move targets — page illustration. */
-        .lc-box { min-height: 6rem; padding: .7rem; border-radius: var(--kmwc-radius-md);
-                  border: 2px dashed var(--kmwc-border-color-strong); display: flex; gap: .6rem; flex-wrap: wrap; align-items: flex-start; }
-        .lc-box-title { flex-basis: 100%; font: 600 .75rem var(--kmwc-mono-font-family); color: var(--kmwc-text-color-3); }
-        .lc-chip { padding: .45rem .7rem; border-radius: var(--kmwc-radius-md); background: var(--kmwc-elevated-bg); font-size: .85rem; }
+<meta name="kmwc:title" content="Lifecycle">
+<meta name="kmwc:subtitle" content="How a <code>BlissElement</code> is built once and activated many times: <code>reinit()</code> / <code>update()</code> for structure, <code>connect()</code> / <code>disconnect()</code> for live resources, the <code>defer</code> gate and the <code>ready</code> signal (SPEC §6.3), <code>removedCallback()</code>, <code>destroy()</code> (SPEC §6.5) and what happens when a hook throws. Every demo uses <code>&lt;core-demo-lifecycle&gt;</code>, a small element that reports each hook into the timeline under it (sequence number, then milliseconds since the button press).">
+<meta name="kmwc:entry" content="none">
+<style>
+    /* LC03 move targets — page illustration. */
+    .lc-box { min-height: 6rem; padding: .7rem; border-radius: var(--kmwc-radius-md);
+              border: 2px dashed var(--kmwc-border-color-strong); display: flex; gap: .6rem; flex-wrap: wrap; align-items: flex-start; }
+    .lc-box-title { flex-basis: 100%; font: 600 .75rem var(--kmwc-mono-font-family); color: var(--kmwc-text-color-3); }
+    .lc-chip { padding: .45rem .7rem; border-radius: var(--kmwc-radius-md); background: var(--kmwc-elevated-bg); font-size: .85rem; }
 
-        /* The ready hooks, styled from the PAGE: attribute + :state(). */
-        core-demo-lifecycle[ready] { outline: 2px solid var(--kmwc-success-color); outline-offset: 2px; border-radius: 10px; }
-        core-demo-lifecycle:state(ready) { box-shadow: 0 0 0 6px color-mix(in srgb, var(--kmwc-success-color) 25%, transparent); border-radius: 10px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <a href="index.html" class="back-link">← Back to Examples</a>
-            <h1>Lifecycle</h1>
-            <p class="subtitle">How a <code>BlissElement</code> is built once and activated many times:
-                <code>reinit()</code> / <code>update()</code> for structure, <code>connect()</code> /
-                <code>disconnect()</code> for live resources, the <code>defer</code> gate and the <code>ready</code>
-                signal (SPEC §6.3), <code>removedCallback()</code>, <code>destroy()</code> (SPEC §6.5) and what
-                happens when a hook throws. Every demo uses <code>&lt;core-demo-lifecycle&gt;</code>, a small
-                element that reports each hook into the timeline under it (sequence number, then milliseconds since
-                the button press).</p>
-        </header>
+    /* The ready hooks, styled from the PAGE: attribute + :state(). */
+    core-demo-lifecycle[ready] { outline: 2px solid var(--kmwc-success-color); outline-offset: 2px; border-radius: 10px; }
+    core-demo-lifecycle:state(ready) { box-shadow: 0 0 0 6px color-mix(in srgb, var(--kmwc-success-color) 25%, transparent); border-radius: 10px; }
+</style>
 
         <!-- ============================================================= -->
         <!-- LC01 · Build once, activate many                              -->
@@ -288,7 +271,6 @@ fresh.flush();         // reinit() → connect() → ready</pre></div>
                 was reconnected.
             </div>
         </div>
-    </div>
 
     <script type="module">
         import { setHookSink } from '/examples-lifecycle-card.ts';
@@ -576,5 +558,3 @@ fresh.flush();         // reinit() → connect() → ready</pre></div>
             refresh();
         }
     </script>
-</body>
-</html>

@@ -1,21 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Container scroll — web-components-core</title>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <a href="index.html" class="back-link">← Back to Examples</a>
-            <h1>Container scroll</h1>
-            <p class="subtitle"><code>scrollIntoContainer()</code> brings a row, an option or a day into view by scrolling
-                the <strong>one container</strong> around it, never the page. Native <code>scrollIntoView()</code> scrolls
-                every scrollable ancestor, the page included, so a search jump or a keyboard move makes the whole page
-                jump. <code>findScrollContainer()</code> is the search on its own. Main index, no dependencies; see
-                <strong>SPEC §12.15</strong>.</p>
-        </header>
+<meta name="kmwc:title" content="Container scroll">
+<meta name="kmwc:subtitle" content="<code>scrollIntoContainer()</code> brings a row, an option or a day into view by scrolling the <strong>one container</strong> around it, never the page. Native <code>scrollIntoView()</code> scrolls every scrollable ancestor, the page included, so a search jump or a keyboard move makes the whole page jump. <code>findScrollContainer()</code> is the search on its own. Main index, no dependencies; see <strong>SPEC §12.15</strong>.">
+<meta name="kmwc:entry" content="none">
 
         <!-- ============================================================= -->
         <!-- SC01 · Native vs container scroll                             -->
@@ -135,7 +120,6 @@ scrollIntoContainer(row, { block: 'start' });   // → the container it scrolled
             <div class="log-panel log-panel--dark mt-1" data-empty="Scroll this card into view, then press a button." id="sc04-log"></div>
             <div class="code-block"><pre>scrollIntoContainer(row, { block: 'center', behavior: 'smooth', shouldRevealContainer: true });</pre></div>
         </div>
-    </div>
 
     <script type="module" src="examples-scroll-card.ts"></script>
 
@@ -253,5 +237,3 @@ scrollIntoContainer(row, { block: 'start' });   // → the container it scrolled
         $('sc04-off').addEventListener('click', () => sc04(false));
         $('sc04-on').addEventListener('click', () => sc04(true));
     </script>
-</body>
-</html>

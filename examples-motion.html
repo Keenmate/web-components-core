@@ -1,21 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Motion level — web-components-core</title>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <a href="index.html" class="back-link">← Back to Examples</a>
-            <h1>Motion level</h1>
-            <p class="subtitle">One switch for how much every component animates: <code>motion="auto | none | snappy |
-                smooth"</code> on an element, <code>window.components.motion</code> for the page, and
-                <code>data-motion</code> on any element (a section, <code>&lt;html&gt;</code>) for everything inside.
-                Components follow through the shared <code>--base-duration-*</code> / <code>--base-scroll-behavior</code>
-                tokens, with or without base-css-variables on the page.</p>
-        </header>
+<meta name="kmwc:title" content="Motion level">
+<meta name="kmwc:subtitle" content="One switch for how much every component animates: <code>motion=&quot;auto | none | snappy | smooth&quot;</code> on an element, <code>window.components.motion</code> for the page, and <code>data-motion</code> on any element (a section, <code>&lt;html&gt;</code>) for everything inside. Components follow through the shared <code>--base-duration-*</code> / <code>--base-scroll-behavior</code> tokens, with or without base-css-variables on the page.">
+<meta name="kmwc:entry" content="none">
 
         <div class="note warning">
             <div class="note-title">The OS reduced-motion setting always wins. See SPEC §12.16</div>
@@ -126,7 +111,6 @@ el.motion = 'snappy';</pre></div>
   &lt;web-multiselect motion="snappy"&gt;&lt;/web-multiselect&gt;  &lt;!-- its own level beats the section --&gt;
 &lt;/section&gt;</pre></div>
         </div>
-    </div>
 
     <script type="module" src="examples-motion-card.ts"></script>
 
@@ -273,5 +257,3 @@ el.motion = 'snappy';</pre></div>
         reduced.addEventListener('change', showOs);
         showOs();
     </script>
-</body>
-</html>

@@ -1,37 +1,20 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Page-wide controls — web-components-core</title>
-    <script>
-        // Runs BEFORE any module: the page pre-creates a registry entry (e.g. to set per-tag rules early).
-        // registerComponent() later ADOPTS this very object instead of replacing it.
-        window.components = window.components || {};
-        window.components['core-demo-pg-early'] = { note: 'set by the page before core loaded' };
-        window.__pgEarlyEntry = window.components['core-demo-pg-early'];
-    </script>
-    <style>
-        /* Demo visual: the placeholder an element shows before its tag is defined. */
-        core-demo-pg-early:not(:defined) { display: inline-block; padding: .45rem .7rem; border-radius: var(--kmwc-radius-sm); font-size: .85rem;
-                                           border: 1px dashed var(--kmwc-border-color-strong); color: var(--kmwc-text-color-3); }
-        core-demo-pg-early:not(:defined)::before { content: 'core-demo-pg-early — not defined yet'; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <a href="index.html" class="back-link">← Back to Examples</a>
-            <h1>Page-wide controls</h1>
-            <p class="subtitle">What a page gets from core across every KeenMate component on it: the
-                <code>window.components</code> registry (SPEC §12.3), the logging switches — per tag, per instance and
-                page-wide (§12.1), the shared loader hook (§12.14) and the style-injection helpers (§12.8). The demos
-                use <code>&lt;core-demo-pg&gt;</code>, registered with <code>registerComponent()</code> and a
-                <code>createLoggers('PGDEMO')</code> bundle, and <code>&lt;core-demo-pg-early&gt;</code>, registered with
-                no bundle. Everything the page changes globally is undone by <strong>Reset page-wide state</strong> and on
-                <code>pagehide</code>.</p>
+<meta name="kmwc:title" content="Page-wide controls">
+<meta name="kmwc:subtitle" content="What a page gets from core across every Keenmate component on it: the <code>window.components</code> registry (SPEC §12.3), the logging switches — per tag, per instance and page-wide (§12.1), the shared loader hook (§12.14) and the style-injection helpers (§12.8). The demos use <code>&lt;core-demo-pg&gt;</code>, registered with <code>registerComponent()</code> and a <code>createLoggers('PGDEMO')</code> bundle, and <code>&lt;core-demo-pg-early&gt;</code>, registered with no bundle. Everything the page changes globally is undone by <strong>Reset page-wide state</strong> and on <code>pagehide</code>.">
+<meta name="kmwc:entry" content="none">
+<script>
+    // Runs BEFORE any module: the page pre-creates a registry entry (e.g. to set per-tag rules early).
+    // registerComponent() later ADOPTS this very object instead of replacing it.
+    window.components = window.components || {};
+    window.components['core-demo-pg-early'] = { note: 'set by the page before core loaded' };
+    window.__pgEarlyEntry = window.components['core-demo-pg-early'];
+</script>
+<style>
+    /* Demo visual: the placeholder an element shows before its tag is defined. */
+    core-demo-pg-early:not(:defined) { display: inline-block; padding: .45rem .7rem; border-radius: var(--kmwc-radius-sm); font-size: .85rem;
+                                       border: 1px dashed var(--kmwc-border-color-strong); color: var(--kmwc-text-color-3); }
+    core-demo-pg-early:not(:defined)::before { content: 'core-demo-pg-early — not defined yet'; }
+</style>
             <div class="controls"><button id="pg-reset">Reset page-wide state</button></div>
-        </header>
 
         <!-- ============================================================= -->
         <!-- PG01 · window.components                                      -->
@@ -281,7 +264,6 @@ a.shadowRoot.querySelectorAll('style.pgd-custom').length;                    // 
                 </tbody>
             </table>
         </div>
-    </div>
 
     <!-- The demo web components (<core-demo-pg>, <core-demo-pg-early>). -->
     <script type="module" src="examples-page-card.ts"></script>
@@ -528,5 +510,3 @@ a.shadowRoot.querySelectorAll('style.pgd-custom').length;                    // 
         });
         window.addEventListener('pagehide', resetPageWide);
     </script>
-</body>
-</html>

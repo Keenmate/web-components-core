@@ -1,24 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Environment &amp; responsive rules — web-components-core</title>
-    <style>
-        core-demo-rs-map, core-demo-rs-layers, core-demo-rs-callback { max-width: 26rem; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <a href="index.html" class="back-link">← Back to Examples</a>
-            <h1>Environment &amp; responsive rules</h1>
-            <p class="subtitle">The shared environment facts (<code>getEnvironment()</code>, <code>classifyDevice()</code>,
-                the two observe channels), the <code>resolvePresentation()</code> policy, and the responsive rules every
-                <code>BlissElement</code> with an input table takes — page-wide, per tag and per instance.
-                See <strong>SPEC §6.7</strong> and <strong>§12.9</strong>. Resize the window (or open devtools device
-                emulation) to watch everything flip.</p>
-        </header>
+<meta name="kmwc:title" content="Environment &amp; responsive rules">
+<meta name="kmwc:subtitle" content="The shared environment facts (<code>getEnvironment()</code>, <code>classifyDevice()</code>, the two observe channels), the <code>resolvePresentation()</code> policy, and the responsive rules every <code>BlissElement</code> with an input table takes — page-wide, per tag and per instance. See <strong>SPEC §6.7</strong> and <strong>§12.9</strong>. Resize the window (or open devtools device emulation) to watch everything flip.">
+<meta name="kmwc:entry" content="none">
+<style>
+    core-demo-rs-map, core-demo-rs-layers, core-demo-rs-callback { max-width: 26rem; }
+</style>
 
         <!-- ============================================================= -->
         <!-- RS01 · Environment snapshot                                   -->
@@ -292,7 +277,8 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
                 <button id="rs06-reattach">Re-attach (first report while scaled)</button>
                 <button id="rs06-reset" class="btn-outline">Reset</button>
             </div>
-            <div class="demo-area">
+            <!-- scrolls sideways when the slider width is wider than a phone -->
+            <div class="demo-area" style="overflow-x: auto">
                 <core-demo-rs-size id="rs06-el" style="width: 480px"></core-demo-rs-size>
             </div>
             <div class="log-panel log-panel--dark mt-1" data-empty="Move a slider." id="rs06-log"></div>
@@ -337,7 +323,6 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
                 <code>release()</code>.
             </div>
         </div>
-    </div>
 
     <!-- The demo web components (register the core-demo-rs-* tags). -->
     <script type="module" src="examples-responsive-card.ts"></script>
@@ -674,5 +659,3 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
         setTimeout(renderMapReadout, 0);
         document.body.dataset.ready = 'true';
     </script>
-</body>
-</html>

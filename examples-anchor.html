@@ -1,77 +1,64 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anchor primitive — web-components-core</title>
-    <link rel="stylesheet" href="examples-positioning.css">
-    <style>
-        /* A persistent floating box used by the anchor demos (createTooltip/Popover
-           own their own elements; here we position a bare box ourselves).
-           Inverted surface, like the tooltip bubble — follows light / dark. */
-        .demo-float {
-            position: fixed;
-            top: 0; left: 0;
-            background: var(--kmwc-text-color-1);
-            color: var(--kmwc-main-bg);
-            padding: 0.6rem 0.9rem;
-            border-radius: var(--kmwc-radius-md);
-            font-size: 0.85rem;
-            box-shadow: 0 10px 28px var(--kmwc-shadow-color);
-            z-index: 1000;
-            max-width: 90vw;
-        }
-        /* Sticky header with a close button, so the panel is always dismissable
-           even when it flips up over its toggle button (AN02). Stays put while the
-           capped list scrolls underneath. */
-        .demo-float__head {
-            position: sticky;
-            top: 0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-            margin: -0.6rem -0.9rem 0.5rem;
-            padding: 0.4rem 0.9rem;
-            background: color-mix(in srgb, var(--kmwc-text-color-1) 85%, var(--kmwc-accent-color));
-            border-radius: var(--kmwc-radius-md) var(--kmwc-radius-md) 0 0;
-            font-weight: 600;
-        }
-        .demo-float__close {
-            background: transparent;
-            color: inherit;
-            border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
-            border-radius: var(--kmwc-radius-sm);
-            width: 1.5rem;
-            min-height: 0;  /* not the kit's control height */
-            height: 1.5rem;
-            line-height: 1;
-            padding: 0;
-            font-size: 1rem;
-        }
-        .demo-float__close:hover { background: color-mix(in srgb, currentColor 15%, transparent); }
-        /* Room below the AN02 reference so the panel opens downward by default
-           (instead of flipping up over the controls). */
-        .an-size-stage { padding-bottom: 36vh; }
-        /* A transformed ancestor — establishes a fixed-positioning containing block,
-           the classic reason a `position: fixed` panel drifts off its anchor. */
-        .transformed {
-            transform: translateZ(0) scale(1);
-            will-change: transform;
-            border: 1px dashed var(--kmwc-warning-color);
-            background: color-mix(in srgb, var(--kmwc-warning-color) 8%, transparent);
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <a href="index.html" class="back-link">← Back to Examples</a>
-            <h1>Anchor primitive</h1>
-            <p class="subtitle">The low-level <code>anchor(floating, reference, opts)</code> that
-                <code>createTooltip</code> and <code>createPopover</code> are built on — offset / flip / shift
-                middleware, width matching, size caps, placement locking, and drift detection.</p>
-        </header>
+<meta name="kmwc:title" content="Anchor primitive">
+<meta name="kmwc:subtitle" content="The low-level <code>anchor(floating, reference, opts)</code> that <code>createTooltip</code> and <code>createPopover</code> are built on — offset / flip / shift middleware, width matching, size caps, placement locking, and drift detection.">
+<meta name="kmwc:entry" content="none">
+<link rel="stylesheet" href="examples-positioning.css">
+<style>
+    /* A persistent floating box used by the anchor demos (createTooltip/Popover
+       own their own elements; here we position a bare box ourselves).
+       Inverted surface, like the tooltip bubble — follows light / dark. */
+    .demo-float {
+        position: fixed;
+        top: 0; left: 0;
+        background: var(--kmwc-text-color-1);
+        color: var(--kmwc-main-bg);
+        padding: 0.6rem 0.9rem;
+        border-radius: var(--kmwc-radius-md);
+        font-size: 0.85rem;
+        box-shadow: 0 10px 28px var(--kmwc-shadow-color);
+        z-index: 1000;
+        max-width: 90vw;
+    }
+    /* Sticky header with a close button, so the panel is always dismissable
+       even when it flips up over its toggle button (AN02). Stays put while the
+       capped list scrolls underneath. */
+    .demo-float__head {
+        position: sticky;
+        top: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin: -0.6rem -0.9rem 0.5rem;
+        padding: 0.4rem 0.9rem;
+        background: color-mix(in srgb, var(--kmwc-text-color-1) 85%, var(--kmwc-accent-color));
+        border-radius: var(--kmwc-radius-md) var(--kmwc-radius-md) 0 0;
+        font-weight: 600;
+    }
+    .demo-float__close {
+        background: transparent;
+        color: inherit;
+        border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+        border-radius: var(--kmwc-radius-sm);
+        width: 1.5rem;
+        min-height: 0;  /* not the kit's control height */
+        height: 1.5rem;
+        line-height: 1;
+        padding: 0;
+        font-size: 1rem;
+    }
+    .demo-float__close:hover { background: color-mix(in srgb, currentColor 15%, transparent); }
+    /* Room below the AN02 reference so the panel opens downward by default
+       (instead of flipping up over the controls). */
+    .an-size-stage { padding-bottom: 36vh; }
+    /* A transformed ancestor — establishes a fixed-positioning containing block,
+       the classic reason a `position: fixed` panel drifts off its anchor. */
+    .transformed {
+        transform: translateZ(0) scale(1);
+        will-change: transform;
+        border: 1px dashed var(--kmwc-warning-color);
+        background: color-mix(in srgb, var(--kmwc-warning-color) 8%, transparent);
+    }
+</style>
 
         <!-- ============================================================= -->
         <!-- AN01 · The primitive                                          -->
@@ -172,7 +159,6 @@ const handle = anchor(floating, reference, {
 handle.update();   // reposition now
 handle.destroy();  // stop autoUpdate + clean up</pre></div>
         </div>
-    </div>
 
     <script type="module">
         import { anchor } from '/src/positioning/index.ts';
@@ -263,6 +249,3 @@ handle.destroy();  // stop autoUpdate + clean up</pre></div>
             });
         }
     </script>
-
-</body>
-</html>
