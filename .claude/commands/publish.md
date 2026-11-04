@@ -1,209 +1,260 @@
 ---
-description: Prepare @keenmate/web-components-core for npm publish — bump version, finalize CHANGELOG, verify, build, commit
+description: Prepare @keenmate/web-components-core for npm publish — bump version, finalize CHANGELOG/README, build, test, commit
 argument-hint: rc|release|patch|minor|major
 ---
 
 # /publish — prepare an npm release of @keenmate/web-components-core
 
-You are preparing this package for publish. **Do not run `npm publish`** and **do not push** — the
-user ships manually afterward (via `make publish-rc` / `make publish`, which prompt and then publish).
+You are preparing this package for `npm publish`. **Do not run `npm publish`** — the user logs in and publishes manually.
 
-This mirrors web-multiselect's `/publish`, adapted for this repo. Where the two differ it is because
-core has a different layout (a `tsc`-built library with a Keep-a-Changelog `## [Unreleased]` section and
-subpath exports), NOT because the process is looser. Like every other KeenMate package, core's README
-carries a stacked **`## What's New in vX.Y.Z`** section that must be updated each release. This core is
-depended on by web-multiselect / web-daterangepicker / web-treeview, so the verify gate is non-negotiable.
+This command follows the canonical `/publish` structure defined in the BlissFramework component guidelines at
+`web-components/publish-command.md`. Sections marked **[canonical]** are byte-identical across every
+component's `/publish`; sections marked **[per-repo]** are customized for this repo's layout, build, and tests.
 
-## Argument
+## Argument [canonical]
 
 The release type: **$ARGUMENTS**
 
 Must be one of:
 
-- `rc` — ship a pre-release. `CURRENT_VERSION` must already be `X.Y.Z-rcN` (bumped when the rc cycle
-  opened); `NEW_VERSION = CURRENT_VERSION` (no bump). If `CURRENT_VERSION` is not an rc, **stop and ask** —
-  they probably want `release`/`patch`/`minor`/`major`, or need to pick the rc target version first.
-- `release` — promote a WIP rc to a final release. `X.Y.Z-rcN` → `X.Y.Z`. If `CURRENT_VERSION` is not an
-  rc, stop.
-- `patch` — SemVer patch bump. Strips any `-rcN` first.
-- `minor` — SemVer minor bump. Strips `-rcN`, resets patch.
-- `major` — SemVer major bump. Strips `-rcN`, resets minor and patch.
+- `rc` — ship the WIP rc as-is. The topmost CHANGELOG heading (e.g. `## [1.10.0-rc02] - 2026-06-18`) gets ` [PUBLISHED]` appended.
+- `release` — promote a WIP rc to a final release. `X.Y.Z-rcN` → `X.Y.Z`. CHANGELOG heading is renamed to match the new version.
+- `patch` — SemVer patch bump. Drops any `-rc` suffix.
+- `minor` — SemVer minor bump. Drops `-rc`. Resets patch.
+- `major` — SemVer major bump. Drops `-rc`. Resets minor and patch.
 
 If missing or invalid, stop and ask the user which one to use (don't guess).
 
-## Repo layout
+## Repo layout [per-repo]
 
-Single-package library, everything at root:
+Single-package **library** repo, everything at root. Core is not a component: it is the input model, the
+`BlissElement` base class and the page-wide helpers that every Keenmate component bundles
+(web-multiselect, web-daterangepicker, web-treeview, …), so a broken core breaks all of them.
 
-- **`./package.json`** — `version` is the source of truth. Currently pre-1.0.
-- **`./CHANGELOG.md`** — Keep-a-Changelog style with a **`## [Unreleased]`** section at the top holding
-  WIP entries under `### Added` / `### Changed` / `### Fixed` / etc. Released versions sit below as
-  `## [X.Y.Z] - YYYY-MM-DD`.
-- **`./dist/`** — gitignored. Produced by `npm run build` (`tsc -p tsconfig.build.json` → ESM + `.d.ts`).
-  Never staged.
-- **Published `files`:** `dist`, `docs/reactivity-and-batching.md`, `release-notes` (see `package.json`). npm ALSO
-  auto-includes `README.md`, `LICENSE`, and `package.json` regardless of `files` — so **the README IS
-  published**. `docs/SPEC.md` is a contributor working-doc and is deliberately NOT in `files`, so it does
-  not ship.
-- **`./README.md`** — published (npm auto-includes it). Carries a stacked **`## What's New in vX.Y.Z`**
-  section at the top (newest first), same as every other KeenMate package. Each release adds a new block
-  paraphrasing that version's headline user-facing changes and ends the package's list with a
-  `See CHANGELOG.md for the full list.` pointer — this is a real release step (see step 4), NOT optional.
-- **`./release-notes/<X.Y.Z[-rcN]>.md`** — one per release (no `v` prefix in the file name), published.
-  The upgrade guide + highlights; the CHANGELOG stays the exhaustive list. Same principle and style as
-  `pure-admin/packages/core/release-notes/` and `web-multiselect/release-notes/` (see step 5).
-- **Subpath exports:** `.`, `./testing`, `./cem`, `./positioning`, `./search` — each must resolve to a built file
-  under `dist/` after a build.
+- **`./package.json`** — `version` field is the source of truth.
+- **`./CHANGELOG.md`** — at the root. Keep-a-Changelog: the WIP entries sit under **`## [Unreleased]`** at the top; released versions sit below as `## [X.Y.Z] - YYYY-MM-DD` (see the per-repo paragraph under "CHANGELOG convention").
+- **`./README.md`** — at the root. Carries `## What's New in vX.Y.Z` sections near the top (one per release, the **two most recent** retained). npm ships it regardless of `files`.
+- **`./docs/`** — `usage.md` / `theming.md` / `examples.md` / `accessibility.md` and `reactivity-and-batching.md`, published with the package. `docs/SPEC.md`, `docs/review/` and the plan files are contributor working docs and are **not** in `files`.
+- **`./release-notes/<X.Y.Z[-rcN]>.md`** — one per release (no `v` in the file name), published. The upgrade guide and the highlights; the CHANGELOG stays the exhaustive list. Written in step 1 (repo-specific bullet).
+- **`./dist/`** — gitignored. Produced by `npm run build` (`tsc -p tsconfig.build.json` → ESM + `.d.ts`). Never staged.
+- **`./component-variables.manifest.json`** — published (the `--km-menu-*` / `--base-*` surface core's modules read). Edit it if that surface changes.
+- **No Custom Elements Manifest of its own** — core defines no element. It ships the CEM *tooling* (`./cem`) the components run.
+- **Subpath exports:** `.`, `./testing`, `./cem`, `./positioning`, `./actions`, `./search`, `./menu` — each must resolve to a built file under `dist/` after the build.
 
-## Resolve versions
+## CHANGELOG convention in this repo [canonical]
 
-Read `./package.json` `version` as `CURRENT_VERSION`. Compute `NEW_VERSION` per the argument table above.
+There is **no `## [Unreleased]` section**. The WIP section is the topmost `## [X.Y.Z] - YYYY-MM-DD` heading without a `[PUBLISHED]` tag. Already-released sections carry `[PUBLISHED]` at the end of their heading:
+
+```
+## [1.10.0-rc02] - 2026-06-18                  ← WIP, the one you're shipping
+### Added
+- ...
+
+## [1.9.0] - 2026-06-09 [PUBLISHED]
+### Added
+- ...
+```
+
+Publishing the WIP section means **appending ` [PUBLISHED]`** to its heading — exact format: `## [X.Y.Z] - YYYY-MM-DD [PUBLISHED]`. The next development cycle creates a fresh `## [next-version] - <date>` heading on its first CHANGELOG edit.
+
+**This repo keeps Keep-a-Changelog's `## [Unreleased]` instead** (an accepted deviation, `VALIDATION-NOTES.md` → C-PC-1). Released sections are `## [X.Y.Z] - YYYY-MM-DD` with **no** `[PUBLISHED]` tag: every section below `## [Unreleased]` is published (each release commit is tagged `vX.Y.Z`). Wherever the canonical steps below talk about the WIP section or the `[PUBLISHED]` tag, read them like this:
+
+- **The WIP section** is `## [Unreleased]`, and `WIP_VERSION` is `NEW_VERSION` (an Unreleased section has no version of its own).
+- **Step 3 / the `rc` argument:** instead of appending ` [PUBLISHED]`, rename `## [Unreleased]` to `## [NEW_VERSION] - YYYY-MM-DD` (today's date) and insert a fresh, empty `## [Unreleased]` heading above it. That fresh heading is this repo's convention; the canonical "do not create an empty `[Unreleased]`" rule doesn't apply here.
+- **Step 6:** "the previous `[PUBLISHED]` tag" is the first `## [X.Y.Z] - …` heading below the one you just finalized; its commit carries the git tag `vX.Y.Z`.
+- **Step 11:** "the `[PUBLISHED]` tag is now in place" means "the `[Unreleased]` → `[NEW_VERSION]` rename is in place" — revert it (and the version bump) if the publish fails.
+- **Never add `[PUBLISHED]`** to any heading in this repo, old or new.
+
+## Resolve versions [canonical]
+
+Read `./package.json` `version` as `CURRENT_VERSION`.
+Read the topmost `## [X.Y.Z...]` heading from `./CHANGELOG.md` as `WIP_VERSION` (the version the latest WIP section is tagged for).
+
+Compute `NEW_VERSION`:
+
+| Argument | Logic |
+|---|---|
+| `rc` | If `CURRENT_VERSION` matches `X.Y.Z-rcN`, `NEW_VERSION = CURRENT_VERSION` (no bump — we're shipping what's already in package.json). If `CURRENT_VERSION` is not an rc, stop and ask the user (they probably wanted `release`/`patch`/etc.). |
+| `release` | If `CURRENT_VERSION` matches `X.Y.Z-rcN`, `NEW_VERSION = X.Y.Z`. Otherwise stop. |
+| `patch` | Strip any `-rcN`, then bump patch. |
+| `minor` | Strip any `-rcN`, then bump minor, reset patch. |
+| `major` | Strip any `-rcN`, then bump major, reset minor and patch. |
+
+If `WIP_VERSION` ≠ `NEW_VERSION` (e.g. the WIP is `X.Y.Z-rcN` but the user asked for `release`), the CHANGELOG heading rename in step 3 also re-tags the section to `NEW_VERSION` — call this out in the report so the user notices.
 
 ## Steps (in order)
 
-### 1. Sanity checks
+### 1. Sanity checks [canonical]
 
-- Run `git status`. `.claude/` and local artifacts staying untracked is fine. If there are **other**
-  uncommitted changes outside `CHANGELOG.md` / `package.json`, list them and ask the user before
-  continuing — substantive source changes belonging in this release should be committed (with their own
-  descriptive commits) first.
-- **Verify the target version isn't already published:** `npm view @keenmate/web-components-core@<NEW_VERSION> version 2>/dev/null`.
-  If it returns the version, **stop** — re-publishing the same version fails and pollutes the commit.
-- **Verify the registry hasn't drifted past you:** `npm view @keenmate/web-components-core version` (the
-  current `latest`). If it's higher than `NEW_VERSION`, warn and ask before continuing.
-- Confirm `## [Unreleased]` has at least one substantive bullet under `### Added` / `### Changed` /
-  `### Removed` / `### Fixed`. If it's empty, **stop** — there's nothing to release.
+- Run `git status`. The repo intentionally keeps `.claude/settings.local.json`, `test-results/`, `playwright-report/`, `coverage/` and `dist-examples/` untracked — those are fine. If there are **other** uncommitted changes that aren't `CHANGELOG.md`, `README.md`, or `package.json`, list them and ask the user before continuing. (Typical case: substantive source changes belonging in this release that haven't been committed yet — confirm they're intended for this version before bumping.)
+- **Verify the new version isn't already on npm.** Run `npm view @keenmate/web-components-core@<NEW_VERSION> version 2>/dev/null` — if it returns the version string, that version is already published and **stop**: bumping over it would fail at publish time and pollute the commit.
+- **Verify the registry hasn't drifted past you.** Run `npm view @keenmate/web-components-core version` to fetch the latest published version on the `latest` tag; if it's higher than `NEW_VERSION` (e.g. someone shipped from another machine, or there's a registry-vs-local mismatch from before the [PUBLISHED] convention landed), warn the user and ask before continuing.
+- Confirm the WIP CHANGELOG section has at least one bullet of substantive content under `### Added`, `### Changed`, `### Removed`, `### Fixed`, or `### Internal`. If empty, stop — there's nothing meaningful to release.
+- Confirm `./README.md` has a `## What's New in vWIP_VERSION` section. If it's missing, draft one from the CHANGELOG and present it to the user for approval before continuing:
+  - Read the WIP CHANGELOG section, distill it to 5–8 scannable bullets covering the Added/Changed themes (paraphrase, don't copy CHANGELOG bullets verbatim — those are exhaustive; What's New is the highlight reel). Pure internal refactors and Fixed-only entries don't need coverage, though headline bug fixes worth advertising are worth a bullet.
+  - **Follow the canonical "What's New" format** defined in the BlissFramework component guidelines (`web-components/readme-structure.md` → "`## What's New in vX.Y.Z` — canonical format"). Auto-check **C-RS-16** in `readme-structure.checks.sh` enforces it. Concretely:
+    - **Heading:** `## What's New in vNEW_VERSION` — lowercase `v`, no backticks around the version, no date.
+    - **Each bullet:** `- **<area or component> — <one-line headline>** — <engineer-level prose, 3–8 sentences>`. Bold-wrapped lead phrase, then a true em-dash (` — `, U+2014 with surrounding spaces), then a prose body explaining *what changed*, *why* (regression history / motivation), *what surface is affected* (concrete component / prop / file names listed inline), and *the mechanism* (the technique used). Plain hyphens or en-dashes fail the check.
+    - **No `### ` sub-headings** inside a What's New section — no `### Added` / `### Fixed` lifted from the CHANGELOG. It's a flat bullet list.
+    - **Reference implementation:** the `## What's New in v1.3.3` / `v1.3.2` sections at the top of `svelte-fluentui/README.md` are the canonical shape — mirror that voice and structure.
+  - Show the user the proposed draft as plain markdown in your reply. Ask whether to (a) insert as-is, (b) edit, or (c) abort so they can write it themselves.
+  - Only proceed past step 1 once the user approves the draft (or supplies their own). On approval, insert the section directly above the current top `## What's New in vX.Y.Z` heading in `./README.md`, then continue.
+  - Do not silently insert the draft without confirmation — release highlights are a writing call and the user owns the voice.
 
-### 2. Bump version (if needed)
+Repo-specific sanity checks:
 
-If `NEW_VERSION` ≠ `CURRENT_VERSION`, edit `./package.json` `"version"`. For `rc` this is normally a no-op.
+- **Release notes.** Confirm `./release-notes/NEW_VERSION.md` exists (no `v` in the file name). If it's missing, draft it and present it for approval the same way as the What's New draft. Read the newest file in `./release-notes/` (and `../web-multiselect/release-notes/`) first and keep their shape:
+  - `# Web Components Core NEW_VERSION — Release Notes`, then `**Released:** YYYY-MM-DD · **Pre-release** (`npm install @keenmate/web-components-core@rc`)` (a final release: `**Stable**`, no `@rc`).
+  - An intro paragraph: what the release is about and whether upgrading needs any action, then a link to the CHANGELOG section as the exhaustive list.
+  - `---`-separated sections with a numbered **Contents**, those that apply, in this order: Requirements (table) · Upgrade checklist (`- [ ]` items grouped by audience, each linking to its detail section) · Breaking changes (before → after tables) · New features · Visible changes without a migration · Fixes · Examples and docs.
+  - Cover everything since the previous **published** version, not just the last rc. Paraphrase from the CHANGELOG and verify against the source; don't invent behaviour.
+  - Open the new What's New section with a one-line lede linking it: `**[Release notes](release-notes/NEW_VERSION.md)** …`.
+- **Consumers.** Core is bundled by every component; each `### Changed — BREAKING` entry needs a matching upgrade-checklist item in the release notes.
 
-### 3. Finalize CHANGELOG
+### 2. Bump version (if needed) [canonical]
 
-In `./CHANGELOG.md`, convert the WIP `## [Unreleased]` into the released section:
+If `NEW_VERSION` ≠ `CURRENT_VERSION`, edit `./package.json` and change `"version": "CURRENT_VERSION"` to `"version": "NEW_VERSION"`.
 
-- Rename `## [Unreleased]` to `## [NEW_VERSION] - YYYY-MM-DD` (today's date from system context).
+For `rc` arg this is normally a no-op — version was bumped earlier in the development cycle.
+
+### 3. Finalize CHANGELOG [canonical]
+
+In `./CHANGELOG.md`:
+
+- If `WIP_VERSION` ≠ `NEW_VERSION` (e.g. promoting `X.Y.Z-rcN` → `X.Y.Z`), rename the WIP heading from `## [WIP_VERSION] - <date>` to `## [NEW_VERSION] - <today>` (today's date from system context).
+- If `WIP_VERSION` == `NEW_VERSION`, leave the bracketed version alone but update the date to today **if** the existing date is stale (more than a few days old). The WIP date is usually whatever day the section was opened; refresh it so the changelog reflects the actual ship date.
+- In either case, **append ` [PUBLISHED]`** to the heading so it reads exactly: `## [NEW_VERSION] - YYYY-MM-DD [PUBLISHED]`.
 - Leave all bullet content untouched.
-- Insert a fresh empty `## [Unreleased]` heading **above** the just-finalized section, so the next dev
-  cycle has somewhere to write. (This is the Keep-a-Changelog convention — the OPPOSITE of
-  web-multiselect's, which has no Unreleased section. Don't copy that repo's "do not create a new WIP
-  section" rule here.)
+- **Do not** create an empty new WIP section — the next dev cycle's first CHANGELOG edit will create one.
 
-### 4. Finalize README's "What's New"
+### 4. Update README "What's New" — only if version changed [canonical]
 
-In `./README.md`, add a new `## What's New in vNEW_VERSION` block at the TOP of the stacked What's New
-list (immediately above the most recent existing `## What's New in …`, newest-first). Paraphrase the
-headline **user-facing** changes from the just-finalized CHANGELOG section into a few terse bullets
-(bold lede per bullet, matching the sibling packages' voice — see web-multiselect / web-daterangepicker
-READMEs). Pure-internal changes (packaging, doc moves, refactors) don't belong here — those live only in
-the CHANGELOG. End the package's overall list with a `See `[`CHANGELOG.md`](CHANGELOG.md)` for the full
-list.` pointer if one isn't already present. This section IS published (npm ships the README), so it's
-part of the release, not a nicety. If `## [Unreleased]` held nothing user-facing, note that and skip
-adding an empty block — but say so explicitly.
+In `./README.md`:
 
-Keep **only the two newest** What's New blocks: after adding the new one, delete the older ones (the full
-history lives in the CHANGELOG). Open the new block with a one-line lede linking the release notes from
-step 5: `**[Release notes](release-notes/NEW_VERSION.md)** …` (no `v` in the file name).
+- If the existing `## What's New in vWIP_VERSION` section's version differs from `NEW_VERSION` (e.g. promoting `X.Y.Z-rcN` → `X.Y.Z`), rename its heading to `## What's New in vNEW_VERSION`. (No content rewrites — the text was already curated for this release.)
+- Then count the `## What's New in vX.Y.Z` headings. If there are more than **two**, delete the oldest ones so only the **two most recent** remain (the just-finalized one plus the one before it).
 
-### 5. Write the release notes
+For `rc` arg this is normally a no-op on the heading itself — only trims if someone left an extra-old section behind.
 
-Create `./release-notes/NEW_VERSION.md` (e.g. `release-notes/1.0.0-rc14.md`). Same principle and style
-as the sibling packages (`../pure-admin/packages/core/release-notes/`, `../web-multiselect/release-notes/`) —
-read the newest one there before writing:
+### 5. Validate README reflects the release [canonical]
 
-- `# Web Components Core NEW_VERSION — Release Notes`, then
-  `**Released:** YYYY-MM-DD · **Pre-release** (`npm install @keenmate/web-components-core@rc`)` (for a
-  final release: `**Stable**` and no `@rc`).
-- An intro paragraph: what the release is about, and whether upgrading needs any action. Then: "The
-  exhaustive, per-change list is in [`CHANGELOG.md`](https://github.com/KeenMate/web-components-core/blob/vNEW_VERSION/CHANGELOG.md#<anchor>);
-  this document is the upgrade guide and the highlights."
-- `---`-separated sections with a numbered **Contents**. Use the ones that apply, in this order:
-  Requirements (table) · Upgrade checklist (`- [ ]` items grouped by audience: everyone / component
-  authors / engine authors …, each linking to its detail section) · Breaking changes (before → after
-  tables, migration snippets) · New features (API tables + short code samples) · Visible changes without
-  a migration · Fixes · Examples and docs.
-- Cover everything since the previous **published** version, not just the last rc (state that in the intro
-  if an rc was never published).
-- Paraphrase from the CHANGELOG and verify against the source. Don't invent behaviour.
+Read both the finalized CHANGELOG section and the matching `What's New in vNEW_VERSION` section. Every **Added** or **Changed** bullet in the CHANGELOG that represents a user-facing feature or behavior change should have a corresponding hit in the What's New section (paraphrased, not verbatim). Pure internal refactors and `Fixed`-only entries don't need coverage, though headline bug fixes worth advertising (e.g. "X used to silently fail; now works") are worth a bullet.
 
-### 6. Validate CHANGELOG entries match recent work
+If you find a significant CHANGELOG entry that isn't reflected in What's New, add a bullet for it. If the section ends up with more than ~8 bullets after this pass, condense — What's New should be scannable, not exhaustive.
 
-Find the previous released heading (`## [X.Y.Z] - …`) and the commit that shipped it (subject usually
-starts with `vX.Y.Z` or `release`), then `git log --oneline <that-commit>..HEAD`. For every substantive
-commit or uncommitted change, confirm the finalized section mentions it. If something significant is
-missing, **stop and ask** — don't invent entries. Pure doc/example tweaks and trivial fixes don't need
-entries.
+### 6. Validate CHANGELOG entries match recent work [canonical]
 
-### 7. Verify (the gate)
+Find the previous `[PUBLISHED]` tag in CHANGELOG (the version just before NEW_VERSION) and locate the commit that bumped to it — usually a commit whose subject starts with `v<previous-version>` or `- v<previous-version>`. Run `git log --oneline <previous-publish-commit>..HEAD` to list commits since.
 
-Run `npm run typecheck` then `npm test` (or `make verify`). Both must be clean. If anything fails,
-**stop and report** — do not build or commit. This gate is what keeps a broken core off the registry
-that three components depend on.
+Also check `git diff` (or `git status`) for any uncommitted source/test work outside the files you're editing in this command.
 
-### 8. Build
+For every substantive commit or uncommitted change, verify the WIP CHANGELOG section mentions it. If something significant is missing, **stop and ask the user** before finalizing — don't invent entries on their behalf. Pure example/doc tweaks and trivial typo fixes don't need entries.
 
-Run `npm run build` (or `make build`) — `npm run clean:dist` then `tsc -p tsconfig.build.json`. If it
-errors, stop and report. Then smoke-check the emitted entry points for every export map subpath:
+### 7. Run tests [per-repo]
+
+Run, in order — every one must pass:
+
+1. `npm run typecheck` — `tsc --noEmit` over `src/` and the tests.
+2. `npm test` (or `make verify`, which runs both of these) — the vitest unit suite.
+3. `npm run test:e2e` (or `make test-e2e`) — the Playwright e2e suite (Chromium) against the `test/` fixtures and the example pages.
+4. `npx kmwc doctor` — 0 errors: devkit checks, package contents and the rulebook suites that apply to a library (accepted deviations are listed in `VALIDATION-NOTES.md`).
+
+If anything fails, **stop and report**. Do not proceed to build/commit. The user fixes the regression (or decides to fixme the spec) before the publish flow can continue. This gate is what keeps a broken core away from every component that bundles it.
+
+If Playwright complains that chromium isn't installed, suggest `make test-e2e-install` and stop.
+
+### 8. Build the package [per-repo]
+
+Run `npm run clean:dist` and then `npm run build` (or `make build`). The build runs `tsc -p tsconfig.build.json`, which emits ESM + `.d.ts` into `dist/`; cleaning first keeps a file from a removed module out of the package (`make publish` / `make publish-rc` clean too).
+
+If the build errors, stop and report.
+
+After build, do a quick smoke check on the emitted artifacts — every export-map subpath must exist and be non-empty:
 
 - `dist/index.js` + `dist/index.d.ts`
 - `dist/testing/index.js` + `.d.ts`
 - `dist/cem/index.js` + `.d.ts`
 - `dist/positioning/index.js` + `.d.ts`
+- `dist/actions/index.js` + `.d.ts`
 - `dist/search/index.js` + `.d.ts`
+- `dist/menu/index.js` + `.d.ts`
 
-All must exist and be non-empty.
+There is no Custom Elements Manifest to regenerate: core defines no element (the spec's CEM bullet is N/A for this library).
 
-### 9. Verify the package contents
+### 9. Verify the package contents [per-repo]
 
-Run `npm pack --dry-run` (or `make publish-dry`, which also cleans+builds first). Confirm the file list
-includes `dist/` (JS + `.d.ts`), `docs/reactivity-and-batching.md`, `release-notes/NEW_VERSION.md`,
-`README.md`, and `package.json`.
-`docs/SPEC.md` must NOT appear (it's a contributor working-doc, excluded from `files`). If anything private
-leaked in (`src/`, `*.test.ts`, `tsconfig*.json`, `Makefile`), **stop and report** — the `files` field controls
-this and the leak needs fixing before publish.
+Run `npm pack --dry-run` (or `make publish-dry`, which also cleans and builds first) and confirm the file list includes:
 
-### 10. Commit
+- `dist/` (JS + `.d.ts` for every subpath above)
+- `component-variables.manifest.json`
+- `docs/usage.md`, `docs/theming.md`, `docs/examples.md`, `docs/accessibility.md`, `docs/reactivity-and-batching.md`
+- `release-notes/NEW_VERSION.md`
+- `README.md`
+- `LICENSE`
+- `package.json`
 
-Stage only:
+If anything user-facing is missing or anything private leaked in (e.g. `src/`, `test/`, `e2e/`, `*.test.ts`, `*.spec.ts`, `examples-*.html`, `docs/SPEC.md`, `docs/review/`, `CLAUDE.md`, `tsconfig*.json`, `vite.config.ts`, `Makefile`), stop and report — the `files` field in `package.json` controls this and the leak needs fixing before publish.
+
+### 10. Commit [canonical]
+
+Stage:
 
 - `./CHANGELOG.md`
-- `./README.md` (the new What's New block from step 4)
-- `./release-notes/NEW_VERSION.md` (step 5)
+- `./README.md`
 - `./package.json`
+- `./release-notes/NEW_VERSION.md`
 
-Do **not** stage `dist/` (gitignored). Commit message:
+Do **not** stage `dist/` — it's gitignored.
+
+Commit message format:
 
 ```
 vNEW_VERSION - <one-line summary of the headline change>
 
-<grouped bullets paraphrased from the finalized CHANGELOG section — Added / Fixed /
-Changed / Internal, as applicable. Terse; full prose lives in the CHANGELOG.>
+<grouped bullets paraphrased from the CHANGELOG section — split into the same
+groups the CHANGELOG used: Added, Fixed, Changed, Internal, etc. Keep bullets
+terse; full prose lives in the CHANGELOG.>
 
-Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 ```
 
-### 11. Report
+### 11. Report [canonical]
 
 Report back with:
 
-- `NEW_VERSION` and the commit SHA.
-- The exact publish command, picked for the arg:
-  - `rc` → `make publish-rc` (ships under the **`rc`** dist-tag; `latest` untouched, consumers opt in
-    with `@rc`). Equivalent: `npm publish --tag rc`.
-  - `release` / `patch` / `minor` / `major` → `make publish` (ships **`latest`**). Equivalent:
-    `npm publish`.
-  - Both Makefile targets prompt for confirmation, then run `verify` → `clean:dist` → `build` →
-    `npm publish`, so the user just runs the one command after `npm login`.
-- A reminder: the CHANGELOG is now finalized for `NEW_VERSION`. If the publish fails, revert the version
-  bump (`package.json`) and the CHANGELOG finalize before retrying — the registry refuses a re-publish of
-  the same version.
+- The new version number
+- The commit SHA
+- The exact commands to publish. **Pick the right one for the arg type:**
+  - For `rc` (publishing a pre-release):
+    ```
+    npm login          # if not already logged in
+    npm publish --tag rc
+    ```
+    The `--tag rc` is critical — without it npm assigns the `latest` dist-tag, which would make the pre-release the default install for everyone running `npm install @keenmate/web-components-core`. With `--tag rc`, the `latest` tag stays put and consumers opt in via `@rc` or pinning the exact version.
+  - For `release` / `patch` / `minor` / `major` (publishing a stable release):
+    ```
+    npm login          # if not already logged in
+    npm publish
+    ```
+    Or `make publish`. No `--tag` needed — it correctly lands as `latest`.
+- A reminder that the CHANGELOG `[PUBLISHED]` tag is now in place — if `npm publish` fails, the user should revert both the tag (CHANGELOG heading) and the version bump (`package.json`) before retrying, since the registry will refuse to re-publish the same version.
 
-## Things not to do
+## Things not to do [canonical]
 
-- **Do not run `npm publish`** — the user publishes manually (via the Makefile targets) after `npm login`.
-- **Do not push to the git remote.** The commit stays local until the user pushes.
-- **Do not skip the verify gate or the build** — a stale/broken `dist/` would ship outdated or broken
-  artifacts to every dependent component.
+- **Do not run `npm publish`.** The user publishes manually after `npm login`.
+- **Do not push to git remote.** The commit stays local until the user pushes.
+- **Do not create an empty `[Unreleased]` or new WIP heading** in CHANGELOG after finalizing — the next dev cycle's first edit creates the next heading.
+- **Do not retro-fix older CHANGELOG sections** that are missing the `[PUBLISHED]` tag or carry legacy markers — only finalize the section you're shipping.
+- **Do not silently insert a drafted What's New section.** If you draft one in Step 1 because it's missing, you must present it and wait for explicit approval (or edits) before inserting — the writing voice is the user's call, even when you're handing them a starting point.
+- **Do not keep more than two `## What's New in vX.Y.Z` sections in the README.** Step 4 trims older ones; if you see three or more after Step 4, you missed one.
+- **Do not skip the build step** — without it `dist/` is stale and the publish would ship outdated artifacts (or fail entirely if `dist/` was wiped by `make clean`).
+- **Do not skip the test gate** if the repo has one — the gate is what catches regressions before they ship.
 - **Do not invent CHANGELOG entries** to cover commits you find; ask the user if something's missing.
-- **Do not bump if `## [Unreleased]` has nothing meaningful** — stop and explain.
-- **Do not stage `dist/`** or any private file.
+- **Do not bump if there's nothing meaningful in the WIP section** — stop and explain.
+
+### Repo-specific don'ts
+
+- **The `[Unreleased]` mapping wins.** In this repo step 3 *does* insert a fresh empty `## [Unreleased]` (see "CHANGELOG convention"), and no heading ever gets `[PUBLISHED]`.
+- **`make publish-rc` / `make publish` are the user's publish commands** — they prompt, run the gate, clean, build and publish; name them in the report next to the `npm publish` lines.
+- **Do not stage `dist/`, `test-results/`, `playwright-report/`, `coverage/` or `dist-examples/`** — they're either ignored or test artifacts.
+- **Do not stage the user's own work-in-progress files** (e.g. `docs/search-migration-plan.md`) — they are not part of a release.
