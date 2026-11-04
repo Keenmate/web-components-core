@@ -349,6 +349,9 @@ brief); no compatibility aliases (v2 rule).
 
 ### Internal
 
+- Importing core has no side effect any more: core's own `CORE` logger bundle (and with it
+  `window.components.logging`) is created on first use. New `getCoreLogging()`; `coreLogging`
+  still works, as a stand-in that reads the bundle on access. Review L-23.
 - One log-level parser, `toLogLevelNumber()` (exported): `isLogLevel`, `setLevel()`, instance
   loggers and `isLoggingEnabled` all use it; a fractional rank (`2.5`) is no longer a level.
   `DEFAULT_ENABLED_LEVEL` lives in `log-core` and is used by every `enableLogging()`. Review L-17.

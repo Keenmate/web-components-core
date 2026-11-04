@@ -23,15 +23,28 @@ export const CORE_LOG_CATEGORIES = ['ELEMENT', 'ACTIONS', 'MENU', 'THEME'] as co
 export type CoreLogCategory = (typeof CORE_LOG_CATEGORIES)[number];
 
 /**
- * Core's own logger bundle (`CORE:ELEMENT`, `CORE:ACTIONS`, `CORE:MENU`,
- * `CORE:THEME`). Default level `warn` like every bundle; driven by the global
- * `window.components.logging` switch. One bundle per PAGE: every copy of core
- * shares it, so `coreLogging.setCategoryLevel()` from any copy reaches core
- * messages from all of them.
+ * Core's own logger bundle (`CORE:ELEMENT`, `CORE:ACTIONS`, `CORE:MENU`, `CORE:THEME`),
+ * created on first use — importing this module has no side effect (the package is
+ * `sideEffects: false`; review L-23). One bundle per PAGE: every copy of core shares it, so
+ * `setCategoryLevel()` from any copy reaches core messages from all of them.
  */
-export const coreLogging: LoggerBundle<CoreLogCategory> = sharedState(sharedStateKey('core-logging'), () =>
-  createLoggers('CORE', CORE_LOG_CATEGORIES),
-);
+export function getCoreLogging(): LoggerBundle<CoreLogCategory> {
+  return sharedState(sharedStateKey('core-logging'), () => createLoggers('CORE', CORE_LOG_CATEGORIES));
+}
+
+/**
+ * {@link getCoreLogging} as an object: every property is read from the bundle on access, so the
+ * bundle (and `window.components.logging`) is created only when something actually uses it.
+ */
+export const coreLogging: LoggerBundle<CoreLogCategory> = /* @__PURE__ */ new Proxy({} as LoggerBundle<CoreLogCategory>, {
+  get: (_target, key) => Reflect.get(getCoreLogging(), key),
+  has: (_target, key) => Reflect.has(getCoreLogging(), key),
+  ownKeys: () => Reflect.ownKeys(getCoreLogging()),
+  getOwnPropertyDescriptor: (_target, key) => {
+    const descriptor = Reflect.getOwnPropertyDescriptor(getCoreLogging(), key);
+    return descriptor && { ...descriptor, configurable: true };
+  },
+});
 
 const NO_OVERRIDE = (): undefined => undefined;
 
@@ -78,7 +91,7 @@ export function getElementLoggers(el: Element): { bundle: LoggerBundle<string> |
   const getOverride = (): LogLevelDesc | undefined => (OVERRIDES.get(el) ?? NO_OVERRIDE)();
   const loggers = bundle
     ? bundle.forInstance(() => `#${instanceKey(el)}`, getOverride)
-    : (coreLogging.forInstance(() => `${el.localName}#${instanceKey(el)}`, getOverride) as Record<string, InstanceLogger>);
+    : (getCoreLogging().forInstance(() => `${el.localName}#${instanceKey(el)}`, getOverride) as Record<string, InstanceLogger>);
   const entry: CachedLoggers = { bundle, loggers };
   CACHE.set(el, entry);
   return entry;
@@ -117,7 +130,7 @@ export function toLogElement(source: unknown): Element | undefined {
  */
 export function coreLog(source: unknown, category: string, coreCategory: CoreLogCategory): InstanceLogger {
   const el = toLogElement(source);
-  if (!el) return (plainCore ??= coreLogging.forInstance('', NO_OVERRIDE))[coreCategory];
+  if (!el) return (plainCore ??= getCoreLogging().forInstance('', NO_OVERRIDE))[coreCategory];
   const { bundle, loggers } = getElementLoggers(el);
   if (!bundle) return loggers[coreCategory]!;
   return loggers[category] ?? loggers[bundle.LOGGING_CATEGORIES[0]!]!;
