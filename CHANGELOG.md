@@ -133,6 +133,14 @@ brief); no compatibility aliases (v2 rule).
 
 ### Fixed
 
+- **Panels inside a `contain: paint` wrapper are placed correctly.** The fixed-containing-block
+  check ignored `contain` entirely. Measured in Chromium 156, Firefox 157 and WebKit 27:
+  `contain: paint | layout | strict | content` and `content-visibility: auto` do trap
+  `position: fixed` descendants (light and shadow DOM), while `container-type` and
+  `contain: size | style` don't. Core now counts the first group and still ignores
+  `container-type`, which Floating UI's default wrongly counts. A new e2e spec compares core's
+  answer with the browser for each case. Review D-23. *pure-css port affected*
+  (`containing-block.ts`).
 - **`sizeChanged()` / `observeElementSize()` report the layout size.** They measured with
   `getBoundingClientRect()`, which applies CSS transforms, so a panel opening with a `scale()`
   animation reported a shrunken box. The observer now reads the entry's `borderBoxSize` (mapped

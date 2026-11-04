@@ -30,14 +30,26 @@ function isWebKit(): boolean {
   return isWebKitValue;
 }
 
+/** `contain` values that make a fixed containing block (layout or paint containment). */
+const CONTAINING_CONTAIN = /\b(paint|layout|strict|content)\b/;
+
 /**
- * The properties in `cs` that reliably establish a fixed-positioning containing
- * block, as `name: value` strings. Mirrors Floating UI's `isContainingBlock` —
- * including the individual `translate` / `scale` / `rotate` transforms and the
- * WebKit `filter` exception — minus `contain` / `container-type`.
+ * The properties in `cs` that establish a fixed-positioning containing block, as
+ * `name: value` strings. Mirrors Floating UI's `isContainingBlock` — including the
+ * individual `translate` / `scale` / `rotate` transforms and the WebKit `filter`
+ * exception — except `container-type`, which Floating UI counts but no engine honours.
+ * `contain: paint | layout | strict | content` and `content-visibility: auto` DO trap
+ * fixed descendants, in light and shadow DOM alike (measured in Chromium 156, Firefox 157
+ * and WebKit 27, review D-23; `e2e/positioning-containing-block.spec.ts`).
  */
 function fixedContainingBlockProps(cs: CSSStyleDeclaration): string[] {
-  const css = cs as CSSStyleDeclaration & { translate?: string; scale?: string; rotate?: string; backdropFilter?: string };
+  const css = cs as CSSStyleDeclaration & {
+    translate?: string;
+    scale?: string;
+    rotate?: string;
+    backdropFilter?: string;
+    contentVisibility?: string;
+  };
   const props: string[] = [];
   for (const name of ['transform', 'translate', 'scale', 'rotate', 'perspective'] as const) {
     if (notNone(css[name])) props.push(`${name}: ${css[name]}`);
@@ -49,16 +61,17 @@ function fixedContainingBlockProps(cs: CSSStyleDeclaration): string[] {
   if (css.willChange && /transform|translate|scale|rotate|perspective|filter/.test(css.willChange)) {
     props.push(`will-change: ${css.willChange}`);
   }
+  if (css.contain && CONTAINING_CONTAIN.test(css.contain)) props.push(`contain: ${css.contain}`);
+  if (css.contentVisibility === 'auto') props.push('content-visibility: auto');
   return props;
 }
 
 /**
  * The element `position: fixed` descendants of `el` are actually anchored to, or
  * `window` (the viewport) when none. A drop-in `getOffsetParent` for Floating
- * UI's `platform` that — unlike its default — omits `contain` / `container-type`,
- * which the spec says create a containing block but browsers do NOT reliably
- * honour for fixed positioning (especially across shadow-DOM). Crosses shadow
- * boundaries so it sees the host's light-DOM ancestors too.
+ * UI's `platform` that — unlike its default — omits `container-type`, which no
+ * engine honours for fixed positioning (see {@link fixedContainingBlockProps}).
+ * Crosses shadow boundaries so it sees the host's light-DOM ancestors too.
  */
 export function getFixedPositionOffsetParent(el: Element): Element | Window {
   // Start at the PARENT — an element is never its own containing block. Without

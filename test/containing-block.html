@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test — fixed containing blocks</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>containing-block fixture</h1>
+    <p>Targeted by <code>e2e/positioning-containing-block.spec.ts</code>. Each test builds a wrapper with one CSS
+        declaration and a <code>position: fixed</code> child (light DOM and inside a shadow root), then compares
+        where the browser put the child with what <code>getFixedPositionOffsetParent()</code> answers.</p>
+
+    <script type="module">
+        import { getFixedPositionOffsetParent } from '/src/positioning/index.ts';
+
+        /**
+         * Build a wrapper with `css` at (200, 300), a fixed child at top/left 0 in light DOM and one in a
+         * shadow root; report whether the browser trapped each child and what core answered.
+         */
+        window.probe = (css) => {
+            const wrap = document.createElement('div');
+            wrap.style.cssText = `position: absolute; top: 300px; left: 200px; width: 100px; height: 40px; ${css}`;
+            const light = document.createElement('div');
+            light.style.cssText = 'position: fixed; top: 0; left: 0; width: 10px; height: 10px';
+            const host = document.createElement('span');
+            wrap.append(light, host);
+            const shadow = document.createElement('div');
+            shadow.style.cssText = light.style.cssText;
+            host.attachShadow({ mode: 'open' }).append(shadow);
+            document.body.append(wrap);
+            const result = {
+                lightTrapped: light.getBoundingClientRect().left === 200,
+                shadowTrapped: shadow.getBoundingClientRect().left === 200,
+                coreLight: getFixedPositionOffsetParent(light) === wrap,
+                coreShadow: getFixedPositionOffsetParent(shadow) === wrap,
+            };
+            wrap.remove();
+            return result;
+        };
+        document.body.dataset.ready = '';
+    </script>
+</body>
+</html>

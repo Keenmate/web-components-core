@@ -259,6 +259,13 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | A press on the trigger toggles (no close-then-reopen) | ✓ | `overlay-tree.spec.ts` | `overlay-tree.html` |
 | Nested parent relation across shadow roots / copies of core, routing reasons, menu in the tree | unit | `active-overlay.test.ts`, `menu.test.ts` | — |
 
+## 13h. Fixed containing blocks (`positioning-containing-block.spec.ts`)
+
+| Feature | Status | Spec | Fixture |
+| ------- | :----: | ---- | ------- |
+| `contain: paint / layout / strict / content`, `content-visibility: auto`, `transform` trap a fixed child; core agrees (light + shadow DOM) | ✓ | `positioning-containing-block.spec.ts` | `containing-block.html` |
+| `container-type`, `contain: size / style` don't trap; core agrees | ✓ | `positioning-containing-block.spec.ts` | `containing-block.html` |
+
 ## 14. Example site (smoke only)
 
 | Feature | Status | Spec | Fixture |

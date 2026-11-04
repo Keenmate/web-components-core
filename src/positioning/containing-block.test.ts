@@ -57,13 +57,23 @@ describe('getFixedPositionOffsetParent', () => {
     expect(getFixedPositionOffsetParent(el)).toBe(outer);
   });
 
-  it('ignores contain / container-type (browsers do not honour them for fixed)', () => {
+  // Review D-23, measured in Chromium, Firefox and WebKit (e2e/positioning-containing-block.spec.ts).
+  it.each([
+    ['contain: paint', { contain: 'paint' }, true],
+    ['contain: layout paint', { contain: 'layout paint' }, true],
+    ['contain: strict', { contain: 'strict' }, true],
+    ['contain: content', { contain: 'content' }, true],
+    ['content-visibility: auto', { contentVisibility: 'auto' }, true],
+    ['contain: size', { contain: 'size' }, false],
+    ['contain: style', { contain: 'style' }, false],
+    ['container-type: inline-size', { containerType: 'inline-size' }, false],
+  ])('%s → traps fixed descendants: %s', (_name, css, isTrapping) => {
     const outer = document.createElement('div');
     const el = document.createElement('span');
     outer.append(el);
     document.body.append(outer);
-    stubStyles(new Map([[outer, { contain: 'layout paint', containerType: 'inline-size' } as Partial<CSSStyleDeclaration>]]));
-    expect(getFixedPositionOffsetParent(el)).toBe(window);
+    stubStyles(new Map([[outer, css as Partial<CSSStyleDeclaration>]]));
+    expect(getFixedPositionOffsetParent(el)).toBe(isTrapping ? outer : window);
   });
 
   it.each([
