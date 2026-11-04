@@ -1389,9 +1389,13 @@ per-component *policy*:
   is the shared classification every KM component must agree on. **Capability
   decides first:** a non-`isTouchPrimary` device is always `desktop`, at *any*
   window width — so a *narrowed desktop window* keeps a floating dropdown, never a
-  fullscreen sheet. Only touch-primary devices consult the size line: shorter
-  viewport side below `TABLET_MIN_SHORT_SIDE` (600, the Material `sw600dp` line) ⇒
-  `mobile`, else `tablet`. This is a **distinct axis** from the width-only
+  fullscreen sheet. Only touch-primary devices consult the size line: the short side
+  below `TABLET_MIN_SHORT_SIDE` (600, the Material `sw600dp` line) ⇒ `mobile`, else
+  `tablet`. The short side is `min(viewportWidth, screenShortSide)` (the snapshot's
+  `min(screen.width, screen.height)`): a soft keyboard shrinks only the viewport height, so it
+  can't flip a landscape tablet to `mobile` mid-typing (review V-05), and a narrow window
+  (iPad Slide Over) still reads as `mobile`. No screen size (SSR, jsdom) → the shorter
+  viewport side. This is a **distinct axis** from the width-only
   `EnvironmentSnapshot.breakpoint` (a landscape iPad is `breakpoint: 'desktop'` yet
   `deviceClass: 'tablet'`); `deviceClass` is the one to key mobile/tablet UX off.
   The 600 line is a hard constant on purpose — it can't drift per app.

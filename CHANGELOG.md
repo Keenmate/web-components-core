@@ -126,6 +126,11 @@ brief); no compatibility aliases (v2 rule).
 
 ### Fixed
 
+- **A soft keyboard no longer turns a tablet into a phone.** `classifyDevice` used the shorter
+  viewport side, and where the keyboard shrinks the viewport (Firefox Android, older Chrome,
+  `interactive-widget=resizes-content`) a landscape tablet read as `mobile`, so an `auto`
+  dropdown jumped to fullscreen while the user typed. The short side is now
+  `min(viewportWidth, screenShortSide)`; the snapshot gains `screenShortSide`. Review V-05.
 - **Regex highlights no longer split an emoji.** Typed patterns have no `u` flag, so `.` could
   match half of a surrogate pair and the highlight rendered as two `�`. `findRegexMatches` now
   widens a boundary inside a pair to the whole character and merges ranges that then overlap.

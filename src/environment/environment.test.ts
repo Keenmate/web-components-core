@@ -544,4 +544,26 @@ describe('classifyDevice', () => {
     expect(classifyDevice(under)).toBe('mobile');
     expect(classifyDevice(at)).toBe('tablet');
   });
+  // Review V-05: a soft keyboard that shrinks the viewport height must not flip a tablet to mobile.
+  it('with a screen size, the short side is min(viewport width, screen short side)', () => {
+    const tablet = { isTouchPrimary: true, screenShortSide: 800 };
+    expect(classifyDevice(snap({ ...tablet, viewportWidth: 1280, viewportHeight: 800 }))).toBe('tablet');
+    expect(classifyDevice(snap({ ...tablet, viewportWidth: 1280, viewportHeight: 420 }))).toBe('tablet'); // keyboard open
+    expect(classifyDevice(snap({ ...tablet, viewportWidth: 320, viewportHeight: 1024 }))).toBe('mobile'); // Slide Over
+    const phone = { isTouchPrimary: true, screenShortSide: 390 };
+    expect(classifyDevice(snap({ ...phone, viewportWidth: 844, viewportHeight: 390 }))).toBe('mobile'); // landscape
+    expect(classifyDevice(snap({ ...phone, viewportWidth: 390, viewportHeight: 400 }))).toBe('mobile'); // keyboard open
+  });
+});
+
+describe('screenShortSide in the snapshot', () => {
+  it('is read from screen and left out when the browser reports none', () => {
+    installMatchMedia({ ...DESKTOP });
+    const width = vi.spyOn(screen, 'width', 'get').mockReturnValue(1280);
+    const height = vi.spyOn(screen, 'height', 'get').mockReturnValue(800);
+    expect(getEnvironment().screenShortSide).toBe(800);
+    width.mockReturnValue(0);
+    height.mockReturnValue(0);
+    expect('screenShortSide' in getEnvironment()).toBe(false);
+  });
 });

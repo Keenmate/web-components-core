@@ -73,6 +73,12 @@ export interface EnvironmentSnapshot {
   readonly viewportWidth: number;
   /** `window.innerHeight` at the last sample. */
   readonly viewportHeight: number;
+  /**
+   * The shorter side of the device screen (`min(screen.width, screen.height)`), in CSS px —
+   * unlike the viewport it doesn't shrink when a soft keyboard opens. `undefined` when the
+   * browser reports no screen size (SSR, jsdom).
+   */
+  readonly screenShortSide?: number;
   /** The resolved breakpoint name for {@link viewportWidth} (see {@link configureBreakpoints}). */
   readonly breakpoint: string;
   /**
@@ -276,6 +282,13 @@ function matches(query: string): boolean {
 }
 
 /** Sample the environment right now (pure read; does not attach listeners). */
+/** `min(screen.width, screen.height)`, or `undefined` when the browser reports no screen size. */
+function readScreenShortSide(): number | undefined {
+  if (typeof screen === 'undefined') return undefined;
+  const side = Math.min(screen.width, screen.height);
+  return Number.isFinite(side) && side > 0 ? side : undefined;
+}
+
 function computeSnapshot(): EnvironmentSnapshot {
   if (!canMatchMedia()) return { ...SSR_DEFAULT };
   readBreakpointTokens();
@@ -287,6 +300,7 @@ function computeSnapshot(): EnvironmentSnapshot {
   const pointer: PointerType = coarsePrimary ? 'coarse' : finePrimary ? 'fine' : 'none';
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
+  const screenShortSide = readScreenShortSide();
   const os = getOS();
 
   return {
@@ -297,6 +311,7 @@ function computeSnapshot(): EnvironmentSnapshot {
     orientation: matches('(orientation: portrait)') ? 'portrait' : 'landscape',
     viewportWidth,
     viewportHeight,
+    ...(screenShortSide !== undefined ? { screenShortSide } : {}),
     breakpoint: resolveBreakpoint(viewportWidth),
     os,
     isApple: os === 'ios' || os === 'macos',
@@ -538,15 +553,22 @@ export const TABLET_MIN_SHORT_SIDE = 600;
  * first — a non-`isTouchPrimary` device is always `desktop`, at any window width,
  * so a shrunk desktop window keeps its `desktop` class (and a floating dropdown,
  * not a fullscreen sheet). Only touch-primary devices consult the size line: the
- * shorter viewport side below {@link TABLET_MIN_SHORT_SIDE} ⇒ `mobile`, else
- * `tablet` (orientation-robust — a landscape phone still reads as `mobile`).
+ * short side below {@link TABLET_MIN_SHORT_SIDE} ⇒ `mobile`, else `tablet`
+ * (orientation-robust — a landscape phone still reads as `mobile`). The short side is
+ * `min(viewportWidth, screenShortSide)`: a soft keyboard that shrinks the viewport HEIGHT
+ * can't turn a landscape tablet into a phone mid-typing (review V-05), while a narrow
+ * window (iPad Slide Over) still reads as `mobile`. Without a screen size it falls back to
+ * the shorter viewport side.
  *
  * This is the shared *classification*; how each class maps to a presentation is a
  * component decision (see `resolvePresentation`).
  */
 export function classifyDevice(env: EnvironmentSnapshot): DeviceClass {
   if (!env.isTouchPrimary) return 'desktop';
-  const shortSide = Math.min(env.viewportWidth, env.viewportHeight);
+  const shortSide =
+    env.screenShortSide !== undefined
+      ? Math.min(env.viewportWidth, env.screenShortSide)
+      : Math.min(env.viewportWidth, env.viewportHeight);
   return shortSide < TABLET_MIN_SHORT_SIDE ? 'mobile' : 'tablet';
 }
 

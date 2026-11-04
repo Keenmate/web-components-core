@@ -43,10 +43,12 @@
             'ipad-portrait': [768, 1024, touch],
             'desktop-narrowed': [700, 900, mouse],
             'desktop': [1440, 900, mouse],
+            // Soft keyboard open: the viewport height shrinks, the screen doesn't (review V-05).
+            'tablet-landscape-keyboard': [1280, 420, touch, 800],
         };
         const sim = (name) => {
-            const [w, h, cap] = SIMS[name];
-            return { ...getEnvironment(), ...cap, viewportWidth: w, viewportHeight: h, orientation: h >= w ? 'portrait' : 'landscape' };
+            const [w, h, cap, screenShortSide = Math.min(w, h)] = SIMS[name];
+            return { ...getEnvironment(), ...cap, viewportWidth: w, viewportHeight: h, screenShortSide, orientation: h >= w ? 'portrait' : 'landscape' };
         };
         const resetBreakpoints = () => configureBreakpoints({ mobile: 768, tablet: 1024, desktop: Infinity });
 

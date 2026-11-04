@@ -104,9 +104,11 @@ test.describe('desktop (mouse)', () => {
     await open(page, ENV);
     const classes = await page.evaluate(() => {
       const { fx } = window as unknown as { fx: Fx };
-      return ['phone-portrait', 'phone-landscape', 'ipad-portrait', 'desktop-narrowed', 'desktop'].map((n) => fx.classifyDevice(fx.sim(n)));
+      return ['phone-portrait', 'phone-landscape', 'ipad-portrait', 'desktop-narrowed', 'desktop', 'tablet-landscape-keyboard'].map((n) =>
+        fx.classifyDevice(fx.sim(n)),
+      );
     });
-    expect(classes).toEqual(['mobile', 'mobile', 'tablet', 'desktop', 'desktop']);
+    expect(classes).toEqual(['mobile', 'mobile', 'tablet', 'desktop', 'desktop', 'tablet']);
   });
 
   test('RS01: configureBreakpoints moves the lines globally; restoring the defaults restores the bucket', async ({ page }) => {
