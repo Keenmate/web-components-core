@@ -43,15 +43,21 @@ el.motion = 'snappy';</pre></div>
         </div>
 
         <!-- ============================================================= -->
-        <!-- MO02 · Page-wide and per section                              -->
+        <!-- MO02 · Closest wins: element → section → page → own speed      -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>MO02 · Page-wide and per section</h2>
+            <h2>MO02 · Closest wins: element → section → page</h2>
             <p>
-                <code>window.components.motion</code> applies to every component left on <code>auto</code>.
-                <code>data-motion</code> on a wrapper applies to everything inside it, even without base-css-variables
-                (core adds the presets once a component connects). A component's own <code>motion</code> always beats
-                both. The last knob below keeps <code>motion="smooth"</code> to show that.
+                Every place that can set a level is a <strong>layer</strong>, and the closest one that is set wins,
+                exactly like a CSS property inherits: a component's own <code>motion</code> → the nearest
+                <code>data-motion</code> around it → the page → the component's own speed. <code>auto</code> means
+                "no level here": core writes nothing for it, so the next layer out decides.
+            </p>
+            <p>
+                The page level (<code>window.components.motion</code>) is written <strong>once, on
+                <code>&lt;html data-motion&gt;</code></strong>, never on the components, so any section can still
+                override it for what's inside. An author-written <code>&lt;html data-motion&gt;</code> is the same
+                layer: the page level replaces it while set, and <code>auto</code> puts it back.
             </p>
             <div class="controls">
                 <label>page <code>window.components.motion</code>
@@ -59,19 +65,50 @@ el.motion = 'snappy';</pre></div>
                         <option>auto</option><option>none</option><option>snappy</option><option>smooth</option>
                     </select>
                 </label>
+                <label>author <code>&lt;html data-motion&gt;</code>
+                    <select id="mo02-html" class="w-sm">
+                        <option value="">(none)</option><option>none</option><option>snappy</option><option>smooth</option>
+                    </select>
+                </label>
                 <label>section <code>data-motion</code>
                     <select id="mo02-section" class="w-sm">
                         <option value="">(none)</option><option>none</option><option>snappy</option><option>smooth</option>
                     </select>
                 </label>
+                <label>inner box <code>data-motion</code>
+                    <select id="mo02-inner" class="w-sm">
+                        <option value="">(none)</option><option>none</option><option>snappy</option><option>smooth</option>
+                    </select>
+                </label>
+                <label>B's own <code>motion</code>
+                    <select id="mo02-own" class="w-sm">
+                        <option>auto</option><option>none</option><option>snappy</option><option selected>smooth</option>
+                    </select>
+                </label>
                 <button id="mo02-slide">Slide</button>
+                <button id="mo02-reset" class="btn-outline">Reset</button>
             </div>
             <div class="demo-area" id="mo02-section-el">
-                <div class="card-grid">
-                    <core-demo-motion label="motion=&quot;auto&quot;"></core-demo-motion>
-                    <core-demo-motion label="motion=&quot;auto&quot;"></core-demo-motion>
-                    <core-demo-motion motion="smooth" label="motion=&quot;smooth&quot; (own level)"></core-demo-motion>
+                <span class="demo-label"><code>&lt;section&gt;</code> <span class="mono" id="mo02-section-tag"></span></span>
+                <div class="grid-2">
+                    <core-demo-motion id="mo02-a" label="A · motion=&quot;auto&quot;"></core-demo-motion>
+                    <core-demo-motion id="mo02-b" motion="smooth" label="B · its own motion"></core-demo-motion>
                 </div>
+                <div class="demo-card mt-1" id="mo02-inner-el">
+                    <span class="demo-label">inner box <span class="mono" id="mo02-inner-tag"></span></span>
+                    <core-demo-motion id="mo02-c" label="C · motion=&quot;auto&quot;"></core-demo-motion>
+                </div>
+            </div>
+            <div class="grid-2">
+                <core-demo-motion id="mo02-d" label="D · motion=&quot;auto&quot;, outside the section"></core-demo-motion>
+            </div>
+            <table class="reference-table table-compact table-full mt-1">
+                <thead><tr><th>Component</th><th>Effective level</th><th>Decided by</th><th>Knob speed</th></tr></thead>
+                <tbody id="mo02-table"></tbody>
+            </table>
+            <div class="output">
+                <div class="output-label">What core wrote to the DOM (<code>data-motion</code> attributes):</div>
+                <pre id="mo02-dom"></pre>
             </div>
             <div class="log-panel log-panel--dark mt-1" data-empty="Change a level or press Slide." id="mo02-log"></div>
             <div class="note">
@@ -80,6 +117,11 @@ el.motion = 'snappy';</pre></div>
                 <code>motion="smooth"</code>. It's the user's accessibility choice, and the page can't know why it was
                 set. Right now this browser reports reduced motion: <b id="mo02-os">…</b>.
             </div>
+            <div class="code-block"><pre>window.components.motion = 'smooth';           // page level → &lt;html data-motion="smooth"&gt;
+&lt;section data-motion="none"&gt;                     &lt;!-- beats the page for everything inside --&gt;
+  &lt;web-multiselect&gt;&lt;/web-multiselect&gt;             &lt;!-- auto: core writes nothing, inherits "none" --&gt;
+  &lt;web-multiselect motion="snappy"&gt;&lt;/web-multiselect&gt;  &lt;!-- its own level beats the section --&gt;
+&lt;/section&gt;</pre></div>
         </div>
     </div>
 
@@ -117,21 +159,115 @@ el.motion = 'snappy';</pre></div>
 
         // MO02 ------------------------------------------------------------
         getPageMotion(); // publishes window.components.motion
+        const html = document.documentElement;
+        const section = $('mo02-section-el');
+        const inner = $('mo02-inner-el');
+        const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+        const LAYER_NAMES = new Map([[section, 'section data-motion'], [inner, 'inner box data-motion']]);
+        const mo02 = ['mo02-a', 'mo02-b', 'mo02-c', 'mo02-d'].map((id) => $(id));
+
+        /** Which layer decides for `el`, walking out exactly the way CSS inheritance does. */
+        function decidedBy(el) {
+            if (reduced.matches) return { level: 'none', by: 'the OS "reduce motion" setting' };
+            if (el.motion !== 'auto') return { level: el.motion, by: `its own motion="${el.motion}"` };
+            for (let node = el.parentElement; node && node !== html; node = node.parentElement) {
+                const level = node.getAttribute('data-motion');
+                if (level) return { level, by: LAYER_NAMES.get(node) ?? `<${node.localName}> data-motion` };
+            }
+            const page = html.getAttribute('data-motion');
+            if (page) {
+                const fromJs = window.components.motion !== 'auto';
+                return { level: page, by: fromJs ? 'the page (window.components.motion)' : 'the page (author <html data-motion>)' };
+            }
+            return { level: 'auto', by: "the component's own speed (no layer set)" };
+        }
+
+        const attr = (el) => el.getAttribute('data-motion');
+        const show = (value) => (value ? `data-motion="${value}"` : '(no data-motion)');
+
+        function render2() {
+            $('mo02-section-tag').textContent = attr(section) ? `data-motion="${attr(section)}"` : '';
+            $('mo02-inner-tag').textContent = attr(inner) ? `data-motion="${attr(inner)}"` : '';
+            $('mo02-table').replaceChildren(...mo02.map((el) => {
+                const { level, by } = decidedBy(el);
+                const row = document.createElement('tr');
+                const tone = level === 'none' ? 'muted' : level === 'auto' ? 'info' : 'ok';
+                row.innerHTML = `<td>${el.getAttribute('label')}</td><td><span class="pill pill--${tone}">${level}</span></td>` +
+                    `<td>${by.replace(/</g, '&lt;')}</td><td class="mono">${el.durations.transition}</td>`;
+                return row;
+            }));
+            $('mo02-dom').textContent = [
+                `<html>     ${show(attr(html))}`,
+                `<section>  ${show(attr(section))}`,
+                `  A        ${show(attr(mo02[0]))}`,
+                `  B        ${show(attr(mo02[1]))}   ← only an element's OWN level is written on it`,
+                `  inner    ${show(attr(inner))}`,
+                `    C      ${show(attr(mo02[2]))}`,
+                `D          ${show(attr(mo02[3]))}`,
+            ].join('\n');
+        }
+
+        function setData(el, value) {
+            if (value) el.setAttribute('data-motion', value);
+            else el.removeAttribute('data-motion');
+        }
+
         $('mo02-page').addEventListener('change', (e) => {
             window.components.motion = e.target.value;
             log('mo02-log', 'action', 'page', `window.components.motion = '${e.target.value}'`);
+            render2();
+        });
+        $('mo02-html').addEventListener('change', (e) => {
+            // An author attribute; while a page level is set, core restores this value on 'auto'.
+            const pageSet = window.components.motion !== 'auto';
+            if (pageSet) {
+                window.components.motion = 'auto';
+                setData(html, e.target.value);
+                window.components.motion = $('mo02-page').value;
+            } else {
+                setData(html, e.target.value);
+            }
+            log('mo02-log', 'action', '<html>', e.target.value ? `data-motion="${e.target.value}" (author)` : 'data-motion removed (author)');
+            render2();
         });
         $('mo02-section').addEventListener('change', (e) => {
-            const section = $('mo02-section-el');
-            if (e.target.value) section.dataset.motion = e.target.value;
-            else delete section.dataset.motion;
+            setData(section, e.target.value);
             log('mo02-log', 'action', 'section', e.target.value ? `data-motion="${e.target.value}"` : 'data-motion removed');
+            render2();
         });
-        $('mo02-slide').addEventListener('click', () => slide('#mo02-section-el', 'mo02-log'));
+        $('mo02-inner').addEventListener('change', (e) => {
+            setData(inner, e.target.value);
+            log('mo02-log', 'action', 'inner box', e.target.value ? `data-motion="${e.target.value}"` : 'data-motion removed');
+            render2();
+        });
+        $('mo02-own').addEventListener('change', (e) => {
+            mo02[1].motion = e.target.value;
+            log('mo02-log', 'action', 'B', `el.motion = '${e.target.value}'`);
+            render2();
+        });
+        $('mo02-slide').addEventListener('click', () => {
+            slide('#mo02-section-el', 'mo02-log');
+            for (const demo of document.querySelectorAll('#mo02-d')) demo.toggle();
+            render2();
+        });
+        const resetMo02 = () => {
+            window.components.motion = 'auto';
+            setData(html, '');
+            setData(section, '');
+            setData(inner, '');
+            mo02[1].motion = 'smooth';
+            for (const [id, value] of [['mo02-page', 'auto'], ['mo02-html', ''], ['mo02-section', ''], ['mo02-inner', ''], ['mo02-own', 'smooth']]) $(id).value = value;
+        };
+        $('mo02-reset').addEventListener('click', () => {
+            resetMo02();
+            log('mo02-log', 'action', 'reset', 'every layer cleared');
+            render2();
+        });
+        // The page level lives on <html>: don't carry it into the next page of the examples.
+        window.addEventListener('pagehide', resetMo02);
 
-        const os = matchMedia('(prefers-reduced-motion: reduce)');
-        const showOs = () => { $('mo02-os').textContent = os.matches ? 'yes' : 'no'; };
-        os.addEventListener('change', showOs);
+        const showOs = () => { $('mo02-os').textContent = reduced.matches ? 'yes' : 'no'; render2(); };
+        reduced.addEventListener('change', showOs);
         showOs();
     </script>
 </body>

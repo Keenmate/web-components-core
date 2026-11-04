@@ -80,19 +80,39 @@ describe('motion — instance level', () => {
 });
 
 describe('motion — page-wide window.components.motion', () => {
-  it('applies to elements whose own level is auto; the instance level wins', () => {
+  // Review V-10: the page level goes on <html> (the outermost layer), never on the hosts, so a
+  // closer section's data-motion wins through inheritance.
+  it('is written on <html>, not on the hosts; the instance level stays on its host', () => {
+    const html = document.documentElement;
     const plain = make();
     const own = make({ motion: 'smooth' });
     window.components!.motion = 'none';
-    expect(plain.getAttribute('data-motion')).toBe('none');
+    expect(html.getAttribute('data-motion')).toBe('none');
+    expect(plain.hasAttribute('data-motion')).toBe(false);
     expect(own.getAttribute('data-motion')).toBe('smooth');
     window.components!.motion = 'auto';
-    expect(plain.hasAttribute('data-motion')).toBe(false);
+    expect(html.hasAttribute('data-motion')).toBe(false);
   });
 
-  it('an element connected later picks up the page level', () => {
-    window.components!.motion = 'snappy';
-    expect(make().getAttribute('data-motion')).toBe('snappy');
+  it('a level assigned before any component loaded reaches <html> when core publishes', () => {
+    const components = window.components as Record<string, unknown>;
+    delete components.motion;
+    components.motion = 'snappy'; // a plain property, as a page sets it before loading components
+    make(); // connecting publishes the accessor and adopts the value
+    expect(document.documentElement.getAttribute('data-motion')).toBe('snappy');
+  });
+
+  it('an author-written <html data-motion> comes back when the page level returns to auto', () => {
+    const html = document.documentElement;
+    html.setAttribute('data-motion', 'smooth');
+    try {
+      window.components!.motion = 'none';
+      expect(html.getAttribute('data-motion')).toBe('none');
+      window.components!.motion = 'auto';
+      expect(html.getAttribute('data-motion')).toBe('smooth');
+    } finally {
+      html.removeAttribute('data-motion');
+    }
   });
 
   it('an invalid page value reads as auto', () => {

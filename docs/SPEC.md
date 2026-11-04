@@ -1906,13 +1906,17 @@ reason — and there was no single switch for "no animations here" or "snappier,
 - **`motion`** on every `BlissElement` (core-declared, like `theme-source`): `'auto'` (default) |
   `'none'` | `'snappy'` | `'smooth'`; attribute `motion`, property `el.motion`, reflects, accepted by
   `setAttributes()`. Invalid → warn, keep the previous level (the attribute is written back).
-- **`window.components.motion`** — the page-wide level for every element whose own level is
-  `auto` (non-enumerable accessor on `globalThis` state, shared by every bundled core copy; a value
-  assigned earlier as a plain property is adopted; invalid → `auto`). Exports: `getPageMotion()`,
-  `observePageMotion(listener)`.
-- **`data-motion`** — core writes the resolved level (instance, else page) to the host;
-  `auto` removes it (only one core wrote — an author-written `data-motion` is left alone). The same
-  attribute on any element (`<html>`, a `<section>`) sets the level for everything inside.
+- **`window.components.motion`** — the page level (non-enumerable accessor on `globalThis` state,
+  shared by every bundled core copy; a value assigned earlier as a plain property is adopted;
+  invalid → `auto`). Core writes it **once, on `<html data-motion>`** — the outermost layer — never
+  on the hosts (rc19, review V-10: it used to go on every `auto` host and beat closer sections). An
+  author-written `<html data-motion>` is the same layer: the page level replaces it while set,
+  `auto` restores it. The writer subscribes through the shared listener set, so it runs whichever
+  copy of core owns the setter. Exports: `getPageMotion()`, `observePageMotion(listener)`.
+- **`data-motion`** — core writes the element's OWN level (not `auto`) to the host; `auto` removes
+  it (only one core wrote — an author-written `data-motion` is left alone). An `auto` element gets
+  nothing: its tokens inherit. The same attribute on any element (`<html>`, a `<section>`) sets
+  the level for everything inside.
 
 **Mechanism.** `MOTION_CSS` is adopted (`adoptStyles`) into every root a `BlissElement` connects
 in — the document, or the shadow root of the component that renders it — so `[data-motion]`
@@ -1927,9 +1931,11 @@ matches the host itself and any page element, with or without base-css-variables
 
 `@media (prefers-reduced-motion: reduce)` comes last and zeroes the durations (+ `scroll-behavior:
 auto`) on `:root`, `:host` and every `[data-motion]` element: **the OS setting always wins**, even
-over `motion="smooth"` — it's the user's accessibility choice. Precedence: OS reduce > the element's
-own level (set on the host) > the nearest `[data-motion]` ancestor > base-css-variables' `:root`
-values > the component's fallbacks.
+over `motion="smooth"` — it's the user's accessibility choice. Precedence — **closest wins**, by
+plain CSS inheritance: OS reduce > the element's own level (on the host) > the nearest
+`[data-motion]` ancestor (a section) > the page level (`<html data-motion>`, from
+`window.components.motion` or the author) > base-css-variables' `:root` values > the component's
+fallbacks. Demo: `examples-motion.html` MO02.
 
 Every level sets the scroll behaviour too, so a level nested inside another (`smooth` inside a
 `none` section) follows the nearest one for scrolling as well as speed. A page's own

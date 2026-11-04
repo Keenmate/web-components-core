@@ -325,13 +325,17 @@ Every component takes `motion="auto | none | snappy | smooth"`; `window.componen
 the level page-wide and `data-motion` does it for any element and everything inside (a section, the
 whole page) — no base-css-variables needed. Components follow through the shared
 `--base-duration-*` / `--base-scroll-behavior` tokens; **the OS reduced-motion setting always wins**.
+**The closest level wins**: the component's own `motion` → the nearest `data-motion` around it → the
+page (core writes `window.components.motion` on `<html data-motion>`) → the component's own speed.
+`auto` sets nothing, so the next layer out decides.
 
 ```html
 <section data-motion="snappy">
   <web-multiselect></web-multiselect>             <!-- snappy -->
   <web-daterangepicker motion="none"></web-daterangepicker>  <!-- its own level wins -->
 </section>
-<script>window.components.motion = 'none';</script>  <!-- every component left on auto -->
+<script>window.components.motion = 'none';</script>  <!-- <html data-motion="none">: every component
+                                                         left on auto outside the section -->
 ```
 
 ## Global registration (`window.components`)

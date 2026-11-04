@@ -3,7 +3,7 @@ import { test, expect, type Page } from './fixtures';
 // Motion level (SPEC §12.16) in a real browser — computed transition durations, not attributes:
 //   - default = the component's own fallback (0.15s);
 //   - motion="none" / "snappy" / "smooth" on the element; scroll behaviour follows (none → auto);
-//   - window.components.motion page-wide; the element's own level wins;
+//   - window.components.motion page-wide (on <html>); a closer section and the element's own level win;
 //   - data-motion on a section works without base-css-variables (core adopts the presets);
 //   - a component nested in another's shadow root (presets adopted into that root);
 //   - the OS reduced-motion setting always wins, even over motion="smooth".
@@ -62,6 +62,32 @@ test('window.components.motion applies page-wide; the element\'s own level wins'
     { duration: '0s', scroll: 'auto' },
     { duration: '0.25s', scroll: 'smooth' },
   ]);
+});
+
+// Review V-10: the page level sits on <html>, so a closer section beats it (closest wins).
+test('closest wins: element, then section, then page (window.components.motion on <html>), then own speed', async ({ page }) => {
+  await page.evaluate(() => {
+    (window as any).core.getPageMotion(); // publishes the accessor
+    window.components!.motion = 'smooth';
+  });
+  expect(
+    await probes(
+      page,
+      '<section data-motion="none"><motion-probe></motion-probe><motion-probe motion="snappy"></motion-probe></section>' +
+        '<motion-probe></motion-probe>',
+    ),
+  ).toEqual([
+    { duration: '0s', scroll: 'auto' }, // the section beats the page
+    { duration: '0.08s', scroll: 'smooth' }, // the element's own level beats the section
+    { duration: '0.25s', scroll: 'smooth' }, // outside the section: the page level
+  ]);
+  const attrs = await page.evaluate(() => ({
+    html: document.documentElement.getAttribute('data-motion'),
+    hosts: [...document.querySelectorAll('motion-probe')].map((p) => p.getAttribute('data-motion')),
+  }));
+  expect(attrs).toEqual({ html: 'smooth', hosts: [null, 'snappy', null] });
+  await page.evaluate(() => (window.components!.motion = 'auto'));
+  expect(await page.evaluate(() => document.documentElement.hasAttribute('data-motion'))).toBe(false);
 });
 
 test('data-motion on a section — no base-css-variables needed; the element\'s own level still wins', async ({ page }) => {

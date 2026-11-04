@@ -149,10 +149,11 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    discrete channel only); applied before the first `reinit()`. Code: `src/element/responsive.ts`.
 
    **Motion (SPEC §12.16), every component:** core-declared `motion` (`auto | none | snappy |
-   smooth`, reflects) + page-wide `window.components.motion` → core writes the resolved level to
-   `data-motion` on the host and adopts `MOTION_CSS` into the root the element lives in, which maps
-   `[data-motion]` onto `--base-duration-*` / `--base-scroll-behavior`; OS reduced motion always
-   wins. Components animate only through those tokens. Code: `src/environment/motion.ts`.
+   smooth`, reflects) + page-wide `window.components.motion` → core writes the element's OWN level
+   to `data-motion` on the host and the page level once on `<html data-motion>` (closest wins by
+   inheritance: element → section → page), and adopts `MOTION_CSS` into the root the element lives
+   in, which maps `[data-motion]` onto `--base-duration-*` / `--base-scroll-behavior`; OS reduced
+   motion always wins. Components animate only through those tokens. Code: `src/environment/motion.ts`.
 
    A DOM move (reorder/re-parent) fires `disconnect()`→`connect()` and
    **re-activates without rebuilding** (`reinit()` runs only on first connect or

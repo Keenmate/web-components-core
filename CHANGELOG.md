@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 These change component code or page-visible output. Each component updates once (see the rc19
 brief); no compatibility aliases (v2 rule).
 
+- **Page-wide motion goes on `<html>`, so a closer section wins.** `window.components.motion` used
+  to be written as `data-motion` on every component left on `auto`, which beat a nearer
+  `<section data-motion>`. It is now written once on `<html data-motion>` (an author value there
+  comes back on `auto`), and a host gets `data-motion` only for its own `motion`. Precedence is
+  closest-first by CSS inheritance: element → section → page → the component's own speed (OS
+  reduce motion still wins). Pages using only one of these see no change. Review V-10.
+  *pure-css port affected* if it reads `data-motion` from a component host.
 - **Log levels coalesce: the closest level that is set wins.** element (`el.enableLogging()`) →
   component type (`window.components[tag].logging`, per category) → page
   (`window.components.logging`) → `warn`. Nothing is set by default, so a fresh page prints

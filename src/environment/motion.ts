@@ -1,6 +1,7 @@
 /**
  * Motion level (SPEC §12.16): `auto | none | snappy | smooth` for every BlissElement, page-wide via
- * `window.components.motion`, and as a `data-motion` attribute on any element (a section, `<html>`).
+ * `window.components.motion` (written on `<html data-motion>`), and as a `data-motion` attribute on
+ * any element (a section, `<html>`). The closest level wins through CSS inheritance.
  *
  * Components already read their speeds from the shared contract tokens
  * (`--<prefix>-transition-normal: var(--base-duration-normal, 0.15s)`, `--<prefix>-scroll-behavior:
@@ -75,6 +76,12 @@ export function adoptMotionStyles(node: Node): void {
 interface MotionState {
   level: Motion;
   listeners: Set<(level: Motion) => void>;
+  // Added in rc19 (optional: the state may have been created by an older copy of core).
+  /** The `<html data-motion>` writer is subscribed (once per page, whichever copy installs it). */
+  hasHtmlWriter?: boolean;
+  /** Core wrote the page level on `<html>`; `htmlAuthorValue` is what was there before. */
+  isHtmlApplied?: boolean;
+  htmlAuthorValue?: string | null;
 }
 
 /** On globalThis because each component bundles its own core copy (like logging / the loader hook). */
@@ -95,13 +102,47 @@ function setLevel(value: unknown): void {
 }
 
 /**
+ * The page level lives on `<html data-motion>` — the outermost layer — so CSS inheritance
+ * gives "closest wins": an element's own `motion` → the nearest section's `data-motion` →
+ * the page → the components' own speeds (review V-10; it used to be written on every
+ * host, which beat closer sections). An author-written `<html data-motion>` is the same
+ * layer: the page level replaces it while set and `'auto'` puts it back.
+ */
+function applyPageLevelToHtml(level: Motion): void {
+  if (typeof document === 'undefined' || !document.documentElement) return;
+  const html = document.documentElement;
+  const s = state();
+  if (level !== 'auto') {
+    if (!s.isHtmlApplied) {
+      s.htmlAuthorValue = html.getAttribute(MOTION_DATA_ATTRIBUTE);
+      s.isHtmlApplied = true;
+    }
+    if (html.getAttribute(MOTION_DATA_ATTRIBUTE) !== level) html.setAttribute(MOTION_DATA_ATTRIBUTE, level);
+    adoptStyles(document, MOTION_CSS);
+  } else if (s.isHtmlApplied) {
+    const author = s.htmlAuthorValue;
+    if (author == null) html.removeAttribute(MOTION_DATA_ATTRIBUTE);
+    else html.setAttribute(MOTION_DATA_ATTRIBUTE, author);
+    s.isHtmlApplied = false;
+    s.htmlAuthorValue = undefined;
+  }
+}
+
+/**
  * Publish `window.components.motion` as a NON-enumerable accessor (enumerating
- * `window.components` still yields component tags only). A value the page assigned
- * earlier as a plain property is adopted; an invalid value reads as `'auto'`.
- * Idempotent; SSR-safe.
+ * `window.components` still yields component tags only) and keep `<html data-motion>`
+ * in step with it. A value the page assigned earlier as a plain property is adopted; an
+ * invalid value reads as `'auto'`. Idempotent; SSR-safe.
  */
 export function publishMotionHook(): void {
+  const s = state();
+  // Subscribed through the shared listener set, so a setter owned by another copy of core reaches it too.
+  if (!s.hasHtmlWriter) {
+    s.hasHtmlWriter = true;
+    s.listeners.add(applyPageLevelToHtml);
+  }
   publishPageSetting(HOOK_KEY, { get: () => state().level, set: setLevel });
+  applyPageLevelToHtml(s.level);
 }
 
 /** The page-wide level (`'auto'` when unset). */

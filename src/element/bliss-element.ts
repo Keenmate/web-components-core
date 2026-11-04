@@ -56,12 +56,11 @@ import {
 } from '../environment/theme.js';
 import {
   adoptMotionStyles,
-  getPageMotion,
   isMotion,
   MOTION_ATTRIBUTE,
   MOTION_DATA_ATTRIBUTE,
   MOTION_VALUES,
-  observePageMotion,
+  publishMotionHook,
   type Motion,
 } from '../environment/motion.js';
 import { trackInstance, untrackInstance } from '../global/instances.js';
@@ -303,7 +302,6 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   #themeUnsub?: () => void;
   /** The instance motion level (SPEC §12.16); `auto` = follow the page. */
   #motion: Motion = 'auto';
-  #motionUnsub?: () => void;
   /** Core wrote `data-motion` — so it may remove it (an author-written one is left alone). */
   #hasAppliedMotion = false;
   #internals?: ElementInternals;
@@ -477,7 +475,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#cancelRemovalCheck = undefined;
     // Motion (SPEC §12.16): presets in the root this element lives in; follow the page level.
     adoptMotionStyles(this);
-    this.#motionUnsub ??= observePageMotion(() => this.#applyMotion());
+    publishMotionHook(); // the page level goes on <html>, not on this host (closest wins)
     this.#applyMotion();
     // Page responsive rules changing reach this element while it is connected.
     if (this.#hasInputs() && !this.#responsiveUnsub) {
@@ -598,8 +596,6 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     if (this.#isDestroyed) return; // destroy() already stopped everything
     untrackInstance(this.localName, this);
     this.#stopResponsive();
-    this.#motionUnsub?.();
-    this.#motionUnsub = undefined;
     this.#scheduleRemovalCheck();
     this.#deactivate();
   }
@@ -864,8 +860,6 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     for (const resolve of readyResolvers) resolve();
     untrackInstance(this.localName, this);
     this.#stopResponsive();
-    this.#motionUnsub?.();
-    this.#motionUnsub = undefined;
     try {
       this.#deactivate();
     } finally {
@@ -1165,8 +1159,9 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   }
 
   /**
-   * Motion level (SPEC §12.16): `'auto'` (default — follow `window.components.motion`, then the
-   * page / section `data-motion`), `'none'`, `'snappy'` or `'smooth'`. Core writes the resolved
+   * Motion level (SPEC §12.16): `'auto'` (default — no level of its own: the nearest section's
+   * `data-motion`, else the page level `window.components.motion` / `<html data-motion>`, else the
+   * component's own speeds), `'none'`, `'snappy'` or `'smooth'`. Core writes the element's own
    * level to `data-motion` on the host; components follow through the `--base-duration-*` /
    * `--base-scroll-behavior` tokens. The OS reduced-motion setting always wins. Reflects to `motion`.
    */
@@ -1527,7 +1522,9 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   /** Write the resolved motion level to `data-motion`: the instance level, else the page level. */
   #applyMotion(): void {
     if (!this.isConnected) return;
-    const level = this.#motion !== 'auto' ? this.#motion : getPageMotion();
+    // Only the element's OWN level goes on the host; `auto` leaves the tokens to inheritance
+    // (nearest section / <html> page level / the component's own speeds).
+    const level = this.#motion;
     if (level !== 'auto') {
       if (this.getAttribute(MOTION_DATA_ATTRIBUTE) !== level) this.setAttribute(MOTION_DATA_ATTRIBUTE, level);
       this.#hasAppliedMotion = true;
