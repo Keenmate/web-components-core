@@ -79,7 +79,7 @@ export interface MenuItem<Ctx = ComponentContext, A extends string = string> ext
   shouldCloseOnClick?: boolean;
 }
 
-/** A separator, optionally labelled (a group heading). Create with `menuDivider()`. */
+/** A separator, optionally labelled (a group heading). Create with `createMenuDivider()`. */
 export interface MenuDivider {
   divider: true;
   text?: string;

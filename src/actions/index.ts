@@ -14,10 +14,10 @@ export type {
   ResolvedActionItem,
 } from './types.js';
 export {
+  createMenuDivider,
   getMenuChildren,
   isActionBusy,
   isMenuDivider,
-  menuDivider,
   normalizeActionItems,
   readActionDataset,
   resolveActionItem,

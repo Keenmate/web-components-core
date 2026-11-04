@@ -226,7 +226,7 @@ await runAction({
                 context (here the file that was right-clicked, or <code>{ file: null }</code> for the dropdown).
                 <code>at</code> is either a viewport point or an element to drop down from. It handles submenus, both
                 static <code>children</code> and a lazy <code>getChildrenCallback</code> (<em>Move to</em> loads for
-                700 ms), plain and named dividers (<code>menuDivider('Danger zone')</code>, with leading, trailing and
+                700 ms), plain and named dividers (<code>createMenuDivider('Danger zone')</code>, with leading, trailing and
                 doubled ones trimmed), hidden and disabled items, toggles (<em>Pinned</em> is a
                 <code>menuitemcheckbox</code> that keeps the menu open), positioning through <code>/positioning</code>,
                 and dismissal on an outside press, scroll, window blur, Escape or Tab. The component passes
@@ -258,7 +258,7 @@ await runAction({
                         <tr><td>an item's <code>shortcut</code> (<kbd>O</kbd>, <kbd>F2</kbd>, <kbd>Delete</kbd>)</td><td>Runs that item, looking in the current level first, then the levels above it.</td></tr>
                     </tbody>
                 </table>
-            <div class="code-block"><pre>import { menuDivider } from '@keenmate/web-components-core/actions';
+            <div class="code-block"><pre>import { createMenuDivider } from '@keenmate/web-components-core/actions';
 import { openMenu } from '@keenmate/web-components-core/menu';
 
 row.addEventListener('contextmenu', (e) =&gt; {
@@ -267,9 +267,9 @@ row.addEventListener('contextmenu', (e) =&gt; {
   openMenu([
     { id: 'open', text: 'Open', shortcut: 'O' },
     { action: 'toggle-pin', text: 'Pinned', getIsToggledCallback: (c) =&gt; c.file.isPinned, shouldCloseOnClick: false },
-    { text: 'Share', children: [{ id: 'copy-link', text: 'Copy link' }, menuDivider(), { text: 'More', children: […] }] },
+    { text: 'Share', children: [{ id: 'copy-link', text: 'Copy link' }, createMenuDivider(), { text: 'More', children: […] }] },
     { text: 'Move to', getChildrenCallback: async () =&gt; loadFolders() },
-    menuDivider('Danger zone'),
+    createMenuDivider('Danger zone'),
     { id: 'archive', text: 'Archive', getIsDisabledCallback: (c) =&gt; c.file.isLocked },
     { action: 'delete', text: 'Delete', isDanger: true, shortcut: 'Delete' },
   ], ctx, {
@@ -309,7 +309,7 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
                     <tr><td><code>runBeforeCallback(fn, ctx, name?)</code></td><td>main index</td><td>Async. <code>false</code> rejects, <code>undefined</code> continues, any other value replaces; a throw rejects and is logged. Unset continues. Resolves to <code>{ isRejected, hasValue, value }</code>.</td></tr>
                     <tr><td><code>runBeforeCallbackEager(fn, ctx, name?)</code></td><td>main index</td><td>Same contract. Synchronous result for a sync hook, a <code>Promise</code> only for an async one.</td></tr>
                     <tr><td><code>runBeforeCallbackSync(fn, ctx, name?)</code></td><td>main index</td><td>Must answer now (<code>dragstart</code>, <code>keydown</code>). A returned <code>Promise</code> is warned and treated as continue.</td></tr>
-                    <tr><td><code>ActionItem</code> / <code>MenuItem</code> / <code>menuDivider(text?)</code></td><td><code>/actions</code></td><td>Item data. Static fields plus <code>get*Callback(ctx)</code> (callback wins), <code>onClick</code>, and for menus <code>children</code> / <code>getChildrenCallback</code> / <code>shouldCloseOnClick</code>.</td></tr>
+                    <tr><td><code>ActionItem</code> / <code>MenuItem</code> / <code>createMenuDivider(text?)</code></td><td><code>/actions</code></td><td>Item data. Static fields plus <code>get*Callback(ctx)</code> (callback wins), <code>onClick</code>, and for menus <code>children</code> / <code>getChildrenCallback</code> / <code>shouldCloseOnClick</code>.</td></tr>
                     <tr><td><code>resolveActionItem</code>, <code>resolveMenuEntries</code>, <code>normalizeActionItems</code>, <code>getMenuChildren</code>, <code>readActionDataset</code>, <code>isActionBusy</code></td><td><code>/actions</code></td><td>Resolution helpers: callback &gt; static &gt; component default &gt; base; hidden items dropped; dividers trimmed; string shorthand; <code>data-*</code> minus <code>action</code> / <code>id</code>.</td></tr>
                     <tr><td><code>runAction({ detail, beforeActionCallback, runBuiltIn, emitAction })</code></td><td><code>/actions</code></td><td><code>beforeActionCallback</code> → <code>onClick</code> → built-in → <code>action</code> event. Busy guard, <code>aria-busy</code> on the trigger. Resolves <code>false</code> when cancelled or busy.</td></tr>
                     <tr><td><code>ActionEventDetail</code></td><td><code>/actions</code></td><td>Surface ctx + <code>action</code>, <code>id</code>, <code>item</code>, <code>source</code>, <code>sourceEvent</code>, <code>triggerElement</code>, <code>dataset</code>. One object for <code>beforeActionCallback</code>, <code>onClick</code>, <code>onAction</code> and the event.</td></tr>

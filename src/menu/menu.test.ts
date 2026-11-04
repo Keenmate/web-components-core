@@ -10,7 +10,7 @@ vi.mock('../positioning/anchor.js', () => ({
   }),
 }));
 
-import { menuDivider } from '../actions/resolve.js';
+import { createMenuDivider } from '../actions/resolve.js';
 import type { MenuEntry } from '../actions/types.js';
 import { __resetOverlays, registerOverlay } from '../overlay/active-overlay.js';
 import { openMenu, type MenuCloseReason, type OpenMenuOptions } from './index.js';
@@ -60,7 +60,7 @@ function open(entries: readonly (MenuEntry<Ctx> | string)[], extra: Partial<Open
 const basic: MenuEntry<Ctx>[] = [
   { id: 'a', text: 'Alpha', shortcut: 'a' },
   { id: 'b', text: 'Beta', isDisabled: true, shortcut: 'b' },
-  menuDivider(),
+  createMenuDivider(),
   { id: 'c', text: 'Gamma' },
 ];
 
@@ -68,7 +68,7 @@ describe('rendering', () => {
   it('renders items, dividers, roles and states; positions at the point', () => {
     const { handle } = open([
       { id: 'x', text: 'X', icon: '<svg data-i="1"></svg>', shortcut: 'Ctrl+X', isDanger: true, cssClass: 'extra more' },
-      menuDivider('Group'),
+      createMenuDivider('Group'),
       { id: 'y', text: 'Y', isToggled: true, tooltip: 'tip' },
       { id: 'z', text: 'Z', isDisabled: true, children: [{ id: 'z1' }] },
       { id: 'hidden', isVisible: false },
@@ -133,7 +133,7 @@ describe('rendering', () => {
   });
 
   it('no visible item → nothing rendered, handle closed, onClose not called', () => {
-    const { handle, onClose } = open([{ id: 'h', isVisible: false }, menuDivider()]);
+    const { handle, onClose } = open([{ id: 'h', isVisible: false }, createMenuDivider()]);
     expect(handle.isOpen).toBe(false);
     expect(handle.element).toBeNull();
     expect(levels()).toHaveLength(0);

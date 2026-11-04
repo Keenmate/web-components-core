@@ -16,6 +16,9 @@ brief); no compatibility aliases (v2 rule).
   `renderLoaderCallback`): the same name as the instance hook, like every other page-wide setting.
   The `RenderLoaderCallback` type keeps its name (it types `renderLoader()`'s hook). Copies of core
   share one hook state, so a page with an older component bundle still works under either name.
+- **`menuDivider()` is `createMenuDivider()`** (`/actions`): the rulebook's `create` = factory
+  prefix, like `createPopover` / `createTooltip`. Treeview, grid and editor re-export it, so app
+  code that builds menus with it renames too. The plain `{ divider: true, text? }` form is unchanged.
 - **Notification hooks are named `on*`; `*Callback` means "you decide".** Renamed options:
 
   | Before | After | Where |

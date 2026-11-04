@@ -26,7 +26,7 @@ import {
 import type { EventDef, InputDef } from '../src/index.js';
 import {
   isActionBusy,
-  menuDivider,
+  createMenuDivider,
   normalizeActionItems,
   readActionDataset,
   resolveActionItem,
@@ -381,12 +381,12 @@ export class FxFiles extends BlissElement<{ action: FilesDetail }> {
       { id: 'open', text: 'Open', shortcut: 'O' },
       { action: 'rename', text: 'Rename', shortcut: 'F2' },
       { action: 'toggle-pin', text: 'Pinned', getIsToggledCallback: (ctx) => !!ctx.file?.isPinned, shouldCloseOnClick: false },
-      menuDivider(),
+      createMenuDivider(),
       {
         text: 'Share',
         children: [
           { id: 'copy-link', text: 'Copy link' },
-          menuDivider(),
+          createMenuDivider(),
           { text: 'More', children: [{ id: 'qr', text: 'QR code' }] },
         ],
       },
@@ -397,7 +397,7 @@ export class FxFiles extends BlissElement<{ action: FilesDetail }> {
           return ['Documents', 'Archive 2025'].map((f) => ({ id: `move:${f}`, text: f }));
         },
       },
-      menuDivider('Danger zone'),
+      createMenuDivider('Danger zone'),
       { id: 'archive', text: 'Archive', getIsDisabledCallback: (ctx) => !!ctx.file?.isLocked },
       { action: 'delete', text: 'Delete', isDanger: true, shortcut: 'Delete' },
     ];
@@ -406,7 +406,7 @@ export class FxFiles extends BlissElement<{ action: FilesDetail }> {
   #barEntries(): FilesEntry[] {
     return [
       { action: 'new-file', text: 'New file', shortcut: 'N' },
-      menuDivider(),
+      createMenuDivider(),
       { id: 'hidden-item', text: 'Never shown', isVisible: false },
       { id: 'help', text: 'Help' },
     ];

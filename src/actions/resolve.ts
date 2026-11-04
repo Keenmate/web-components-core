@@ -71,7 +71,7 @@ export function resolveActionItem<Ctx, A extends string>(
 }
 
 /** A separator entry, optionally labelled. */
-export function menuDivider(text?: string): MenuDivider {
+export function createMenuDivider(text?: string): MenuDivider {
   return text === undefined ? { divider: true } : { divider: true, text };
 }
 

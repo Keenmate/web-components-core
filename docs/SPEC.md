@@ -1653,7 +1653,7 @@ context and header menus, palette commands — is an **`ActionItem<Ctx, A>`**:
 item `role="menuitemcheckbox"` + `aria-checked`), each dynamic field with a separate
 `get*Callback(ctx)` (callback wins), and `onClick(ctx)`. `MenuItem` adds
 `children` / `getChildrenCallback(ctx)` (may be async) / `shouldCloseOnClick`;
-`MenuDivider` (`menuDivider(text?)`) is its own entry — never a flag on an item.
+`MenuDivider` (`createMenuDivider(text?)`) is its own entry — never a flag on an item.
 `Ctx` is the **surface context** the component builds when it renders or opens
 the surface (the row a menu opened on, the picker's selection), carrying the
 component context (`controller`, `element`).

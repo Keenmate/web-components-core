@@ -3,7 +3,7 @@ import {
   getMenuChildren,
   isActionBusy,
   isMenuDivider,
-  menuDivider,
+  createMenuDivider,
   normalizeActionItems,
   readActionDataset,
   resolveActionItem,
@@ -86,10 +86,10 @@ describe('resolveActionItem', () => {
 });
 
 describe('dividers + shorthand', () => {
-  it('menuDivider / isMenuDivider', () => {
-    expect(menuDivider()).toEqual({ divider: true });
-    expect(menuDivider('Danger zone')).toEqual({ divider: true, text: 'Danger zone' });
-    expect(isMenuDivider(menuDivider())).toBe(true);
+  it('createMenuDivider / isMenuDivider', () => {
+    expect(createMenuDivider()).toEqual({ divider: true });
+    expect(createMenuDivider('Danger zone')).toEqual({ divider: true, text: 'Danger zone' });
+    expect(isMenuDivider(createMenuDivider())).toBe(true);
     expect(isMenuDivider({ text: 'x' })).toBe(false);
     expect(isMenuDivider(null)).toBe(false);
   });
@@ -103,13 +103,13 @@ describe('dividers + shorthand', () => {
 describe('resolveMenuEntries', () => {
   it('drops hidden items and trims leading / trailing / doubled dividers', () => {
     const entries: MenuEntry<RowCtx>[] = [
-      menuDivider(),
+      createMenuDivider(),
       { id: 'a', text: 'A' },
       { id: 'hidden', text: 'H', isVisible: false },
-      menuDivider(),
-      menuDivider('Group'),
+      createMenuDivider(),
+      createMenuDivider('Group'),
       { id: 'b', text: 'B', getIsVisibleCallback: () => true },
-      menuDivider(),
+      createMenuDivider(),
       { id: 'c', text: 'C', getIsVisibleCallback: () => false },
     ];
     const out = resolveMenuEntries(entries, ctx);
@@ -284,10 +284,10 @@ describe('actions — review fixes', () => {
   }
 
   it('a labelled divider at the top is a group heading and is kept', () => {
-    const out = resolveMenuEntries([menuDivider('Recent'), { id: 'a', text: 'A' }, menuDivider(), { id: 'b', text: 'B' }], ctx);
+    const out = resolveMenuEntries([createMenuDivider('Recent'), { id: 'a', text: 'A' }, createMenuDivider(), { id: 'b', text: 'B' }], ctx);
     expect(out.map((e) => (e.kind === 'divider' ? `--${e.text ?? ''}` : e.resolved.id))).toEqual(['--Recent', 'a', '--', 'b']);
     // an unlabelled leading divider is still dropped
-    expect(resolveMenuEntries([menuDivider(), { id: 'a', text: 'A' }], ctx)).toHaveLength(1);
+    expect(resolveMenuEntries([createMenuDivider(), { id: 'a', text: 'A' }], ctx)).toHaveLength(1);
   });
 
   it('null / undefined entries (conditional items) are skipped', () => {

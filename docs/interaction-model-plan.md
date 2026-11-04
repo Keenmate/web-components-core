@@ -30,7 +30,7 @@ The same concepts are re-implemented per component and have drifted:
    - Booleans follow is/should/has/can (`isDanger`, not `danger`; no `hidden`).
 2. **Breaking is OK** — clean renames, no deprecated aliases (same as the rc15 renames).
 3. **Dividers are their own entry**, never a flag on an item: `{ divider: true, text? }`
-   (+ `menuDivider(text?)` factory). Plain object, not a class, so JSON / data-attribute menus
+   (+ `createMenuDivider(text?)` factory). Plain object, not a class, so JSON / data-attribute menus
    work. Grid's `dividerBefore` and toolbar `group` go.
 4. **Children are flexible:** static `children`, or `getChildrenCallback(ctx)` returning entries
    **or a Promise** (lazy submenu, loading row until it resolves). Callback wins. Any depth;
@@ -108,7 +108,7 @@ type MenuEntry<Ctx, A> = MenuItem<Ctx, A> | MenuDivider;
 resolveActionItem(item, ctx)    // → { text, icon, tooltip, cssClass, isVisible, isDisabled };
                                 //   callback wins; a throwing callback is logged, static fallback
 resolveMenuEntries(entries, ctx) // drops hidden items, trims leading/trailing/double dividers
-menuDivider(text?)
+createMenuDivider(text?)
 ```
 
 ## Events — same shape as callbacks
@@ -136,7 +136,7 @@ prefix (`node-click`, `date-select`, `row-change`), notification `onNodeClick` /
    every DOM event + `on*` notification + `before*Callback`, with current name → new name and
    detail fields. Output: a table per component appended here. Settle open questions.
 1. **Core `/actions` + event helper** — `dispatch()` default `composed: false`; types, `resolveActionItem`, `resolveMenuEntries`,
-   `menuDivider`, `emitWithCallback()` on BlissElement; unit tests; SPEC §12.x section; CLAUDE.md note;
+   `createMenuDivider`, `emitWithCallback()` on BlissElement; unit tests; SPEC §12.x section; CLAUDE.md note;
    CEM/web-types: event descriptions generated from the detail types where possible.
 2. **web-daterangepicker** — `ActionButton` → `ActionItem`; `custom-action` → unified action
    event; contexts on `ComponentContext` (keeps `picker` as an extra); events/notifications.

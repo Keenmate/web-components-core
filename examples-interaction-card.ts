@@ -30,7 +30,7 @@ import {
 import type { EventDef, InputDef } from './src/index.js';
 import {
   isActionBusy,
-  menuDivider,
+  createMenuDivider,
   normalizeActionItems,
   readActionDataset,
   resolveActionItem,
@@ -476,13 +476,13 @@ export class FilesDemo extends BlissElement<{ action: FilesDetail }> {
         getIsToggledCallback: (ctx) => !!ctx.file?.isPinned,
         shouldCloseOnClick: false,
       },
-      menuDivider(),
+      createMenuDivider(),
       {
         text: 'Share',
         children: [
           { id: 'copy-link', text: 'Copy link' },
           { id: 'email', text: 'Email…' },
-          menuDivider(),
+          createMenuDivider(),
           { text: 'More', children: [{ id: 'qr', text: 'QR code' }, { id: 'embed', text: 'Embed code' }] },
         ],
       },
@@ -493,7 +493,7 @@ export class FilesDemo extends BlissElement<{ action: FilesDetail }> {
           return FOLDERS.map((f) => ({ id: `move:${f}`, text: f }));
         },
       },
-      menuDivider('Danger zone'),
+      createMenuDivider('Danger zone'),
       {
         id: 'archive',
         text: 'Archive',
@@ -515,7 +515,7 @@ export class FilesDemo extends BlissElement<{ action: FilesDetail }> {
           { action: 'sort', id: 'pinned', text: 'Pinned first' },
         ],
       },
-      menuDivider(),
+      createMenuDivider(),
       { id: 'hidden-item', text: 'Never shown', isVisible: false },
       { id: 'help', text: 'Help', shortcut: 'H' },
     ];
