@@ -25,7 +25,10 @@ import { once } from '../dom/once.js';
 import { callSafely } from '../logging/safe-call.js';
 import { createThrottle, type Throttle } from '../dom/throttle.js';
 
-/** An element's border-box size in CSS px (matches `getBoundingClientRect()`). */
+/**
+ * An element's border-box LAYOUT size in CSS px: CSS transforms are not applied (a panel in a
+ * `scale(.95)` open animation reports its real size), unlike `getBoundingClientRect()`.
+ */
 export interface ElementSize {
   /** Border-box width in CSS px. */
   readonly width: number;
@@ -67,11 +70,28 @@ function canObserve(): boolean {
   return typeof ResizeObserver !== 'undefined';
 }
 
-/** Border-box read; SSR-safe (`0×0` when there's no layout). Same source for immediate + RO fires. */
+/**
+ * The immediate (no observer entry) border-box layout size: `offsetWidth` / `offsetHeight`
+ * for an HTML element (untransformed, whole px — the first observer entry refines it), the
+ * bounding box for anything else (SVG has no offset size). SSR-safe: `0×0` with no layout.
+ */
 function measure(el: Element): ElementSize {
+  if (typeof HTMLElement !== 'undefined' && el instanceof HTMLElement) return { width: el.offsetWidth, height: el.offsetHeight };
   if (typeof el.getBoundingClientRect !== 'function') return { width: 0, height: 0 };
   const r = el.getBoundingClientRect();
   return { width: r.width, height: r.height };
+}
+
+/**
+ * The size from an observer entry, with no extra layout (review V-15): `borderBoxSize` is
+ * the untransformed border box in LOGICAL axes, so a vertical writing mode swaps it back to
+ * width / height. Falls back to {@link measure} where `borderBoxSize` is missing.
+ */
+function entrySize(entry: ResizeObserverEntry): ElementSize {
+  const box = entry.borderBoxSize?.[0];
+  if (!box) return measure(entry.target);
+  const isVertical = typeof getComputedStyle === 'function' && !/^horizontal/.test(getComputedStyle(entry.target).writingMode || 'horizontal-tb');
+  return isVertical ? { width: box.blockSize, height: box.inlineSize } : { width: box.inlineSize, height: box.blockSize };
 }
 
 function sizesEqual(a: ElementSize | undefined, b: ElementSize): boolean {
@@ -100,9 +120,7 @@ function onResize(entries: ResizeObserverEntry[]): void {
   for (const entry of entries) {
     const subs = targets.get(entry.target);
     if (!subs) continue;
-    // Read the border box via getBoundingClientRect for identical semantics with the
-    // immediate fire (and to sidestep writing-mode axis ambiguity in entry sizes).
-    const size = measure(entry.target);
+    const size = entrySize(entry);
     for (const sub of [...subs]) dispatch(sub, size);
   }
 }

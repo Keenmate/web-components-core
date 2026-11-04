@@ -163,3 +163,24 @@ for (const when of ['upgrade', 'defined'] as const) {
     expect(result).toEqual({ label: 'hi', pageSize: 5, hasMotion: false });
   });
 }
+
+// Review V-15: sizeChanged / observeElementSize report the LAYOUT size, not the transformed box.
+test('observeElementSize reports the layout size of a scaled element (first fire and on resize)', async ({ page }) => {
+  const seen = await page.evaluate(async () => {
+    const { observeElementSize } = (window as any).core;
+    const el = document.createElement('div');
+    el.style.cssText = 'width: 200px; height: 40px; transform: scale(0.5); transform-origin: 0 0';
+    document.body.appendChild(el);
+    const sizes: Array<{ width: number; height: number }> = [];
+    const unsub = observeElementSize(el, (size: { width: number; height: number }) => sizes.push({ ...size }), { throttleMs: 0 });
+    el.style.width = '300px';
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    unsub();
+    const visual = el.getBoundingClientRect().width;
+    el.remove();
+    return { sizes, visual };
+  });
+  expect(seen.visual).toBe(150); // the transformed box is half as wide…
+  expect(seen.sizes[0]).toEqual({ width: 200, height: 40 }); // …but the first fire is the layout size
+  expect(seen.sizes.at(-1)).toEqual({ width: 300, height: 40 }); // and so is the observer's
+});

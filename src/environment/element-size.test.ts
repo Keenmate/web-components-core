@@ -19,12 +19,16 @@ class MockResizeObserver {
   disconnect(): void {
     this.observed.clear();
   }
-  /** Test hook: deliver a resize for the given elements (size read via getBoundingClientRect). */
+  /** Test hook: deliver a resize for the given elements (no borderBoxSize → the offset size is read). */
   emit(...els: Element[]): void {
     this.cb(
       els.map((target) => ({ target }) as unknown as ResizeObserverEntry),
       this as unknown as ResizeObserver,
     );
+  }
+  /** Test hook: deliver one entry carrying a logical `borderBoxSize`, like a real observer. */
+  emitBox(target: Element, inlineSize: number, blockSize: number): void {
+    this.cb([{ target, borderBoxSize: [{ inlineSize, blockSize }] } as unknown as ResizeObserverEntry], this as unknown as ResizeObserver);
   }
 }
 
@@ -33,9 +37,12 @@ function observer(): MockResizeObserver {
   return MockResizeObserver.instances[MockResizeObserver.instances.length - 1]!;
 }
 
+/** The element's layout size (offsetWidth / offsetHeight — what core reads without an entry). */
 function setSize(el: Element, width: number, height = 100): void {
-  el.getBoundingClientRect = () =>
-    ({ width, height, x: 0, y: 0, top: 0, left: 0, right: width, bottom: height, toJSON() {} }) as DOMRect;
+  Object.defineProperties(el, {
+    offsetWidth: { value: width, configurable: true },
+    offsetHeight: { value: height, configurable: true },
+  });
 }
 
 function sized(width: number, height = 100): HTMLElement {
@@ -172,5 +179,39 @@ describe('SSR / no ResizeObserver', () => {
     const unsub = observeElementSize(el, (size) => seen.push(size));
     expect(seen).toEqual([{ width: 0, height: 0 }]);
     expect(() => unsub()).not.toThrow();
+  });
+});
+
+// Review V-15: the layout size, not the transformed visual box.
+describe('observeElementSize — layout size', () => {
+  it('reads the untransformed size: a scaled element reports its real width', () => {
+    const el = sized(200, 40);
+    el.getBoundingClientRect = () => ({ width: 190, height: 38 }) as DOMRect; // transform: scale(.95)
+    const seen: ElementSize[] = [];
+    const unsub = observeElementSize(el, (size) => seen.push(size), { throttleMs: 0 });
+    observer().emitBox(el, 250, 50);
+    expect(seen).toEqual([{ width: 200, height: 40 }, { width: 250, height: 50 }]);
+    unsub();
+  });
+
+  it('maps the logical borderBoxSize back to width / height in a vertical writing mode', () => {
+    const el = sized(40, 200);
+    el.style.writingMode = 'vertical-rl';
+    document.body.appendChild(el);
+    const seen: ElementSize[] = [];
+    const unsub = observeElementSize(el, (size) => seen.push(size), { throttleMs: 0, shouldFireImmediately: false });
+    observer().emitBox(el, 300, 60); // inline axis is vertical here
+    expect(seen).toEqual([{ width: 60, height: 300 }]);
+    unsub();
+    el.remove();
+  });
+
+  it('an SVG element (no offset size) falls back to its bounding box', () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.getBoundingClientRect = () => ({ width: 64, height: 32 }) as DOMRect;
+    const seen: ElementSize[] = [];
+    const unsub = observeElementSize(svg, (size) => seen.push(size));
+    expect(seen).toEqual([{ width: 64, height: 32 }]);
+    unsub();
   });
 });

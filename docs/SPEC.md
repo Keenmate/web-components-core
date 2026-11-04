@@ -1376,7 +1376,10 @@ rather than the viewport splits into two tiers, and the first is not core's job:
   changes, **throttled to ~30 ms (leading + trailing)** with identical-size dedup —
   the same cadence as `viewportChanged`, which also sidesteps the `ResizeObserver`
   loop error by deferring reflow out of the callback. `size` is `{ width, height }`
-  in CSS px; for a one-off read use `this.getBoundingClientRect()`. Override-gated
+  in CSS px — the LAYOUT size, CSS transforms not applied (rc19, review V-15: the observer
+  reads the entry's `borderBoxSize`, mapped for vertical writing modes; the first fire
+  `offsetWidth` / `offsetHeight`; SVG the bounding box). For a one-off read of the same size use
+  `this.offsetWidth` / `this.offsetHeight` (`getBoundingClientRect()` includes transforms). Override-gated
   and balanced across connect/disconnect like the other environment hooks. SSR-safe
   (no `ResizeObserver` → one `0×0` fire + no-op unsubscribe).
 

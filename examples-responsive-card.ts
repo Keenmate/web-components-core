@@ -12,11 +12,13 @@
  *                               (registered via `registerComponent`, so it gets
  *                               the per-tag `window.components[tag].responsive*`)
  *   - `<core-demo-rs-callback>` RS05 — `isCompact`, `cols`
+ *   - `<core-demo-rs-size>`     RS06 — no inputs; overrides `sizeChanged()` and lays out one
+ *                               tile per 120px of the width it is told
  *
  * Demo-only — not part of the published package (`files` ships `dist/` only).
  */
 import { BlissElement, define, registerComponent, toBool, toEnum, toInt, toText } from './src/index.js';
-import type { InputDef } from './src/index.js';
+import type { ElementSize, InputDef } from './src/index.js';
 
 // Page tokens (--kmwc-*) inherit into the shadow root, so the card follows light / dark.
 const STYLES = `
@@ -171,3 +173,42 @@ registerComponent('core-demo-rs-layers', RsLayersCard as unknown as CustomElemen
   config: { name: 'core-demo-rs-layers', version: 'demo' },
 });
 define('core-demo-rs-callback', RsCallbackCard as unknown as CustomElementConstructor);
+
+const round1 = (n: number): number => Math.round(n * 10) / 10;
+
+/** What `<core-demo-rs-size>` reports on every `sizeChanged()` (the `size-report` event). */
+export type SizeReportDetail = { size: ElementSize; visual: { width: number; height: number }; columns: number };
+
+/**
+ * RS06 — a component that makes a STRUCTURAL decision from its width (one tile per 120px),
+ * the job `sizeChanged()` is for. It shows the size the hook reported next to the visual box
+ * (`getBoundingClientRect()`, transforms applied), so scaling the element shows the difference.
+ */
+export class RsSizeCard extends BlissElement {
+  protected static override events = ['size-report'];
+  #root?: ShadowRoot;
+
+  protected override reinit(): void {
+    this.#root ??= this.shadowRoot ?? this.attachShadow({ mode: 'open' });
+    this.#root.innerHTML = `<style>${STYLES}</style>
+      <div class="rs"><div class="rs-title">sizeChanged() → layout</div>
+      <div class="rs-kv" part="kv">waiting for the first report…</div><div class="rs-tiles"></div></div>`;
+  }
+
+  protected override sizeChanged(size: ElementSize): void {
+    const root = this.#root;
+    if (!root) return;
+    const columns = Math.max(1, Math.floor(size.width / 120));
+    const rect = this.getBoundingClientRect();
+    const visual = { width: round1(rect.width), height: round1(rect.height) };
+    root.querySelector('.rs-kv')!.innerHTML =
+      `sizeChanged: <b>${round1(size.width)} × ${round1(size.height)}</b> → <b>${columns}</b> tile(s)<br>` +
+      `visual box (getBoundingClientRect): ${visual.width} × ${visual.height}`;
+    const tilesEl = root.querySelector<HTMLElement>('.rs-tiles')!;
+    tilesEl.style.setProperty('--rs-cols', String(columns));
+    tiles(tilesEl, columns, '');
+    this.emit('size-report', { size, visual, columns } satisfies SizeReportDetail);
+  }
+}
+
+define('core-demo-rs-size', RsSizeCard as unknown as CustomElementConstructor);

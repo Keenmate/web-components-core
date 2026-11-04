@@ -893,7 +893,7 @@ describe('sizeChanged hook', () => {
     MockRO.instances = [];
     vi.stubGlobal('ResizeObserver', MockRO);
     const el = document.createElement('sized-element') as SizedElement;
-    el.getBoundingClientRect = () => ({ width: 300, height: 100 }) as DOMRect;
+    Object.defineProperties(el, { offsetWidth: { value: 300 }, offsetHeight: { value: 100 } });
     document.body.appendChild(el);
     // shouldFireImmediately:false → no pre-layout fire; the observer is watching this element.
     expect(el.widths).toEqual([]);

@@ -267,16 +267,56 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
         </div>
 
         <!-- ============================================================= -->
-        <!-- RS06 · API summary                                            -->
+        <!-- RS06 · Element size: sizeChanged()                            -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>RS06 · API summary</h2>
+            <h2>RS06 · Element size: <code>sizeChanged(size)</code></h2>
+            <p>
+                A component that overrides <code>sizeChanged(size)</code> is told its own border-box size whenever its
+                layout changes (one shared <code>ResizeObserver</code>, throttled ≈30 ms). Use it for
+                <strong>structural</strong> decisions; plain reflow belongs in CSS container queries. The demo below lays
+                out one tile per 120px of the width it was told.
+            </p>
+            <p>
+                The size is the <strong>layout</strong> size: CSS transforms are not applied. Scale the component down
+                and change its width: <code>sizeChanged</code> keeps reporting the real width (and the same number of
+                tiles), while the visual box from <code>getBoundingClientRect()</code> shrinks with the transform. That
+                matters for panels that open with a <code>scale()</code> animation: they used to report a shrunken size
+                while animating.
+            </p>
+            <div class="controls">
+                <label>width <input type="range" id="rs06-width" min="240" max="720" step="10" value="480">
+                    <span class="mono" id="rs06-width-out">480px</span></label>
+                <label>transform: scale <input type="range" id="rs06-scale" min="40" max="100" step="5" value="100">
+                    <span class="mono" id="rs06-scale-out">1</span></label>
+                <button id="rs06-reattach">Re-attach (first report while scaled)</button>
+                <button id="rs06-reset" class="btn-outline">Reset</button>
+            </div>
+            <div class="demo-area">
+                <core-demo-rs-size id="rs06-el" style="width: 480px"></core-demo-rs-size>
+            </div>
+            <div class="log-panel log-panel--dark mt-1" data-empty="Move a slider." id="rs06-log"></div>
+            <div class="code-block"><pre>class MyPanel extends BlissElement {
+  protected override sizeChanged({ width, height }: ElementSize) {
+    // layout size (transforms not applied); throttled, deduped
+    this.#columns = Math.max(1, Math.floor(width / 120));
+    this.#renderTiles();
+  }
+}</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- RS07 · API summary                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>RS07 · API summary</h2>
             <table class="reference-table">
                 <thead><tr><th>API</th><th>What it does</th></tr></thead>
                 <tbody>
                     <tr><td><code>getEnvironment()</code></td><td>Synchronous <code>EnvironmentSnapshot</code>: <code>pointer</code>, <code>hasCoarsePointer</code>, <code>canHover</code>, <code>isTouchPrimary</code>, <code>orientation</code>, <code>viewportWidth</code>/<code>Height</code>, <code>breakpoint</code>, <code>os</code>, <code>isApple</code>, <code>isAndroid</code>.</td></tr>
                     <tr><td><code>observeEnvironment(cb, { shouldFireImmediately? })</code></td><td>Discrete channel — category flips only. Returns the unsubscribe. <code>BlissElement</code> hook: <code>environmentChanged(env)</code>.</td></tr>
                     <tr><td><code>observeViewport(cb, opts)</code></td><td>Continuous channel — size changes, throttled ≈30 ms (leading + trailing). Hook: <code>viewportChanged(env)</code>.</td></tr>
+                    <tr><td><code>sizeChanged(size)</code> · <code>observeElementSize(el, cb, opts)</code></td><td>The element's border-box <strong>layout</strong> size (transforms not applied), via one shared <code>ResizeObserver</code>; throttled ≈30 ms, deduped. The hook is override-gated (RS06).</td></tr>
                     <tr><td><code>configureBreakpoints(map)</code></td><td>Redefine the width buckets globally (beats the <code>--base-breakpoint-*</code> tokens). Default <code>{ mobile: 768, tablet: 1024, desktop: Infinity }</code>.</td></tr>
                     <tr><td><code>classifyDevice(env)</code></td><td><code>'mobile' | 'tablet' | 'desktop'</code> — not touch-primary → desktop; else short side &lt; <code>TABLET_MIN_SHORT_SIDE</code> (600) → mobile, else tablet.</td></tr>
                     <tr><td><code>resolvePresentation(mode, env, map?)</code></td><td>Forced mode as-is; <code>auto</code> → <code>map[deviceClass] ?? DEFAULT_PRESENTATION_MAP[deviceClass]</code>.</td></tr>
@@ -576,6 +616,55 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
             setTimeout(renderCb, 0);
         });
         $('cb-apply').addEventListener('click', assignCb);
+
+        // RS06 · element size ---------------------------------------------
+        {
+            const el = document.getElementById('rs06-el');
+            const width = document.getElementById('rs06-width');
+            const scale = document.getElementById('rs06-scale');
+            const logEl = document.getElementById('rs06-log');
+            const line = (tone, name, detail) => {
+                const row = document.createElement('div');
+                row.className = `log-line log-line--${tone}`;
+                const n = document.createElement('span');
+                n.className = 'log-line__name';
+                n.textContent = name;
+                const d = document.createElement('span');
+                d.textContent = detail;
+                row.append(n, d);
+                logEl.prepend(row);
+            };
+            el.addEventListener('size-report', (e) => {
+                const { size, visual, columns } = e.detail;
+                const r1 = (n) => Math.round(n * 10) / 10;
+                line('info', 'sizeChanged', `${r1(size.width)} × ${r1(size.height)} → ${columns} tile(s) · visual box ${visual.width} × ${visual.height}`);
+            });
+            const applyWidth = () => {
+                el.style.width = `${width.value}px`;
+                document.getElementById('rs06-width-out').textContent = `${width.value}px`;
+            };
+            const applyScale = () => {
+                const s = Number(scale.value) / 100;
+                el.style.transform = s === 1 ? '' : `scale(${s})`;
+                el.style.transformOrigin = 'left top';
+                document.getElementById('rs06-scale-out').textContent = String(s);
+                line('action', 'transform', s === 1 ? 'none' : `scale(${s}) — the layout size is unchanged, so no report`);
+            };
+            width.addEventListener('input', applyWidth);
+            scale.addEventListener('input', applyScale);
+            document.getElementById('rs06-reattach').addEventListener('click', () => {
+                const parent = el.parentElement;
+                el.remove();
+                parent.append(el);
+                line('action', 're-attach', 'connected again: the first report is the layout size too');
+            });
+            document.getElementById('rs06-reset').addEventListener('click', () => {
+                width.value = '480';
+                scale.value = '100';
+                applyWidth();
+                applyScale();
+            });
+        }
 
         // ── initial paint ───────────────────────────────────────────────────
         await customElements.whenDefined(TAG);

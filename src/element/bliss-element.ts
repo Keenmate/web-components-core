@@ -1091,8 +1091,10 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * fire before paint. Reach for this hook only when the reflow is *structural*
    * (different DOM / a JS decision). Fires with the element's real laid-out
    * border box shortly after connect, then on size changes, **throttled to ~30 ms
-   * (leading + trailing)**; identical consecutive sizes are deduped. For a one-off
-   * synchronous read, call `this.getBoundingClientRect()`.
+   * (leading + trailing)**; identical consecutive sizes are deduped. The size is the
+   * LAYOUT size — CSS transforms are not applied, so a `scale()` open animation doesn't
+   * report a shrunken box. For a one-off synchronous read of the same size, use
+   * `this.offsetWidth` / `this.offsetHeight` (`getBoundingClientRect()` includes transforms).
    */
   protected sizeChanged(_size: ElementSize): void {
     /* opt-in */

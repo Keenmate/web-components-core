@@ -133,6 +133,11 @@ brief); no compatibility aliases (v2 rule).
 
 ### Fixed
 
+- **`sizeChanged()` / `observeElementSize()` report the layout size.** They measured with
+  `getBoundingClientRect()`, which applies CSS transforms, so a panel opening with a `scale()`
+  animation reported a shrunken box. The observer now reads the entry's `borderBoxSize` (mapped
+  for vertical writing modes, no extra layout) and the first fire `offsetWidth` / `offsetHeight`;
+  SVG keeps the bounding box. Same numbers for untransformed elements. Review V-15.
 - **`observeKeyboardInset()` is safer.** It leaves the panel alone while the user has pinch-zoomed
   (the panel used to shrink to the zoomed area), puts back the panel's own inline `height` / `top`
   on cleanup instead of clearing them, and tracks the panel's own window (a panel in an iframe).
@@ -363,6 +368,9 @@ brief); no compatibility aliases (v2 rule).
   shows each component's effective level, which layer decided it and the measured speed, plus the
   `data-motion` attributes core wrote. An OS reduced-motion callout above the first demo shows the
   live status and how to override it in DevTools.
+- `examples-responsive.html`: new RS06 "Element size" demo: a component that lays out one tile
+  per 120px from `sizeChanged()`, with width and `transform: scale` sliders showing the reported
+  layout size next to the visual box.
 - `examples-page.html`: the logging demo covers the coalescing levels (`resetLogging()` per page,
   type and element; `A.enableLogging('error')`).
 - SPEC §6 (an equal write still dispatches), §12.5 (`emit()` copies the detail), §12.13
