@@ -42,12 +42,21 @@ export interface ComponentConfig {
 }
 
 /** The logging controls exposed on the global — a flattened view of a {@link LoggerBundle}. */
+/**
+ * `window.components[tag].logging`: this component type's own level. It wins over the
+ * page-wide level and loses to an element's own (`el.enableLogging()`); nothing is set
+ * by default.
+ */
 export interface ComponentLoggingControls {
+  /** Set the type's level on every category (default: `debug`). */
   enableLogging(level?: LogLevelDesc): void;
+  /** Set the type's level to `silent`. */
   disableLogging(): void;
   setLogLevel(level: LogLevelDesc): void;
-  /** Bare (`'DATA'`) or namespaced as it prints (`'GRID:DATA'`). */
-  setCategoryLevel(category: string, level: LogLevelDesc): void;
+  /** Clear the type's own levels: it follows the page-wide level again. */
+  resetLogging(): void;
+  /** Bare (`'DATA'`) or namespaced as it prints (`'GRID:DATA'`); `null` clears that category's level. */
+  setCategoryLevel(category: string, level: LogLevelDesc | null): void;
   getCategories(): string[];
 }
 
@@ -128,6 +137,7 @@ function flattenLogging(bundle: LoggerBundle<string>): ComponentLoggingControls 
     enableLogging: (level) => bundle.enableLogging(level),
     disableLogging: () => bundle.disableLogging(),
     setLogLevel: (level) => bundle.setLogLevel(level),
+    resetLogging: () => bundle.resetLogging(),
     setCategoryLevel: (category, level) => bundle.setCategoryLevel(category, level),
     getCategories: () => [...bundle.LOGGING_CATEGORIES],
   };

@@ -68,6 +68,7 @@ import { trackInstance, untrackInstance } from '../global/instances.js';
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { coreLog, getElementLoggers, setInstanceLogLevelSource } from '../logging/element-logger.js';
 import type { InstanceLogger, LogLevelDesc } from '../logging/create-loggers.js';
+import { LOG_LEVELS, isLogLevel } from '../logging/log-core.js';
 import { dispatch, type DispatchOptions } from './dispatch.js';
 import { withComponentContext, type ComponentContext, type EmitDetail } from './context.js';
 import {
@@ -946,22 +947,35 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   }
 
   /**
-   * Turn on verbose logging for THIS element only (default `debug`), independent
-   * of the type-level level. The seam a Ctrl-Alt-C overlay calls after the user
-   * picks one instance. Pairs with {@link disableLogging}.
+   * Set THIS element's own log level (default `debug`): it logs `level` and above, whatever
+   * its component type or the page is set to — the closest level wins (element → type →
+   * page → `warn`). The seam a Ctrl-Alt-C overlay calls after the user picks one instance.
+   * An invalid level warns and changes nothing.
    */
   enableLogging(level: LogLevelDesc = 'debug'): void {
+    if (!isLogLevel(level)) {
+      this.#warn(`enableLogging: invalid level "${String(level)}" (expected trace | debug | info | warn | error | silent)`);
+      return;
+    }
     this.#logLevel = level;
   }
 
-  /** Clear this element's logging override (falls back to the type-level level). */
+  /** Silence THIS element (its own level = `silent`), whatever its type or the page is set to. */
   disableLogging(): void {
+    this.#logLevel = 'silent';
+  }
+
+  /** Clear THIS element's own level: it follows its component type / the page again. */
+  resetLogging(): void {
     this.#logLevel = undefined;
   }
 
-  /** Whether this element has an active logging override (not unset/`silent`). */
+  /** Whether this element has its own log level that prints something (set, and not `silent`). */
   get isLoggingEnabled(): boolean {
-    return this.#logLevel != null && this.#logLevel !== 'silent' && this.#logLevel !== 5;
+    const level = this.#logLevel;
+    if (level == null) return false;
+    const rank = typeof level === 'number' ? level : LOG_LEVELS[level.toUpperCase() as keyof typeof LOG_LEVELS];
+    return rank !== LOG_LEVELS.SILENT;
   }
 
   /**

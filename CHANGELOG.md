@@ -12,6 +12,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 These change component code or page-visible output. Each component updates once (see the rc19
 brief); no compatibility aliases (v2 rule).
 
+- **Log levels coalesce: the closest level that is set wins.** element (`el.enableLogging()`) →
+  component type (`window.components[tag].logging`, per category) → page
+  (`window.components.logging`) → `warn`. Nothing is set by default, so a fresh page prints
+  warnings and errors as before. What changed:
+  - An element's own level now **replaces** its type's instead of only adding to it:
+    `el.enableLogging('error')` → that element logs errors only, even while its type is at `debug`.
+  - `el.disableLogging()` **silences** the element (it used to clear the element's level).
+    The new `el.resetLogging()` clears it, so the element follows its type / the page again.
+  - The page switch no longer overwrites the types' levels: a type's own level wins, whether
+    it was set before or after the page call. Previously the last call won.
+  - New `resetLogging()` on the type controls, the bundle and `window.components.logging`;
+    `setCategoryLevel(category, null)` clears one category.
+  - `el.enableLogging()` with an invalid level warns and changes nothing; `el.isLoggingEnabled`
+    reads any spelling (`'SILENT'` → `false`).
+  - A copy of core from rc17 or older on the same page keeps working: its bundles still get
+    the page level pushed as before.
 - **The page-wide loader hook is `window.components.renderLoadingCallback`** (was
   `renderLoaderCallback`): the same name as the instance hook, like every other page-wide setting.
   The `RenderLoaderCallback` type keeps its name (it types `renderLoader()`'s hook). Copies of core

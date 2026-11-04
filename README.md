@@ -370,29 +370,38 @@ The returned elements **are** the per-instance handles — enumerate tags with
 `createLoggers(namespace, categories?)` returns categorized
 `NAMESPACE:CATEGORY` loggers (a vendored `loglevel` port), each with a color-coded prefix.
 Categories default to `INIT / DATA / UI` (redefinable / extendable).
-`enableLogging()` / `disableLogging()` / `setLogLevel()` / `setCategoryLevel()`
-control the whole bundle (i.e. all instances of that component type).
+`enableLogging()` / `disableLogging()` / `setLogLevel()` / `setCategoryLevel()` / `resetLogging()`
+set the level of the whole bundle (i.e. all instances of that component type).
 
-**Default level: `warn`.** Errors and warnings are visible out of the box;
-`enableLogging()` (default `debug`) adds info/debug; `disableLogging()` silences
-everything, warnings included. A level persisted in `localStorage`
-(`km-log:NS:CAT`) still wins over the default.
+**The closest level wins** — like CSS, and nothing is set by default:
+
+```
+element (el.enableLogging) → component type (window.components[tag].logging) → page (window.components.logging) → warn
+```
+
+A level means "this level and above": `'warn'` prints warnings and errors. Out of the box only
+warnings and errors print; `enableLogging()` (default `debug`) adds info/debug at that layer,
+`disableLogging()` sets that layer to `silent`, and `resetLogging()` clears it, so the next layer
+out applies again. Because each layer is separate, the order of calls doesn't matter. A level
+persisted in `localStorage` (`km-log:NS:CAT`) counts as that category's own level.
 
 ### Page-wide switch — `window.components.logging`
 
-One set of controls for **every** bundle on the page — each component's plus
-core's own `CORE` bundle — including components registered later (they adopt the
-current global level). It is a non-enumerable key, so enumerating
-`window.components` still yields component tags only.
+The page level, for **every** bundle on the page — each component's plus core's own `CORE`
+bundle, including components registered later — wherever a component type has no level of
+its own. It is a non-enumerable key, so enumerating `window.components` still yields
+component tags only.
 
 ```js
-window.components.logging.disableLogging();        // all components + CORE
+window.components.logging.disableLogging();        // page level = silent
 window.components.logging.enableLogging('debug');
 window.components.logging.setLogLevel('warn');
+window.components.logging.resetLogging();          // no page level → the built-in warn
 window.components.logging.getCategories();         // ['CORE:ELEMENT', 'MULTISELECT:INIT', …]
 
-// A later per-component call wins for that component:
+// A component type's own level wins over the page level, set before or after it:
 window.components['web-multiselect'].logging.setLogLevel('debug');
+window.components['web-multiselect'].logging.resetLogging();   // follow the page again
 ```
 
 Also available in code as `getGlobalLogging()`.
@@ -417,10 +426,9 @@ categories without that name).
 
 ### Per-instance logging
 
-`BlissElement` also exposes **`this.log`** — an instance logger per category,
-gated by the *more verbose* of the type-level level and this element's own
-override, and emitted via `console` directly. This lets a devtools overlay make
-**one element loud while its type stays silent**:
+`BlissElement` also exposes **`this.log`** — an instance logger per category, gated by the
+element's own level when it has one, else its type's / the page's, and emitted via `console`
+directly. This lets a devtools overlay make **one element louder — or quieter — than its type**:
 
 ```ts
 protected override update(partial: Record<string, unknown>) {
@@ -429,9 +437,11 @@ protected override update(partial: Record<string, unknown>) {
 ```
 
 ```js
-el.enableLogging();        // this element only — even while the type is silent
-el.disableLogging();
-el.isLoggingEnabled;       // boolean
+el.enableLogging();        // this element logs debug and above, whatever its type / the page says
+el.enableLogging('error'); // this element: errors only
+el.disableLogging();       // this element: nothing
+el.resetLogging();         // follow the type / page again
+el.isLoggingEnabled;       // has its own level that prints something
 ```
 
 Each line reads `[NAMESPACE:CATEGORY] #id` — the element's own `id` when set

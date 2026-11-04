@@ -36,7 +36,7 @@ afterEach(() => {
   document.body.replaceChildren();
   // Forget any page-wide level so the next test's bundles start at their default.
   __resetGlobalLogging();
-  coreLogging.setLogLevel(DEFAULT_LOG_LEVEL);
+  coreLogging.resetLogging();
 });
 
 /** A component with one validated int input that can shout through `this.log`. */
@@ -269,6 +269,116 @@ describe('window.components.logging (page-wide switch)', () => {
     state.level = 'verbose';
     expect(() => defineComponent({ namespace: freshNs() })).not.toThrow();
     state.level = undefined;
+  });
+});
+
+describe('levels coalesce, closest first: element → type → page → warn', () => {
+  it('nothing is set by default: every level falls back to warn', () => {
+    const { bundle } = defineComponent({ namespace: freshNs() });
+    expect(bundle!.loggers.UI.getLevel()).toBe(LOG_LEVELS.WARN);
+  });
+
+  it('a type level wins over the page level, whatever the order of the calls', () => {
+    const one = defineComponent({ namespace: freshNs() });
+    const two = defineComponent({ namespace: freshNs() });
+    const page = window.components!.logging!;
+    window.components![one.tag]!.logging!.setLogLevel('error');
+    page.enableLogging('debug'); // after the type call — must not overwrite it
+    expect(one.bundle!.loggers.UI.getLevel()).toBe(LOG_LEVELS.ERROR);
+    expect(two.bundle!.loggers.UI.getLevel()).toBe(LOG_LEVELS.DEBUG);
+    window.components![one.tag]!.logging!.resetLogging();
+    expect(one.bundle!.loggers.UI.getLevel()).toBe(LOG_LEVELS.DEBUG); // follows the page again
+    page.resetLogging();
+    expect(one.bundle!.loggers.UI.getLevel()).toBe(LOG_LEVELS.WARN);
+  });
+
+  it('setCategoryLevel(category, null) clears just that category', () => {
+    const { tag, bundle } = defineComponent({ namespace: freshNs() });
+    window.components!.logging!.setLogLevel('info');
+    const controls = window.components![tag]!.logging!;
+    controls.setLogLevel('error');
+    controls.setCategoryLevel('DATA', null);
+    expect(bundle!.loggers.DATA.getLevel()).toBe(LOG_LEVELS.INFO);
+    expect(bundle!.loggers.UI.getLevel()).toBe(LOG_LEVELS.ERROR);
+  });
+
+  it("a level persisted in localStorage is the category's own level", () => {
+    const ns = freshNs();
+    localStorage.setItem(`km-log:${ns}:UI`, 'ERROR');
+    try {
+      const { bundle } = defineComponent({ namespace: ns });
+      window.components!.logging!.enableLogging('debug');
+      expect(bundle!.loggers.UI.getLevel()).toBe(LOG_LEVELS.ERROR);
+      expect(bundle!.loggers.INIT.getLevel()).toBe(LOG_LEVELS.DEBUG);
+    } finally {
+      localStorage.removeItem(`km-log:${ns}:UI`);
+    }
+  });
+
+  it('an element level wins over its type: it can log less as well as more', () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { tag, make } = defineComponent({ namespace: freshNs() });
+    window.components![tag]!.logging!.enableLogging('debug');
+    const el = make('quiet') as ReturnType<typeof make> & { disableLogging(): void; resetLogging(): void; isLoggingEnabled: boolean };
+    el.enableLogging('error');
+    el.say('UI', 'debug', 'hidden');
+    el.say('UI', 'warn', 'hidden too');
+    expect(log).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+    expect(el.isLoggingEnabled).toBe(true);
+
+    el.disableLogging(); // silent, even though the type is at debug
+    el.setAttribute('page-size', 'abc'); // a core INIT warning on the element's behalf
+    expect(warn).not.toHaveBeenCalled();
+    expect(el.isLoggingEnabled).toBe(false);
+
+    el.resetLogging(); // follows the type (debug) again
+    el.say('UI', 'debug', 'shown');
+    expect(log).toHaveBeenCalledOnce();
+    expect(el.isLoggingEnabled).toBe(false);
+  });
+
+  it('isLoggingEnabled reads any level spelling; an invalid level warns and changes nothing', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { make } = defineComponent({ namespace: freshNs() });
+    const el = make('x') as ReturnType<typeof make> & { isLoggingEnabled: boolean };
+    el.enableLogging('SILENT');
+    expect(el.isLoggingEnabled).toBe(false);
+    el.enableLogging('info');
+    el.enableLogging('verbose');
+    expect(el.isLoggingEnabled).toBe(true); // still info
+    expect(consoleLines(warn)).toEqual([expect.stringContaining('enableLogging: invalid level "verbose"')]);
+  });
+});
+
+describe('page switch next to an older copy of core', () => {
+  const KEY = Symbol.for('@keenmate/web-components-core:logging');
+  type State = { level: unknown; bundles: Set<unknown>; controls: Record<string, unknown> };
+
+  it('takes over controls without resetLogging and still pushes levels to legacy bundles', () => {
+    const state = (globalThis as unknown as Record<symbol, State>)[KEY]!;
+    const ours = state.controls;
+    const legacyControls = { enableLogging() {}, disableLogging() {}, setLogLevel() {}, getCategories: () => [] };
+    state.controls = legacyControls;
+    Object.defineProperty(window.components!, 'logging', { value: legacyControls, configurable: true, enumerable: false });
+    const pushed: unknown[] = [];
+    const legacy = { namespace: 'OLD', LOGGING_CATEGORIES: ['INIT'], setLogLevel: (l: unknown) => pushed.push(l) };
+    state.bundles.add(legacy);
+    try {
+      defineComponent({ namespace: freshNs() }); // a newer copy registers → takes over
+      const page = window.components!.logging!;
+      expect(typeof page.resetLogging).toBe('function');
+      expect(page).toBe(state.controls);
+      expect(pushed).toEqual([]); // no page level yet → the legacy bundle keeps its own
+      page.setLogLevel('error');
+      page.resetLogging();
+      expect(pushed).toEqual(['error', 'warn']);
+    } finally {
+      state.bundles.delete(legacy);
+      state.controls = ours;
+      Object.defineProperty(window.components!, 'logging', { value: ours, configurable: true, enumerable: false });
+    }
   });
 });
 

@@ -90,12 +90,12 @@ window.components['core-demo-pg-early'].register();  // customElements.define no
             <p>
                 <code>createLoggers(namespace, categories?)</code> returns one colour-prefixed
                 <code>NAMESPACE:CATEGORY</code> logger per category (default <code>INIT</code> / <code>DATA</code> /
-                <code>UI</code>). <strong>Every bundle starts at <code>warn</code></strong>: warnings and errors show,
-                debug/info need <code>enableLogging()</code> (default level <code>debug</code>). Inside a component,
-                <code>this.log.&lt;CATEGORY&gt;</code> prefixes each line with the instance (<code>#id</code>) and is gated by
-                the <em>more verbose</em> of the category level and the instance's own override —
-                <code>el.enableLogging(level?)</code> / <code>el.disableLogging()</code> make one element loud while its
-                type stays quiet. Core never calls <code>console</code> directly: its own messages (invalid attribute
+                <code>UI</code>). <strong>The closest level wins</strong>: element → component type → page → <code>warn</code>. Nothing is
+                set by default, so warnings and errors show and debug/info need <code>enableLogging()</code> (default level
+                <code>debug</code>) at some layer; <code>disableLogging()</code> sets a layer to <code>silent</code>,
+                <code>resetLogging()</code> clears it. Inside a component, <code>this.log.&lt;CATEGORY&gt;</code> prefixes each
+                line with the instance (<code>#id</code>) — <code>el.enableLogging(level?)</code> makes one element louder
+                or quieter than its type. Core never calls <code>console</code> directly: its own messages (invalid attribute
                 values → <code>INIT</code>, actions / menus / twins → <code>UI</code>) go through the element's logger, or
                 core's <code>CORE</code> bundle (<code>ELEMENT</code> / <code>ACTIONS</code> / <code>MENU</code> /
                 <code>THEME</code>) for a tag with no bundle. The page-wide switch
@@ -115,15 +115,18 @@ window.components['core-demo-pg-early'].register();  // customElements.define no
                     <button id="pg02-g-enable"><code>logging.enableLogging()</code></button>
                     <button id="pg02-g-info"><code>logging.setLogLevel('info')</code></button>
                     <button id="pg02-g-disable"><code>logging.disableLogging()</code></button>
-                    <button id="pg02-g-warn"><code>logging.setLogLevel('warn')</code></button>
+                    <button id="pg02-g-reset"><code>logging.resetLogging()</code></button>
                 </div>
                 <div class="controls"><strong class="muted">per tag</strong>
                     <button id="pg02-t-error"><code>['core-demo-pg'].logging.setLogLevel('error')</code></button>
                     <button id="pg02-t-cat"><code>setCategoryLevel('PGDEMO:DATA', 'debug')</code></button>
+                    <button id="pg02-t-reset"><code>['core-demo-pg'].logging.resetLogging()</code></button>
                 </div>
                 <div class="controls"><strong class="muted">per instance</strong>
                     <button id="pg02-i-enable"><code>A.enableLogging('debug')</code></button>
+                    <button id="pg02-i-error"><code>A.enableLogging('error')</code></button>
                     <button id="pg02-i-disable"><code>A.disableLogging()</code></button>
+                    <button id="pg02-i-reset"><code>A.resetLogging()</code></button>
                 </div>
             </div>
             <div class="demo-area">
@@ -143,8 +146,9 @@ class CoreDemoPg extends BlissElement {
 el.setAttribute('tone', 'nope');                    // core: [PGDEMO:INIT] #demo-pg-a rejected invalid value …
 early.setAttribute('tone', 'nope');                 // core: [CORE:ELEMENT] core-demo-pg-early#demo-pg-early …
 
-window.components.logging.disableLogging();         // every bundle, CORE included
+window.components.logging.disableLogging();         // page level: silent (every bundle, CORE included)
 document.getElementById('demo-pg-a').enableLogging('debug');   // …but A logs everything
+window.components['core-demo-pg'].logging.setLogLevel('error'); // the type wins over the page, set before or after
 window.components['core-demo-pg'].logging.setCategoryLevel('PGDEMO:DATA', 'debug');
 window.components.logging.getCategories();          // ['CORE:ELEMENT', …, 'PGDEMO:INIT', …]</pre></div>
         </div>
@@ -263,12 +267,12 @@ a.shadowRoot.querySelectorAll('style.pgd-custom').length;                    // 
                 <thead><tr><th>API</th><th>What it does</th></tr></thead>
                 <tbody>
                     <tr><td><code>registerComponent(tag, Class, { config, logging?, shouldAutoDefine? })</code></td><td>Publishes <code>window.components[tag]</code> (adopting an existing entry), defines the element (unless <code>shouldAutoDefine: false</code>), wires the bundle to instance loggers. Returns the entry.</td></tr>
-                    <tr><td><code>entry.version()</code> · <code>config</code> · <code>logging</code> · <code>register()</code> · <code>getInstances()</code></td><td>Build metadata, the bundle's controls (<code>enableLogging</code> / <code>disableLogging</code> / <code>setLogLevel</code> / <code>setCategoryLevel</code> / <code>getCategories</code>), idempotent define, live instances. Plus per-tag <code>responsive</code> / <code>responsiveCallback</code> (SPEC §6.7).</td></tr>
+                    <tr><td><code>entry.version()</code> · <code>config</code> · <code>logging</code> · <code>register()</code> · <code>getInstances()</code></td><td>Build metadata, the bundle's controls (<code>enableLogging</code> / <code>disableLogging</code> / <code>setLogLevel</code> / <code>resetLogging</code> / <code>setCategoryLevel</code> / <code>getCategories</code>), idempotent define, live instances. Plus per-tag <code>responsive</code> / <code>responsiveCallback</code> (SPEC §6.7).</td></tr>
                     <tr><td><code>getInstances(tag)</code> · <code>getRegisteredTags()</code></td><td>Connected elements of a tag (connection order); tags with at least one connected instance.</td></tr>
-                    <tr><td><code>createLoggers(namespace, categories?)</code></td><td>A <code>LoggerBundle</code>: <code>loggers</code>, <code>enableLogging(level = 'debug')</code>, <code>disableLogging()</code>, <code>setLogLevel()</code>, <code>setCategoryLevel()</code>, <code>forInstance()</code>. Default level <code>warn</code> (<code>DEFAULT_LOG_LEVEL</code>).</td></tr>
+                    <tr><td><code>createLoggers(namespace, categories?)</code></td><td>A <code>LoggerBundle</code>: <code>loggers</code>, <code>enableLogging(level = 'debug')</code>, <code>disableLogging()</code>, <code>setLogLevel()</code>, <code>resetLogging()</code>, <code>setCategoryLevel()</code>, <code>forInstance()</code>. Nothing set → <code>warn</code> (<code>DEFAULT_LOG_LEVEL</code>).</td></tr>
                     <tr><td><code>this.log.&lt;CATEGORY&gt;</code></td><td>Protected instance loggers: <code>[NS:CAT] #id</code>; a tag with no bundle → <code>[CORE:ELEMENT] tag#id</code>.</td></tr>
-                    <tr><td><code>el.enableLogging(level?)</code> · <code>el.disableLogging()</code> · <code>el.isLoggingEnabled</code></td><td>Per-instance override, gated by the more verbose of it and the type level.</td></tr>
-                    <tr><td><code>window.components.logging</code> / <code>getGlobalLogging()</code></td><td>Page-wide <code>enableLogging</code> / <code>disableLogging</code> / <code>setLogLevel</code> / <code>getCategories</code> over every bundle, CORE included, and later ones. Non-enumerable; state on <code>globalThis</code>.</td></tr>
+                    <tr><td><code>el.enableLogging(level?)</code> · <code>el.disableLogging()</code> · <code>el.resetLogging()</code> · <code>el.isLoggingEnabled</code></td><td>The element's own level; it wins over its type and the page (louder or quieter).</td></tr>
+                    <tr><td><code>window.components.logging</code> / <code>getGlobalLogging()</code></td><td>The page level (<code>enableLogging</code> / <code>disableLogging</code> / <code>setLogLevel</code> / <code>resetLogging</code> / <code>getCategories</code>) for every bundle, CORE included, and later ones, wherever a type has no own level. Non-enumerable; state on <code>globalThis</code>.</td></tr>
                     <tr><td><code>coreLogging</code> · <code>CORE_LOG_CATEGORIES</code></td><td>Core's own bundle: <code>CORE:ELEMENT</code> / <code>ACTIONS</code> / <code>MENU</code> / <code>THEME</code>.</td></tr>
                     <tr><td><code>renderLoader(host, container, context, { label, prefix, renderLoadingCallback? })</code></td><td>Draws a loading state (instance hook &gt; page hook &gt; default span) and returns an idempotent <code>remove()</code>.</td></tr>
                     <tr><td><code>window.components.renderLoadingCallback</code></td><td>Page-wide loader hook (non-enumerable accessor; a non-function reads as unset).</td></tr>
@@ -399,11 +403,14 @@ a.shadowRoot.querySelectorAll('style.pgd-custom').length;                    // 
         act2('pg02-g-enable', 'window.components.logging.enableLogging()', () => reg.logging.enableLogging());
         act2('pg02-g-info', "window.components.logging.setLogLevel('info')", () => reg.logging.setLogLevel('info'));
         act2('pg02-g-disable', 'window.components.logging.disableLogging()', () => reg.logging.disableLogging());
-        act2('pg02-g-warn', "window.components.logging.setLogLevel('warn')", () => reg.logging.setLogLevel('warn'));
+        act2('pg02-g-reset', 'window.components.logging.resetLogging()', () => reg.logging.resetLogging());
         act2('pg02-t-error', "window.components['core-demo-pg'].logging.setLogLevel('error')", () => reg['core-demo-pg'].logging.setLogLevel('error'));
         act2('pg02-t-cat', "…logging.setCategoryLevel('PGDEMO:DATA', 'debug')", () => reg['core-demo-pg'].logging.setCategoryLevel('PGDEMO:DATA', 'debug'));
+        act2('pg02-t-reset', "window.components['core-demo-pg'].logging.resetLogging()", () => reg['core-demo-pg'].logging.resetLogging());
         act2('pg02-i-enable', "A.enableLogging('debug')", () => elA.enableLogging('debug'));
+        act2('pg02-i-error', "A.enableLogging('error')", () => elA.enableLogging('error'));
         act2('pg02-i-disable', 'A.disableLogging()', () => elA.disableLogging());
+        act2('pg02-i-reset', 'A.resetLogging()', () => elA.resetLogging());
         render2();
 
         // ── PG03 · loader ────────────────────────────────────────────────────
@@ -507,8 +514,9 @@ a.shadowRoot.querySelectorAll('style.pgd-custom').length;                    // 
 
         // ── Reset page-wide state (also on pagehide) ─────────────────────────
         const resetPageWide = () => {
-            reg.logging.setLogLevel('warn');        // the default level of every bundle
-            for (const el of getInstances('core-demo-pg')) el.disableLogging();
+            reg.logging.resetLogging();             // no page level → the built-in warn
+            reg['core-demo-pg'].logging.resetLogging();
+            for (const el of getInstances('core-demo-pg')) el.resetLogging();
             reg.renderLoadingCallback = null;
         };
         $('pg-reset').addEventListener('click', () => {
@@ -516,7 +524,7 @@ a.shadowRoot.querySelectorAll('style.pgd-custom').length;                    // 
             $('pg03-page').checked = false;
             restart();
             render2(); render3();
-            log(panel2, '▶ page-wide state reset (all bundles → warn, instance overrides cleared)', 'action');
+            log(panel2, '▶ page-wide state reset (page, type and instance levels cleared → warn)', 'action');
         });
         window.addEventListener('pagehide', resetPageWide);
     </script>

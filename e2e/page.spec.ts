@@ -177,8 +177,21 @@ test('PG02: default warn; core messages routed; page switch, per tag, per instan
     { level: 'error', text: '[FXPG:UI] #pg-b error line (UI)' },
   ]);
 
-  // Back to the default level everywhere.
-  await capture(page, "reg.logging.setLogLevel('warn')");
+  // The closest level wins: a page call made later doesn't overwrite the tag's own level.
+  await capture(page, "reg.logging.setLogLevel('info')");
+  expect(await levels(page)).toEqual({ FXPG: { INIT: 'error', DATA: 'debug', UI: 'error' }, CORE: each('info', CORE) });
+  await capture(page, "reg['fx-pg'].logging.resetLogging()");
+  expect((await levels(page)).FXPG).toEqual(each('info', FX)); // follows the page again
+
+  // An element's own level can also be quieter than its type; resetLogging() hands it back.
+  await capture(page, "$('pg-a').resetLogging()");
+  expect(await capture(page, "$('pg-a').logSample()")).toHaveLength(3); // info, warn, error
+  await capture(page, "$('pg-a').enableLogging('error')");
+  expect(await capture(page, "$('pg-a').logSample()")).toEqual([{ level: 'error', text: '[FXPG:UI] #pg-a error line (UI)' }]);
+  await capture(page, "$('pg-a').resetLogging()");
+
+  // Back to nothing set: the built-in warn everywhere.
+  await capture(page, 'reg.logging.resetLogging()');
   expect(await levels(page)).toEqual({ FXPG: each('warn', FX), CORE: each('warn', CORE) });
 });
 

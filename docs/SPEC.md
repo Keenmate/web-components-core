@@ -875,10 +875,11 @@ export function createLoggers<C extends string>(
   categories: readonly C[] = DEFAULT_CATEGORIES,
 ): {
   loggers: Record<C, Logger>;
-  enableLogging(): void;
-  disableLogging(): void;
+  enableLogging(level?: LogLevel): void;   // the type's own level (default debug)
+  disableLogging(): void;                  // own level = silent
   setLogLevel(level: LogLevel): void;
-  setCategoryLevel(category: C | `${string}:${C}`, level: LogLevel): void; // 'DATA' or 'GRID:DATA'
+  resetLogging(): void;                    // clear: follow the page level
+  setCategoryLevel(category: C | `${string}:${C}`, level: LogLevel | null): void; // 'DATA' or 'GRID:DATA'; null clears
   LOGGING_CATEGORIES: readonly C[];
 };
 ```
@@ -897,12 +898,20 @@ component.
 
 **Default level, core's own messages, page-wide switch** *(added after rc14)*:
 
-- **Every bundle starts at `warn`** (`DEFAULT_LOG_LEVEL`) — errors and warnings
-  visible out of the box; `enableLogging()` (default `debug`) adds info/debug;
-  `disableLogging()` silences everything. A level persisted in `localStorage`
-  (`km-log:NS:CAT`, only written by an explicit `logger.setLevel(x)` — the bundle
-  controls never persist) wins over the default. A second `createLoggers()` for
-  the same namespace keeps the current level.
+- **Levels coalesce, closest first** *(rc19, was "last call wins")*: an element's own level
+  (`el.enableLogging()`) → its component type's own level per category
+  (`window.components[tag].logging` / the bundle controls) → the page level
+  (`window.components.logging`) → `warn` (`DEFAULT_LOG_LEVEL`). Nothing is set by default, so
+  errors and warnings are visible out of the box. A level means "that level and above". At
+  every layer `enableLogging(level = 'debug')` / `setLogLevel(level)` set it,
+  `disableLogging()` sets it to `silent`, and `resetLogging()` clears it (the next layer out
+  applies); `setCategoryLevel(cat, null)` clears one category. Layers are stored separately, so
+  the order of calls never matters: a page call never overwrites a type's own level. A level
+  persisted in `localStorage` (`km-log:NS:CAT`, only written by an explicit
+  `logger.setLevel(x)` — the bundle controls never persist) is that category's own level;
+  `resetLogging()` removes it. A second `createLoggers()` for the same namespace keeps the
+  current levels. Engine: the type level is the loglevel logger's own level, the page level
+  its default level (`setDefaultLevel()` in the vendored port never writes the own level).
 - **No direct `console.*` in core.** A core message with an element behind it is
   logged through that element's instance logger (§12.3), so it carries the
   component's namespace + instance: input validation under `INIT`, actions / menus /
@@ -920,13 +929,14 @@ component.
 - **Page-wide switch — `window.components.logging`** (non-enumerable; tag names
   always contain a hyphen, so no clash, and enumerating `window.components` /
   `getRegisteredTags()` still yields components only): `enableLogging(level?)`,
-  `disableLogging()`, `setLogLevel(level)`, `getCategories()` — the per-component
-  method names. Applies to every bundle created so far AND later (a late
-  `createLoggers()` adopts the current global level). Components bundle their own
-  core copy, so the state (bundle list, current level, the controls object) lives
-  on `globalThis[Symbol.for('@keenmate/web-components-core:logging')]` and is
-  shared by every copy. A later per-component call wins for that component (it
-  just sets that bundle's levels again); per-instance overrides apply on top.
+  `disableLogging()`, `setLogLevel(level)`, `resetLogging()`, `getCategories()` — the
+  per-component method names. Sets the page level of every bundle created so far AND later
+  (a late `createLoggers()` adopts it). Components bundle their own core copy, so the state
+  (bundle list, page level, the controls object) lives on
+  `globalThis[Symbol.for('@keenmate/web-components-core:logging')]` and is shared by every
+  copy. A copy that finds controls from core rc17 or older (no `resetLogging`) takes them over
+  and republishes; a bundle from such a copy (no `setPageLevel`) still gets the page level
+  pushed as its own level, the old way.
   `getGlobalLogging()` is the code-side handle. SSR-safe: no `window` → nothing
   published.
 
@@ -1057,12 +1067,13 @@ auto-registered while the rest did not. Core consolidates it:
   `registerComponent`'s `logging` option). Each line reads
   `[NAMESPACE:CATEGORY] #id` (the element's own `id` when set, read per line, else
   a running number — the tag is not repeated; a tag with no bundle falls back to
-  `CORE:ELEMENT` labelled `tag#id`, §12.1) and is gated by
-  the MORE verbose of the type-level category level and the
-  instance's own override, emitting via `console` directly so an instance can
-  log while its type stays silent. `element.enableLogging(level?)` /
-  `disableLogging()` / `isLoggingEnabled` are the overlay's per-instance switch:
-  pick one instance from `getInstances()`, flip it loud, leave the rest quiet.
+  `CORE:ELEMENT` labelled `tag#id`, §12.1) and is gated by the element's own level when
+  set, else the category's effective level (type → page → `warn`), emitting via `console`
+  directly so one element can log more — or less — than its type.
+  `element.enableLogging(level?)` (an invalid level warns, nothing changes) /
+  `disableLogging()` (silent) / `resetLogging()` (clear) / `isLoggingEnabled` (has its own,
+  non-silent level) are the overlay's per-instance switch: pick one instance from
+  `getInstances()`, flip it loud, leave the rest quiet.
   Components should prefer `this.log.<CATEGORY>` over the shared type-level
   loggers so this scoping works. `bundle.forInstance(id, getOverride)` is the
   underlying factory; a tag→bundle map (`logger-registry.ts`) lets the element

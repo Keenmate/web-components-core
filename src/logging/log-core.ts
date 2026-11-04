@@ -19,7 +19,8 @@
  * What's dropped: the IE `trace` shim, the deferred-console handling, the cookie
  * persistence fallback, `noConflict`, and the UMD wrapper. Persistence is
  * localStorage-only, under a configurable key prefix (see
- * {@link setLogPersistKeyPrefix}).
+ * {@link setLogPersistKeyPrefix}). Changed: `setDefaultLevel()` never writes the logger's own
+ * level (core layers the page level under a type's own level, SPEC §12.1).
  */
 
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
@@ -270,9 +271,14 @@ class LoggerImpl implements CoreLogger {
         this.replaceLoggingMethods();
     }
 
+    /**
+     * The level used while no level of the logger's own is set (`setLevel()` or a persisted
+     * one). Unlike upstream loglevel this never writes the logger's own level, so the
+     * page-wide level (applied here) and a component type's own level stay separate layers.
+     */
     setDefaultLevel(level: LogLevelDesc): void {
         this.defaultLevel = normalizeLevel(level);
-        if (!this.getPersistedLevel()) this.setLevel(level, false);
+        this.replaceLoggingMethods();
     }
 
     resetLevel(): void {

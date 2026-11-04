@@ -9,12 +9,19 @@ to `INIT/DATA/UI` and can be redefined or extended. `enableLogging()` defaults t
 timing companion. `loglevel-plugin-prefix` was **dropped** (its browser `%c`
 handling is the ordering bug we avoid) — an amendment to §12.1's original text.
 
-Default level for every bundle is `warn` (`DEFAULT_LOG_LEVEL`, applied once per
-named logger; a persisted `km-log:*` level wins). `global-logging.ts` is the
-page-wide switch published as the non-enumerable `window.components.logging`;
-its state lives on `globalThis[Symbol.for(...)]` because each component bundles
-its own core copy. Every `createLoggers()` enlists there and adopts a global
-level already set. `element-logger.ts` routes core's own messages (`coreLog()`):
+Levels coalesce, closest first (rc19): element (`el.enableLogging`) → type, per
+category (the bundle's controls, or a persisted `km-log:*` level) → page
+(`window.components.logging`) → `warn` (`DEFAULT_LOG_LEVEL`). Nothing is set by
+default; `resetLogging()` clears a layer at every level. Engine mapping: the type
+level is the loglevel logger's OWN level (`setLevel` / `resetLevel`), the page level
+its DEFAULT level (`setDefaultLevel`, which in the vendored port never writes the own
+level — never re-bind methods with `setLevel(getLevel())`, use `rebuild()`).
+`global-logging.ts` is the page switch published as the non-enumerable
+`window.components.logging`; its state lives on `globalThis[Symbol.for(...)]` because
+each component bundles its own core copy. Every `createLoggers()` enlists there and
+gets the page level via `setPageLevel`; a bundle from an older copy (no
+`setPageLevel`) gets it pushed through `setLogLevel`, and older controls are taken over.
+`element-logger.ts` routes core's own messages (`coreLog()`):
 element's own bundle → `[NS:CAT] #id`, no bundle → `[CORE:CAT] tag#id`, no
 element → `[CORE:CAT]`. Instance loggers look `console[method]` up per call (so
 test spies / collectors installed later see the lines). Tests assert lines via

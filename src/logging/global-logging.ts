@@ -1,47 +1,54 @@
 /**
- * The page-wide logging switch (SPEC §12.1 / §12.3): one set of controls that
- * applies a level to EVERY logger bundle on the page — each component's
- * `createLoggers()` bundle plus core's own `CORE` bundle — and to every bundle
- * created later (a late-registered component adopts the current global level).
- * Published as the non-enumerable `window.components.logging`:
+ * The page-wide logging level (SPEC §12.1 / §12.3), published as the non-enumerable
+ * `window.components.logging`:
  *
  * ```js
- * window.components.logging.disableLogging();       // all components + CORE
- * window.components.logging.enableLogging('debug');
+ * window.components.logging.enableLogging('debug'); // the page level
+ * window.components.logging.disableLogging();       // page level = silent
  * window.components.logging.setLogLevel('warn');
+ * window.components.logging.resetLogging();         // no page level (built-in warn)
  * window.components.logging.getCategories();        // ['CORE:ELEMENT', 'MULTISELECT:INIT', …]
  * ```
  *
- * Components bundle their own copy of core, so the state lives on `globalThis`
- * under a `Symbol.for` key: every core copy on the page shares ONE bundle list,
- * ONE current level and ONE controls object. A later per-component call
- * (`window.components['web-x'].logging.setLogLevel(…)`) simply sets that
- * bundle's levels again, so it wins for that component.
+ * Levels coalesce, closest first: an element's own level (`el.enableLogging()`), else its
+ * component type's own level per category (`window.components['web-x'].logging`, or one
+ * persisted in localStorage), else this page level, else `warn`. Nothing is set by default.
+ * Setting the page level never overwrites a type's own level, so the order of calls
+ * doesn't matter.
+ *
+ * Components bundle their own copy of core, so the state lives on `globalThis` under a
+ * `Symbol.for` key: every core copy on the page shares ONE bundle list, ONE page level and
+ * ONE controls object. A bundle from an older copy of core (no `setPageLevel`) still gets
+ * the page level pushed as its level, the way it always did.
  */
 import { isLogLevel, type LogLevelDesc } from './log-core.js';
 import { sharedState } from '../global/shared-state.js';
 
 /** The page-wide controls — same method names as a component's `logging` entry. */
 export interface GlobalLoggingControls {
-  /** Turn logging on for every bundle (default level: `debug`). */
+  /** Set the page level (default: `debug`). */
   enableLogging(level?: LogLevelDesc): void;
-  /** Silence every bundle. */
+  /** Set the page level to `silent`. */
   disableLogging(): void;
-  /** Set the same level on every bundle. */
+  /** Set the page level. */
   setLogLevel(level: LogLevelDesc): void;
+  /** Clear the page level: categories without their own level fall back to `warn`. */
+  resetLogging(): void;
   /** Every `NAMESPACE:CATEGORY` label currently known, in registration order. */
   getCategories(): string[];
 }
 
-/** The slice of a `LoggerBundle` the global switch drives (kept minimal: shared across core copies/versions). */
+/** The slice of a `LoggerBundle` the page switch drives (kept minimal: shared across core copies/versions). */
 export interface GlobalLoggingTarget {
   readonly namespace: string;
   readonly LOGGING_CATEGORIES: readonly string[];
   setLogLevel(level: LogLevelDesc): void;
+  /** Absent on bundles from core rc17 and older (they get the level pushed via `setLogLevel`). */
+  setPageLevel?(level: LogLevelDesc | null): void;
 }
 
 interface GlobalLoggingState {
-  /** The last level set through the global controls; `undefined` = never set (bundles keep their defaults). */
+  /** The page level; `undefined` = not set. */
   level: LogLevelDesc | undefined;
   bundles: Set<GlobalLoggingTarget>;
   controls: GlobalLoggingControls;
@@ -49,36 +56,54 @@ interface GlobalLoggingState {
 
 const STATE_KEY = '@keenmate/web-components-core:logging';
 
-function state(): GlobalLoggingState {
-  return sharedState(STATE_KEY, () => {
-    const created: GlobalLoggingState = {
-      level: undefined,
-      bundles: new Set(),
-      controls: undefined as unknown as GlobalLoggingControls,
-    };
-    const applyAll = (level: LogLevelDesc): void => {
-      // Check BEFORE storing: a stored bad level would make every later createLoggers()
-      // (any lazily loaded component, any copy of core) throw at registration.
-      if (!isLogLevel(level)) {
-        throw new TypeError(`window.components.logging: invalid level "${String(level)}" (expected trace | debug | info | warn | error | silent)`);
+/** The fallback a bundle from an older copy of core gets when the page level is cleared. */
+const LEGACY_FALLBACK: LogLevelDesc = 'warn';
+
+function applyTo(bundle: GlobalLoggingTarget, level: LogLevelDesc | undefined): void {
+  if (typeof bundle.setPageLevel === 'function') bundle.setPageLevel(level ?? null);
+  else bundle.setLogLevel(level ?? LEGACY_FALLBACK);
+}
+
+function createControls(s: GlobalLoggingState): GlobalLoggingControls {
+  const applyAll = (level: LogLevelDesc | undefined): void => {
+    // Check BEFORE storing: a stored bad level would make every later createLoggers()
+    // (any lazily loaded component, any copy of core) throw at registration.
+    if (level !== undefined && !isLogLevel(level)) {
+      throw new TypeError(`window.components.logging: invalid level "${String(level)}" (expected trace | debug | info | warn | error | silent)`);
+    }
+    s.level = level;
+    for (const bundle of s.bundles) applyTo(bundle, level);
+  };
+  return {
+    enableLogging: (level = 'debug') => applyAll(level),
+    disableLogging: () => applyAll('silent'),
+    setLogLevel: (level) => applyAll(level),
+    resetLogging: () => applyAll(undefined),
+    getCategories: () => {
+      const out = new Set<string>();
+      for (const bundle of s.bundles) {
+        for (const category of bundle.LOGGING_CATEGORIES) out.add(`${bundle.namespace}:${category}`);
       }
-      created.level = level;
-      for (const bundle of created.bundles) bundle.setLogLevel(level);
-    };
-    created.controls = {
-      enableLogging: (level = 'debug') => applyAll(level),
-      disableLogging: () => applyAll('silent'),
-      setLogLevel: (level) => applyAll(level),
-      getCategories: () => {
-        const out = new Set<string>();
-        for (const bundle of created.bundles) {
-          for (const category of bundle.LOGGING_CATEGORIES) out.add(`${bundle.namespace}:${category}`);
-        }
-        return [...out];
-      },
-    };
+      return [...out];
+    },
+  };
+}
+
+function state(): GlobalLoggingState {
+  const s = sharedState(STATE_KEY, () => {
+    const created = { level: undefined, bundles: new Set(), controls: undefined } as unknown as GlobalLoggingState;
+    created.controls = createControls(created);
     return created;
   });
+  // State created by an older copy of core carries its controls (no resetLogging, levels
+  // pushed over every type's own level): take them over, so every copy uses one model.
+  if (typeof s.controls?.resetLogging !== 'function') {
+    s.controls = createControls(s);
+    if (typeof window !== 'undefined' && window.components && Object.prototype.hasOwnProperty.call(window.components, 'logging')) {
+      delete (window.components as { logging?: unknown }).logging;
+    }
+  }
+  return s;
 }
 
 /** The page-wide controls (also reachable as `window.components.logging` in a browser). */
@@ -93,10 +118,11 @@ export function getGlobalLogging(): GlobalLoggingControls {
  */
 export function publishGlobalLogging(): void {
   if (typeof window === 'undefined') return;
+  const controls = state().controls; // first: may take over (and unpublish) an older copy's controls
   const components = (window.components ??= {}) as object;
   if (Object.prototype.hasOwnProperty.call(components, 'logging')) return;
   Object.defineProperty(components, 'logging', {
-    value: state().controls,
+    value: controls,
     enumerable: false,
     configurable: true,
     writable: false,
@@ -104,18 +130,20 @@ export function publishGlobalLogging(): void {
 }
 
 /**
- * Enlist a bundle under the global switch. When a global level was already set,
- * the bundle adopts it now (late registration). Called by `createLoggers()`.
+ * Enlist a bundle under the page switch; it adopts the current page level now (late
+ * registration). Called by `createLoggers()`.
  */
 export function registerGlobalLoggingTarget(bundle: GlobalLoggingTarget): void {
   const s = state();
   s.bundles.add(bundle);
   // isLogLevel: the shared state may come from an older copy of core that stored a bad level.
-  if (s.level !== undefined && isLogLevel(s.level)) bundle.setLogLevel(s.level);
+  const level = s.level !== undefined && isLogLevel(s.level) ? s.level : undefined;
+  // An older bundle with no page level set keeps its own level (nothing to push).
+  if (typeof bundle.setPageLevel === 'function' || level !== undefined) applyTo(bundle, level);
   publishGlobalLogging();
 }
 
-/** @internal Test hook: forget the page-wide level (bundles keep their current levels). */
+/** @internal Test hook: clear the page-wide level (every bundle falls back to `warn`). */
 export function __resetGlobalLogging(): void {
-  state().level = undefined;
+  state().controls.resetLogging();
 }
