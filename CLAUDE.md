@@ -207,7 +207,7 @@ The shared context / dropdown menu lives in `src/menu/` (subpath `/menu`, SPEC
 
 Loading states go through `renderLoader(host, container, context, { label, prefix })`
 (`src/dom/render-loader.ts`, main index, SPEC §12.14): instance `renderLoadingCallback`
-> page-wide `window.components.renderLoaderCallback` (non-enumerable accessor, state on
+> page-wide `window.components.renderLoadingCallback` (non-enumerable accessor, state on
 `globalThis`) > default `<span class="<prefix>-loader">`. Core ships no loader CSS —
 components copy the drawing rule from §12.14.
 

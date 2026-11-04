@@ -6,7 +6,7 @@ import type { Page } from './fixtures';
  * shared loader (§12.14), style injection (§12.8).
  *
  * Covered:
- *   - PG01 registry: tag entries only (logging / renderLoaderCallback non-enumerable), an entry
+ *   - PG01 registry: tag entries only (logging / renderLoadingCallback non-enumerable), an entry
  *     created by a classic script BEFORE core loaded is adopted (same object, props kept),
  *     version()/config/logging, getInstances() tracks connect order (add / move re-tracks last /
  *     remove), shouldAutoDefine:false + entry.register(), getRegisteredTags()
@@ -48,7 +48,7 @@ type Entry = Record<string, unknown> & {
 };
 type Reg = Record<string, Entry> & {
   logging: { enableLogging(): void; disableLogging(): void; setLogLevel(l: string): void };
-  renderLoaderCallback: unknown;
+  renderLoadingCallback: unknown;
 };
 type Fx = {
   captureConsole(fn: () => void): Line[];
@@ -87,7 +87,7 @@ test('PG01: registry entries, non-enumerable globals, adopted early entry, insta
       return {
         keys: Object.keys(reg),
         hasLogging: 'logging' in reg,
-        hasLoader: 'renderLoaderCallback' in reg,
+        hasLoader: 'renderLoadingCallback' in reg,
         tags: fx.getRegisteredTags(),
         version: reg['fx-pg']!.version(),
         name: reg['fx-pg']!.config.name,
@@ -189,7 +189,7 @@ test('PG03: loader precedence instance > page > default; throwing hook → defau
       return {
         a: fx.loaderState(document.getElementById('pg-load-a')!),
         b: fx.loaderState(document.getElementById('pg-load-b')!),
-        pageHook: typeof components.renderLoaderCallback,
+        pageHook: typeof components.renderLoadingCallback,
       };
     });
   /** stop both, apply `body`, start both again; returns the console lines of the restart. */
@@ -201,7 +201,7 @@ test('PG03: loader precedence instance > page > default; throwing hook → defau
   expect(s.a).toEqual({ isLoading: true, drawnBy: 'default', role: 'status', ariaLabel: 'Loading…', children: 1 });
   expect(s.b.drawnBy).toBe('default');
 
-  await restart('reg.renderLoaderCallback = fx.loaderHooks.page');
+  await restart('reg.renderLoadingCallback = fx.loaderHooks.page');
   s = await state();
   expect([s.a.drawnBy, s.b.drawnBy]).toEqual(['page', 'page']);
   expect(await page.evaluate(() => (window as unknown as W).fx.hookLog)).toContain('page hook fx-pg overlay Loading…');
@@ -220,7 +220,7 @@ test('PG03: loader precedence instance > page > default; throwing hook → defau
   s = await state();
   for (const st of [s.a, s.b]) expect(st).toEqual({ isLoading: false, drawnBy: null, role: null, ariaLabel: null, children: 0 });
 
-  await capture(page, 'reg.renderLoaderCallback = null');
+  await capture(page, 'reg.renderLoadingCallback = null');
   expect((await state()).pageHook).toBe('undefined');
 });
 

@@ -5,7 +5,7 @@
  *
  * Precedence, highest first:
  * 1. the instance `renderLoadingCallback` (same name in every component);
- * 2. the page-wide `window.components.renderLoaderCallback`;
+ * 2. the page-wide `window.components.renderLoadingCallback`;
  * 3. the default `<span class="<prefix>-loader">`, drawn by the component's CSS
  *    from its `--<prefix>-loader-*` tokens (chained to `--base-loader-*`).
  *
@@ -33,7 +33,7 @@ export interface LoaderRenderContext {
 
 /**
  * A loader render hook — the instance `renderLoadingCallback` and the page-wide
- * `window.components.renderLoaderCallback` share this shape. Fill
+ * `window.components.renderLoadingCallback` share this shape. Fill
  * `containerElement`; optionally return a cleanup run when the loader is removed
  * (stop timers / animations). Nodes the hook appended before returning are removed for you;
  * nodes it appends later (asynchronously) are its cleanup's job.
@@ -54,7 +54,7 @@ export interface RenderLoaderOptions {
 }
 
 // ---------------------------------------------------------------------------
-// Page-wide hook: window.components.renderLoaderCallback (non-enumerable)
+// Page-wide hook: window.components.renderLoadingCallback (non-enumerable)
 // ---------------------------------------------------------------------------
 
 interface LoaderHookState {
@@ -63,14 +63,14 @@ interface LoaderHookState {
 
 /** On globalThis because each component bundles its own core copy (like logging). */
 const STATE_KEY = '@keenmate/web-components-core:loader';
-const HOOK_KEY = 'renderLoaderCallback';
+const HOOK_KEY = 'renderLoadingCallback';
 
 function state(): LoaderHookState {
   return sharedState(STATE_KEY, () => ({ callback: undefined }));
 }
 
 /**
- * Publish `window.components.renderLoaderCallback` as a NON-enumerable accessor,
+ * Publish `window.components.renderLoadingCallback` as a NON-enumerable accessor,
  * so enumerating `window.components` still yields component tags only. A value
  * the page assigned earlier as a plain property is adopted. Idempotent;
  * SSR-safe. Called by `registerComponent()` and `renderLoader()`.
@@ -87,7 +87,7 @@ export function publishLoaderHook(): void {
 
 function pageHook(): RenderLoaderCallback | undefined {
   publishLoaderHook();
-  const cb = typeof window !== 'undefined' ? window.components?.renderLoaderCallback : state().callback;
+  const cb = typeof window !== 'undefined' ? window.components?.renderLoadingCallback : state().callback;
   return typeof cb === 'function' ? cb : undefined;
 }
 
@@ -144,7 +144,7 @@ export function renderLoader(
   let isDrawn = false;
   const hooks = [
     { cb: typeof instanceHook === 'function' ? (instanceHook as RenderLoaderCallback) : undefined, name: 'renderLoadingCallback' },
-    { cb: pageHook(), name: 'window.components.renderLoaderCallback' },
+    { cb: pageHook(), name: 'window.components.renderLoadingCallback' },
   ];
   for (const { cb, name } of hooks) {
     if (!cb) continue;

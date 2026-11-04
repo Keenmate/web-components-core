@@ -114,7 +114,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 
 | Feature | Status | Spec | Fixture |
 | ------- | :----: | ---- | ------- |
-| window.components: tag keys only, non-enumerable logging / renderLoaderCallback | ✓ | `page.spec.ts` | `page-wide.html` |
+| window.components: tag keys only, non-enumerable logging / renderLoadingCallback | ✓ | `page.spec.ts` | `page-wide.html` |
 | Registry entry created before core loaded is adopted (same object, props kept) | ✓ | `page.spec.ts` | `page-wide.html` |
 | getInstances() connect order (add / move re-tracks last / remove); getRegisteredTags(); shouldAutoDefine:false + register() | ✓ | `page.spec.ts` | `page-wide.html` |
 | Logging: default warn; [TAG:CAT] #id labels; invalid attr routed to INIT (or CORE:ELEMENT without a bundle) | ✓ | `page.spec.ts` | `page-wide.html` |

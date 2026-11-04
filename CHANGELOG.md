@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 These change component code or page-visible output. Each component updates once (see the rc19
 brief); no compatibility aliases (v2 rule).
 
+- **The page-wide loader hook is `window.components.renderLoadingCallback`** (was
+  `renderLoaderCallback`): the same name as the instance hook, like every other page-wide setting.
+  The `RenderLoaderCallback` type keeps its name (it types `renderLoader()`'s hook). Copies of core
+  share one hook state, so a page with an older component bundle still works under either name.
 - **Notification hooks are named `on*`; `*Callback` means "you decide".** Renamed options:
 
   | Before | After | Where |

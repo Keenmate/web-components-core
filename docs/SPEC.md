@@ -697,7 +697,7 @@ An attribute written on one element is never overridden by a page rule.
   unsubscribed as callback layers come and go, and on disconnect).
   Elements without an input table (web-grid's config-object API) skip the feature.
 - **Page entries.** `window.components.responsive` / `.responsiveCallback` are
-  non-enumerable accessors (like `logging` / `renderLoaderCallback`; tag enumeration
+  non-enumerable accessors (like `logging` / `renderLoadingCallback`; tag enumeration
   unaffected), their state shared across core copies via `Symbol.for`. Values the
   page assigned as plain properties before any component loaded are adopted.
   `registerComponent()` ADOPTS a pre-existing `window.components[tag]` object (keeps
@@ -1041,7 +1041,7 @@ auto-registered while the rest did not. Core consolidates it:
   no-ops without `customElements`.
 - **Global logging switch** — `window.components.logging` (non-enumerable) drives
   every bundle on the page incl. `CORE` and later registrations; see §12.1.
-- **Page-wide loader hook** — `window.components.renderLoaderCallback`
+- **Page-wide loader hook** — `window.components.renderLoadingCallback`
   (non-enumerable accessor) draws every component's loading states unless an
   instance `renderLoadingCallback` is set; see §12.14.
 - **Live-instance registry** — `BlissElement` adds itself to a per-tag `Set` on
@@ -1765,7 +1765,7 @@ renderLoadingCallback? }) → remove()`. Precedence, highest first:
 1. the **instance `renderLoadingCallback`** — same name in every component. Taken
    from the option when the key is present (`null` = none), else from
    `host.renderLoadingCallback` (the generated `BlissElement` property);
-2. the **page-wide `window.components.renderLoaderCallback`**;
+2. the **page-wide `window.components.renderLoadingCallback`**;
 3. the **default** `<span class="<prefix>-loader" aria-hidden="true">`, drawn by
    the component's CSS.
 
@@ -1780,14 +1780,14 @@ added (pre-existing children stay) and restores the container's previous `role` 
 `aria-label`. A throwing hook is logged (`UI` / `CORE:ELEMENT`, §12.1) and the
 default loader is drawn instead — a loading state is never blank.
 
-**Page hook.** `window.components.renderLoaderCallback` is a **non-enumerable**
+**Page hook.** `window.components.renderLoadingCallback` is a **non-enumerable**
 accessor (like `logging`, §12.3), published by `registerComponent()` and
 `renderLoader()`; its value lives on `globalThis[Symbol.for(...)]` so every bundled
 core copy shares it. A value the page assigned before any component loaded (a plain
 property) is adopted at publish time; a non-function reads as unset.
 
 ```js
-window.components.renderLoaderCallback = ({ component, context, containerElement }) => {
+window.components.renderLoadingCallback = ({ component, context, containerElement }) => {
   containerElement.innerHTML = '<span class="my-dots"><i></i><i></i><i></i></span>';
 };
 ```

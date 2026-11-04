@@ -12,7 +12,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  if (window.components) window.components.renderLoaderCallback = undefined;
+  if (window.components) window.components.renderLoadingCallback = undefined;
   document.body.replaceChildren();
   vi.restoreAllMocks();
 });
@@ -71,7 +71,7 @@ describe('renderLoader — precedence', () => {
     const page = vi.fn();
     window.components = window.components ?? {};
     publishLoaderHook();
-    window.components.renderLoaderCallback = page;
+    window.components.renderLoadingCallback = page;
     const inst = vi.fn<RenderLoaderCallback>(({ containerElement }) => {
       containerElement.append('inst');
     });
@@ -99,7 +99,7 @@ describe('renderLoader — precedence', () => {
   it('page hook draws when there is no instance hook; its cleanup + nodes go on remove()', () => {
     const cleanup = vi.fn();
     publishLoaderHook();
-    window.components!.renderLoaderCallback = ({ containerElement, component, context }) => {
+    window.components!.renderLoadingCallback = ({ containerElement, component, context }) => {
       containerElement.append(`${component}:${context}`);
       return cleanup;
     };
@@ -126,23 +126,23 @@ describe('renderLoader — precedence', () => {
   });
 });
 
-describe('window.components.renderLoaderCallback', () => {
+describe('window.components.renderLoadingCallback', () => {
   it('is non-enumerable and adopts a value assigned earlier as a plain property', () => {
     const fn = vi.fn();
     const components = (window.components ??= {}) as Record<string, unknown>;
-    delete components.renderLoaderCallback;
-    components.renderLoaderCallback = fn; // page set it before any component loaded
+    delete components.renderLoadingCallback;
+    components.renderLoadingCallback = fn; // page set it before any component loaded
     publishLoaderHook();
-    expect(Object.keys(window.components!)).not.toContain('renderLoaderCallback');
-    expect(window.components!.renderLoaderCallback).toBe(fn);
+    expect(Object.keys(window.components!)).not.toContain('renderLoadingCallback');
+    expect(window.components!.renderLoadingCallback).toBe(fn);
     renderLoader(host, box, 'overlay', { prefix: 'x', label: 'L' });
     expect(fn).toHaveBeenCalledOnce();
   });
 
   it('a non-function value is treated as unset', () => {
     publishLoaderHook();
-    (window.components as Record<string, unknown>).renderLoaderCallback = 'nope';
-    expect(window.components!.renderLoaderCallback).toBeUndefined();
+    (window.components as Record<string, unknown>).renderLoadingCallback = 'nope';
+    expect(window.components!.renderLoadingCallback).toBeUndefined();
     renderLoader(host, box, 'overlay', { prefix: 'x', label: 'L' });
     expect(box.querySelector('.x-loader')).not.toBeNull();
   });

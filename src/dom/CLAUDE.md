@@ -14,7 +14,7 @@ rules (`@layer` order, `?inline`) stay CSS-guideline, not code.
 
 `renderLoader(host, container, context, { label, prefix, renderLoadingCallback? })`
 → idempotent `remove()`. Precedence: instance hook (option key present wins, else
-`host.renderLoadingCallback`) > `window.components.renderLoaderCallback` > default
+`host.renderLoadingCallback`) > `window.components.renderLoadingCallback` > default
 `<span class="<prefix>-loader" aria-hidden>`. Only the highest present hook runs; if it
 throws → logged + default drawn. Container always `role="status"` (+ `aria-label` when
 `label` non-empty); `remove()` drops only nodes the render added and restores the

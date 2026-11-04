@@ -82,7 +82,7 @@ export interface RegisterComponentOptions {
 /**
  * `window.components`: one entry per component tag, plus the NON-enumerable
  * page-wide `logging` switch (every bundle — components + CORE) and the
- * NON-enumerable page-wide `renderLoaderCallback` hook (SPEC §12.14) and
+ * NON-enumerable page-wide `renderLoadingCallback` hook (SPEC §12.14) and
  * `responsive` / `responsiveCallback` rules (SPEC §6.7). Tag names
  * always contain a hyphen, so neither can clash, and enumerating the object
  * still yields tags only.
@@ -94,7 +94,7 @@ export type ComponentsRegistry = Record<string, RegisteredComponent | undefined>
   /** Page-wide responsive callback (SPEC §6.7) — runs after the page-wide map. Non-enumerable. */
   responsiveCallback?: ResponsiveCallback;
   /** Page-wide loader look: draws every component's loading states unless an instance `renderLoadingCallback` is set. */
-  renderLoaderCallback?: RenderLoaderCallback;
+  renderLoadingCallback?: RenderLoaderCallback;
   /** Page-wide motion level (SPEC §12.16) for every component whose own `motion` is `auto`. Non-enumerable. */
   motion?: Motion;
 };
