@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — BREAKING
+
+- **Two exported types renamed** (the rulebook's closed TS suffix set forbids `Type`, C-NC-11):
+  `PointerType` → **`PointerAccuracy`** (the values are the CSS `pointer` media feature's
+  `coarse` / `fine` / `none`; `EnvironmentSnapshot.pointer` keeps its name) and, in `/cem`,
+  `ExtractedType` → **`ExtractedTypeAnnotation`**. Components that re-export `PointerType`
+  (multiselect, daterangepicker) rename the re-export. No alias (v2 rule).
+
 ## [1.0.0-rc18] - 2026-11-04
 
 ### Changed — BREAKING

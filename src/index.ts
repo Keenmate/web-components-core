@@ -78,7 +78,7 @@ export type {
   EnvironmentSnapshot,
   EnvironmentListener,
   ObserveEnvironmentOptions,
-  PointerType,
+  PointerAccuracy,
   Orientation,
   OS,
   BreakpointMap,

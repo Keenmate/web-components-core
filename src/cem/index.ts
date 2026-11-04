@@ -20,5 +20,5 @@ export {
   type ExtractedEvent,
   type ExtractedMember,
   type ExtractedRegistration,
-  type ExtractedType,
+  type ExtractedTypeAnnotation,
 } from './extract.js';

@@ -34,8 +34,8 @@ import { createThrottle } from '../dom/throttle.js';
 import { callSafely, notifyEach } from '../logging/safe-call.js';
 import { sharedState } from '../global/shared-state.js';
 
-/** The primary pointing device: `coarse` = touch/stylus, `fine` = mouse/trackpad. */
-export type PointerType = 'coarse' | 'fine' | 'none';
+/** The accuracy of the primary pointing device (the CSS `pointer` media feature): `coarse` = touch/stylus, `fine` = mouse/trackpad. */
+export type PointerAccuracy = 'coarse' | 'fine' | 'none';
 
 /** Screen orientation, from `(orientation: portrait)`. */
 export type Orientation = 'portrait' | 'landscape';
@@ -56,7 +56,7 @@ export type BreakpointMap = Record<string, number>;
 /** An immutable read of the current device/viewport/orientation state. */
 export interface EnvironmentSnapshot {
   /** Primary pointer capability: `(pointer: coarse)` → `coarse`, else `fine`; `none` when neither matches. */
-  readonly pointer: PointerType;
+  readonly pointer: PointerAccuracy;
   /** Any pointer is coarse — touch is available at all, even if a mouse is primary (`(any-pointer: coarse)`). */
   readonly hasCoarsePointer: boolean;
   /** The primary pointer can hover (`(hover: hover)`) — false on touch-first devices. */
@@ -333,7 +333,7 @@ function computeSnapshot(): EnvironmentSnapshot {
   const coarsePrimary = matches('(pointer: coarse)');
   const finePrimary = matches('(pointer: fine)');
   const canHover = matches('(hover: hover)');
-  const pointer: PointerType = coarsePrimary ? 'coarse' : finePrimary ? 'fine' : 'none';
+  const pointer: PointerAccuracy = coarsePrimary ? 'coarse' : finePrimary ? 'fine' : 'none';
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
   const screenShortSide = readScreenShortSide();

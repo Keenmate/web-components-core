@@ -16,14 +16,15 @@ type Expression = TsNamespace.Expression;
 type SourceFile = TsNamespace.SourceFile;
 type ObjectLiteralExpression = TsNamespace.ObjectLiteralExpression;
 
-export interface ExtractedType {
+/** A type annotation as text (the CEM schema's `Type` object). */
+export interface ExtractedTypeAnnotation {
   text: string;
 }
 
 export interface ExtractedAttribute {
   name: string;
   fieldName?: string;
-  type?: ExtractedType;
+  type?: ExtractedTypeAnnotation;
   default?: string;
   description?: string;
   deprecated?: string | boolean;
@@ -36,9 +37,9 @@ export interface ExtractedMember {
   /** A read-only field (a getter without a setter). */
   readonly?: boolean;
   /** Methods: the parameters and return type. */
-  parameters?: { name: string; type?: ExtractedType; optional?: boolean }[];
-  return?: { type: ExtractedType };
-  type?: ExtractedType;
+  parameters?: { name: string; type?: ExtractedTypeAnnotation; optional?: boolean }[];
+  return?: { type: ExtractedTypeAnnotation };
+  type?: ExtractedTypeAnnotation;
   default?: string;
   attribute?: string;
   reflects?: boolean;
@@ -170,7 +171,7 @@ function resolveArrayLiteral(
 }
 
 /** Derive a TS type string from a `to*` converter call expression. */
-function typeFromConverter(ts: TS, expr: Expression | undefined, sf: SourceFile): ExtractedType | undefined {
+function typeFromConverter(ts: TS, expr: Expression | undefined, sf: SourceFile): ExtractedTypeAnnotation | undefined {
   if (!expr) return undefined;
   const call = unwrap(ts, expr);
   if (!ts.isCallExpression(call) || !ts.isIdentifier(call.expression)) return undefined;
