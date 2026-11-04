@@ -254,7 +254,7 @@ describe('submenus', () => {
   it('a lazy getChildrenCallback shows a loading row, then the items (with ctx)', async () => {
     let resolve!: (e: MenuEntry<Ctx>[]) => void;
     const getChildrenCallback = vi.fn((_c: Ctx) => new Promise<MenuEntry<Ctx>[]>((r) => (resolve = r)));
-    open([{ id: 'lazy', text: 'Lazy', getChildrenCallback }], { loadingText: 'Loading…' });
+    open([{ id: 'lazy', text: 'Lazy', getChildrenCallback }], { labels: { loading: 'Loading…' } });
     byId('lazy').click();
     const sub = levels()[1]!;
     expect(sub.querySelector('.km-menu__loading')!.textContent).toBe('Loading…');

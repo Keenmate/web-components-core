@@ -1698,7 +1698,7 @@ item runs and its level re-renders when the returned promise settles),
 `renderMenuCallback(el, close)` (full custom content; core still positions + dismisses),
 `defaults` / `prepareItemCallback` (built-in state / rewrite, every level), `placement`,
 `offset`, `cssClass`, `shouldFocusFirst`, `returnFocusTo`,
-`shouldCloseOnOutsideInteraction` (default `true`), `overlayGroup`, `loadingText`,
+`shouldCloseOnOutsideInteraction` (default `true`), `overlayGroup`, `labels` (`{ loading }`),
 `inheritThemeFrom`. No visible item → nothing rendered, a closed handle, no `onClose`.
 
 **Decisions.** Icons are inserted as HTML (developer-supplied, like action buttons);

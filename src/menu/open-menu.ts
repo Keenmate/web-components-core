@@ -201,7 +201,7 @@ export function openMenu<Ctx, A extends string = string>(
     const loading = document.createElement('div');
     loading.className = `${BLOCK}__loading`;
     loading.setAttribute('role', 'none');
-    loading.textContent = opts.loadingText ?? '…';
+    loading.textContent = opts.labels?.loading ?? '…';
     level.el.replaceChildren(loading);
     level.el.setAttribute('aria-busy', 'true'); // cleared when the items are rendered
   };

@@ -88,10 +88,16 @@ export interface OpenMenuOptions<Ctx, A extends string = string> {
   shouldCloseOnOutsideInteraction?: boolean;
   /** `registerOverlay` group for "one overlay open at a time". Default: the ungrouped group. */
   overlayGroup?: unknown;
-  /** Text of the row shown while a lazy submenu loads. Default `'…'`. */
-  loadingText?: string;
+  /** The menu's UI strings (the `labels` convention: a partial object, English defaults). */
+  labels?: MenuLabels;
   /** Copy the nearest `data-theme` from this element onto each menu level (portaled menus, C-CS-10). */
   inheritThemeFrom?: HTMLElement;
+}
+
+/** UI strings of {@link openMenu}; each key is optional and falls back to its default. */
+export interface MenuLabels {
+  /** Text of the row shown while a lazy submenu loads. Default `'…'`. */
+  loading?: string;
 }
 
 /** Returned by {@link openMenu}. */
