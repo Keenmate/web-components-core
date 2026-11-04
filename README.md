@@ -10,6 +10,24 @@ that correctness lives in a single place and can't drift.
 > **[`docs/SPEC.md`](docs/SPEC.md) is the source of truth** for design intent. This
 > README is the tour; read the relevant SPEC section before changing behavior.
 
+## What's New in v1.0.0-rc18
+
+**[Release notes](release-notes/1.0.0-rc18.md)** cover the upgrade: the results of a full code review,
+with every API change in this one release so each component migrates once.
+
+- **Many components, one page.** The scroll lock, breakpoints, overlay dismissal, instance registry and
+  logging switch are shared by every component's bundled copy of core; a throwing hook or listener no
+  longer silences the others or leaves an element half-activated.
+- **Nested overlays.** A menu inside a dropdown, or a dropdown inside a modal `<dialog>`, keeps its
+  parent open; Escape closes one level at a time and outside clicks are routed through the tree.
+- **Logging: the closest level wins** (element → type → page → `warn`), with `resetLogging()` at every
+  layer (BREAKING: `el.disableLogging()` now silences).
+- **Renames (BREAKING).** Notification hooks are `on*` (`onClose`, `onPlaced`, `onDrift`, …),
+  `createMenuDivider()`, `openMenu({ labels: { loading } })`, `toEnum({ isNullable })`, the page hook
+  `renderLoadingCallback`, and the default loader class `<prefix>__loader`.
+- **Safer inputs.** Strict number parsing, `el.x = undefined` resets, `toText` accepts `''`, new
+  `toCssLength()`; `wrapRanges()` escapes by default, with `highlightHtml()` for trusted labels.
+
 ## What's New in v1.0.0-rc17
 
 **[Release notes](release-notes/1.0.0-rc17.md)** cover the upgrade: the motion level, plus one rename in
@@ -22,24 +40,6 @@ the rc16 scroll API.
   `examples-motion.html`.
 - **`revealContainer` → `shouldRevealContainer` (BREAKING).** The `scrollIntoContainer()` option from
   rc16 follows the boolean naming rule; same behaviour.
-
-See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
-
-## What's New in v1.0.0-rc16
-
-**[Release notes](release-notes/1.0.0-rc16.md)** cover the upgrade: one small **breaking** change for
-component authors (`toBool` needs its mode), plus container scrolling.
-
-- **Container scroll.** `scrollIntoContainer(el, opts)` brings a row, an option or a day into view by
-  scrolling the one container around it — never the page, unlike `scrollIntoView()`. The search for
-  the container crosses shadow roots and slots; it honours `scroll-padding` (sticky headers) and
-  `scroll-margin`, is RTL-aware, and `revealContainer` also brings an off-screen list into view.
-  `findScrollContainer(el)` is the search on its own. Live demo: `examples-scroll.html`.
-- **`toBool(mode)` requires its mode (BREAKING).** The bare `toBool()` meant `'presence'`, where
-  `x="false"` is `true`. Pick `'default-false'`, `'default-true'`, `'tristate'` or `'presence'` (for
-  `disabled` / `readonly` only).
-- **Dead defaults warn.** The input-table check now flags a row whose `default` can never apply
-  because the converter answers a missing attribute with something else.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
 
@@ -642,6 +642,39 @@ export default blissAnalyzerConfig();
   converter: toEnum(['single', 'multiple'], { default: 'single' }),
   description: 'Whether the user can pick one option or several.' }
 ```
+
+## API index
+
+Every runtime export by entry point; types ship in the `.d.ts` files. The sections above
+explain the main ones; [SPEC](docs/SPEC.md) has the design notes.
+
+### `@keenmate/web-components-core`
+
+| Area | Exports |
+|---|---|
+| Converters | `toBool`, `toBytes`, `toCssLength`, `toCustom`, `toEnum`, `toFloat`, `toFunction`, `toInt`, `toList`, `toObject`, `toObjectArray`, `toText`, `toValue` |
+| Input plumbing (engine / test code) | `resolveFromAttribute` / `resolveFromProperty` (run one value through a row's converter), `collectEngineConfig` (config for an engine, keeping meaningful `null`s), `deriveClearableKeys` / `isClearableInput` / `isClearableConverter` (which inputs a `null` clears) |
+| Element | `BlissElement`, `define(tag, Class)` (define once), `dispatch(target, name, detail)` (the free event helper under `emit()`), `defaultEventProperty(name)` (`'node-select'` → `'onNodeSelect'`), `withComponentContext(detail, controller, element, extras?)` / `COMPONENT_CONTEXT_KEYS` (the non-enumerable `controller` / `element`); `normalizeEventDefs` is internal plumbing |
+| Before-callbacks | `runBeforeCallback` (async; `false` cancels, a value replaces), `runBeforeCallbackSync`, `runBeforeCallbackEager` (stays synchronous for a sync hook) |
+| Registration | `registerComponent(tag, Class, opts)` (`window.components[tag]`), `getInstances(tag)`, `getRegisteredTags()` — page-wide, across copies of core |
+| DOM | `adoptStyles(root, ...css)` / `createStyleSlot(root)` (style injection), `renderLoader(host, container, context, opts)` / `publishLoaderHook()` (loading states), `scrollIntoContainer` / `findScrollContainer` (container scroll), `createMicrotaskScheduler()` (coalesce a burst into one run), `resolveEnumAttribute(raw, values, fallback)` |
+| CSS-variable lint | `extractConsumedCssVars`, `extractDeclaredCssVars`, `lintCssVars` (read vs declared `--prefix-*` names), `suggestCssVars` (likely target of a typo) |
+| Environment | `getEnvironment`, `observeEnvironment`, `observeViewport`, `observeElementSize`, `configureBreakpoints` / `BREAKPOINTS_CHANGE_EVENT`, `classifyDevice` / `TABLET_MIN_SHORT_SIDE` |
+| Theme | `getThemeContext`, `observeThemeContext`, `setThemeMode` / `getThemeMode` (force dark / light page-wide), `readThemeSignal(el)`, `resolveThemeSource(host, source)`, `THEME_CONTEXT_ATTRIBUTE`, `THEME_SOURCE_ATTRIBUTE` |
+| Motion | `getPageMotion`, `observePageMotion`, `adoptMotionStyles(node)`, `MOTION_CSS`, `MOTION_PRESETS`, `MOTION_VALUES`, `MOTION_ATTRIBUTE`, `MOTION_DATA_ATTRIBUTE` |
+| Overlays | `resolvePresentation` / `DEFAULT_PRESENTATION_MAP` / `createPresentationContext` (floating panel vs fullscreen sheet), `lockBodyScroll()` (shared ref-counted lock), `observeKeyboardInset(panel)`, `registerOverlay` / `notifyOverlayActivated` / `onOverlayActivated` / `dismissAllOverlays` / `OVERLAY_ACTIVATE_EVENT` / `ALL_GROUPS` (one overlay open at a time, nesting, Escape routing) |
+| Logging | `createLoggers(namespace, categories?)`, `createPerfLogger(namespace)`, `getGlobalLogging()` (= `window.components.logging`), `getCoreLogging()` / `coreLogging` / `CORE_LOG_CATEGORIES` (core's own messages), `setLogPersistKeyPrefix` / `getLogPersistKeyPrefix`, `isLogLevel`, `toLogLevelNumber`, `LOG_LEVELS`, `DEFAULT_CATEGORIES`, `DEFAULT_LOG_LEVEL`, `DEFAULT_ENABLED_LEVEL` |
+
+### Subpaths
+
+| Entry point | Exports |
+|---|---|
+| `/positioning` | `anchor`, `createPopover`, `createTooltip`, `findOverlayContainer(trigger)` (where a portaled panel goes), `getFixedPositionOffsetParent` / `detectFixedDrift` / `findContainingBlockCulprit` / `describeContainingBlockProps` (fixed containing blocks and drift), `platform` (Floating UI's, for a custom one) |
+| `/actions` | `runAction`, `resolveActionItem`, `resolveMenuEntries`, `getMenuChildren`, `normalizeActionItems` (string shorthand → items), `readActionDataset(trigger)`, `isActionBusy`, `createMenuDivider` / `isMenuDivider` |
+| `/menu` | `openMenu(entries, ctx, opts)`, `MENU_CSS` |
+| `/search` | `normalizeSearchText`, `prepareSearchTerm` / `matchesSearchTerm` / `NO_SEARCH_TERM`, `findTextMatches` / `matchesText`, `findRegexMatches` / `createRegexCompiler` / `statelessRegex`, `findHighlightRanges` / `wrapRanges` / `highlightHtml` / `escapeHtml` |
+| `/testing` | `mount`, `mountBeforeUpgrade`, `cleanup`, `defineOnce`, `uniqueTag`, `nextTick`, `nextFrame`, `listen` (event spy), `waitForEvent`, `captureConsole`, `resetPageState` |
+| `/cem` | `blissAnalyzerConfig`, `blissInputsPlugin`, `cssVariablesFromManifestPlugin`, `withCoreDeclared` / `CORE_DECLARED_API` / `CORE_DECLARED_INPUTS` / `CORE_DECLARED_EVENTS`, `extractBlissClass` / `extractBlissClasses` / `extractRegistrations` / `parseRegisterComponentCall` |
 
 ## Commands
 

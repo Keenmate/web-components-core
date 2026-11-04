@@ -7,10 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc18] - 2026-11-04
+
 ### Changed — BREAKING
 
-These change component code or page-visible output. Each component updates once (see the rc19
-brief); no compatibility aliases (v2 rule).
+These change component code or page-visible output. Each component updates once;
+no compatibility aliases (v2 rule).
 
 - **Page-wide motion goes on `<html>`, so a closer section wins.** `window.components.motion` used
   to be written as `data-motion` on every component left on `auto`, which beat a nearer
@@ -258,10 +260,10 @@ brief); no compatibility aliases (v2 rule).
   or a second loader, were deleted too. It now removes only what the render added.
 - **Menus:** hovering a submenu whose children are all hidden no longer leaks its positioning
   (a live `autoUpdate` per hover). A rejected `runAction` on an item that closes the menu, and a
-  throwing `closeCallback`, are logged instead of escaping.
+  throwing `onClose`, are logged instead of escaping.
 - **`runAction()`:** a throwing `action` event handler is logged and `runAction` still resolves
   `true`; an `aria-busy` the trigger already had is put back afterwards.
-- **`anchor()`:** a throwing `placedCallback` / `computedCallback` / `driftCallback` /
+- **`anchor()`:** a throwing `onPlaced` / `onComputed` / `onDrift` /
   `beforeComputeCallback` is logged and the others still run; a rejected `computePosition` is
   logged instead of becoming an unhandled rejection. *pure-css port affected.*
 - **Menus (`openMenu`):**
