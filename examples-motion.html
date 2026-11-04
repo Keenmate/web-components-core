@@ -14,9 +14,18 @@
                 smooth"</code> on an element, <code>window.components.motion</code> for the page, and
                 <code>data-motion</code> on any element (a section, <code>&lt;html&gt;</code>) for everything inside.
                 Components follow through the shared <code>--base-duration-*</code> / <code>--base-scroll-behavior</code>
-                tokens, with or without base-css-variables on the page. The OS reduced-motion setting always wins. See
-                <strong>SPEC §12.16</strong>.</p>
+                tokens, with or without base-css-variables on the page.</p>
         </header>
+
+        <div class="note warning">
+            <div class="note-title">The OS reduced-motion setting always wins. See SPEC §12.16</div>
+            With "reduce motion" switched on in the operating system (Windows: <em>Settings → Accessibility → Visual
+            effects → Animation effects</em> off), every level runs at <code>0s</code>, even <code>motion="smooth"</code>,
+            and nothing set on this page makes a difference. It's the user's accessibility choice, and the page can't
+            know why it was set. Right now this browser reports reduced motion: <b id="os-status">…</b>.
+            To try the demos anyway, override it for this tab: DevTools → <code>Ctrl+Shift+P</code> → "Rendering" →
+            <em>Emulate CSS media feature prefers-reduced-motion</em> → <code>no-preference</code>.
+        </div>
 
         <!-- ============================================================= -->
         <!-- MO01 · Levels side by side                                    -->
@@ -111,12 +120,6 @@ el.motion = 'snappy';</pre></div>
                 <pre id="mo02-dom"></pre>
             </div>
             <div class="log-panel log-panel--dark mt-1" data-empty="Change a level or press Slide." id="mo02-log"></div>
-            <div class="note">
-                <div class="note-title">The OS setting always wins</div>
-                With "reduce motion" switched on in the operating system, every level runs at <code>0s</code>, even
-                <code>motion="smooth"</code>. It's the user's accessibility choice, and the page can't know why it was
-                set. Right now this browser reports reduced motion: <b id="mo02-os">…</b>.
-            </div>
             <div class="code-block"><pre>window.components.motion = 'smooth';           // page level → &lt;html data-motion="smooth"&gt;
 &lt;section data-motion="none"&gt;                     &lt;!-- beats the page for everything inside --&gt;
   &lt;web-multiselect&gt;&lt;/web-multiselect&gt;             &lt;!-- auto: core writes nothing, inherits "none" --&gt;
@@ -266,7 +269,7 @@ el.motion = 'snappy';</pre></div>
         // The page level lives on <html>: don't carry it into the next page of the examples.
         window.addEventListener('pagehide', resetMo02);
 
-        const showOs = () => { $('mo02-os').textContent = reduced.matches ? 'yes' : 'no'; render2(); };
+        const showOs = () => { $('os-status').textContent = reduced.matches ? 'yes' : 'no'; render2(); };
         reduced.addEventListener('change', showOs);
         showOs();
     </script>
