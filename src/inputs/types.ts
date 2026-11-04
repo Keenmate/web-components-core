@@ -91,6 +91,10 @@ export interface InputDef<V = unknown> {
    * `reinit()` / `update()`) is unchanged, and `this.config[configKey]` keeps
    * the ASSIGNED value. Method syntax, so a component may type `el` as its own
    * class.
+   *
+   * Needs `on: 'update'` or `'reinit'`: an `on: 'none'` write never reaches the
+   * component, so the table check warns. Read-only state is a plain getter on the
+   * class, not an input row.
    */
   getLiveValue?(el: HTMLElement): V | undefined;
   /**

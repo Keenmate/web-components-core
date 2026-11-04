@@ -1590,6 +1590,13 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       if (def.getLiveValue !== undefined && typeof def.getLiveValue !== 'function') {
         this.#warn(`invalid input table: "${def.configKey}" has a getLiveValue that is not a function; the getter returns the stored value`);
       }
+      // Review E-15: an on:'none' write never reaches the component, so its live state can't
+      // follow it — the getter would ignore every assignment. Read-only state is a plain getter.
+      if (typeof def.getLiveValue === 'function' && def.on === 'none') {
+        this.#warn(
+          `invalid input table: "${def.configKey}" has getLiveValue but on: 'none' — a write never reaches the component, so the live getter ignores it; use on: 'update' (or a plain getter for read-only state)`,
+        );
+      }
       // A converter's own answer for a missing attribute replaces the row's `default`
       // (resolveFromAttribute applies `default` only when it answers `undefined`), so a
       // differing concrete value makes `default` dead — e.g. toBool('default-false') with

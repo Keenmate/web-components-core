@@ -133,6 +133,10 @@ brief); no compatibility aliases (v2 rule).
 
 ### Fixed
 
+- **The table check warns about `getLiveValue` on an `on: 'none'` row.** The write never reaches
+  the component, so the live getter returned the old state right after `el.x = 5` and kept
+  ignoring the assignment. Use `on: 'update'`, or a plain getter for read-only state. No
+  current component has the pair. Review E-15.
 - **The manifest generator no longer drops input rows silently.** It now reads
   `static inputs = [...SHARED_ROWS, …]` (a same-file const array, nested spreads too), a row
   given as a same-file const object, `static get inputs() { return […]; }`, and a class assigned

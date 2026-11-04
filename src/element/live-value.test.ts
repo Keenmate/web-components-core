@@ -144,4 +144,22 @@ describe('InputDef.getLiveValue', () => {
     expect(el.items).toEqual(['a']);
     expect(warn.mock.calls.flat().join(' ')).toContain('getLiveValue that is not a function');
   });
+
+  // Review E-15: the pair can only be a mistake — the write never reaches the live state.
+  it("warns once per class when getLiveValue is combined with on: 'none'", () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const tag = `live-value-test-${seq++}`;
+    class Mixed extends BlissElement {
+      protected static override inputs: readonly InputDef[] = [
+        { configKey: 'items', converter: toArray, default: [], on: 'none', getLiveValue: () => ['live'] },
+        { configKey: 'other', converter: toArray, default: [], on: 'update', getLiveValue: () => ['live'] },
+      ];
+    }
+    customElements.define(tag, Mixed as unknown as CustomElementConstructor);
+    document.body.append(document.createElement(tag), document.createElement(tag));
+    const lines = warn.mock.calls.flat().join(' ');
+    expect(lines.match(/has getLiveValue but on: 'none'/g)).toHaveLength(1); // once per class, only "items"
+    expect(lines).toContain('"items" has getLiveValue');
+    expect(lines).not.toContain('"other" has getLiveValue');
+  });
 });

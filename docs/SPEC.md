@@ -152,9 +152,10 @@ entries. Without help the generated getter returns the *assigned* snapshot, so
   `reinit()` / `update()`) is unchanged and `this.config[configKey]` keeps the
   **assigned** value — a rebuild reads `config`, never the live getter.
   Reflection (`shouldReflect`) reflects the assigned value too.
-- An `on: 'none'` input is never staged, so its getter goes live right after
-  assignment — the component must make `getLiveValue` see the new value (or
-  return `undefined`).
+- Not with `on: 'none'` (rc19, review E-15): such a write is never staged and never reaches
+  the component, so its live state can't follow it and the getter would ignore every
+  assignment. The table sanity check warns. Read-only state is a plain getter on the class
+  (no row); `getLiveValue` is for settable inputs whose writes reach the component.
 - Declared with method syntax, so a row may type `el` as its own class
   (`getLiveValue: (el: MyTree) => el.tree?.nodes`). A non-function value is
   flagged by the table sanity check and ignored.
