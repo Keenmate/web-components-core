@@ -68,12 +68,20 @@ describe('toInt / toFloat — remaining strict cases', () => {
 
 // I-18 #5 — toList edge cases not already in converters.test.ts.
 describe('toList — remaining edge cases', () => {
-  it('a trailing separator keeps an empty last string item (and round-trips); an int list rejects it', () => {
-    const c = toList();
-    const value = c.fromAttribute!('a,b,', reader, 'x');
-    expect(value).toEqual(['a', 'b', '']);
-    expect(c.fromAttribute!(c.toAttribute!(value)!, reader, 'x')).toEqual(['a', 'b', '']);
+  it('a stray separator (empty item) is invalid; an explicit "" goes through JSON and round-trips', () => {
+    for (const raw of ['a,b,', 'a,,b', ',a', 'a, ,b']) {
+      expect(parse(toList() as Converter<unknown>, raw)).toBe('invalid');
+    }
     expect(parse(toList({ itemType: 'int' }) as Converter<unknown>, '1,2,')).toBe('invalid');
+    let reason: string | undefined;
+    toList().fromAttribute!('a,b,', reader, 'x', (r) => (reason = r));
+    expect(reason).toBe('empty item (a stray ",")');
+    // Property path / JSON form: an empty item is deliberate and allowed.
+    const c = toList();
+    expect(c.validate!(['a', ''])).toBe(true);
+    const attr = c.toAttribute!(['a', ''])!;
+    expect(attr).toBe('["a",""]');
+    expect(c.fromAttribute!(attr, reader, 'x')).toEqual(['a', '']);
   });
 
   it('round-trips a custom separator, and an item starting with "[" through JSON', () => {

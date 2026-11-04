@@ -39,6 +39,11 @@ brief); no compatibility aliases (v2 rule).
   `renderLoaderCallback`): the same name as the instance hook, like every other page-wide setting.
   The `RenderLoaderCallback` type keeps its name (it types `renderLoader()`'s hook). Copies of core
   share one hook state, so a page with an older component bundle still works under either name.
+- **`toList()` rejects an empty item in the separated form.** `"a,b,"`, `"a,,b"` and `",a"` were
+  read as lists with an `''` item; they now warn and keep the previous value, like any invalid
+  attribute. An empty item written on purpose goes through JSON (`'["a",""]'`) or the property,
+  and a list holding one reflects as JSON so it reads back the same. The warning for a string
+  list no longer says "expected integers". No component uses `toList` today.
 - **The default loader is `<span class="<prefix>__loader">`** (was `<prefix>-loader`): BEM like every
   other class a component styles, so the rulebook naming checks (C-NC-8 / C-CSS-7) pass. Components
   rename their `.x-loader` selector to `.x__loader` when they move to this core; the

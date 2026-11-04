@@ -370,13 +370,26 @@ export function toList<E extends string | number = string>(opts: {
       return null;
     }
   };
+  // Why the last parse() failed (read right after it returns null).
+  let invalidReason = '';
   const parse = (raw: string): E[] | null => {
     let items: (string | number)[] | null;
+    invalidReason =
+      opts.requiredCount != null
+        ? `expected ${opts.requiredCount} ${itemType === 'int' ? 'integers' : 'items'} separated by "${separator}"`
+        : itemType === 'int'
+          ? `expected integers separated by "${separator}"`
+          : `expected items separated by "${separator}", or a JSON array`;
     if (raw.trim().startsWith('[')) {
       items = parseJsonList(raw.trim());
       if (items === null) return null;
     } else {
       const parts = raw.split(separator).map((p) => (opts.shouldTrim === false ? p : p.trim()));
+      // "a,b," / "a,,b": a stray separator, not an intended empty item (write `["a",""]` for that).
+      if (parts.includes('')) {
+        invalidReason = `empty item (a stray "${separator}")`;
+        return null;
+      }
       items = parts;
       if (itemType === 'int') {
         items = parts.map((p) => (INTEGER.test(p.trim()) ? Number(p) : Number.NaN));
@@ -391,11 +404,7 @@ export function toList<E extends string | number = string>(opts: {
       if (raw === null || raw.trim() === '') return fallback();
       const items = parse(raw);
       if (items !== null) return items;
-      reportInvalid?.(
-        opts.requiredCount != null
-          ? `expected ${opts.requiredCount} ${itemType === 'int' ? 'integers' : 'items'} separated by "${separator}"`
-          : `expected integers separated by "${separator}"`,
-      );
+      reportInvalid?.(invalidReason);
       return fallback();
     },
     validate(value): value is E[] {
@@ -405,7 +414,15 @@ export function toList<E extends string | number = string>(opts: {
     },
     toAttribute(value) {
       if (!Array.isArray(value)) return null;
-      const needsJson = value.length === 0 || value.some((v) => String(v).includes(separator) || String(v).trim().startsWith('['));
+      // JSON whenever the separated form can't carry the value back: [], an item holding the
+      // separator or starting with "[", or an item that is empty after trimming.
+      const isTrimmed = opts.shouldTrim !== false;
+      const needsJson =
+        value.length === 0 ||
+        value.some((v) => {
+          const s = String(v);
+          return s.includes(separator) || s.trim().startsWith('[') || (isTrimmed ? s.trim() : s) === '';
+        });
       return needsJson ? JSON.stringify(value) : value.join(separator);
     },
   };

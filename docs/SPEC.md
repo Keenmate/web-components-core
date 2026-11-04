@@ -178,7 +178,7 @@ toCssLength({ default?, allowNegative?, keywords? })  // a CSS length for style-
 toText({ shouldTrim?, isEmptyAllowed?, isNullable?, default? })  // string (NOT toString). isNullable:true → absent/empty is null (optional string), not ''
 toBool('default-false' | 'default-true' | 'tristate' | 'presence')  // mode REQUIRED; presence = native rule (any value, "false" too → true) — for disabled/readonly only
 toBytes({ default? })                          // binary units, case-insensitive: "10mb" → 10485760, "300 kB", "1.5G", "5MiB"; "1.2.3mb" / "1.5b" invalid
-toList({ itemType: 'string' | 'int', separator?, requiredCount? }) // CSV / pipe-list or a JSON array (int items: whole-string integers), optional fixed length; reflects JSON when an item holds the separator, [] as "[]"
+toList({ itemType: 'string' | 'int', separator?, requiredCount? }) // CSV / pipe-list or a JSON array (int items: whole-string integers; an empty item — "a,b," / "a,,b" — is invalid, write ["a",""] for one), optional fixed length; reflects JSON when an item holds the separator or is empty, [] as "[]"
 toCustom(parseFn)                              // wrap any bespoke parser  (month-names, 'auto'|0..6)
 toFunction()                                   // callback: property-only, validates typeof === 'function'
 toValue({ validate?, default? })               // rich value; property = validate, attribute = JSON, reflects JSON
