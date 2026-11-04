@@ -133,6 +133,11 @@ brief); no compatibility aliases (v2 rule).
 
 ### Fixed
 
+- **A backwards clock jump no longer silences `viewportChanged` / `sizeChanged`.** The throttle
+  behind them computed a negative elapsed time and queued the next notification for as long as
+  the jump (an hour back → an hour without notifications). A negative elapsed time now runs at
+  once, as lodash's throttle does; it stays on `Date.now()` so fake-timer test suites keep
+  working. Review D-26.
 - **Panels inside a `contain: paint` wrapper are placed correctly.** The fixed-containing-block
   check ignored `contain` entirely. Measured in Chromium 156, Firefox 157 and WebKit 27:
   `contain: paint | layout | strict | content` and `content-visibility: auto` do trap

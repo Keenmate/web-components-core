@@ -24,7 +24,10 @@ export function createThrottle(fn: () => void, ms: number): Throttle {
     schedule() {
       if (timer !== undefined) return; // trailing edge already queued
       const elapsed = Date.now() - lastRun;
-      if (elapsed >= ms) {
+      // A negative elapsed time means the wall clock went backwards: run now rather than wait
+      // out the jump (lodash's throttle does the same). Date.now(), not performance.now(), so
+      // test suites that fake timers (which fake Date, not performance) keep working. Review D-26.
+      if (elapsed >= ms || elapsed < 0) {
         run();
         return;
       }
