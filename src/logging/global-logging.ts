@@ -130,11 +130,23 @@ export function publishGlobalLogging(): void {
 }
 
 /**
+ * This copy's enlisted bundles by namespace + categories. Within one copy of core, two
+ * bundles with the same key drive the same named loggers, so a repeated `createLoggers()`
+ * (or `createPerfLogger()`) replaces the earlier entry instead of growing the page-wide set
+ * forever (review L-15). Per copy on purpose: another copy's bundle has its own loggers.
+ */
+const enlistedByKey = new Map<string, GlobalLoggingTarget>();
+
+/**
  * Enlist a bundle under the page switch; it adopts the current page level now (late
  * registration). Called by `createLoggers()`.
  */
 export function registerGlobalLoggingTarget(bundle: GlobalLoggingTarget): void {
   const s = state();
+  const key = `${bundle.namespace}|${bundle.LOGGING_CATEGORIES.join(',')}`;
+  const earlier = enlistedByKey.get(key);
+  if (earlier && earlier !== bundle) s.bundles.delete(earlier);
+  enlistedByKey.set(key, bundle);
   s.bundles.add(bundle);
   // isLogLevel: the shared state may come from an older copy of core that stored a bad level.
   const level = s.level !== undefined && isLogLevel(s.level) ? s.level : undefined;

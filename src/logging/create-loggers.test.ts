@@ -132,3 +132,20 @@ describe('toLogLevelNumber / isLogLevel', () => {
     expect(() => getLogger('L17:CAT').setLevel(2.5 as never, false)).toThrow(/invalid level/);
   });
 });
+
+// Review L-15: a repeated createLoggers() of one namespace must not grow the page-wide list.
+describe('page-wide bundle list', () => {
+  it('a repeated createLoggers() / createPerfLogger() of one namespace replaces its entry', async () => {
+    const { createPerfLogger } = await import('./perf-logger.js');
+    const state = (globalThis as unknown as Record<symbol, { bundles: Set<{ namespace: string }> }>)[
+      Symbol.for('@keenmate/web-components-core:logging')
+    ]!;
+    const count = (ns: string): number => [...state.bundles].filter((b) => b.namespace === ns).length;
+    for (let i = 0; i < 50; i++) createLoggers('L15GROW');
+    for (let i = 0; i < 50; i++) createPerfLogger('L15PERF');
+    expect(count('L15GROW')).toBe(1);
+    expect(count('L15PERF')).toBe(1);
+    createLoggers('L15GROW', ['INIT', 'FILE']); // other categories: its own entry
+    expect(count('L15GROW')).toBe(2);
+  });
+});

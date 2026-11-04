@@ -349,6 +349,9 @@ brief); no compatibility aliases (v2 rule).
 
 ### Internal
 
+- A repeated `createLoggers()` / `createPerfLogger()` of one namespace replaces its entry in the
+  page-wide bundle list instead of adding another (same copy of core, same categories), so the
+  list no longer grows for the life of the page. Review L-15.
 - Importing core has no side effect any more: core's own `CORE` logger bundle (and with it
   `window.components.logging`) is created on first use. New `getCoreLogging()`; `coreLogging`
   still works, as a stand-in that reads the bundle on access. Review L-23.
