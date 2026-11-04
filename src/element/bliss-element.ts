@@ -93,6 +93,19 @@ import {
 } from './responsive.js';
 
 /**
+ * A plain-object event detail is shallow-copied before `emit()` attaches the component
+ * context, so the caller's object (a cached value, a data row) never gains the context
+ * fields or a stale copy of them (review I-03). The copy keeps every own property
+ * descriptor — non-enumerable fields and getters an engine already attached survive.
+ * Arrays and class instances are left as they are (a copy would lose their type).
+ */
+function copyPlainDetail(detail: object): object {
+  const proto = Object.getPrototypeOf(detail);
+  if (proto !== Object.prototype && proto !== null) return detail;
+  return Object.create(proto, Object.getOwnPropertyDescriptors(detail));
+}
+
+/**
  * Native event names that are `composed` — fired inside a shadow root they
  * also reach the host's listeners, so a component event must never reuse one
  * (rulebook C-NC-2).
@@ -1389,7 +1402,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     const def = this.#eventsByName.get(name);
     const payload =
       detail === undefined || (typeof detail === 'object' && detail !== null)
-        ? this.withContext((detail ?? {}) as object)
+        ? this.withContext(copyPlainDetail((detail ?? {}) as object))
         : detail;
     const twin = this.#eventHandlers.get(name);
     if (twin) {

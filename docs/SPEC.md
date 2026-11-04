@@ -1199,7 +1199,9 @@ declares its notifications in a `static events` table (a bare name, or an
 against the component's `BlissElement<TEvents, TController>` event map and does
 three things, in order:
 
-1. **attaches the component context** to the detail, in place (`withContext`):
+1. **attaches the component context** to the detail (`withContext`). A plain-object detail is
+   shallow-copied first (every own descriptor kept), so the caller's object is never changed
+   (review I-03); arrays and class instances get the context in place:
    `controller` (the component's public facade, `el.controller`, built once by
    the `createController()` hook) and `element` (the host) as **non-enumerable**
    properties, plus the enumerable extras from the `eventContext()` hook (popup
@@ -1697,7 +1699,9 @@ item runs and its level re-renders when the returned promise settles),
 label and shortcut are text. Items are `div[role=menuitem][tabindex=-1]` (not buttons —
 no native Space/Enter click to double-fire). The keyboard is a capture `keydown` on the
 document while open, so the menu is keyboard-modal whether focus is in it or still on
-the opener; handled keys are consumed. Hover focuses items (roving focus follows the
+the opener; handled keys are consumed. Arrow keys / Home / End skip dividers and disabled
+items (by design, review A-21: the MUI / Radix / React Aria default; the KeenMate components
+all skip). Hover focuses items (roving focus follows the
 pointer). Focus returns to `returnFocusTo` only when the menu held focus and the close
 wasn't pointer-away (outside press / scroll / blur / overlay). An item that defines
 its toggle state (`isToggled`, `getIsToggledCallback`, or an `isToggled` from

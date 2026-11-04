@@ -247,6 +247,47 @@ describe('component context on event details', () => {
     expect(detail.controller.ping()).toBe('pong');
   });
 
+  it('the caller\'s plain-object detail is never mutated; a re-emit gets fresh extras', () => {
+    const el = make();
+    const listener = vi.fn();
+    el.addEventListener('select', listener);
+    const data = { option: 'a' };
+    el.fire(data);
+    expect(Object.keys(data)).toEqual(['option']);
+    expect('element' in data).toBe(false);
+    el.presentation = 'fullscreen';
+    el.fire(data);
+    const second = (listener.mock.calls[1]![0] as CustomEvent).detail;
+    expect(second.presentation).toBe('fullscreen');
+    expect(second.isFullscreen).toBe(true);
+  });
+
+  it('the copy keeps non-enumerable fields and getters the detail already had', () => {
+    const el = make();
+    const listener = vi.fn();
+    el.addEventListener('select', listener);
+    const own = {};
+    const detail = { option: 'a' } as { option: string; element?: unknown; presentation?: string };
+    Object.defineProperty(detail, 'element', { value: own, enumerable: false });
+    Object.defineProperty(detail, 'presentation', { get: () => 'modal', enumerable: true });
+    el.fire(detail as { option: string });
+    const got = (listener.mock.calls[0]![0] as CustomEvent).detail;
+    expect(got).not.toBe(detail);
+    expect(got.element).toBe(own);
+    expect(got.presentation).toBe('modal');
+    expect(Object.keys(got)).toEqual(['option', 'presentation', 'isFullscreen']);
+  });
+
+  it('the on<Name> twin and the event get the same (copied) object', () => {
+    const el = make() as El & { onSelect?: (d: unknown) => void };
+    const seen: unknown[] = [];
+    el.onSelect = (d) => seen.push(d);
+    el.addEventListener('select', (e) => seen.push((e as CustomEvent).detail));
+    el.fire({ option: 'a' });
+    expect(seen).toHaveLength(2);
+    expect(seen[0]).toBe(seen[1]);
+  });
+
   it('a frozen detail is copied, not mutated', () => {
     const el = make();
     const listener = vi.fn();

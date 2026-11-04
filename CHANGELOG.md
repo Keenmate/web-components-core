@@ -245,6 +245,12 @@ brief); no compatibility aliases (v2 rule).
 
 ### Changed
 
+- **`emit()` no longer changes the object you pass.** A plain-object detail is shallow-copied
+  (every own property descriptor kept, so engine-attached `controller` / `element` and getters
+  survive) before the component context is attached. A cached detail or a data row no longer
+  gains `presentation` / `isFullscreen` keys, and re-emitting the same object carries the current
+  extras instead of stale ones. The `on<Name>` twin and the event still get the same object.
+  Arrays and class instances are unchanged (context attached in place). Review I-03.
 - **Number attributes are parsed strictly.** The whole (trimmed) attribute must be the number:
   `toInt` rejects `"12px"`, `"1.9"`, `"1e3"`, `"0x10"` and `"1,5"`, which used to become 12, 1, 1, 0
   and 1 silently; `toFloat` rejects `"1.5em"`, `"1,5"` and `"Infinity"` (the property path already
