@@ -103,7 +103,7 @@ export const MENU_CSS = `
 }
 
 .km-menu__item--toggled {
-  color: ${km('toggled-color', 'var(--base-accent-color, #0078d4)')};
+  color: ${km('toggled-color', 'var(--base-primary-color, #0078d4)')};
 }
 
 .km-menu__icon {
