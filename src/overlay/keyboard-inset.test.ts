@@ -9,6 +9,7 @@ import { observeKeyboardInset } from './keyboard-inset.js';
 class FakeViewport extends EventTarget {
   height = 800;
   offsetTop = 0;
+  scale = 1;
   resizeTo(height: number, offsetTop = 0): void {
     this.height = height;
     this.offsetTop = offsetTop;
@@ -47,6 +48,43 @@ describe('observeKeyboardInset', () => {
     vp.resizeTo(500, 40); // keyboard opens: shorter viewport, scrolled down
     expect(panel.style.height).toBe('500px');
     expect(panel.style.top).toBe('40px');
+  });
+
+  // Review V-14 ---------------------------------------------------------------
+  it('leaves the panel alone while pinch-zoomed, and follows again at scale 1', () => {
+    const panel = document.createElement('div');
+    observeKeyboardInset(panel);
+    vp.scale = 2;
+    vp.resizeTo(400, 120); // zoomed in: the visual viewport is small, not because of a keyboard
+    expect(panel.style.height).toBe('800px');
+    vp.scale = 1;
+    vp.resizeTo(500, 40);
+    expect(panel.style.height).toBe('500px');
+  });
+
+  it("cleanup puts back the panel's own inline height / top", () => {
+    const panel = document.createElement('div');
+    panel.style.height = '90vh';
+    panel.style.top = '5vh';
+    const cleanup = observeKeyboardInset(panel);
+    expect(panel.style.height).toBe('800px');
+    cleanup();
+    expect(panel.style.height).toBe('90vh');
+    expect(panel.style.top).toBe('5vh');
+  });
+
+  it("tracks the panel's own window (a panel inside an iframe)", () => {
+    const iframe = document.createElement('iframe');
+    document.body.appendChild(iframe);
+    const frameView = iframe.contentWindow!;
+    const frameVp = new FakeViewport();
+    frameVp.height = 300;
+    Object.defineProperty(frameView, 'visualViewport', { value: frameVp, configurable: true });
+    Object.defineProperty(frameView, 'requestAnimationFrame', { value: window.requestAnimationFrame, configurable: true });
+    const panel = iframe.contentDocument!.createElement('div');
+    observeKeyboardInset(panel);
+    expect(panel.style.height).toBe('300px'); // the iframe's viewport, not the top window's 800
+    iframe.remove();
   });
 
   it('cleanup detaches listeners and clears the inline geometry', () => {

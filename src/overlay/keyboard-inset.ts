@@ -20,13 +20,19 @@ import { createFrameScheduler } from '../dom/frame-scheduler.js';
 /**
  * Track the soft keyboard and pin `panel`'s bottom edge to the top of the
  * keyboard while it's open. Returns a cleanup that detaches the listeners and
- * hands `height`/`top` back to the stylesheet (clears the inline styles).
+ * puts back the inline `height` / `top` the panel had before (empty → the stylesheet's).
+ * Uses the panel's own window (an iframe panel tracks its iframe), and leaves the panel
+ * alone while the user has pinch-zoomed (`visualViewport.scale !== 1`: the visual
+ * viewport is then smaller than the screen for a reason other than the keyboard).
  */
 export function observeKeyboardInset(panel: HTMLElement): () => void {
-  const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+  const view = panel.ownerDocument?.defaultView ?? (typeof window !== 'undefined' ? window : null);
+  const vv = view?.visualViewport ?? null;
   if (!vv) return () => {};
+  const previous = { height: panel.style.height, top: panel.style.top };
 
   const frame = createFrameScheduler(() => {
+    if (vv.scale !== 1) return; // pinch-zoomed: keep the last size (review V-14)
     // vv.height is the viewport area NOT covered by the keyboard; offsetTop is how
     // far the visual viewport has scrolled down within the layout viewport (iOS
     // shifts it to bring the focused field into view). Together they land the
@@ -44,7 +50,7 @@ export function observeKeyboardInset(panel: HTMLElement): () => void {
     vv.removeEventListener('resize', schedule);
     vv.removeEventListener('scroll', schedule);
     frame.cancel(); // else a queued frame re-applies the inline height after cleanup
-    panel.style.height = '';
-    panel.style.top = '';
+    panel.style.height = previous.height;
+    panel.style.top = previous.top;
   };
 }

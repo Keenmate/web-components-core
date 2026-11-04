@@ -133,6 +133,10 @@ brief); no compatibility aliases (v2 rule).
 
 ### Fixed
 
+- **`observeKeyboardInset()` is safer.** It leaves the panel alone while the user has pinch-zoomed
+  (the panel used to shrink to the zoomed area), puts back the panel's own inline `height` / `top`
+  on cleanup instead of clearing them, and tracks the panel's own window (a panel in an iframe).
+  Review V-14.
 - **Breakpoint tokens applied late are picked up.** The `--base-breakpoint-*` tokens were read
   once, on the first snapshot; CSS injected from JS (Vite dev) or still downloading locked in
   the defaults for the session. They are now re-read while missing and the page is still
