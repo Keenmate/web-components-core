@@ -138,6 +138,28 @@ brief); no compatibility aliases (v2 rule).
 
 ### Fixed
 
+- **A write made inside `update()` / `reinit()` survives the hook's own `this.flush()`.** The
+  flush cancelled the queued microtask before noticing it was inside a hook, so the write was
+  never applied and `whenSettled()` waited for an unrelated later write. Review E-23.
+- **The table check warns when two events declare the same `on<Name>` property.** The later
+  event took the property over and the earlier event's twin could not be reached. Review I-18.
+- **Environment listeners don't get a stale snapshot.** A listener that calls
+  `configureBreakpoints()` re-notifies everyone with the new breakpoint; the outer delivery
+  used to continue with the old snapshot afterwards. Review V-19.
+- **A size or environment listener unsubscribed by another listener during a delivery is not
+  called** in that delivery. Review V-19.
+- **The body scroll lock restores the body it pinned.** If the page replaced `<body>` while
+  locked, the release restored the old snapshot onto the new body (dropping its own `position`
+  / `overflow`) and left the old one `position: fixed`. The shared lock state gains an optional
+  `saved.body`. Review V-19. pure-css port affected.
+- **`onDrift` no longer reports a panel that sits on target.** Without
+  `shouldUseFixedContainingBlock` the drift was measured against the viewport, while floating-ui
+  had already positioned the panel inside its transformed ancestor; it is now measured in the
+  frame the platform used. Review D-29. pure-css port affected.
+- **The drift culprit hint lists `contain` once** (was `contain: paint; contain: paint`).
+  Review D-29. pure-css port affected.
+- **A tooltip stays put when focus moves between two controls inside its trigger** (it was
+  hidden and re-anchored). Review D-29.
 - **The table check warns about `getLiveValue` on an `on: 'none'` row.** The write never reaches
   the component, so the live getter returned the old state right after `el.x = 5` and kept
   ignoring the assignment. Use `on: 'update'`, or a plain getter for read-only state. No
@@ -371,6 +393,9 @@ brief); no compatibility aliases (v2 rule).
 
 ### Internal
 
+- The review's test-gap lists (E-23, I-18, V-19, D-29, A-27) were audited scenario by scenario:
+  about 175 new unit tests and 38 new Chromium e2e tests in the `review-gaps-*` files
+  (listed in `test/COVERAGE.md` §13i). The new tests found the eight bugs fixed above.
 - Responsive rules (review I-16): the layer merge moved out of `BlissElement` into
   `responsive.ts` as pure functions (`mergeResponsiveRule`, `mergeResponsiveMap`) over a small
   context, with DOM-free unit tests; one setting validator (`isResponsiveMapSetting` /

@@ -1462,7 +1462,7 @@ so a page with `html { scroll-behavior: smooth }` doesn't animate the jump back.
 **Cross-bundle state.** Every component bundles its own copy of core, so page-wide
 overlay state can't live in module variables:
 - the lock's count and snapshot live on `globalThis[Symbol.for('km-scroll-lock')]`
-  (`ScrollLockState`: `{ count, saved: { scrollX, scrollY, style } | null }`) — a
+  (`ScrollLockState`: `{ count, saved: { scrollX, scrollY, style, body? } | null }`) — a
   documented shape, so non-core code (pure-css) can join the same lock;
 - `ALL_GROUPS` (the `dismissAllOverlays()` wildcard of `km-overlay-activate`) is
   `Symbol.for('km-overlay-all-groups')`, so a dismiss from one component's copy

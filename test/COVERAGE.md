@@ -266,6 +266,19 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | `contain: paint / layout / strict / content`, `content-visibility: auto`, `transform` trap a fixed child; core agrees (light + shadow DOM) | ✓ | `positioning-containing-block.spec.ts` | `containing-block.html` |
 | `container-type`, `contain: size / style` don't trap; core agrees | ✓ | `positioning-containing-block.spec.ts` | `containing-block.html` |
 
+## 13i. Review test-gap audit (2026-11-04)
+
+The code review's test-gap lists, audited scenario by scenario; each new test names its
+scenario (`E-23 #n`, …). Scenarios already covered elsewhere are mapped in the review notes.
+
+| Review list | Unit | e2e (chromium) | Fixture |
+| ----------- | ---- | -------------- | ------- |
+| E-23 element lifecycle | `review-gaps-e23.test.ts` | `review-gaps-e23.spec.ts` | `upgrade.html` |
+| I-18 inputs, events, responsive | `review-gaps-inputs.test.ts`, `review-gaps-responsive.test.ts` | `review-gaps-inputs.spec.ts` | `inputs.html` |
+| V-19 environment, motion, theme, global, overlay, SSR | `review-gaps-{environment,element-size,motion,theme,ssr,global,overlay}.test.ts` | `review-gaps-v19.spec.ts` | `motion.html`, `scroll-lock.html` |
+| D-29 dom helpers, positioning | `review-gaps-dom.test.ts`, `review-gaps-positioning.test.ts` | `positioning-gaps.spec.ts` | `positioning-gaps.html` |
+| A-27 actions, menu, search | `review-gaps-{actions,menu,search}.test.ts` | `review-gaps-{menu,search,actions}.spec.ts` | `menu-review-gaps.html`, `search.html`, `actions-shared.html` |
+
 ## 14. Example site (smoke only)
 
 | Feature | Status | Spec | Fixture |

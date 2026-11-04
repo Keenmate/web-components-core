@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test — positioning / scroll review gaps (D-29)</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+    <style>
+        body { margin: 0; }
+        #stage { min-height: 3000px; position: relative; }
+        .fx-panel { background: #111827; color: #fff; font-size: 12px; box-sizing: border-box; }
+        .fx-ref { display: block; width: 200px; height: 30px; }
+    </style>
+</head>
+<body>
+    <h1>positioning review-gap fixture</h1>
+    <p>Targeted by <code>e2e/positioning-gaps.spec.ts</code> (review D-29). Each test builds its own DOM inside
+        <code>#stage</code>. <code>window.pos</code> = core /positioning, <code>window.core</code> = core main index,
+        <code>window.frames(n)</code> waits n animation frames.</p>
+    <div id="stage"></div>
+
+    <script type="module">
+        import * as pos from '/src/positioning/index.ts';
+        import * as core from '/src/index.ts';
+
+        window.pos = pos;
+        window.core = core;
+        window.frames = (n = 2) =>
+            new Promise((resolve) => {
+                const step = (left) => (left <= 0 ? resolve() : requestAnimationFrame(() => step(left - 1)));
+                step(n);
+            });
+        document.body.dataset.ready = '';
+    </script>
+</body>
+</html>

@@ -36,6 +36,12 @@ export interface ScrollLockState {
     scrollY: number;
     /** The body's inline value of each pinned property (`''` = none). */
     style: Record<string, string>;
+    /**
+     * The element that was pinned (optional; absent = `document.body` at release). Release
+     * restores THIS element, so a page that swapped `<body>` meanwhile keeps the new body's
+     * own styles and the old one isn't left `position: fixed` (review V-19 #6).
+     */
+    body?: HTMLElement;
   } | null;
 }
 
@@ -51,7 +57,7 @@ function pin(body: HTMLElement): void {
   const scrollY = view?.scrollY ?? 0;
   const style: Record<string, string> = {};
   for (const prop of PINNED_PROPERTIES) style[prop] = body.style.getPropertyValue(prop);
-  state().saved = { scrollX, scrollY, style };
+  state().saved = { scrollX, scrollY, style, body };
 
   // Pinning removes the page scrollbar (desktop): pad the body by its width so the content
   // doesn't jump sideways while the lock holds.
@@ -69,17 +75,18 @@ function pin(body: HTMLElement): void {
   body.style.setProperty('overflow', 'hidden');
 }
 
-function unpin(body: HTMLElement): void {
+function unpin(current: HTMLElement): void {
   const s = state();
   const saved = s.saved;
   s.saved = null;
   if (!saved) return;
+  const body = saved.body ?? current;
   for (const prop of PINNED_PROPERTIES) {
     const value = saved.style[prop];
     if (value) body.style.setProperty(prop, value);
     else body.style.removeProperty(prop);
   }
-  const view = body.ownerDocument.defaultView;
+  const view = current.ownerDocument.defaultView;
   try {
     // 'instant' beats a page-level `scroll-behavior: smooth` — the jump back must not animate.
     view?.scrollTo({ left: saved.scrollX, top: saved.scrollY, behavior: 'instant' as ScrollBehavior });

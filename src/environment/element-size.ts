@@ -121,7 +121,8 @@ function onResize(entries: ResizeObserverEntry[]): void {
     const subs = targets.get(entry.target);
     if (!subs) continue;
     const size = entrySize(entry);
-    for (const sub of [...subs]) dispatch(sub, size);
+    // A listener may unsubscribe a later one mid-delivery: skip whoever is gone by then.
+    for (const sub of [...subs]) if (subs.has(sub)) dispatch(sub, size);
   }
 }
 

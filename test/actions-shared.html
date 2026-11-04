@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test — /actions: one item shared by two instances (core §12.12, review A-27)</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>/actions shared-item fixture</h1>
+    <p>Targeted by <code>e2e/review-gaps-actions.spec.ts</code>. Both toolbars get the SAME <code>items</code> array (same item objects); "Slow" takes <code>window.slowMs</code> to finish. Steps are recorded in <code>window.fx.log</code>.</p>
+
+    <div class="fixture">
+        <div class="fixture-label">toolbar A</div>
+        <fx-toolbar id="a"></fx-toolbar>
+    </div>
+    <div class="fixture">
+        <div class="fixture-label">toolbar B</div>
+        <fx-toolbar id="b"></fx-toolbar>
+    </div>
+
+    <script type="module">
+        import '/test/interaction-fixtures.ts';
+        const fx = window.fx;
+        const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+        window.slowMs = 800;
+
+        const shared = [
+            { id: 'slow', text: 'Slow', onClick: async (d) => {
+                fx.step('onClick start', d.element.id);
+                await wait(window.slowMs);
+                fx.step('onClick end', d.element.id);
+            } },
+            { action: 'add', text: '+1' },
+        ];
+        const bars = [document.getElementById('a'), document.getElementById('b')];
+        for (const el of bars) {
+            el.items = shared;
+            el.addEventListener('action', (e) => fx.step('action event', `${el.id}:${e.detail.id ?? e.detail.action}`));
+        }
+        await Promise.all(bars.map((el) => el.whenReady()));
+        document.body.dataset.ready = '';
+    </script>
+</body>
+</html>

@@ -129,8 +129,7 @@ export function findContainingBlockCulprit(el: Element, driftX: number, driftY: 
 /** The containing-block-establishing CSS set on `el`, for a "likely culprit: has …" hint. */
 export function describeContainingBlockProps(el: Element): string {
   const cs = getComputedStyle(el);
-  const props = fixedContainingBlockProps(cs);
-  if (cs.contain && /\b(paint|layout|strict|content)\b/.test(cs.contain)) props.push(`contain: ${cs.contain}`);
+  const props = fixedContainingBlockProps(cs); // includes `contain` (review D-29: was listed twice)
   const ct = (cs as { containerType?: string }).containerType;
   if (ct && ct !== 'normal') props.push(`container-type: ${ct}`);
   return props.join('; ');

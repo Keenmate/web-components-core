@@ -40,10 +40,20 @@ export function callSafely<T>(fn: () => T, log: SafeCallLog): SafeCallResult<T> 
 /**
  * Call every listener with `value`. A throwing listener is logged and skipped, so one
  * bad subscriber can't keep the others from hearing the change. Iterates a copy, so a
- * listener may unsubscribe itself (or others) while being notified.
+ * listener may unsubscribe itself (or others) while being notified; a Set listener removed
+ * mid-delivery is skipped. `isSuperseded` stops the delivery once a nested notify has
+ * delivered a newer value (a listener that changed the state again).
  */
-export function notifyEach<T>(listeners: Iterable<(value: T) => void>, value: T, log: SafeCallLog): void {
+export function notifyEach<T>(
+  listeners: Iterable<(value: T) => void>,
+  value: T,
+  log: SafeCallLog,
+  isSuperseded?: () => boolean,
+): void {
+  const live = listeners instanceof Set ? listeners : null;
   for (const listener of [...listeners]) {
+    if (isSuperseded?.()) return;
+    if (live && !live.has(listener)) continue;
     try {
       listener(value);
     } catch (error) {

@@ -205,11 +205,21 @@ export function anchor(
       if (onComputed) callSafely(() => onComputed({ x, y, placement: resolved }), { source: floating, message: 'anchor onComputed threw' });
       // Drift is a `position: fixed` diagnosis — an absolute panel is MEANT to sit in its offset parent.
       if (onDrift && reference instanceof Element && strategy === 'fixed') {
-        // Measure against the same frame floating-ui used: the fixed-CB offset parent
-        // when the sugar is on, else the viewport. Only reports when actually drifted.
-        const offsetParent = useFixedCB ? getFixedPositionOffsetParent(floating) : window;
-        const report = detectFixedDrift({ panel: floating, reference, expectedX: x, expectedY: y, offsetParent });
-        if (report) callSafely(() => onDrift(report), { source: floating, message: 'anchor onDrift threw' });
+        // Measure against the frame x / y were computed in: the effective platform's offset
+        // parent (the fixed-CB parent with the sugar, a custom platform's answer, else
+        // floating-ui's own, which already accounts for a transformed ancestor — measuring
+        // against the viewport there reported a panel that sat on target, review D-29).
+        // Only reports when actually drifted.
+        const report = (offsetParent: unknown): void => {
+          if (isDestroyed) return;
+          const frame = offsetParent instanceof Element ? offsetParent : window;
+          const drift = detectFixedDrift({ panel: floating, reference, expectedX: x, expectedY: y, offsetParent: frame });
+          if (drift) callSafely(() => onDrift(drift), { source: floating, message: 'anchor onDrift threw' });
+        };
+        const frameSource = effectivePlatform ?? floatingUiPlatform;
+        const offsetParent: unknown = frameSource.getOffsetParent ? frameSource.getOffsetParent(floating) : window;
+        if (offsetParent instanceof Promise) void offsetParent.then(report, () => report(window));
+        else report(offsetParent);
       }
     }).catch((error: unknown) => {
       // computePosition itself rejected (a detached reference, a throwing platform hook):

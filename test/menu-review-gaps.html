@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test — /menu review gaps (A-27): RTL, hover intent, custom renderMenu, shadow opener</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+    <style>
+        fx-menu-opener { display: inline-block; }
+        .fx-menu-gaps-row { display: flex; gap: 24px; justify-content: center; }
+    </style>
+</head>
+<body>
+    <h1>/menu review-gap fixture (A-27)</h1>
+    <p>Targeted by <code>e2e/review-gaps-menu.spec.ts</code>. Each opener is a button inside a shadow root; the menu is appended to that shadow root. <code>window.closes</code> records <code>onClose</code> reasons, <code>window.ran</code> the activated item ids.</p>
+
+    <div class="fixture fx-menu-gaps-row">
+        <fx-menu-opener id="ltr" data-kind="nested"></fx-menu-opener>
+        <div dir="rtl"><fx-menu-opener id="rtl" data-kind="nested"></fx-menu-opener></div>
+        <fx-menu-opener id="custom" data-kind="custom"></fx-menu-opener>
+    </div>
+
+    <script type="module">
+        import { openMenu } from '/src/menu/index.ts';
+
+        window.closes = [];
+        window.ran = [];
+
+        const nested = [
+            { id: 'p', text: 'Parent P', children: [
+                { id: 'p1', text: 'P one' }, { id: 'p2', text: 'P two' }, { id: 'p3', text: 'P three' }, { id: 'p4', text: 'P four' },
+            ] },
+            { id: 'q', text: 'Parent Q', children: [{ id: 'q1', text: 'Q one' }] },
+            { id: 'r', text: 'Leaf R' },
+        ];
+
+        class FxMenuOpener extends HTMLElement {
+            connectedCallback() {
+                if (this.shadowRoot) return;
+                const root = this.attachShadow({ mode: 'open' });
+                root.innerHTML = '<button type="button" class="open">Open menu</button>';
+                const button = root.querySelector('button');
+                const run = (fromKeyboard) => {
+                    const custom = this.dataset.kind === 'custom';
+                    this.handle = openMenu(custom ? null : nested, {}, {
+                        at: button,
+                        host: root,
+                        returnFocusTo: button,
+                        shouldFocusFirst: fromKeyboard && !custom,
+                        runAction: (item) => void window.ran.push(item.id),
+                        onClose: (reason) => void window.closes.push(`${this.id}:${reason}`),
+                        renderMenuCallback: custom
+                            ? (el, close) => {
+                                el.innerHTML = '<form class="fx-form"><input class="f1" aria-label="First"><input class="f2" aria-label="Second"><button type="button" class="done">Done</button></form>';
+                                el.querySelector('.done').addEventListener('click', close);
+                            }
+                            : undefined,
+                    });
+                };
+                button.addEventListener('click', (e) => run(e.detail === 0));
+            }
+        }
+        customElements.define('fx-menu-opener', FxMenuOpener);
+
+        /** The deeply focused element: "<host id>:<class or data-id>" (or the light-DOM tag). */
+        window.deepFocus = () => {
+            let el = document.activeElement;
+            let hostId = '';
+            while (el?.shadowRoot?.activeElement) {
+                hostId = el.id;
+                el = el.shadowRoot.activeElement;
+            }
+            if (!el) return null;
+            return `${hostId}:${el.dataset?.id ?? el.className ?? el.tagName}`;
+        };
+        document.body.dataset.ready = '';
+    </script>
+</body>
+</html>

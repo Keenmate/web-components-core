@@ -407,7 +407,9 @@ function recompute(): void {
  * from hearing the change.
  */
 function notifyAll(channel: Set<EnvironmentListener>, snapshot: EnvironmentSnapshot): void {
-  notifyEach(channel, snapshot, LISTENER_LOG);
+  // A listener that calls configureBreakpoints() runs a nested recompute, which notifies the
+  // newer snapshot itself: stop here so no one is handed the stale one after it (review V-19 #1).
+  notifyEach(channel, snapshot, LISTENER_LOG, () => current !== snapshot);
 }
 
 const LISTENER_LOG = { message: 'environment listener threw' } as const;

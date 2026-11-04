@@ -93,9 +93,10 @@ export interface AnchorOptions {
   /**
    * Narrow Floating UI's offset-parent search to the properties browsers reliably
    * honour as a fixed-positioning containing block (`transform` / `perspective` /
-   * `filter` / `backdrop-filter` / qualifying `will-change`) — ignoring `contain`
-   * and `container-type`, which the spec says create a CB but browsers do NOT
-   * reliably honour for `position: fixed`, especially across shadow DOM. The
+   * `filter` / `backdrop-filter` / qualifying `will-change`, `contain: paint | layout |
+   * strict | content`, `content-visibility: auto`) — ignoring `container-type` and
+   * `contain: size | style`, which don't trap a fixed panel in Chromium, Firefox or
+   * WebKit (measured, review D-23). The
    * offset parent is resolved from the FLOATING element (never the reference — the
    * reference can itself be a CB, e.g. a badge cell with `transform` on hover, and
    * a portaled panel has a different CB than its reference).

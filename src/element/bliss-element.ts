@@ -1637,6 +1637,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     }
 
     const seenEvents = new Set<string>();
+    const seenEventProps = new Map<string, string>();
     for (const ev of events) {
       if (seenEvents.has(ev.name)) this.#warn(`invalid event table: duplicate event "${ev.name}"`);
       seenEvents.add(ev.name);
@@ -1648,6 +1649,13 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       // A composed native name would reach host listeners twice (the browser's and ours).
       if (COMPOSED_NATIVE_EVENT.test(ev.name)) {
         this.#warn(`invalid event table: event "${ev.name}" reuses a composed native event name — prefix the domain (e.g. "node-${ev.name}")`);
+      }
+      // One `on<Name>` property per event: a second event declaring it takes the twin, and the
+      // first event's handler can no longer be reached (review I-18 #12).
+      if (ev.property) {
+        const owner = seenEventProps.get(ev.property);
+        if (owner !== undefined && owner !== ev.name) this.#warn(`invalid event table: events "${owner}" and "${ev.name}" both declare property "${ev.property}"`);
+        else seenEventProps.set(ev.property, ev.name);
       }
       // The managed `on<Name>` property must not collide with an input property.
       if (ev.property && seenKeys.has(ev.property)) {
@@ -2030,6 +2038,9 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
 
   /** Cancel any queued microtask and flush pending changes synchronously now. */
   #flushNow(): void {
+    // Inside reinit()/update() the flush is a no-op (see #flush), so keep the queued
+    // microtask: it is what applies the writes the hook staged (review E-23 #2).
+    if (this.#isApplying) return;
     this.#scheduler.cancel();
     this.#flush();
   }

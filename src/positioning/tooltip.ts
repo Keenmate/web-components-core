@@ -206,7 +206,12 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     if (opts.trigger.matches(':focus-within')) return;
     scheduleHide();
   };
-  const onFocusOut = (): void => scheduleHide();
+  // Focus moving between two controls inside the trigger keeps the tooltip where it is.
+  const onFocusOut = (event: FocusEvent): void => {
+    const next = event.relatedTarget;
+    if (next instanceof Node && opts.trigger.contains(next)) return;
+    scheduleHide();
+  };
 
   opts.trigger.addEventListener('mouseenter', onMouseEnter);
   opts.trigger.addEventListener('mouseleave', onMouseLeave);
