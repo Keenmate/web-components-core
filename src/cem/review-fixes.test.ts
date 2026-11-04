@@ -93,3 +93,44 @@ describe('leading comments (L-19)', () => {
     expect(meta!.members.find((m) => m.name === 'label')!.description).toBe('The label shown in the header. Plain text, not HTML.');
   });
 });
+
+// Review L-07: table forms the extractor used to skip silently.
+describe('extractBlissClass — L-07', () => {
+  const attrs = (source: string) => parse(source).map((c) => ({ name: c.name, attrs: c.attributes.map((a) => a.name), warnings: c.warnings ?? [] }));
+
+  it('flattens spreads of a same-file const array (nested too) and const row objects', () => {
+    const [cls] = attrs(`
+      const PAGE_ROW = { configKey: 'pageSize', attribute: 'page-size', converter: toInt() };
+      const BASE = [{ configKey: 'a', attribute: 'a-attr', converter: toText() }];
+      const SHARED = [...BASE, { configKey: 'b', attribute: 'b-attr', converter: toText() }];
+      class X extends BlissElement {
+        static inputs = [...SHARED, PAGE_ROW, { configKey: 'c', attribute: 'c-attr', converter: toText() }];
+      }`);
+    expect(cls).toEqual({ name: 'X', attrs: ['a-attr', 'b-attr', 'page-size', 'c-attr'], warnings: [] });
+  });
+
+  it('reads static get inputs() and a class assigned to a const', () => {
+    expect(
+      attrs(`
+        export const Y = class extends BlissElement {
+          static get inputs() { return [{ configKey: 'a', attribute: 'a-attr', converter: toText() }]; }
+        };`),
+    ).toEqual([{ name: 'Y', attrs: ['a-attr'], warnings: [] }]);
+  });
+
+  it('warns instead of dropping what it cannot read', () => {
+    const [cls] = attrs(`
+      import { SHARED } from './shared.js';
+      class Z extends Base {
+        static inputs = [...SHARED, ...Base.inputs, ROW_FROM_ELSEWHERE, { configKey: 'c', attribute: 'c-attr', converter: toText() }];
+      }`);
+    expect(cls!.attrs).toEqual(['c-attr']);
+    expect(cls!.warnings).toEqual([
+      expect.stringContaining('spreads `SHARED`'),
+      expect.stringContaining('spreads `Base.inputs`'),
+      expect.stringContaining('row `ROW_FROM_ELSEWHERE`'),
+    ]);
+    const [concat] = attrs(`class W extends Base { static inputs = Base.inputs.concat([]); }`);
+    expect(concat!.warnings).toEqual([expect.stringContaining('`Base.inputs.concat([])`')]);
+  });
+});

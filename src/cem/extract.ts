@@ -59,6 +59,8 @@ export interface ExtractedClass {
   attributes: ExtractedAttribute[];
   members: ExtractedMember[];
   events: ExtractedEvent[];
+  /** Table parts the extractor couldn't read statically (left out of the manifest). */
+  warnings?: string[];
 }
 
 /** A `registerComponent('tag', Class, …)` call linking a tag name to a class. */
@@ -325,24 +327,87 @@ function extractEvent(ts: TS, entry: Expression, sf: SourceFile): ExtractedEvent
   return undefined;
 }
 
-/** The initializer of a `static <name>` property on a class, if present. */
-function staticMember(ts: TS, cls: TsNamespace.ClassDeclaration, name: string): Expression | undefined {
+/** A class the extractor reads: `class X …` or `const X = class …`. */
+type ClassLike = TsNamespace.ClassDeclaration | TsNamespace.ClassExpression;
+
+/** The class's name: its own, else the `const` it is assigned to. */
+function classNameOf(ts: TS, cls: ClassLike): string | undefined {
+  if (cls.name) return cls.name.text;
+  const parent = cls.parent;
+  if (parent && ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name)) return parent.name.text;
+  return undefined;
+}
+
+/**
+ * The value of a `static <name>`: a property initializer, or what a `static get <name>()`
+ * returns (its first top-level `return`).
+ */
+function staticMember(ts: TS, cls: ClassLike, name: string): Expression | undefined {
   for (const member of cls.members) {
-    if (
-      ts.isPropertyDeclaration(member) &&
-      member.modifiers?.some((m) => m.kind === ts.SyntaxKind.StaticKeyword) &&
-      nameOf(ts, member.name) === name &&
-      member.initializer
-    ) {
-      return member.initializer;
+    const isStatic = ts.canHaveModifiers(member) && ts.getModifiers(member)?.some((m) => m.kind === ts.SyntaxKind.StaticKeyword);
+    if (!isStatic || !member.name || nameOf(ts, member.name) !== name) continue;
+    if (ts.isPropertyDeclaration(member) && member.initializer) return member.initializer;
+    if (ts.isGetAccessorDeclaration(member) && member.body) {
+      for (const stmt of member.body.statements) {
+        if (ts.isReturnStatement(stmt) && stmt.expression) return stmt.expression;
+      }
     }
   }
   return undefined;
 }
 
+/** Follow an identifier to its `const NAME = { … }` initializer within the same file. */
+function resolveObjectLiteral(ts: TS, expr: Expression, sf: SourceFile): ObjectLiteralExpression | undefined {
+  const e = unwrap(ts, expr);
+  if (ts.isObjectLiteralExpression(e)) return e;
+  if (!ts.isIdentifier(e)) return undefined;
+  for (const stmt of sf.statements) {
+    if (!ts.isVariableStatement(stmt)) continue;
+    for (const decl of stmt.declarationList.declarations) {
+      if (nameOf(ts, decl.name) === e.text && decl.initializer) {
+        const init = unwrap(ts, decl.initializer);
+        if (ts.isObjectLiteralExpression(init)) return init;
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The entries of a table: array literal elements, with `...SHARED` spreads of a same-file
+ * `const` array flattened in (nested up to a few levels). Anything that can't be read
+ * statically — a spread of an import / `Base.inputs`, a `.concat()` — is reported in
+ * `warnings` instead of being dropped silently (review L-07).
+ */
+function tableEntries(
+  ts: TS,
+  init: Expression,
+  sf: SourceFile,
+  label: string,
+  warnings: string[],
+  depth = 0,
+): Expression[] {
+  const arr = resolveArrayLiteral(ts, init, sf);
+  if (!arr) {
+    warnings.push(`${label} is \`${init.getText(sf)}\`, which isn't an array literal or a same-file const array; its rows are missing from the manifest`);
+    return [];
+  }
+  const out: Expression[] = [];
+  for (const el of arr.elements) {
+    if (ts.isSpreadElement(el)) {
+      if (depth < 4 && resolveArrayLiteral(ts, el.expression, sf)) out.push(...tableEntries(ts, el.expression, sf, label, warnings, depth + 1));
+      else warnings.push(`${label} spreads \`${el.expression.getText(sf)}\`, which the manifest generator can't read (use a same-file const array); its rows are missing from the manifest`);
+      continue;
+    }
+    out.push(el);
+  }
+  return out;
+}
+
 /** Extract manifest data for one class that declares `static inputs` and/or `static events`. */
-export function extractBlissClass(ts: TS, cls: TsNamespace.ClassDeclaration, sf: SourceFile): ExtractedClass | undefined {
-  if (!cls.name) return undefined;
+export function extractBlissClass(ts: TS, cls: ClassLike, sf: SourceFile): ExtractedClass | undefined {
+  const name = classNameOf(ts, cls);
+  if (!name) return undefined;
   const inputsInit = staticMember(ts, cls, 'inputs');
   const eventsInit = staticMember(ts, cls, 'events');
   if (!inputsInit && !eventsInit) return undefined; // not a table-driven component
@@ -350,12 +415,15 @@ export function extractBlissClass(ts: TS, cls: TsNamespace.ClassDeclaration, sf:
   const attributes: ExtractedAttribute[] = [];
   const members: ExtractedMember[] = [];
   const events: ExtractedEvent[] = [];
+  const warnings: string[] = [];
 
   if (inputsInit) {
-    const arr = resolveArrayLiteral(ts, inputsInit, sf);
-    for (const el of arr?.elements ?? []) {
-      const row = unwrap(ts, el);
-      if (!ts.isObjectLiteralExpression(row)) continue;
+    for (const el of tableEntries(ts, inputsInit, sf, `${name}: static inputs`, warnings)) {
+      const row = resolveObjectLiteral(ts, el, sf);
+      if (!row) {
+        warnings.push(`${name}: static inputs row \`${el.getText(sf)}\` isn't an object literal or a same-file const object; it is missing from the manifest`);
+        continue;
+      }
       const { attribute, member } = extractInput(ts, row, sf);
       if (attribute) attributes.push(attribute);
       if (member) members.push(member);
@@ -363,14 +431,14 @@ export function extractBlissClass(ts: TS, cls: TsNamespace.ClassDeclaration, sf:
   }
 
   if (eventsInit) {
-    const arr = resolveArrayLiteral(ts, eventsInit, sf);
-    for (const el of arr?.elements ?? []) {
+    for (const el of tableEntries(ts, eventsInit, sf, `${name}: static events`, warnings)) {
       const event = extractEvent(ts, unwrap(ts, el), sf);
       if (event) events.push(event);
+      else warnings.push(`${name}: static events entry \`${el.getText(sf)}\` can't be read; it is missing from the manifest`);
     }
   }
 
-  return { name: cls.name.text, hasInputTable: !!inputsInit, attributes, members, events };
+  return { name, hasInputTable: !!inputsInit, attributes, members, events, ...(warnings.length ? { warnings } : {}) };
 }
 
 /**
@@ -407,7 +475,7 @@ export function extractRegistrations(ts: TS, sf: SourceFile): ExtractedRegistrat
 export function extractBlissClasses(ts: TS, sf: SourceFile): ExtractedClass[] {
   const out: ExtractedClass[] = [];
   const visit = (node: Node): void => {
-    if (ts.isClassDeclaration(node)) {
+    if (ts.isClassDeclaration(node) || ts.isClassExpression(node)) {
       const meta = extractBlissClass(ts, node, sf);
       if (meta) out.push(meta);
     }

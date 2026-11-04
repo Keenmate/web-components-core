@@ -133,6 +133,13 @@ brief); no compatibility aliases (v2 rule).
 
 ### Fixed
 
+- **The manifest generator no longer drops input rows silently.** It now reads
+  `static inputs = [...SHARED_ROWS, …]` (a same-file const array, nested spreads too), a row
+  given as a same-file const object, `static get inputs() { return […]; }`, and a class assigned
+  to a const (`export const X = class extends BlissElement {…}`). Anything still unreadable
+  (a spread of an import or of `Base.inputs`, a `.concat()`) is printed as a
+  `[keenmate-bliss-inputs]` warning naming the module and the expression, instead of quietly
+  leaving those inputs out of the docs and IntelliSense. Review L-07.
 - **A backwards clock jump no longer silences `viewportChanged` / `sizeChanged`.** The throttle
   behind them computed a negative elapsed time and queued the next notification for as long as
   the jump (an hour back → an hour without notifications). A negative elapsed time now runs at

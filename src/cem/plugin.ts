@@ -93,8 +93,10 @@ export function blissInputsPlugin(): CemPlugin {
       const n = node as import('typescript').Node;
       const reg = parseRegisterComponentCall(tsApi, n);
       if (reg) registrations.set(reg.className, reg.tagName);
-      if (!tsApi.isClassDeclaration(n)) return;
+      if (!tsApi.isClassDeclaration(n) && !tsApi.isClassExpression(n)) return;
       const meta = extractBlissClass(tsApi, n, n.getSourceFile());
+      // Build-time tooling (not the runtime "no console" rule): say what was left out.
+      for (const warning of meta?.warnings ?? []) console.warn(`[keenmate-bliss-inputs] ${moduleDoc.path ?? ''}: ${warning}`);
       // Core-declared inputs / events (defer, theme-source, responsive, ready) are
       // not table rows — add them so every manifest documents them.
       if (meta) extracted.set(keyOf(moduleDoc, meta.name), withCoreDeclared(meta));
