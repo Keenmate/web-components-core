@@ -1,7 +1,7 @@
 {
   "name": "@keenmate/web-components-core",
   "version": "1.0.0-rc18",
-  "description": "Reactive input model (converter-driven attribute/property/callback definitions) and the BlissElement base class, shared across KeenMate web components.",
+  "description": "Reactive input model (converter-driven attribute/property/callback definitions) and the BlissElement base class, shared across Keenmate web components.",
   "type": "module",
   "license": "MIT",
   "sideEffects": false,
@@ -44,6 +44,10 @@
     "dist",
     "component-variables.manifest.json",
     "docs/reactivity-and-batching.md",
+    "docs/usage.md",
+    "docs/theming.md",
+    "docs/examples.md",
+    "docs/accessibility.md",
     "release-notes"
   ],
   "scripts": {
@@ -84,7 +88,7 @@
   },
   "kmwc": {
     "title": "Web Components Core",
-    "tagline": "The reactive input model + BlissElement base class shared across the KeenMate web components. A library, not a component: each page drives the helpers straight from src/ (no build step), with small demo elements showing the full BlissElement path. Nothing here ships in the published package.",
+    "tagline": "The reactive input model + BlissElement base class shared across the Keenmate web components. A library, not a component: each page drives the helpers straight from src/ (no build step), with small demo elements showing the full BlissElement path. Nothing here ships in the published package.",
     "library": false,
     "cssVariables": false,
     "ports": {
