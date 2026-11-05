@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ExtractedType` → **`ExtractedTypeAnnotation`**. Components that re-export `PointerType`
   (multiselect, daterangepicker) rename the re-export. No alias (v2 rule).
 
+### Changed
+
+- **`toCssLength()` takes a number on the property path too.** `el.maxWidth = 120` stores
+  `"120px"`, like the attribute `max-width="120"` (it was refused). Negative numbers still need
+  `allowNegative`; `NaN` / `Infinity` are refused.
+
 ### Fixed
 
 - **`/menu` toggled-item colour falls back to `--base-primary-color`.** It read

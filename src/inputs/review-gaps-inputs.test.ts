@@ -183,6 +183,17 @@ describe('element: enum null / nullable invalid-after-valid / undefined reset pe
     expect(el.theme).toBe('light');
   });
 
+  it('toCssLength: el.x = 120 stores "120px", like the attribute "120"', () => {
+    const el = make();
+    const rejected = vi.fn();
+    (el as unknown as HTMLElement).addEventListener('input-rejected', rejected);
+    el.gap = 120;
+    expect(el.gap).toBe('120px');
+    (el as unknown as HTMLElement).setAttribute('gap', '120');
+    expect(el.gap).toBe('120px');
+    expect(rejected).not.toHaveBeenCalled();
+  });
+
   it('#8 el.x = undefined resets every converter family to its absent value', async () => {
     const el = make(
       `<${TAG} label="L" hint="h" is-on="false" is-sorted="true" ratio="2" max-size="2kb" gap="4px" tags="a,b" theme="dark"></${TAG}>`,

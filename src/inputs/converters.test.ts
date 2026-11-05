@@ -424,11 +424,18 @@ describe('toCssLength', () => {
     expect(parse(toCssLength({ allowNegative: true }), '-4px')).toBe('-4px');
   });
 
-  it('the property path takes a length string, not a bare number', () => {
+  it('the property path takes a length string, or a number as pixels (like the attribute)', () => {
     const c = toCssLength();
     expect(c.validate!('20rem')).toBe(true);
-    expect(c.validate!(120)).toBe(false);
     expect(c.validate!('20 rem')).toBe(false);
+    expect(c.normalize!(120)).toBe('120px');
+    expect(c.normalize!(0)).toBe('0px');
+    expect(c.normalize!(1.5)).toBe('1.5px');
+    expect(c.validate!(c.normalize!(120))).toBe(true);
+    // not a length: left as is, so validate rejects it
+    for (const bad of [-4, Number.NaN, Number.POSITIVE_INFINITY]) expect(c.validate!(c.normalize!(bad))).toBe(false);
+    expect(toCssLength({ allowNegative: true }).normalize!(-4)).toBe('-4px');
+    expect(c.normalize!('2rem')).toBe('2rem');
   });
 
   it('an absent attribute is the default', () => {

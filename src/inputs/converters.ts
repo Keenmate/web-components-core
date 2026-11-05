@@ -311,8 +311,8 @@ function isCssLength(value: string, allowNegative: boolean): boolean {
  * Inputs the component does arithmetic with (row heights, offsets for positioning)
  * stay {@link toInt} — a `"2rem"` can't be added to a pixel count.
  *
- * Property path: a valid length string (`el.maxWidth = '20rem'`). A bare number is not
- * a length there — assign `'120px'`.
+ * Property path: a valid length string (`el.maxWidth = '20rem'`), or a finite number,
+ * which means pixels like the attribute (`el.maxWidth = 120` stores `"120px"`).
  */
 export function toCssLength(
   opts: { default?: string; allowNegative?: boolean; keywords?: readonly string[] } = {},
@@ -332,6 +332,10 @@ export function toCssLength(
       if (isValid(v)) return keywords.has(v.toLowerCase()) ? v.toLowerCase() : v;
       reportInvalid?.(`expected a CSS length like "12px", "2rem" or "50%"${keywords.size ? ` or ${[...keywords].join(' | ')}` : ''}`);
       return fallback;
+    },
+    // A number is pixels on both paths: `el.maxWidth = 120` stores what `max-width="120"` does.
+    normalize(value) {
+      return typeof value === 'number' && Number.isFinite(value) && (allowNegative || value >= 0) ? `${value}px` : value;
     },
     validate(value): value is string {
       return typeof value === 'string' && isValid(value);

@@ -174,7 +174,7 @@ correct" is enforced. Naming: `to<Type>` — "convert the raw value to a …".
 toEnum(values, { default?, isNullable? })  // match (attribute trimmed, case-insensitive → declared spelling) against the set; invalid → default (or null; with no default, el.x = null clears it too)
 toInt({ min?, max?, default? })                // the WHOLE (trimmed) attribute is a base-10 integer + range-check; "12px" / "1.9" / "1e3" / "0x10" are invalid
 toFloat({ min?, max?, default? })              // the whole attribute is a finite decimal ("1.5", "-2e3"); "1.5em" / "1,5" / "Infinity" are invalid
-toCssLength({ default?, allowNegative?, keywords? })  // a CSS length for style-only inputs: "12px" | "2rem" | "50%" | calc(…) | var(…); bare number attr → px
+toCssLength({ default?, allowNegative?, keywords? })  // a CSS length for style-only inputs: "12px" | "2rem" | "50%" | calc(…) | var(…); a bare number (attribute or property) → px
 toText({ shouldTrim?, isEmptyAllowed?, isNullable?, default? })  // string (NOT toString). isNullable:true → absent/empty is null (optional string), not ''
 toBool('default-false' | 'default-true' | 'tristate' | 'presence')  // mode REQUIRED; presence = native rule (any value, "false" too → true) — for disabled/readonly only
 toBytes({ default? })                          // binary units, case-insensitive: "10mb" → 10485760, "300 kB", "1.5G", "5MiB"; "1.2.3mb" / "1.5b" invalid
@@ -191,7 +191,7 @@ height, an offset fed to positioning) is a number of pixels — `toInt` / `toFlo
 documented as "pixels"; a unit there is invalid instead of silently truncated. An
 input that only ends up in a style or a CSS variable is a `toCssLength`, so `2rem`
 and `50%` are legitimate. The attribute shorthand `max-width="120"` means `120px`;
-the property path takes a length string (`el.maxWidth = '20rem'`).
+the property path takes a length string (`el.maxWidth = '20rem'`) or a number, also pixels (`el.maxWidth = 120` → `"120px"`).
 
 `toValue`/`toObjectArray`/`toObject` are the rich-data family: property-first
 (the shape check IS the `validate`), with a JSON attribute path when the input
