@@ -183,10 +183,12 @@ el.remove();                               // disconnect() … next frame: remov
                 element is active, cancels a pending flush and the removal check, then calls the protected
                 <code>destroyCallback()</code> hook, where a component releases what <code>reinit()</code> built.
                 <code>isDestroyed</code> becomes <code>true</code>, and calling <code>destroy()</code> again does
-                nothing. From then on the element is inert. Input writes are still stored but never applied
+                nothing. <code>destroy()</code> does <strong>not</strong> remove the element: it stays in the page,
+                frozen. From then on it is inert. Input writes are still stored but never applied
                 (<code>whenSettled()</code> resolves at once), and re-inserting it into the DOM logs a warning
                 (open the console) and never rebuilds. The <code>ready</code> state stays as it was. If you need it
-                back, create a new element.
+                back, create a new element. Compare the <b>label</b> chip (the stored value) with
+                <b>rendered</b> (what the card shows) after setting a label on a destroyed element.
             </p>
             <div class="controls">
                 <button id="lc05-do-destroy"><code>destroy()</code></button>
@@ -537,7 +539,8 @@ fresh.flush();         // reinit() → connect() → ready</pre></div>
             const stage = document.getElementById('lc05-stage');
             const state = document.getElementById('lc05-state');
             let el = null;
-            const refresh = () => { state.innerHTML = stateLine(el); };
+            const rendered = () => el?.shadowRoot?.querySelector('.lc-label')?.textContent ?? '';
+            const refresh = () => { state.innerHTML = stateLine(el, ` · <b>rendered</b> "${rendered()}"`); };
             const create = () => {
                 stage.replaceChildren();
                 el = makeCard(tl, { label: 'Destroy me' });
@@ -553,6 +556,7 @@ fresh.flush();         // reinit() → connect() → ready</pre></div>
             bind('lc05-label', tl, () => {
                 el.label = nextLabel();
                 tl.note(`el.label = "${el.label}"`, el);
+                if (el.isDestroyed) tl.note(`stored — no reinit() (destroyed: nothing applies it); the card still shows "${rendered()}"`, el);
                 el.whenSettled().then(() => tl.note('whenSettled() resolved', el));
             }, refresh);
             bind('lc05-reinsert', tl, () => {
