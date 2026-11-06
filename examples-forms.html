@@ -28,6 +28,13 @@
                 that input (component code). Core implements no <code>formResetCallback</code> — the demo field has its
                 own, returning to its <code>value</code> attribute like a native input.
             </p>
+            <p>
+                Where an element sits and which form it belongs to are two different things.
+                <code>closest('form')</code> only looks at the DOM, so it gives <code>null</code> for Extra. The
+                browser goes by the form the element is a member of: the <code>&lt;form&gt;</code> it's nested in, or the
+                one named by its <code>form="id"</code> attribute. So <code>FormData</code>, submit and reset all
+                include Extra, as they would a native <code>&lt;input form="…"&gt;</code> placed anywhere on the page.
+            </p>
             <div class="demo-area">
                 <div class="grid" style="--grid-min: 17rem; --grid-gap: 1rem">
                     <form class="fo-form" id="do-fo01-form" action="#">
@@ -40,8 +47,8 @@
                         </div>
                     </form>
                     <div class="fo-form">
-                        <span class="demo-label">outside the form, <code>form="do-fo01-form"</code></span>
-                        <core-demo-field id="demo-fo01-out" name="extra" value="7" label="Extra (outside)" form="do-fo01-form"></core-demo-field>
+                        <span class="demo-label">outside the <code>&lt;form&gt;</code> element, still a member via <code>form="do-fo01-form"</code></span>
+                        <core-demo-field id="demo-fo01-out" name="extra" value="7" label="Extra (outside the &lt;form&gt;)" form="do-fo01-form"></core-demo-field>
                     </div>
                 </div>
                 <div class="output"><pre id="fo01-readout"></pre></div>
@@ -278,7 +285,7 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
                 log(panel, `change on <${e.target.localName}> · e.target.form === form: ${e.target.form === form}`);
             });
             // The outside field's change doesn't bubble into the form element — listen on it directly.
-            outEl.addEventListener('change', (e) => log(panel, `change on #${e.target.id} (outside) · e.target.form === form: ${e.target.form === form}`));
+            outEl.addEventListener('change', (e) => log(panel, `change on #${e.target.id} (outside the <form>, member via form=) · e.target.form === form: ${e.target.form === form}`));
             for (const el of [inEl, outEl]) {
                 el.addEventListener('field-log', (e) => {
                     if (e.detail.kind === 'formResetCallback') log(panel, `${el.id}: formResetCallback() ${e.detail.text}`, 'info');
