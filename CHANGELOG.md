@@ -38,6 +38,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`/menu` toggled-item colour falls back to `--base-primary-color`.** It read
   `--base-accent-color`, renamed in base-css-variables 2.0.0, so the base fallback never
   resolved and `check:vars` in components flagged it.
+- **CEM: the `motion` description states the closest-wins order** — the nearest `data-motion`
+  ancestor (a section), else the page level (`window.components.motion` / `<html data-motion>`);
+  it still described rc17's per-host page level.
+
+### Internal
+
+- `npm run typecheck` also checks the example `.ts` files (`tsconfig.examples.json`), so an API
+  rename now fails on a stale demo too (the interaction page had kept the pre-rc18 `/menu`
+  option names, and its close-reason demo never ran).
+- devkit `^1.0.0-rc09`; `kmwc sync` adds `check:pages`. The example pages are fragments (the devkit
+  layout supplies head, header and container).
+- `/publish` follows the rulebook's canonical structure; `VALIDATION-NOTES.md` records the
+  library's deviations (no tag, the `km-overlay-activate` document event, `[Unreleased]` kept).
+
+### Docs
+
+- README is a landing page; the API reference, theming, examples and accessibility moved to
+  `docs/usage.md`, `docs/theming.md`, `docs/examples.md`, `docs/accessibility.md` (shipped).
+- SPEC §12.8: why a component's own CSS must sit in `@layer component` (adopted sheets cascade
+  after every `<style>`); `createCustomStyles()` and the page layer. SPEC §12.11 and the
+  `SearchMatch` JSDoc state the current folding (NFKD, marks stripped after Latin / Greek /
+  Cyrillic, `ŧ ŀ þ ĳ`, case-insensitive `ß→ss` / `İ→i`) and word rule (`[\p{L}\p{N}\p{M}]`).
+- Example pages reviewed card by card in a browser and against the source:
+  - every API table matches `src/`; new API cards MO03 (motion) and SC05 (scroll);
+  - demos that showed nothing now do: the interaction menu's close reasons, AN03's drift report
+    (a labelled simulated miss), SE04 `wrapRanges` vs `highlightHtml`, SE05 / SE06 on the
+    current `searchCallback(ctx)` shapes, RS01's landscape phone, PG04's custom style;
+  - IN05 split into Presets (IN05) and Live getters (IN06); LC cards get a Reset button, LC04
+    moves left / right, LC05 shows a destroyed element's stored vs rendered label;
+  - new PG05: page-wide custom CSS, one button per usage (`@import` of a real file, a later
+    card, the callback per tone, an instance override, a wrong value, a value set before core
+    loaded); new TT05: a tooltip mounted in a `ShadowRoot`.
 
 ## [1.0.0-rc18] - 2026-11-04
 
