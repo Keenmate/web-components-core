@@ -1,0 +1,8 @@
+/* Loaded by examples-page.html PG05 through
+   window.components['core-demo-pg'].customStyles = "@import url('examples/pg-page-styles.css');"
+   — one file for every <core-demo-pg>, fetched once. */
+.pg {
+  border-style: dotted;
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #7c3aed 18%, transparent);
+}

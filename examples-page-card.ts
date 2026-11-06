@@ -181,6 +181,13 @@ export class CoreDemoPgEarly extends BlissElement {
   }
 }
 
+/**
+ * The same card under another tag, defined only when PG05 calls `entry.register()`. The page sets
+ * `window.components['core-demo-pg-late'].customStyles` in an early `<script>`, before this module
+ * loads; `registerComponent()` adopts it.
+ */
+export class CoreDemoPgLate extends CoreDemoPg {}
+
 registerComponent('core-demo-pg', CoreDemoPg as unknown as CustomElementConstructor, {
   config: { name: 'core-demo-pg', version: '0.0.0-demo', author: 'examples-page-card.ts' },
   logging: pgLogging,
@@ -189,5 +196,10 @@ registerComponent('core-demo-pg', CoreDemoPg as unknown as CustomElementConstruc
 // shouldAutoDefine: false → the page calls window.components['core-demo-pg-early'].register().
 registerComponent('core-demo-pg-early', CoreDemoPgEarly as unknown as CustomElementConstructor, {
   config: { name: 'core-demo-pg-early', version: '0.0.0-demo' },
+  shouldAutoDefine: false,
+});
+
+registerComponent('core-demo-pg-late', CoreDemoPgLate as unknown as CustomElementConstructor, {
+  config: { name: 'core-demo-pg-late', version: '0.0.0-demo', author: 'examples-page-card.ts' },
   shouldAutoDefine: false,
 });

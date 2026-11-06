@@ -7,6 +7,8 @@
     window.components = window.components || {};
     window.components['core-demo-pg-early'] = { note: 'set by the page before core loaded' };
     window.__pgEarlyEntry = window.components['core-demo-pg-early'];
+    // PG05: a per-tag page setting made before core loaded — registerComponent() adopts it.
+    window.components['core-demo-pg-late'] = { customStyles: '.pg { border: 4px double #ea580c; }' };
 </script>
 <style>
     /* Demo visual: the placeholder an element shows before its tag is defined. */
@@ -213,7 +215,7 @@ window.components.renderLoadingCallback = null;     // a non-function reads as u
         <!-- PG04 · Style injection                                        -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>PG04 · Styles: <code>adoptStyles()</code>, custom CSS per page and per instance</h2>
+            <h2>PG04 · Styles: <code>adoptStyles()</code> and an instance's custom CSS</h2>
             <p>
                 <code>adoptStyles(root, ...css)</code> is for a component's <strong>own, static</strong> CSS (the
                 <code>main.css?inline</code> case): one cached <code>CSSStyleSheet</code> per unique string, shared by every
@@ -221,23 +223,15 @@ window.components.renderLoadingCallback = null;     // a non-function reads as u
                 sheets cascade after every <code>&lt;style&gt;</code>, and only a layered rule loses to un-layered custom CSS.
             </p>
             <p>
-                Custom CSS comes in two layers, each a <code>&lt;style&gt;</code> (so <code>@import url(…)</code> works) and each
-                with a CSS string and a callback (the callback wins). The <strong>page layer</strong>,
-                <code>window.components['core-demo-pg'].customStyles</code> / <code>.getCustomStylesCallback(ctx)</code>, styles
-                every instance of the tag — the cards above in PG01/PG03 too. The <strong>instance layer</strong>,
-                <code>custom-styles</code> / <code>getCustomStylesCallback</code>, comes after it, so one card can override the
-                shared rules. <code>createCustomStyles()</code> does all of this for a component.
+                An instance's custom CSS is <code>custom-styles</code> (a CSS string) or <code>getCustomStylesCallback(ctx)</code>
+                (CSS computed from the component's context; it wins when both are set). It lands in a
+                <code>&lt;style&gt;</code>, so <code>@import url(…)</code> works. <code>createCustomStyles()</code> does this for a
+                component, together with the page-wide layer in PG05. Only C changes here; D shows the shared sheet.
             </p>
             <div class="controls">
-                <span class="muted">Page layer:</span>
-                <button id="pg04-page-css">customStyles = dashed border</button>
-                <button id="pg04-page-cb">getCustomStylesCallback = by tone</button>
-                <button id="pg04-page-clear">clear both</button>
-            </div>
-            <div class="controls">
-                <span class="muted">Instance D:</span>
-                <button id="pg04-d-css">D.customStyles = thick green</button>
-                <button id="pg04-d-clear">D.customStyles = null</button>
+                <button id="pg04-c-css">C.customStyles = thick green</button>
+                <button id="pg04-c-cb">C.getCustomStylesCallback = by tone</button>
+                <button id="pg04-c-clear">clear both on C</button>
             </div>
             <div class="demo-area">
                 <div class="field-row">
@@ -246,11 +240,8 @@ window.components.renderLoadingCallback = null;     // a non-function reads as u
                 </div>
                 <div class="output mt-1"><pre id="pg04-readout"></pre></div>
             </div>
-            <div class="code-block"><pre>// page: every &lt;core-demo-pg&gt; — e.g. one file from the server, fetched once
-window.components['core-demo-pg'].customStyles = "@import url('/css/pg-overrides.css');";
-window.components['core-demo-pg'].getCustomStylesCallback = (ctx) =&gt;      // wins over customStyles
-  ctx.tone === 'success' ? '.pg { background: #f0fdf4 }' : null;
-d.customStyles = '.pg { border: 4px solid #16a34a }';                     // instance: after the page layer
+            <div class="code-block"><pre>c.customStyles = '.pg { border: 4px solid #16a34a }';
+c.getCustomStylesCallback = (ctx) =&gt; `.pg { background: ${ctx.tone === 'info' ? '#e0f2fe' : '#dcfce7'} }`;   // wins
 
 // in the component
 reinit() {
@@ -267,10 +258,75 @@ destroyCallback() { this.#styles.destroy(); }</pre></div>
         </div>
 
         <!-- ============================================================= -->
-        <!-- PG05 · API summary                                            -->
+        <!-- PG05 · Page-wide custom CSS                                   -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>PG05 · API summary</h2>
+            <h2>PG05 · Page-wide custom CSS: <code>window.components[tag].customStyles</code></h2>
+            <p>
+                One setting styles <strong>every instance of a tag</strong>:
+                <code>window.components['core-demo-pg'].customStyles</code> (a CSS string) or
+                <code>.getCustomStylesCallback(ctx)</code> (CSS per instance, from the same context the instance callback
+                gets; it wins when both are set). It sits in its own <code>&lt;style&gt;</code> before the instance's custom CSS,
+                so an instance still overrides it. Every <code>&lt;core-demo-pg&gt;</code> on this page reacts, the cards in
+                PG01, PG03 and PG04 too. <strong>Reset page-wide state</strong> (top) clears it.
+            </p>
+            <div class="controls">
+                <button id="pg05-import">customStyles = "@import url('examples/pg-page-styles.css')"</button>
+                <span class="muted">One CSS file from the server for every card, fetched once: dotted purple borders everywhere.</span>
+            </div>
+            <div class="controls">
+                <button id="pg05-add">+ Add a card</button>
+                <span class="muted">A card created now gets the page layer straight away.</span>
+            </div>
+            <div class="controls">
+                <button id="pg05-cb">getCustomStylesCallback = neutral cards only</button>
+                <span class="muted">Returns CSS for <code>tone="neutral"</code>, <code>null</code> for the rest. The callback wins, so the other cards lose the file's styles.</span>
+            </div>
+            <div class="controls">
+                <button id="pg05-override">G.customStyles = solid orange</button>
+                <span class="muted">G's own CSS comes after the page layer and overrides it, on G only.</span>
+            </div>
+            <div class="controls">
+                <button id="pg05-bad">customStyles = 42</button>
+                <span class="muted">Not a string: a warning (see the log) and the previous value stays.</span>
+            </div>
+            <div class="controls">
+                <button id="pg05-late"><code>window.components['core-demo-pg-late'].register()</code></button>
+                <span class="muted">The page set this tag's <code>customStyles</code> in an early <code>&lt;script&gt;</code>, before core loaded. <code>registerComponent()</code> kept it, so the card upgrades already styled (double orange border).</span>
+            </div>
+            <div class="controls">
+                <button id="pg05-clear" class="btn-danger">Clear the page layer</button>
+            </div>
+            <div class="demo-area">
+                <div class="field-row" id="pg05-stage">
+                    <core-demo-pg id="demo-pg-e" label="Instance E" tone="info"></core-demo-pg>
+                    <core-demo-pg id="demo-pg-f" label="Instance F"></core-demo-pg>
+                    <core-demo-pg id="demo-pg-g" label="Instance G" tone="success"></core-demo-pg>
+                    <core-demo-pg-late id="demo-pg-late" label="Late tag">core-demo-pg-late — not defined yet</core-demo-pg-late>
+                </div>
+                <div class="grid-2 mt-1">
+                    <div class="output"><pre id="pg05-readout"></pre></div>
+                    <div class="log-panel" id="pg05-log"></div>
+                </div>
+            </div>
+            <div class="code-block"><pre>// any time — every &lt;core-demo-pg&gt; now and later
+window.components['core-demo-pg'].customStyles = "@import url('examples/pg-page-styles.css');";
+window.components['core-demo-pg'].getCustomStylesCallback = (ctx) =&gt;      // per instance; wins
+  ctx.tone === 'neutral' ? '.pg { background: #f5f5f4 }' : null;
+window.components['core-demo-pg'].customStyles = null;                    // clear
+
+// before the component script loads: create the entry, core adopts it
+&lt;script&gt;
+  window.components = window.components || {};
+  window.components['core-demo-pg-late'] = { customStyles: '.pg { border: 4px double #ea580c }' };
+&lt;/script&gt;</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- PG06 · API summary                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>PG06 · API summary</h2>
             <table class="reference-table">
                 <thead><tr><th>API</th><th>What it does</th></tr></thead>
                 <tbody>
@@ -512,33 +568,88 @@ destroyCallback() { this.#styles.destroy(); }</pre></div>
         render3();
         render1(); // PG03's instances count too
 
-        // ── PG04 · styles ────────────────────────────────────────────────────
+        // ── PG04 · adoptStyles + instance custom CSS ─────────────────────────
         const elC = $('demo-pg-c'), elD = $('demo-pg-d');
-        const entry = window.components['core-demo-pg'];
+        /** `name: border … · background … + its <style> slots, in order`. */
+        const styleLine = (el, name) => {
+            const root = el.shadowRoot;
+            const card = root?.querySelector('.pg');
+            if (!card) return `<b>${esc(name)}</b> (not upgraded)`;
+            const cs = getComputedStyle(card);
+            const slots = [...root.querySelectorAll('style')].map((st) => `${st.className}: ${st.textContent.trim()}`);
+            return `<b>${esc(name)}</b> border ${esc(`${cs.borderTopStyle} ${cs.borderTopWidth} ${cs.borderTopColor}`)} · background ${esc(cs.backgroundColor)}`
+                + `\n   style slots: ${esc(slots.length ? slots.join(' | ') : '(none)')}`;
+        };
         async function render4() {
             await Promise.all([elC.whenSettled(), elD.whenSettled()]);
-            const line = (el, name) => {
-                const root = el.shadowRoot;
-                const card = root.querySelector('.pg');
-                const cs = getComputedStyle(card);
-                const slots = [...root.querySelectorAll('style')].map((st) => `${st.className}: ${st.textContent}`);
-                return `<b>${name}</b> border ${esc(cs.borderTopStyle + ' ' + cs.borderTopWidth)} · background ${esc(cs.backgroundColor)}\n   style slots: ${esc(slots.length ? slots.join(' | ') : '(none)')}`;
-            };
             $('pg04-readout').innerHTML = [
                 `<b>C.sheet[0] === D.sheet[0]</b> ${elC.shadowRoot.adoptedStyleSheets[0] === elD.shadowRoot.adoptedStyleSheets[0]} (one shared adopted sheet)`,
-                line(elC, 'C'),
-                line(elD, 'D'),
+                styleLine(elC, 'C'),
+                styleLine(elD, 'D'),
             ].join('\n');
         }
-        $('pg04-page-css').addEventListener('click', () => { entry.customStyles = '.pg { border-style: dashed; border-color: #dc2626; }'; render4(); });
-        $('pg04-page-cb').addEventListener('click', () => {
-            entry.getCustomStylesCallback = (ctx) => (ctx.tone === 'success' ? '.pg { background: #dcfce7; color: #14532d; }' : '.pg { background: #e0f2fe; color: #0c4a6e; }');
+        $('pg04-c-css').addEventListener('click', () => { elC.customStyles = '.pg { border: 4px solid #16a34a; }'; render4(); });
+        $('pg04-c-cb').addEventListener('click', () => {
+            elC.getCustomStylesCallback = (ctx) => `.pg { background: ${ctx.tone === 'info' ? '#e0f2fe' : '#dcfce7'}; }`;
             render4();
         });
-        $('pg04-page-clear').addEventListener('click', () => { entry.customStyles = null; entry.getCustomStylesCallback = null; render4(); });
-        $('pg04-d-css').addEventListener('click', () => { elD.customStyles = '.pg { border: 4px solid #16a34a; }'; render4(); });
-        $('pg04-d-clear').addEventListener('click', () => { elD.customStyles = null; render4(); });
+        $('pg04-c-clear').addEventListener('click', () => { elC.customStyles = null; elC.getCustomStylesCallback = null; render4(); });
         render4();
+
+        // ── PG05 · page-wide custom CSS ──────────────────────────────────────
+        const pgEntry = reg['core-demo-pg'];
+        const stage5 = $('pg05-stage');
+        const panel5 = $('pg05-log');
+        const elG = $('demo-pg-g');
+        let added5 = 0;
+        async function render5() {
+            const cards = [...stage5.children];
+            await Promise.all(cards.map((el) => el.whenSettled?.()));
+            // An @import loads asynchronously; read the styles once it has had a frame or two.
+            await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+            const page = pgEntry.customStyles;
+            const cb = pgEntry.getCustomStylesCallback;
+            $('pg05-readout').innerHTML = [
+                `<b>window.components['core-demo-pg'].customStyles</b> ${esc(JSON.stringify(page ?? null))}`,
+                `<b>… .getCustomStylesCallback</b> ${cb ? 'set' : 'null'}`,
+                `<b>window.components['core-demo-pg-late'].customStyles</b> ${esc(JSON.stringify(reg['core-demo-pg-late'].customStyles ?? null))}`,
+                ...cards.map((el) => styleLine(el, `#${el.id}${el.getAttribute('tone') ? ` (${el.getAttribute('tone')})` : ''}`)),
+            ].join('\n');
+        }
+        const act5 = (text, fn) => {
+            log(panel5, `▶ ${text}`, 'action');
+            for (const { level, text: line } of captureConsole(fn)) log(panel5, `[${level}] ${line}`, LEVEL_TONE[level] ?? '');
+            render5();
+        };
+        $('pg05-import').addEventListener('click', () => act5(`customStyles = "@import url('examples/pg-page-styles.css');"`, () => {
+            pgEntry.customStyles = "@import url('examples/pg-page-styles.css');";
+        }));
+        $('pg05-add').addEventListener('click', () => act5('+ Add a card', () => {
+            const el = document.createElement('core-demo-pg');
+            el.id = `demo-pg-added-${++added5}`;
+            el.setAttribute('label', `Added ${added5}`);
+            el.setAttribute('tone', added5 % 2 ? 'neutral' : 'info');
+            stage5.insertBefore(el, $('demo-pg-late'));
+        }));
+        $('pg05-cb').addEventListener('click', () => act5("getCustomStylesCallback = (ctx) => ctx.tone === 'neutral' ? … : null", () => {
+            pgEntry.getCustomStylesCallback = (ctx) => (ctx.tone === 'neutral' ? '.pg { background: #f5f5f4; border-style: dashed; }' : null);
+        }));
+        $('pg05-override').addEventListener('click', () => act5("G.customStyles = '.pg { border: 3px solid #ea580c }'", () => {
+            elG.customStyles = '.pg { border: 3px solid #ea580c; }';
+        }));
+        $('pg05-bad').addEventListener('click', () => act5('customStyles = 42', () => { pgEntry.customStyles = 42; }));
+        $('pg05-late').addEventListener('click', () => act5("window.components['core-demo-pg-late'].register()", () => {
+            reg['core-demo-pg-late'].register();
+        }));
+        const clearPageStyles = () => {
+            pgEntry.customStyles = null;
+            pgEntry.getCustomStylesCallback = null;
+        };
+        $('pg05-clear').addEventListener('click', () => act5('clear the page layer (customStyles = null, getCustomStylesCallback = null)', () => {
+            clearPageStyles();
+            elG.customStyles = null;
+        }));
+        render5();
 
         // ── Reset page-wide state (also on pagehide) ─────────────────────────
         const resetPageWide = () => {
@@ -546,12 +657,14 @@ destroyCallback() { this.#styles.destroy(); }</pre></div>
             reg['core-demo-pg'].logging.resetLogging();
             for (const el of getInstances('core-demo-pg')) el.resetLogging();
             reg.renderLoadingCallback = null;
+            reg['core-demo-pg'].customStyles = null;
+            reg['core-demo-pg'].getCustomStylesCallback = null;
         };
         $('pg-reset').addEventListener('click', () => {
             resetPageWide();
             $('pg03-page').checked = false;
             restart();
-            render2(); render3();
+            render2(); render3(); render5();
             log(panel2, '▶ page-wide state reset (page, type and instance levels cleared → warn)', 'action');
         });
         window.addEventListener('pagehide', resetPageWide);
