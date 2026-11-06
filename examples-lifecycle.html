@@ -150,13 +150,16 @@ boxA.append(el);                  // reinit() (the held change) → connect()</p
                 <code>reinit()</code>.
             </p>
             <div class="controls">
-                <button id="lc04-sync">Synchronous move (remove + re-add in one task)</button>
+                <button id="lc04-sync">Move to the other side (synchronous)</button>
                 <button id="lc04-remove"><code>el.remove()</code></button>
                 <button id="lc04-readd">Re-add</button>
                 <button id="lc04-reset" class="btn-danger" title="destroy() the element, clear the timeline, start over">↺ Reset</button>
             </div>
             <div class="demo-area">
-                <div class="field-row" id="lc04-stage"></div>
+                <div class="grid" style="--grid-min: 14rem; --grid-gap: 1rem">
+                    <div class="lc-box" id="lc04-left"><span class="lc-box-title">left</span></div>
+                    <div class="lc-box" id="lc04-right"><span class="lc-box-title">right</span></div>
+                </div>
                 <div class="css-readout" id="lc04-state"></div>
                 <div class="log-panel log-panel--dark mt-1" style="--log-max-height: 19rem" data-empty="Timeline — press a button above." id="lc04-log"></div>
             </div>
@@ -166,7 +169,7 @@ boxA.append(el);                  // reinit() (the held change) → connect()</p
   }
 }
 
-stage.removeChild(el); stage.append(el);   // same task → disconnect(), connect(); removedCallback never fires
+right.append(el);                          // move: disconnect(), connect() in one task; removedCallback never fires
 el.remove();                               // disconnect() … next frame: removedCallback()</pre></div>
         </div>
 
@@ -504,22 +507,26 @@ fresh.flush();         // reinit() → connect() → ready</pre></div>
         // ── LC04 · removedCallback() ─────────────────────────────────────────
         {
             const tl = new Timeline('lc04');
-            const stage = document.getElementById('lc04-stage');
+            const left = document.getElementById('lc04-left');
+            const right = document.getElementById('lc04-right');
+            let home = left;   // the side the card is on (Re-add puts it back there)
             const state = document.getElementById('lc04-state');
             let el;
             const refresh = () => { state.innerHTML = stateLine(el); };
             const setup = () => {
                 el = makeCard(tl, { label: 'Remove me' });
-                stage.append(el);
+                home = left;
+                home.append(el);
             };
             setup();
             bind('lc04-sync', tl, () => {
-                if (!el.isConnected) stage.append(el);
-                stage.removeChild(el);
-                stage.append(el);
+                // One append = a synchronous move: disconnect() and connect() in the same task.
+                home = home === left ? right : left;
+                home.append(el);
+                tl.note(`now on the ${home === left ? 'left' : 'right'}`, el);
             }, refresh);
             bind('lc04-remove', tl, () => el.remove(), refresh);
-            bind('lc04-readd', tl, () => { if (!el.isConnected) stage.append(el); }, refresh);
+            bind('lc04-readd', tl, () => { if (!el.isConnected) home.append(el); }, refresh);
             bindReset('lc04-reset', tl, () => el, setup, refresh);
             refresh();
         }
