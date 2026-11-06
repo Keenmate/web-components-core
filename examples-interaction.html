@@ -24,21 +24,37 @@
         <div class="card">
             <h2>IA01 · <code>emit()</code>: typed events and their twins</h2>
             <p>
-                A component lists its outward notifications in <code>static events</code> (a bare name, or an
-                <code>EventDef</code> with dispatch overrides) and fires them with the protected
-                <code>this.emit(name, detail)</code>. That does three things in order. First it attaches the
-                <strong>component context</strong> to the detail. A plain-object detail is shallow-copied first, so the
-                object you passed never gains these fields. The context is <code>controller</code> (the public facade
-                from <code>createController()</code>) and <code>element</code> (the host), both
-                <strong>non-enumerable</strong>, plus the enumerable extras from <code>eventContext()</code>. So
-                destructuring works, while <code>JSON.stringify</code> and <code>Object.keys</code> see only the data.
-                Then it calls the <code>on&lt;Name&gt;</code> twin (<code>ping</code> → <code>onPing</code>,
-                <code>ping-wide</code> → <code>onPingWide</code>) <strong>with the detail</strong>, before anything
-                else. A throwing twin is logged and the DOM event still fires. Last, it dispatches a
-                <code>CustomEvent</code> carrying that <strong>same copy</strong>: <code>bubbles: true</code>,
-                <code>composed: false</code> by default. A non-composed event fired inside another component's shadow
-                root stops at that shadow root, so it can't be mistaken for the outer component's. <code>ping-wide</code>
-                sets <code>composed: true</code> in its row to show the difference.
+                A component declares the events it fires in <code>static events</code> (a bare name, or an object like
+                <code>{ name: 'ping-wide', composed: true }</code> when one event needs its own dispatch settings) and
+                fires them with <code>this.emit(name, detail)</code>.
+            </p>
+            <p>
+                Every event has a <strong>twin</strong>: a property callback named <code>on&lt;Name&gt;</code>
+                (<code>ping</code> → <code>el.onPing</code>, <code>ping-wide</code> → <code>el.onPingWide</code>). It's
+                the alternative to <code>addEventListener</code>, handy where a framework binds properties more easily
+                than listeners. <code>emit()</code> calls the twin <strong>first</strong>, with the same detail object
+                the listeners get. If the twin throws, the error is logged and the event still fires.
+            </p>
+            <p>
+                The detail carries your data plus two references: <code>controller</code> (the component's public API
+                from <code>createController()</code>) and <code>element</code> (the host). Both are hidden from
+                <code>Object.keys</code> and <code>JSON.stringify</code>, so logging or serializing the detail shows
+                only the data, yet <code>const { controller, element } = e.detail</code> still works. Extra visible
+                fields come from <code>eventContext()</code> (here <code>emittedBy</code>). The object you passed to
+                <code>emit()</code> is copied, never modified.
+            </p>
+            <p>
+                Events bubble, but by default they do <strong>not leave a shadow root</strong>
+                (<code>composed: false</code>). If a component uses another component inside, the inner one's events
+                stay inside, so page code listening for the outer component's events never receives the inner one's
+                by accident. <code>ping-wide</code> opts out with <code>composed: true</code>.
+            </p>
+            <p>
+                <strong>Try it.</strong> Each place an event reaches flashes in order, and the whole card flashes when
+                it reaches <code>document</code>. On the light-DOM emitter, <code>ping</code> and <code>ping-wide</code>
+                take the same path, because there is no shadow boundary to cross. On the nested emitter,
+                <code>ping</code> stops at the shell's shadow root, while <code>ping-wide</code> reaches the shell
+                host and the document, reported with the shell as its <code>target</code> (the browser retargets it).
             </p>
             <div class="controls">
                 <button id="do-ia01-fire"><code>el.controller.fire('ping')</code></button>
@@ -46,6 +62,7 @@
                 <button id="do-ia01-inner">nested emitter: <code>ping</code></button>
                 <button id="do-ia01-inner-wide">nested emitter: <code>ping-wide</code></button>
                 <label><input type="checkbox" id="do-ia01-throw"> <code>onPing</code> twin throws</label>
+                <button id="do-ia01-reset" class="btn-danger">↺ Reset demo</button>
             </div>
             <div class="demo-area">
                 <div class="grid" style="--grid-min: 18rem; --grid-gap: 1rem">
@@ -53,7 +70,7 @@
                         <div class="ia-parent-title">div#demo-ia01-parent (light DOM)</div>
                         <core-demo-emitter id="demo-ia01-emitter" data-log="ia01" label="Emitter (light DOM)"></core-demo-emitter>
                     </div>
-                    <core-demo-event-shell id="demo-ia01-shell" data-log="ia01" label="core-demo-event-shell"></core-demo-event-shell>
+                    <core-demo-event-shell id="demo-ia01-shell" data-log="ia01" label="core-demo-event-shell" style="display: block"></core-demo-event-shell>
                 </div>
                 <div class="css-readout" id="demo-ia01-readout"><span class="muted">Fire an event to inspect its detail.</span></div>
                 <div class="log-panel log-panel--dark mt-1" style="--log-max-height: 19rem" data-empty="Timeline — press a button above." id="demo-ia01-log"></div>
@@ -387,6 +404,23 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
             const readout = document.getElementById('demo-ia01-readout');
             const shouldThrow = document.getElementById('do-ia01-throw');
             let twinDetail = null;
+            const card = readout.closest('.card');
+
+            // Each arrival flashes its element; arrivals of one event are staggered so the path reads in order.
+            let hop = 0, lastHop = 0;
+            const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+            const flash = (target) => {
+                const now = performance.now();
+                if (now - lastHop > 400) hop = 0;
+                lastHop = now;
+                const ring = (color) => ({ outline: `3px solid ${color}`, outlineOffset: '3px' });
+                target.animate([ring('#f59e0b'), ring('transparent')], {
+                    duration: reduceMotion.matches ? 1 : 700,
+                    delay: reduceMotion.matches ? 0 : hop++ * 180,
+                    easing: 'ease-out',
+                    fill: 'backwards',
+                });
+            };
 
             /** `<b>key</b> value · …` → the kit's `.css-readout` chips. */
             const chips = (line) => line.split(' · ').map((part) => {
@@ -418,11 +452,21 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
             for (const name of ['ping', 'ping-wide']) {
                 el.addEventListener(name, (e) => {
                     tl.add('event', el, 'listener on el', `${name} · e.detail === twin's detail: ${e.detail === twinDetail}`);
+                    flash(el);
                     inspect(e);
                 });
-                parent.addEventListener(name, () => tl.add('event', parent, 'bubbled to parent div', name));
-                shell.addEventListener(name, (e) => tl.add('event', shell, 'listener on the outer host', `${name} (target: ${e.target.id})`));
-                document.addEventListener(name, (e) => tl.add('event', null, 'document listener', `${name} (target: ${e.target.id})`));
+                parent.addEventListener(name, () => {
+                    tl.add('event', parent, 'bubbled to parent div', name);
+                    flash(parent);
+                });
+                shell.addEventListener(name, (e) => {
+                    tl.add('event', shell, 'listener on the outer host', `${name} (target: ${e.target.id})`);
+                    flash(shell);
+                });
+                document.addEventListener(name, (e) => {
+                    tl.add('event', null, 'document listener', `${name} (target: ${e.target.id})`);
+                    flash(card);
+                });
             }
             el.on('ping', () => tl.add('event', el, 'el.on() listener', 'ping'));
 
@@ -437,6 +481,7 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
                     for (const name of ['ping', 'ping-wide']) {
                         shell.shadowRoot.addEventListener(name, (e) => {
                             tl.add('event', shell, 'listener on the shell\'s shadow root', name);
+                            flash(shell.shadowRoot.querySelector('.shell'));
                             inspect(e);
                         });
                     }
@@ -449,6 +494,13 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
             bind('do-ia01-fire-wide', tl, () => el.controller.fire('ping-wide'));
             bind('do-ia01-inner', tl, () => shell.inner.controller.fire('ping'));
             bind('do-ia01-inner-wide', tl, () => shell.inner.controller.fire('ping-wide'));
+            document.getElementById('do-ia01-reset').addEventListener('click', () => {
+                shouldThrow.checked = false;
+                twinDetail = null;
+                tl.list.replaceChildren();
+                tl.seq = 0;
+                readout.innerHTML = '<span class="muted">Fire an event to inspect its detail.</span>';
+            });
         }
 
         // ── IA02 · before-callbacks ──────────────────────────────────────────
