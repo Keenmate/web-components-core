@@ -94,9 +94,11 @@ form.addEventListener('change', (e) =&gt; e.target.form);   // resolves like a n
                 the fieldset side alone. The native <code>:disabled</code> pseudo-class matches either way.
             </p>
             <p>
-                <code>isDisabled</code> <strong>must reflect</strong>. The browser disables the host by its own
-                <code>disabled</code> attribute. If the input didn't reflect, setting <code>el.isDisabled = false</code>
-                would leave the attribute in place and the element disabled. The input-table check warns about that.
+                <code>isDisabled</code> <strong>must reflect</strong> (a property write is copied to the attribute).
+                The browser decides "disabled" from the host's <code>disabled</code> attribute, not from the property.
+                So for <code>&lt;core-demo-field disabled&gt;</code>, <code>el.isDisabled = false</code> has to remove
+                the attribute too. Otherwise the component draws itself enabled while the browser still blocks it.
+                The input-table check warns when a component's <code>isDisabled</code> doesn't reflect.
             </p>
             <p>
                 The host's <code>disabled</code> attribute doesn't disable its children, so the demo disables its
