@@ -418,10 +418,9 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
                     { outline: '3px solid #f59e0b', outlineOffset: '0px' },
                     { outline: '1px solid transparent', outlineOffset: '12px' },
                 ], {
-                    duration: reduceMotion.matches ? 1 : 300,
-                    delay: reduceMotion.matches ? 0 : hop++ * 120,
+                    duration: reduceMotion.matches ? 1 : 1000,
+                    delay: reduceMotion.matches ? 0 : hop++ * 250,
                     easing: 'ease-out',
-                    fill: 'backwards',
                 });
             };
 
