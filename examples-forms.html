@@ -35,6 +35,9 @@
                 one named by its <code>form="id"</code> attribute. So <code>FormData</code>, submit and reset all
                 include Extra, as they would a native <code>&lt;input form="…"&gt;</code> placed anywhere on the page.
             </p>
+            <div class="controls">
+                <button id="fo01-demo-reset" class="btn-danger" title="Reset the form (values back to their value attributes), clear the log">↺ Reset demo</button>
+            </div>
             <div class="demo-area">
                 <div class="grid" style="--grid-min: 17rem; --grid-gap: 1rem">
                     <form class="fo-form" id="do-fo01-form" action="#">
@@ -109,6 +112,7 @@ form.addEventListener('change', (e) =&gt; e.target.form);   // resolves like a n
                 <button id="fo02-attr">toggle the <code>disabled</code> attribute</button>
                 <button id="fo02-fs">toggle <code>fieldset.disabled</code></button>
                 <button id="fo02-bad">construct a class with a non-reflecting <code>disabled</code> input</button>
+                <button id="fo02-demo-reset" class="btn-danger" title="Enable the field and the fieldset, clear the log">↺ Reset demo</button>
             </div>
             <div class="demo-area">
                 <form class="fo-form" id="do-fo02-form" action="#">
@@ -165,6 +169,7 @@ el.isDisabled = true;       // reflects disabled="" → still disabled → no se
                 <button id="fo03-obj"><code>setFormatError({})</code></button>
                 <button id="fo03-foreign">anchor outside the host</button>
                 <button id="fo03-null"><code>setFormatError(null)</code></button>
+                <button id="fo03-demo-reset" class="btn-danger" title="Reset both forms, clear the format errors and the log">↺ Reset demo</button>
             </div>
             <div class="demo-area">
                 <div class="grid" style="--grid-min: 17rem; --grid-gap: 1rem">
@@ -302,6 +307,12 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
                     render();
                 });
             }
+            $('fo01-demo-reset').addEventListener('click', async () => {
+                form.reset();   // both fields: the outside one is a member via form="do-fo01-form"
+                await Promise.all([inEl.whenSettled(), outEl.whenSettled()]);
+                panel.replaceChildren();
+                render();
+            });
             render();
         }
 
@@ -344,6 +355,13 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
                 const lines = captureWarnings(() => document.createElement('core-demo-bad-disabled'));
                 if (lines.length === 0) log(panel, '(no warning — the table is checked once per class)');
                 for (const l of lines) log(panel, l, 'warn');
+            });
+            $('fo02-demo-reset').addEventListener('click', async () => {
+                el.isDisabled = false;
+                fs.disabled = false;
+                await el.whenSettled();
+                panel.replaceChildren();
+                render();
             });
             render();
         }
@@ -395,6 +413,15 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
                 for (const l of lines) log(panel, l, 'warn');
             });
             act('fo03-null', 'setFormatError(null)', () => el.demoSetFormatError(null));
+            $('fo03-demo-reset').addEventListener('click', async () => {
+                for (const f of [el, nv]) {
+                    f.form.reset();              // back to value="5" → the field's own check passes
+                    f.demoSetFormatError(null);  // and drop an error a button set on a valid value
+                }
+                await Promise.all([el.whenSettled(), nv.whenSettled()]);
+                panel.replaceChildren();
+                render();
+            });
             render();
         }
     </script>
