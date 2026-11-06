@@ -468,11 +468,22 @@ export class FilesDemo extends BlissElement<{ action: FilesDetail }> {
 
   protected static override events: readonly (string | EventDef)[] = ['action'];
 
-  files: DemoFile[] = [
-    { name: 'report.pdf', isPinned: false, isLocked: false },
-    { name: 'budget.xlsx', isPinned: true, isLocked: false },
-    { name: 'contract.docx', isPinned: false, isLocked: true },
-  ];
+  files: DemoFile[] = FilesDemo.#initialFiles();
+
+  static #initialFiles(): DemoFile[] {
+    return [
+      { name: 'report.pdf', isPinned: false, isLocked: false },
+      { name: 'budget.xlsx', isPinned: true, isLocked: false },
+      { name: 'contract.docx', isPinned: false, isLocked: true },
+    ];
+  }
+
+  /** Demo page only: close any menu, back to the original three files. */
+  resetDemo(): void {
+    this.menu?.close();
+    this.files = FilesDemo.#initialFiles();
+    this.#renderList();
+  }
 
   /** The currently open menu (one at a time). */
   menu: MenuHandle | null = null;
@@ -529,6 +540,8 @@ export class FilesDemo extends BlissElement<{ action: FilesDetail }> {
       },
       createMenuDivider(),
       { id: 'hidden-item', text: 'Never shown', isVisible: false },
+      // Once the hidden item drops out, two dividers meet: openMenu() keeps one.
+      createMenuDivider(),
       { id: 'help', text: 'Help', shortcut: 'H' },
     ];
   }

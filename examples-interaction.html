@@ -271,43 +271,80 @@ await runAction({
         <div class="card">
             <h2>IA04 · <code>/menu</code>: context and dropdown menus</h2>
             <p>
-                <code>openMenu(entries, ctx, opts)</code> renders <code>/actions</code> menu entries against a surface
-                context (here the file that was right-clicked, or <code>{ file: null }</code> for the dropdown).
-                <code>at</code> is either a viewport point or an element to drop down from. It handles submenus, both
-                static <code>children</code> and a lazy <code>getChildrenCallback</code> (<em>Move to</em> loads for
-                700 ms), plain and named dividers (<code>createMenuDivider('Danger zone')</code>, with leading, trailing and
-                doubled ones trimmed), hidden and disabled items, toggles (<em>Pinned</em> is a
-                <code>menuitemcheckbox</code> that keeps the menu open), positioning through <code>/positioning</code>,
-                and dismissal on an outside press, scroll, window blur, Escape or Tab. The component passes
-                <code>runAction</code>, so a menu item goes through the same <code>runAction()</code> order as IA03
-                and fires the same <code>action</code> event. A leaf closes the menu first, then runs. Right-click a
-                file, use the <em>Actions</em> button, or focus a file and press <kbd>Shift+F10</kbd> to drive it
-                from the keyboard.
+                <code>/menu</code> gives components one shared context menu and dropdown menu.
+                <code>openMenu(entries, ctx, opts)</code> draws a list of <code>/actions</code> items (IA03's
+                <code>ActionItem</code>, plus submenus and dividers) for one context: here the file that was
+                right-clicked, or <code>{ file: null }</code> for the <em>Actions</em> dropdown. <code>at</code> says
+                where it opens: a point (the mouse position) or an element to drop down from (the button).
+            </p>
+            <p>
+                What the demo menus show:
+            </p>
+            <ul>
+                <li><strong>Submenus.</strong> <em>Share</em> has fixed <code>children</code> (with a nested
+                    <em>More</em>). <em>Move to</em> loads its children on demand through
+                    <code>getChildrenCallback</code>: a <code>…</code> row shows for 700 ms, then the folders.</li>
+                <li><strong>Dividers.</strong> <code>createMenuDivider()</code> draws a plain line,
+                    <code>createMenuDivider('Danger zone')</code> a labelled one. A divider left at the end of a menu, or
+                    two in a row, is removed: the dropdown lists two dividers around a hidden item, and you see one.</li>
+                <li><strong>Hidden and disabled.</strong> The dropdown's <em>Never shown</em> item has
+                    <code>isVisible: false</code>. <em>Archive</em> is disabled on the locked file
+                    (<code>contract.docx</code>) through <code>getIsDisabledCallback</code>.</li>
+                <li><strong>Toggle.</strong> <em>Pinned</em> is a checkbox item (<code>menuitemcheckbox</code>) with
+                    <code>shouldCloseOnClick: false</code>, so the menu stays open and you see the check flip.</li>
+                <li><strong>Shortcuts.</strong> While a menu is open, an item's <code>shortcut</code> key runs it
+                    (<kbd>O</kbd>, <kbd>F2</kbd>, <kbd>Delete</kbd>; <kbd>N</kbd>, <kbd>H</kbd> in the dropdown).</li>
+            </ul>
+            <p class="mt-1">
+                Picking an item goes through the component's <code>runAction()</code>, the same order as IA03:
+                <code>beforeActionCallback</code> → <code>onClick</code> → built-in → <code>action</code> event. An
+                item without a submenu closes the menu first (<code>onClose</code> reason <code>'action'</code>) and
+                then runs, so when <code>beforeActionCallback</code> cancels, the menu is already gone. The menu also
+                closes on a click outside, <kbd>Esc</kbd>, <kbd>Tab</kbd>, the window losing focus, and
+                <strong>any scroll outside it</strong>; <code>onClose</code> gets the reason. That is why the timeline
+                below has no height limit: scrolling it would close the menu.
+            </p>
+            <p>
+                The menu is themed with CSS variables. <code>--km-menu-*</code> on <code>:root</code> styles every menu
+                on the page. A component can also map a variable of its own onto the private
+                <code>--_km-menu-*</code> layer: here <code>--dfm-menu-bg</code> styles only this file list's menus.
+                The two theme checkboxes switch each one on; tick one, then open a menu (the click on the checkbox
+                closes an open menu, like any click outside).
+            </p>
+            <p>
+                <strong>Try it.</strong> Right-click <code>report.pdf</code> and click <em>Pinned</em>: the menu stays
+                open, the check flips and the row gets a <code>pinned</code> tag. Hover <em>Move to</em> to watch it
+                load. Right-click <code>contract.docx</code>: <em>Archive</em> is greyed out. Tick the
+                <code>beforeActionCallback</code> box and pick <em>Delete</em>: the menu closes, the log shows
+                <code>→ false</code> and the file stays. <em>Actions ▾</em> opens the dropdown. From the keyboard, focus
+                a file and press <kbd>Shift+F10</kbd>, then the arrows or a shortcut (<kbd>F2</kbd> renames). A row an
+                action changed pings.
             </p>
             <div class="controls">
                 <label><input type="checkbox" id="do-ia04-veto-delete"> <code>beforeActionCallback</code> rejects <code>delete</code></label>
                 <label><input type="checkbox" id="do-ia04-page-theme"> page-wide theme (<code>:root { --km-menu-* }</code>)</label>
                 <label><input type="checkbox" id="do-ia04-instance-theme"> this instance only (<code>--dfm-menu-bg</code>)</label>
+                <button id="do-ia04-reset" class="btn-danger">↺ Reset demo</button>
             </div>
             <div class="demo-area">
                 <core-demo-files id="demo-ia04-files" data-log="ia04"></core-demo-files>
                 <!-- No height cap: a scroll anywhere outside the menu dismisses it (reason 'scroll'), so this log grows instead. -->
-                <div class="log-panel log-panel--dark mt-1" style="--log-max-height: none" data-empty="Timeline — press a button above." id="demo-ia04-log"></div>
+                <div class="log-panel log-panel--dark mt-1" style="--log-max-height: none" data-empty="Timeline — right-click a file or press Actions ▾." id="demo-ia04-log"></div>
             </div>
-                <table class="reference-table mt-1">
-                    <thead><tr><th>Key (while a menu is open)</th><th>Does</th></tr></thead>
-                    <tbody>
-                        <tr><td><kbd>↓</kbd> / <kbd>↑</kbd></td><td>Next / previous enabled item, wrapping. Disabled items and dividers are skipped.</td></tr>
-                        <tr><td><kbd>Home</kbd> / <kbd>End</kbd></td><td>First / last enabled item.</td></tr>
-                        <tr><td><kbd>→</kbd>, <kbd>Enter</kbd>, <kbd>Space</kbd> on a submenu item</td><td>Open the submenu and focus its first item.</td></tr>
-                        <tr><td><kbd>Enter</kbd> / <kbd>Space</kbd></td><td>Run the focused item. A disabled item does nothing.</td></tr>
-                        <tr><td><kbd>←</kbd> / <kbd>Esc</kbd> in a submenu</td><td>Close that level and focus the item that opened it.</td></tr>
-                        <tr><td><kbd>←</kbd> / <kbd>→</kbd> in a right-to-left menu</td><td>Swapped: <kbd>←</kbd> opens a submenu, <kbd>→</kbd> goes back. The direction comes from the nearest <code>dir</code> attribute.</td></tr>
-                        <tr><td><kbd>Esc</kbd> on the root</td><td>Close (reason <code>'escape'</code>); focus returns to <code>returnFocusTo</code>.</td></tr>
-                        <tr><td><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd></td><td>Close (reason <code>'tab'</code>); the browser then moves focus on.</td></tr>
-                        <tr><td>an item's <code>shortcut</code> (<kbd>O</kbd>, <kbd>F2</kbd>, <kbd>Delete</kbd>)</td><td>Runs that item, looking in the current level first, then the levels above it. On an item with a submenu it opens the submenu instead.</td></tr>
-                    </tbody>
-                </table>
+            <table class="reference-table mt-1">
+                <thead><tr><th>Key (while a menu is open)</th><th>Does</th></tr></thead>
+                <tbody>
+                    <tr><td><kbd>↓</kbd> / <kbd>↑</kbd></td><td>Next / previous enabled item, wrapping. Disabled items and dividers are skipped.</td></tr>
+                    <tr><td><kbd>Home</kbd> / <kbd>End</kbd></td><td>First / last enabled item.</td></tr>
+                    <tr><td><kbd>→</kbd>, <kbd>Enter</kbd>, <kbd>Space</kbd> on a submenu item</td><td>Open the submenu and focus its first item.</td></tr>
+                    <tr><td><kbd>Enter</kbd> / <kbd>Space</kbd></td><td>Run the focused item. A disabled item does nothing.</td></tr>
+                    <tr><td><kbd>←</kbd> / <kbd>Esc</kbd> in a submenu</td><td>Close that level and focus the item that opened it.</td></tr>
+                    <tr><td><kbd>←</kbd> / <kbd>→</kbd> in a right-to-left menu</td><td>Swapped: <kbd>←</kbd> opens a submenu, <kbd>→</kbd> goes back. The direction comes from the nearest <code>dir</code> attribute.</td></tr>
+                    <tr><td><kbd>Esc</kbd> on the root</td><td>Close (reason <code>'escape'</code>); focus returns to <code>returnFocusTo</code>.</td></tr>
+                    <tr><td><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd></td><td>Close (reason <code>'tab'</code>); the browser then moves focus on.</td></tr>
+                    <tr><td>an item's <code>shortcut</code> (<kbd>O</kbd>, <kbd>F2</kbd>, <kbd>Delete</kbd>)</td><td>Runs that item, looking in the current level first, then the levels above it. On an item with a submenu it opens the submenu instead.</td></tr>
+                </tbody>
+            </table>
             <div class="code-block"><pre>import { createMenuDivider } from '@keenmate/web-components-core/actions';
 import { openMenu } from '@keenmate/web-components-core/menu';
 
@@ -706,8 +743,18 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
             };
             el.onAction = (d) => tl.add('event', el, 'onAction twin',
                 `action "${d.action}" id ${JSON.stringify(d.id)} source "${d.source}" file ${JSON.stringify(d.file?.name ?? null)}`);
-            el.addEventListener('action', (e) => tl.add('event', el, 'action event',
-                `${JSON.stringify(e.detail.id ?? e.detail.action)} · files now: ${el.files.map((f) => f.name).join(', ')}`));
+            const ping = createPinger();
+            el.addEventListener('action', (e) => {
+                const d = e.detail;
+                tl.add('event', el, 'action event',
+                    `${JSON.stringify(d.id ?? d.action)} · files now: ${el.files.map((f) => f.name).join(', ')}`);
+                // The list re-renders after the built-in; ping the row it changed (the newest one for New file).
+                const name = d.action === 'new-file' ? el.files.at(-1)?.name : d.file?.name;
+                setTimeout(() => {
+                    const row = [...el.shadowRoot.querySelectorAll('li')].find((li) => li.dataset.name === name);
+                    if (row) ping(row);
+                });
+            });
 
             pageTheme.addEventListener('change', () => document.documentElement.classList.toggle('ia-menu-theme', pageTheme.checked));
             instanceTheme.addEventListener('change', () => {
@@ -718,6 +765,16 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
                     el.style.removeProperty('--dfm-menu-bg');
                     el.style.removeProperty('--dfm-menu-hover-bg');
                 }
+            });
+            document.getElementById('do-ia04-reset').addEventListener('click', () => {
+                for (const box of [veto, pageTheme, instanceTheme]) {
+                    if (!box.checked) continue;
+                    box.checked = false;
+                    box.dispatchEvent(new Event('change'));
+                }
+                el.resetDemo();
+                tl.list.replaceChildren();
+                tl.seq = 0;
             });
             // A marker per gesture that opens a menu.
             el.addEventListener('contextmenu', (e) => {
