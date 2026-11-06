@@ -81,18 +81,26 @@ form.addEventListener('change', (e) =&gt; e.target.form);   // resolves like a n
         <div class="card">
             <h2>FO02 · Disabled: <code>isDisabled</code> and <code>&lt;fieldset disabled&gt;</code></h2>
             <p>
-                Two sources disable a form-associated host, and core merges them once in
-                <code>formDisabledCallback</code> (components don't implement it). The <code>isDisabled</code> input
-                (attribute <code>disabled</code>) <strong>must reflect</strong>: the browser treats the host's own
-                <code>disabled</code> attribute as disabling it, so a non-reflecting input set back to
-                <code>false</code> by property would leave the element disabled — the input-table check warns about that.
-                A disabled ancestor <code>&lt;fieldset&gt;</code> is the other source. It never writes
-                <code>el.isDisabled</code>; the protected <code>isFormDisabled</code> reports the fieldset side only, and
-                <code>isEffectivelyDisabled</code> (input OR fieldset) is the state to apply. Read it in
-                <code>reinit()</code>, and apply flips in the <code>disabledChanged(isDisabled)</code> hook, which fires only
-                when the effective state actually changes on a built element (not for a rebuild). The native
-                <code>:disabled</code> pseudo-class matches either way. Note that the demo disables its light-DOM hidden
-                input itself in that hook: the host's own <code>disabled</code> attribute doesn't disable children.
+                An element can be disabled two ways: its own <code>disabled</code> attribute
+                (<code>el.isDisabled</code>), or a disabled <code>&lt;fieldset&gt;</code> around it, which the browser
+                reports only through <code>formDisabledCallback</code>. Core implements that callback for every component
+                and combines both into <code>isEffectivelyDisabled</code>. A component never writes
+                <code>formDisabledCallback</code>. It reads <code>isEffectivelyDisabled</code> in <code>reinit()</code> and
+                gets <code>disabledChanged(isDisabled)</code> whenever the combined state flips on a built element (a
+                rebuild reads it in <code>reinit()</code> instead).
+            </p>
+            <p>
+                The fieldset never writes <code>el.isDisabled</code>. The protected <code>isFormDisabled</code> reports
+                the fieldset side alone. The native <code>:disabled</code> pseudo-class matches either way.
+            </p>
+            <p>
+                <code>isDisabled</code> <strong>must reflect</strong>. The browser disables the host by its own
+                <code>disabled</code> attribute. If the input didn't reflect, setting <code>el.isDisabled = false</code>
+                would leave the attribute in place and the element disabled. The input-table check warns about that.
+            </p>
+            <p>
+                The host's <code>disabled</code> attribute doesn't disable its children, so the demo disables its
+                light-DOM hidden input itself, in <code>disabledChanged</code>.
             </p>
             <div class="controls">
                 <button id="fo02-prop">toggle <code>el.isDisabled</code></button>
