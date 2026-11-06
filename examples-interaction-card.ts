@@ -408,9 +408,12 @@ export class ToolbarDemo extends BlissElement<{ action: ToolbarDetail }> {
         button[aria-pressed="true"] { background: var(--kmwc-accent-light-bg-hover); border-color: var(--kmwc-accent-color); }
         button[aria-busy="true"] { opacity: .6; cursor: progress; }
         .count { margin-left: auto; font: 600 .85rem ui-monospace, monospace; }
-        ::slotted(*) { margin-top: .5rem; }
+        .markup { margin-top: .6rem; padding-top: .5rem; border-top: 1px dashed var(--kmwc-border-color); }
+        .markup .meta { margin-bottom: .4rem; }
+        ::slotted(*) { margin: 0; }
       </style>
-      <div class="box"><div class="bar" role="toolbar" aria-label="Demo toolbar"></div><slot></slot></div>`;
+      <div class="box"><div class="bar" role="toolbar" aria-label="Demo toolbar"></div>
+        <div class="markup"><div class="meta">page HTML in the light DOM (data-action / data-id) ↓</div><slot></slot></div></div>`;
     const bar = root.querySelector('.bar')!;
     const ctx = this.#ctx();
     const items = normalizeActionItems((this.config.items as (ToolbarItem | string)[] | undefined) ?? []);
