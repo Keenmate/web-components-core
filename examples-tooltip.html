@@ -47,10 +47,10 @@
         </div>
 
         <!-- ============================================================= -->
-        <!-- TT02 · Follow-cursor (the fixed bug)                          -->
+        <!-- TT02 · Follow-cursor                                          -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>TT02 · Follow-cursor &amp; the fixed bug</h2>
+            <h2>TT02 · Follow-cursor</h2>
             <p>
                 With <code>shouldFollowCursor: true</code> the tooltip anchors to a <code>VirtualElement</code> tracking
                 the pointer instead of the trigger. Each card in the <strong>pyramid</strong> below has its own
@@ -59,13 +59,10 @@
                 must appear next to the cursor, not pinned to that card's corner.
             </p>
             <div class="note">
-                <div class="note-title">The bug this proves fixed</div>
-                The pointer-tracking <code>mousemove</code> listener used to attach only inside <code>show()</code>,
-                which runs <em>after</em> the delay. A stationary hover fired no <code>mousemove</code> during the
-                delay, so the cursor rect was still undefined at show time and the virtual element fell back to the
-                trigger's full rect — pinning the tooltip to the corner. The rect is now seeded on
-                <code>mouseenter</code> and tracked through the delay, so <em>every</em> card in the pyramid seeds its
-                own cursor rect the instant you enter it — even mid-sweep.
+                <div class="note-title">Tracking starts on enter</div>
+                The cursor position is taken on <code>mouseenter</code> and tracked through the show delay. A pointer
+                that holds still fires no <code>mousemove</code>, yet the tooltip still opens at the cursor. Each card
+                in the pyramid takes its own position the moment you enter it — even mid-sweep.
             </div>
 
             <div class="controls">
@@ -157,10 +154,33 @@
         </div>
 
         <!-- ============================================================= -->
-        <!-- TT05 · Summary                                                 -->
+        <!-- TT05 · Shadow-root container                                   -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>TT05 · API summary</h2>
+            <h2>TT05 · Shadow-root container</h2>
+            <p>
+                Pass a <code>ShadowRoot</code> as <code>container</code> and the tooltip mounts inside that shadow tree.
+                It then picks up the shadow root's own styles and custom properties. Both chips below are slotted into
+                one shadow root, whose stylesheet styles <code>.shadow-tt</code> and sets <code>--tip-bg</code> on
+                <code>:host</code>. Page CSS can't reach that class.
+            </p>
+            <div class="demo-area">
+                <div id="tt-shadow-host">
+                    <span class="pos-trigger" tabindex="0" id="tt-shadow-in">container: shadowRoot</span>
+                    <span class="pos-trigger" tabindex="0" id="tt-shadow-out">container: default (body)</span>
+                </div>
+            </div>
+            <p class="muted">
+                The first tooltip gets the shadow styles. The second mounts on <code>&lt;body&gt;</code> with the same
+                class, so it renders unstyled.
+            </p>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TT06 · Summary                                                 -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>TT06 · API summary</h2>
             <div class="code-block"><pre>import { createTooltip } from '@keenmate/web-components-core/positioning';
 
 const tip = createTooltip({
@@ -168,16 +188,27 @@ const tip = createTooltip({
   content: 'Hello',        // string | HTMLElement
   placement: 'top',        // Placement (default 'top')
   offset: 8,               // px gap (default 8)
-  delay: { show: 400, hide: 0 },   // number | { show?, hide? }
+  delay: { show: 400, hide: 0 },   // number (= both) | { show?, hide? } (default 0)
   shouldFollowCursor: true, // anchor to & track the pointer (default false)
-  container: shadowRoot,   // mount target (default document.body)
+  container: shadowRoot,   // HTMLElement | ShadowRoot — default: the open modal &lt;dialog&gt; /
+                           // :popover-open around the trigger, else document.body
+  strategy: 'fixed',       // default 'fixed'
+  inheritThemeFrom: host,  // copy its data-theme (default: the trigger)
   cssClass: 'demo-tt',     // class(es) on the tooltip element
   visibleClass: 'is-visible',      // toggled while shown (default 'is-visible')
-  onBeforeShow() {},       // dismiss an overlapping tooltip, etc.
+  beforeShowCallback() {}, // runs right before showing — dismiss an overlapping tooltip, etc.
 });
 
 tip.show(); tip.hide(); tip.destroy();   // imperative control + teardown
 tip.element;  tip.isVisible;             // the tooltip node + state</pre></div>
+            <div class="note">
+                <div class="note-title">Built-in behaviour</div>
+                <ul>
+                    <li>Shows on hover and keyboard focus. <strong>Escape</strong> hides it.</li>
+                    <li>While shown, the trigger's <code>aria-describedby</code> points at the tooltip (<code>role="tooltip"</code>).</li>
+                    <li>Hoverable: with a hide delay, moving the pointer onto the tooltip keeps it open. A focused trigger keeps it open too.</li>
+                </ul>
+            </div>
             <div class="note">
                 <div class="note-title">Focus has no cursor</div>
                 A keyboard-focus show has no pointer, so <code>shouldFollowCursor</code> correctly falls back to the
@@ -249,6 +280,33 @@ tip.element;  tip.isVisible;             // the tooltip node + state</pre></div>
         const cardDelay = document.getElementById('card-delay');
         const cardDelayOut = document.getElementById('card-delay-out');
         cardDelay.addEventListener('input', () => { cardDelayOut.innerHTML = `${cardDelay.value}&nbsp;ms`; });
+
+        // ── TT05 · a ShadowRoot container ────────────────────────────────────
+        {
+            const host = document.getElementById('tt-shadow-host');
+            const root = host.attachShadow({ mode: 'open' });
+            // Shadow-scoped tooltip styles: they apply only to elements inside this root.
+            root.innerHTML = `<style>
+                :host { display: flex; gap: 1rem; flex-wrap: wrap; --tip-bg: var(--kmwc-accent-color); }
+                .shadow-tt {
+                    position: fixed; top: 0; left: 0;
+                    background: var(--tip-bg); color: #fff;
+                    padding: 0.4rem 0.65rem; border-radius: var(--kmwc-radius-md);
+                    font-size: 0.8rem; font-weight: 600; white-space: nowrap; z-index: 1000;
+                }
+            </style><slot></slot>`;
+            createTooltip({
+                trigger: document.getElementById('tt-shadow-in'),
+                content: 'styled by the shadow root (--tip-bg)',
+                cssClass: 'shadow-tt',
+                container: root,
+            });
+            createTooltip({
+                trigger: document.getElementById('tt-shadow-out'),
+                content: 'on <body>: the shadow styles miss me',
+                cssClass: 'shadow-tt',
+            });
+        }
 
         // ── TT04 · edge flip ─────────────────────────────────────────────────
         createTooltip({

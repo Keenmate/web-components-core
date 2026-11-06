@@ -26,10 +26,11 @@
             <h2>PO01 · Playground</h2>
             <p>
                 One popover, every option live. <code>createPopover({ reference, panel })</code> returns
-                <code>{ open, close, isOpen, destroy }</code>; the panel is portaled to <code>&lt;body&gt;</code> and
+                <code>{ open, close, update, isOpen, destroy }</code>; the panel is portaled to <code>&lt;body&gt;</code> and
                 positioned by <code>anchor()</code>. Change any control — the popover rebuilds with the new options
                 (and reopens if it was open). Open it, then <strong>scroll it near the bottom edge</strong> to watch
-                <code>flip</code> and <code>lockPlacement: 'freeze'</code> behave.
+                <code>flip</code> and <code>lockPlacement: 'freeze'</code> behave. It closes on Escape or a click
+                outside (<code>shouldCloseOnEscape</code> / <code>shouldCloseOnOutsideClick</code>).
             </p>
             <div class="note">
                 <div class="note-title"><code>matchWidth</code>: what to look for</div>
@@ -95,16 +96,25 @@
 const pop = createPopover({
   reference,                 // element (or VirtualElement) to anchor to
   panel,                     // the panel element to position + portal
+  container,                 // default: the open modal &lt;dialog&gt; / :popover-open around the reference, else body
+  shouldCloseOnEscape: true,       // close on Escape (deepest open overlay only), focus back to the reference
+  shouldCloseOnOutsideClick: true, // close on a press outside the panel and the reference
+  overlayGroup: 'menus',     // opening another overlay of the group closes this one
+  onClose(reason) {},        // it closed itself: Escape, outside press, another overlay
+
+  // Every anchor() option is forwarded as given:
   placement: 'bottom-start', // default 'bottom-start'
   offset: 4,                 // px gap (default 4)
-  matchWidth: 'min',         // 'min' | 'exact' — size to the reference width
+  matchWidth: 'min',         // 'min' | 'exact' | 'max' | false — size against the reference width
   lockPlacement: 'freeze',   // true = return to initial on overflow; 'freeze' = flip once then pin
-  container: document.body,  // mount target (default body)
   shouldFlip: true, shift: 8, // middleware toggles
   onPlaced(placement) {},    // resolved placement callback
 });
 
-pop.open(); pop.close(); pop.isOpen; pop.destroy();</pre></div>
+pop.open(); pop.close(); pop.update(); pop.isOpen; pop.destroy();</pre></div>
+            <p class="muted">
+                <code>inheritThemeFrom</code> defaults to the reference. See the anchor page for every forwarded option.
+            </p>
         </div>
 
     <script type="module">
@@ -141,9 +151,18 @@ pop.open(); pop.close(); pop.isOpen; pop.destroy();</pre></div>
         };
 
         let pop;
+        // shouldCloseOnOutsideClick closes the popover when you press a control too.
+        // Remember it was open, so the rebuild below reopens it and you see the change.
+        // (window capture runs before core's document-level listener.)
+        let wasOpenAtPress = false;
+        window.addEventListener('pointerdown', (e) => {
+            wasOpenAtPress = !!pop?.isOpen && !!e.target.closest?.('.controls, .display-sliders');
+        }, true);
+
         const build = () => {
-            const wasOpen = pop?.isOpen;
+            const wasOpen = pop?.isOpen || wasOpenAtPress;
             pop?.destroy();
+            // Core gap: anchor() doesn't clear matchWidth's inline sizes yet.
             // Reset the inline sizing the previous matchWidth mode wrote — anchor()
             // sets width / minWidth / maxWidth but never clears them, so without this
             // a stale value from the prior mode would leak (e.g. 'max''s max-width
@@ -161,6 +180,8 @@ pop.open(); pop.close(); pop.isOpen; pop.destroy();</pre></div>
                 shouldFlip: $('po-flip').checked,
                 offset: parseInt($('po-offset').value, 10) || 0,
                 shift: parseInt($('po-shift').value, 10) || 0,
+                shouldCloseOnEscape: true,
+                shouldCloseOnOutsideClick: true,
             };
             renderPanel(opts);
             pop = createPopover(opts);
@@ -169,16 +190,6 @@ pop.open(); pop.close(); pop.isOpen; pop.destroy();</pre></div>
         build();
 
         btn.addEventListener('click', () => (pop.isOpen ? pop.close() : pop.open()));
-        // Outside-click dismiss (reads the latest pop via closure). Ignore clicks on
-        // the control panel — otherwise tweaking a control (checkbox/radio/select)
-        // counts as "outside" and closes the popover, so you'd never see the live
-        // update (e.g. the long-content line) without reopening.
-        document.addEventListener('click', (e) => {
-            if (!pop.isOpen) return;
-            if (e.target === btn || panel.contains(e.target) || e.target.closest('.controls, .display-sliders')) return;
-            pop.close();
-        });
-
         // Rebuild on any control change; keep the slider readouts in sync.
         ['po-placement', 'po-lock', 'po-flip', 'po-long'].forEach((id) => $(id).addEventListener('change', build));
         document.querySelectorAll('input[name="po-mw"]').forEach((r) => r.addEventListener('change', build));

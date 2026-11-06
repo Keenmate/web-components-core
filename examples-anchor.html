@@ -47,8 +47,8 @@
         font-size: 1rem;
     }
     .demo-float__close:hover { background: color-mix(in srgb, currentColor 15%, transparent); }
-    /* Room below the AN02 reference so the panel opens downward by default
-       (instead of flipping up over the controls). */
+    /* Room below the AN02 reference, so there is space on both sides to compare
+       (flip still picks the roomier one). */
     .an-size-stage { padding-bottom: 36vh; }
     /* A transformed ancestor — establishes a fixed-positioning containing block,
        the classic reason a `position: fixed` panel drifts off its anchor. */
@@ -93,9 +93,15 @@
         <div class="card">
             <h2>AN02 · Size caps (<code>maxHeight</code> / <code>maxWidth</code>)</h2>
             <p>
-                The <code>size()</code> middleware caps the floating element to the space available between the
-                reference and the viewport edge, so an over-tall or over-wide panel scrolls instead of overflowing.
-                Toggle the caps and reopen.
+                The <code>size()</code> middleware caps the floating element to the space available in the viewport,
+                so an over-tall or over-wide panel scrolls instead of overflowing. The panel below has 30 rows that
+                don't wrap — taller and wider than the window. Toggling a cap rebuilds the open panel.
+            </p>
+            <p>
+                <code>flip</code> runs before the cap: when the panel fits neither side, it opens on the side with
+                more room (often above). <code>maxHeight</code> then fits it to that side. Without
+                <code>maxWidth</code> the rows run off the right edge; with it the panel stops at the edge and scrolls
+                sideways.
             </p>
             <div class="controls">
                 <label><input type="checkbox" id="an-maxh" checked> <code>maxHeight</code></label>
@@ -113,25 +119,42 @@
         <div class="card">
             <h2>AN03 · Drift detection (<code>onDrift</code>)</h2>
             <p>
-                A <code>position: fixed</code> element is positioned relative to the viewport — <em>unless</em> an
-                ancestor establishes a containing block (a CSS <code>transform</code>, <code>filter</code>,
-                <code>will-change</code>, …). Then it silently drifts off its anchor. <code>anchor()</code> can detect
-                that: the reference below lives inside a <strong>transformed</strong> box, so after positioning the
-                <code>onDrift</code> callback reports how far the panel actually landed from where it was placed.
+                A <code>position: fixed</code> element is placed against the viewport — <em>unless</em> an ancestor
+                makes a containing block for it (<code>transform</code>, <code>filter</code>, a matching
+                <code>will-change</code>, <code>contain: paint</code>, …). Then the browser measures its
+                <code>left</code> / <code>top</code> from that ancestor. If the positioning code didn't account for it,
+                the panel lands off its anchor. <code>onDrift</code> reports that case: after each placement core
+                measures where the panel really is, and calls <code>onDrift</code> only when it is 1.5px or more off.
             </p>
-            <div class="demo-area transformed">
+            <p>
+                The panel below is a child of the <strong>transformed</strong> box. Floating&nbsp;UI's default platform
+                sees the transform and places it correctly, so no drift. To show a report, the first mode
+                <strong>simulates</strong> a containing block the heuristic misses: a custom <code>platform</code> whose
+                <code>getOffsetParent</code> always answers <code>window</code>.
+            </p>
+            <div class="controls">
+                <label>frame
+                    <select id="an-drift-mode">
+                        <option value="miss" selected>simulated miss: platform.getOffsetParent = () =&gt; window</option>
+                        <option value="default">default platform</option>
+                        <option value="fixed-cb">shouldUseFixedContainingBlock: true</option>
+                    </select>
+                </label>
+            </div>
+            <div class="demo-area transformed" id="an-drift-box">
                 <span class="pos-trigger" id="an-drift-ref">reference inside a transformed box</span>
                 <div class="output mt-1">
                     <div class="output-label">onDrift report:</div>
-                    <pre id="an-drift-out">(open the panel — a drift &gt; 1px is reported here)</pre>
+                    <pre id="an-drift-out">(open the panel)</pre>
                 </div>
                 <button id="an-drift-btn" class="mt-1">Anchor a panel to it</button>
             </div>
             <div class="note warning">
                 <div class="note-title">The fix</div>
-                Pass <code>shouldUseFixedContainingBlock: true</code> (or a custom <code>platform</code>) so <code>anchor()</code>
-                resolves the offset parent from the floating element's own transformed ancestor — this is the
-                escape hatch components like web-multiselect use.
+                Pass <code>shouldUseFixedContainingBlock: true</code> (or your own <code>platform</code>) so
+                <code>anchor()</code> takes the offset parent from the floating element's own containing-block
+                ancestor. web-multiselect uses this. If a containing block is still missed, <code>onDrift</code> tells you
+                and names the likely culprit — log it once.
             </div>
         </div>
 
@@ -142,26 +165,56 @@
             <h2>AN04 · API summary</h2>
             <div class="code-block"><pre>import { anchor } from '@keenmate/web-components-core/positioning';
 
-const handle = anchor(floating, reference, {
+const handle = anchor(floating, reference, {   // reference: Element or VirtualElement
   placement: 'bottom-start',
-  strategy: 'fixed',               // default 'fixed'
   offset: 4,
-  shouldFlip: true, shift: 8,      // middleware (offset → size → flip → shift)
-  matchWidth: 'min',              // 'min' | 'exact'
-  maxHeight: { padding: 8 },      // size() cap to available height
-  maxWidth: { padding: 8 },       // size() cap to available width
-  lockPlacement: 'freeze',        // true | 'freeze'
-  shouldUseFixedContainingBlock: true, // resolve offset parent from a transformed ancestor
-  onBeforeCompute() {},           // per-frame hook (publish a CSS var, clamp, …)
-  onPlaced(p) {}, onComputed(c) {}, onDrift(report) {},
+  matchWidth: 'min',
+  maxHeight: { padding: 8 },
+  lockPlacement: 'freeze',
+  onDrift(report) { console.warn('panel drifted', report); },
 });
 
 handle.update();   // reposition now
-handle.destroy();  // stop autoUpdate + clean up</pre></div>
+handle.destroy();  // stop autoUpdate, restore the copied data-theme</pre></div>
+            <table class="reference-table table-compact mt-1">
+                <thead><tr><th>Option</th><th>Default</th><th>What it does</th></tr></thead>
+                <tbody>
+                    <tr><td><code>placement</code></td><td><code>'bottom-start'</code></td><td>Preferred side and alignment.</td></tr>
+                    <tr><td><code>strategy</code></td><td><code>'fixed'</code></td><td><code>'fixed'</code> or <code>'absolute'</code>. Drift checks run only for <code>'fixed'</code>.</td></tr>
+                    <tr><td><code>offset</code></td><td><code>4</code></td><td>Gap in px, or <code>{ mainAxis, crossAxis, alignmentAxis }</code> to also shift along the edge.</td></tr>
+                    <tr><td><code>shouldFlip</code></td><td><code>true</code></td><td>Flip to the opposite side on overflow.</td></tr>
+                    <tr><td><code>flipPadding</code></td><td><code>0</code></td><td>Extra viewport-edge padding (px) before flipping.</td></tr>
+                    <tr><td><code>shift</code></td><td><code>8</code></td><td>Padding (px) to stay in view, or <code>false</code>.</td></tr>
+                    <tr><td><code>matchWidth</code></td><td><code>false</code></td><td><code>'min'</code> (min-width) · <code>'exact'</code> (width) · <code>'max'</code> (max-width) = the reference width.</td></tr>
+                    <tr><td><code>maxHeight</code> / <code>maxWidth</code></td><td>—</td><td><code>true</code> or <code>{ padding }</code>: cap to the available space. Sets only <code>max-height</code> / <code>max-width</code>.</td></tr>
+                    <tr><td><code>lockPlacement</code></td><td><code>false</code></td><td><code>true</code> = flip returns to the initial placement; <code>'freeze'</code> = flip once, then pin.</td></tr>
+                    <tr><td><code>arrow</code></td><td>—</td><td><code>{ element, padding? }</code>: an arrow child of the floating element, positioned each frame.</td></tr>
+                    <tr><td><code>shouldAutoUpdate</code></td><td><code>true</code></td><td>Keep it placed on scroll / resize (<code>autoUpdate</code>).</td></tr>
+                    <tr><td><code>autoUpdateOptions</code></td><td>—</td><td>Passed to <code>autoUpdate</code>, e.g. <code>{ elementResize: false }</code>.</td></tr>
+                    <tr><td><code>inheritThemeFrom</code></td><td>—</td><td>Copy the nearest <code>data-theme</code> / <code>data-bs-theme</code> onto the floating element.</td></tr>
+                    <tr><td><code>shouldUseFixedContainingBlock</code></td><td><code>false</code></td><td>Take the offset parent from the floating element's own containing-block ancestor.</td></tr>
+                    <tr><td><code>platform</code></td><td>—</td><td>A custom Floating&nbsp;UI platform. Wins over <code>shouldUseFixedContainingBlock</code>.</td></tr>
+                    <tr><td><code>beforeComputeCallback()</code></td><td>—</td><td>Runs right before each computation (publish a CSS var, clamp, …).</td></tr>
+                    <tr><td><code>onPlaced(placement)</code> · <code>onComputed({ x, y, placement })</code></td><td>—</td><td>After each placement.</td></tr>
+                    <tr><td><code>onDrift(report)</code></td><td>—</td><td>After a placement that landed 1.5px or more off. Element references only.</td></tr>
+                </tbody>
+            </table>
+            <table class="reference-table table-compact">
+                <thead><tr><th>Also exported</th><th>What it does</th></tr></thead>
+                <tbody>
+                    <tr><td><code>findOverlayContainer(trigger)</code></td><td>The nearest open modal <code>&lt;dialog&gt;</code> / <code>:popover-open</code> element around the trigger, else <code>document.body</code>.</td></tr>
+                    <tr><td><code>getFixedPositionOffsetParent(el)</code></td><td>The element a fixed child of <code>el</code> is placed against, or <code>window</code>.</td></tr>
+                    <tr><td><code>detectFixedDrift({ panel, reference, expectedX, expectedY, offsetParent, tolerance? })</code></td><td>A <code>DriftReport</code>, or <code>null</code> when within <code>tolerance</code> (default 1.5px).</td></tr>
+                    <tr><td><code>findContainingBlockCulprit(el, driftX, driftY)</code></td><td>The ancestor whose position matches the drift, or <code>null</code>.</td></tr>
+                    <tr><td><code>describeContainingBlockProps(el)</code></td><td>The containing-block CSS on <code>el</code>, as text.</td></tr>
+                    <tr><td><code>platform</code></td><td>Floating&nbsp;UI's base platform, to spread into your own.</td></tr>
+                    <tr><td><code>DriftReport</code></td><td><code>{ driftX, driftY, culprit, culpritDescription, culpritCss }</code></td></tr>
+                </tbody>
+            </table>
         </div>
 
     <script type="module">
-        import { anchor } from '/src/positioning/index.ts';
+        import { anchor, platform } from '/src/positioning/index.ts';
 
         // ── AN01 · the primitive, rebuilt on control change ──────────────────
         {
@@ -208,8 +261,13 @@ handle.destroy();  // stop autoUpdate + clean up</pre></div>
                 x.addEventListener('click', close);
                 head.appendChild(x);
                 const list = document.createElement('div');
-                list.innerHTML = Array.from({ length: 30 }, (_, i) => `<div>Row ${i + 1} — some wide-ish content that would overflow</div>`).join('');
+                // Rows that don't wrap: wider than the window, so the maxWidth cap shows.
+                list.style.whiteSpace = 'nowrap';
+                const cells = Array.from({ length: 24 }, (_, c) => `column ${c + 1}`).join(' · ');
+                list.innerHTML = Array.from({ length: 30 }, (_, i) => `<div>Row ${i + 1} · ${cells}</div>`).join('');
                 floating.append(head, list);
+                // Drop the box's 90vw CSS cap here, so only maxWidth limits the width.
+                floating.style.maxWidth = 'none';
                 document.body.appendChild(floating);
                 handle = anchor(floating, ref, {
                     placement: 'bottom-start',
@@ -231,21 +289,41 @@ handle.destroy();  // stop autoUpdate + clean up</pre></div>
 
         // ── AN03 · drift detection inside a transformed ancestor ─────────────
         {
+            const box = document.getElementById('an-drift-box');
             const ref = document.getElementById('an-drift-ref');
             const out = document.getElementById('an-drift-out');
+            const modeSelect = document.getElementById('an-drift-mode');
             let floating, handle;
-            document.getElementById('an-drift-btn').addEventListener('click', () => {
-                if (floating) { handle?.destroy(); floating.remove(); floating = undefined; out.textContent = '(closed)'; return; }
+            const close = () => { handle?.destroy(); handle = undefined; floating?.remove(); floating = undefined; };
+            const open = () => {
+                close();
                 floating = document.createElement('div');
                 floating.className = 'demo-float';
-                floating.textContent = 'panel anchored across a transformed boundary';
-                document.body.appendChild(floating);
+                floating.textContent = 'panel inside the transformed box';
+                // A child of the transformed box: that box is its fixed containing block.
+                box.appendChild(floating);
+                const mode = modeSelect.value;
                 handle = anchor(floating, ref, {
                     placement: 'bottom-start',
+                    // Simulated miss: claim the viewport is the frame, as a heuristic that
+                    // doesn't know this containing block would.
+                    ...(mode === 'miss' ? { platform: { ...platform, getOffsetParent: () => window } } : {}),
+                    ...(mode === 'fixed-cb' ? { shouldUseFixedContainingBlock: true } : {}),
+                    // onComputed runs first on every placement; onDrift only when drifted.
+                    onComputed: () => { out.textContent = '(on target: onDrift not called)'; },
                     onDrift: (report) => {
-                        out.textContent = `driftX: ${report.driftX.toFixed(1)}px  driftY: ${report.driftY.toFixed(1)}px`;
+                        out.textContent =
+                            `driftX: ${report.driftX.toFixed(1)}px  driftY: ${report.driftY.toFixed(1)}px
+` +
+                            `culprit: ${report.culpritDescription}
+` +
+                            `culpritCss: ${report.culpritCss}`;
                     },
                 });
+            };
+            document.getElementById('an-drift-btn').addEventListener('click', () => {
+                if (floating) { close(); out.textContent = '(closed)'; } else open();
             });
+            modeSelect.addEventListener('change', () => { if (floating) open(); });
         }
     </script>
