@@ -279,8 +279,12 @@ destroyCallback() { this.#styles.destroy(); }</pre></div>
                 <span class="muted">A card created now gets the page layer straight away.</span>
             </div>
             <div class="controls">
-                <button id="pg05-cb">getCustomStylesCallback = neutral cards only</button>
-                <span class="muted">Returns CSS for <code>tone="neutral"</code>, <code>null</code> for the rest. The callback wins, so the other cards lose the file's styles.</span>
+                <button id="pg05-cb">getCustomStylesCallback = background by tone</button>
+                <span class="muted">Runs once per card with that card's context: each card gets the background for its own tone (printed on the card). While it is set it <strong>replaces</strong> <code>customStyles</code>, so the file's dotted borders go away.</span>
+            </div>
+            <div class="controls">
+                <button id="pg05-cb-null">getCustomStylesCallback = null</button>
+                <span class="muted">No callback any more: <code>customStyles</code> (the file) applies again.</span>
             </div>
             <div class="controls">
                 <button id="pg05-override">G.customStyles = solid orange</button>
@@ -311,8 +315,8 @@ destroyCallback() { this.#styles.destroy(); }</pre></div>
             </div>
             <div class="code-block"><pre>// any time — every &lt;core-demo-pg&gt; now and later
 window.components['core-demo-pg'].customStyles = "@import url('examples/pg-page-styles.css');";
-window.components['core-demo-pg'].getCustomStylesCallback = (ctx) =&gt;      // per instance; wins
-  ctx.tone === 'neutral' ? '.pg { background: #f5f5f4 }' : null;
+window.components['core-demo-pg'].getCustomStylesCallback = (ctx) =&gt;      // per instance; replaces customStyles
+  `.pg { background: ${TONE_BG[ctx.tone]} }`;
 window.components['core-demo-pg'].customStyles = null;                    // clear
 
 // before the component script loads: create the entry, core adopts it
@@ -613,7 +617,7 @@ window.components['core-demo-pg'].customStyles = null;                    // cle
                 `<b>window.components['core-demo-pg'].customStyles</b> ${esc(JSON.stringify(page ?? null))}`,
                 `<b>… .getCustomStylesCallback</b> ${cb ? 'set' : 'null'}`,
                 `<b>window.components['core-demo-pg-late'].customStyles</b> ${esc(JSON.stringify(reg['core-demo-pg-late'].customStyles ?? null))}`,
-                ...cards.map((el) => styleLine(el, `#${el.id}${el.getAttribute('tone') ? ` (${el.getAttribute('tone')})` : ''}`)),
+                ...cards.map((el) => styleLine(el, `#${el.id}${el.tone ? ` (tone: ${el.tone})` : ''}`)),
             ].join('\n');
         }
         const act5 = (text, fn) => {
@@ -631,8 +635,12 @@ window.components['core-demo-pg'].customStyles = null;                    // cle
             el.setAttribute('tone', added5 % 2 ? 'neutral' : 'info');
             stage5.insertBefore(el, $('demo-pg-late'));
         }));
-        $('pg05-cb').addEventListener('click', () => act5("getCustomStylesCallback = (ctx) => ctx.tone === 'neutral' ? … : null", () => {
-            pgEntry.getCustomStylesCallback = (ctx) => (ctx.tone === 'neutral' ? '.pg { background: #f5f5f4; border-style: dashed; }' : null);
+        const TONE_BG = { neutral: '#f5f5f4', info: '#e0f2fe', success: '#dcfce7' };
+        $('pg05-cb').addEventListener('click', () => act5('getCustomStylesCallback = (ctx) => `.pg { background: ${TONE_BG[ctx.tone]} }`', () => {
+            pgEntry.getCustomStylesCallback = (ctx) => `.pg { background: ${TONE_BG[ctx.tone]}; color: #1c1917; }`;
+        }));
+        $('pg05-cb-null').addEventListener('click', () => act5('getCustomStylesCallback = null', () => {
+            pgEntry.getCustomStylesCallback = null;
         }));
         $('pg05-override').addEventListener('click', () => act5("G.customStyles = '.pg { border: 3px solid #ea580c }'", () => {
             elG.customStyles = '.pg { border: 3px solid #ea580c; }';

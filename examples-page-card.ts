@@ -64,6 +64,7 @@ const SHARED_CSS = `@layer component {
   .pg.tone-info    { border-left-color: var(--kmwc-info-color, #3b82f6); }
   .pg.tone-success { border-left-color: var(--kmwc-success-color, #22c55e); }
   .pg-label { font-weight: 700; }
+  .pg-tone { display: block; font-size: .75rem; font-weight: 400; color: var(--kmwc-text-color-3, GrayText); }
   .pg-id { font: .72rem var(--kmwc-mono-font-family, ui-monospace, monospace); color: var(--kmwc-text-color-3, GrayText); margin-left: .35rem; }
   .pg-status { display: flex; align-items: center; gap: .4rem; min-height: 1.6rem; margin-top: .35rem;
                color: var(--kmwc-info-color, #0369a1); }
@@ -126,7 +127,7 @@ export class CoreDemoPg extends BlissElement {
     const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
     adoptStyles(root, SHARED_CSS);
     root.innerHTML = `<div class="pg" part="card"><span class="pg-label"></span><span class="pg-id"></span>
-      <div class="pg-status"></div></div>`;
+      <span class="pg-tone"></span><div class="pg-status"></div></div>`;
     root.querySelector('.pg-label')!.textContent = this.config.label as string;
     root.querySelector('.pg-id')!.textContent = this.id ? `#${this.id}` : '';
     this.#applyTone();
@@ -158,6 +159,7 @@ export class CoreDemoPg extends BlissElement {
     const card = this.shadowRoot?.querySelector('.pg');
     if (!card) return;
     for (const t of TONES) card.classList.toggle(`tone-${t}`, t === this.config.tone);
+    card.querySelector('.pg-tone')!.textContent = `tone: ${this.config.tone as string}`;
   }
 
 }
