@@ -12,8 +12,8 @@ import { dirname, join } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PAGES = readdirSync(ROOT).filter((f) => /^examples-.*\.html$/.test(f)).sort();
-/** Tags a page deliberately leaves undefined until the user acts (PG01: registerComponent with shouldAutoDefine: false). */
-const LAZY_TAGS = ['core-demo-pg-early'];
+/** Tags a page deliberately leaves undefined until the user acts (registerComponent with shouldAutoDefine: false — PG01 early, PG05 late). */
+const LAZY_TAGS = ['core-demo-pg-early', 'core-demo-pg-late'];
 
 test('index renders a card per registered page and a version badge', async ({ page }) => {
   await page.goto('/index.html');
