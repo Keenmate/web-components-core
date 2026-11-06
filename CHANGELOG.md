@@ -51,6 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   layout supplies head, header and container).
 - `/publish` follows the rulebook's canonical structure; `VALIDATION-NOTES.md` records the
   library's deviations (no tag, the `km-overlay-activate` document event, `[Unreleased]` kept).
+- The examples smoke test lists PG05's `core-demo-pg-late` as registered on demand (it stays
+  undefined until its button runs `register()`).
 
 ### Docs
 
@@ -69,7 +71,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     moves left / right, LC05 shows a destroyed element's stored vs rendered label;
   - new PG05: page-wide custom CSS, one button per usage (`@import` of a real file, a later
     card, the callback per tone, an instance override, a wrong value, a value set before core
-    loaded); new TT05: a tooltip mounted in a `ShadowRoot`.
+    loaded); new TT05: a tooltip mounted in a `ShadowRoot`;
+  - forms page: FO01 explains DOM position vs form membership (`form="id"`: Extra sits outside
+    the `<form>` yet submits with it); FO02's intro rewritten (two disable sources, one combined
+    `isEffectivelyDisabled`; why `isDisabled` must reflect, with the concrete case); FO01–FO03 get
+    a Reset demo button; FO04 adds `formResetCallback` (not core's) and the rejected-anchor warning.
 
 ## [1.0.0-rc18] - 2026-11-04
 
