@@ -1619,13 +1619,14 @@ have to re-implement the same rules to agree with it. The rules move here once, 
 **Two independent axes** for built-in search, which works on strings only:
 
 - `SearchBehavior` — how text is normalized, for the item values *and* the term:
-  `normalized` (default; NFD, strip `\p{M}`, lowercase, hand-fold `ł ø đ ð ħ ı ß→ss æ→ae
-  œ→oe ς→σ`), `case-insensitive` (NFC + lowercase + `ς→σ`), `exact` (NFC only). Every mode
+  `normalized` (default; NFKD, strip combining marks that follow a Latin / Greek / Cyrillic
+  letter, lowercase, hand-fold `ł ø đ ð ħ ı ŧ ŀ þ→th ĳ→ij ß→ss æ→ae œ→oe ς→σ`),
+  `case-insensitive` (NFC + lowercase, `ß→ss`, `İ→i`, `ς→σ`), `exact` (NFC only). Every mode
   applies NFC, so composed and decomposed accents compare equal. `normalizeSearchText` is
   public so a custom search can normalize identically.
 - `SearchMatch` — where the term must sit: `contains` (default), `equals`, `starts-with`,
   `ends-with` (whole value), `word-starts-with`, `word-ends-with` (a word = a run of
-  `[\p{L}\p{N}]`), `regex`. A regex is tested against the **raw** value with no flags:
+  `[\p{L}\p{N}\p{M}]`), `regex`. A regex is tested against the **raw** value with no flags:
   normalization does not apply, case and accents are up to the pattern. A typed pattern
   that doesn't compile (mid-typing) reuses the instance's last valid one
   (`createRegexCompiler`).

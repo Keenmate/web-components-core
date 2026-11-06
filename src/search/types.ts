@@ -22,7 +22,7 @@ export type SearchBehavior = 'normalized' | 'case-insensitive' | 'exact';
  *   case/accents per `SearchBehavior`)
  * - `starts-with` / `ends-with` — at the start / end of the whole value
  * - `word-starts-with` / `word-ends-with` — at the start / end of any word
- *   (a word is a run of letters and digits)
+ *   (a word is a run of letters, digits and combining marks)
  * - `regex` — the term is a regular expression, tested against the RAW search value
  *   (`SearchBehavior` does not apply)
  */
