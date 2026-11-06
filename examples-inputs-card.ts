@@ -10,7 +10,7 @@
  *   - `<core-demo-reactivity>` IN03/IN04 — `on: 'update' | 'reinit' | 'none'`
  *                              inputs, hook counters + the `update` partial, an
  *                              imperative method that calls `this.flush()`.
- *   - `<core-demo-presets>`    IN05 — `getBatchValuesCallback` (one input sets
+ *   - `<core-demo-presets>`    IN05/IN06 — `getBatchValuesCallback` (one input sets
  *                              others in the same batch) and `getLiveValue`
  *                              (the getter returns live component state).
  *
@@ -190,7 +190,7 @@ export class CoreDemoReactivity extends BlissElement<HookEvents> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// <core-demo-presets> — IN05
+// <core-demo-presets> — IN05 (presets) / IN06 (live getters)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MODE_PRESETS: Record<string, Record<string, unknown> | null> = {

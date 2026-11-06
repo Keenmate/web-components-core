@@ -269,18 +269,15 @@ document.body.append(fresh);            // ONE reinit() with the full config</pr
         </div>
 
         <!-- ============================================================= -->
-        <!-- IN05 · Presets & live getters                                 -->
+        <!-- IN05 · Presets                                                -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>IN05 · Presets (<code>getBatchValuesCallback</code>) &amp; live getters (<code>getLiveValue</code>)</h2>
+            <h2>IN05 · Presets (<code>getBatchValuesCallback</code>)</h2>
             <p>
-                A row's <code>getBatchValuesCallback(value, config)</code> returns other inputs to set <strong>in the same
-                batch</strong> — so <code>mode</code> sets <code>editTrigger</code> + <code>hasGridLines</code> and the component
-                sees ONE <code>update</code> with all three keys. Each returned value goes through its own converter and
-                reflects. An input set <strong>explicitly</strong> in the same batch wins over the preset. A row's
-                <code>getLiveValue(el)</code> makes the property <em>getter</em> return live component state: add rows inside
-                the component and <code>el.items</code> reports them, while <code>this.config.items</code> keeps the assigned
-                array. Right after an assignment (still staged) the getter returns what you just assigned.
+                One input can set other inputs <strong>in the same batch</strong>. Here <code>mode</code> is a preset:
+                <code>simple</code> and <code>excel</code> also set <code>editTrigger</code> and <code>hasGridLines</code>,
+                and the component sees ONE <code>update</code> with all three keys. Each preset value goes through its own
+                converter and reflects. An input you set <strong>explicitly</strong> in the same batch wins over the preset.
             </p>
             <div class="grid-2">
                 <div>
@@ -288,18 +285,18 @@ document.body.append(fresh);            // ONE reinit() with the full config</pr
                     <div class="controls mt-1">
                         <label><code>el.mode =</code>
                             <select id="in05-mode"><option>simple</option><option>excel</option><option>custom</option></select></label>
+                        <span class="muted">Pick <code>excel</code>: one write, three inputs change, one <code>update</code> in the log. <code>custom</code> sets nothing else.</span>
                     </div>
                     <div class="controls">
                         <button id="in05-explicit"><code>setAttributes({ mode: 'excel', editTrigger: 'none' })</code></button>
-                        <button id="in05-assign"><code>el.items = ['Alpha', 'Beta']</code></button>
-                        <button id="in05-staged">Assign, then read <code>el.items</code> immediately</button>
+                        <span class="muted">The excel preset says <code>dblclick</code>, but <code>editTrigger</code> stays <code>none</code> — the explicit value wins. <code>hasGridLines</code> still comes from the preset.</span>
                     </div>
                     <table class="reference-table table-compact mt-1">
                         <tbody id="in05-state"></tbody>
                     </table>
                 </div>
                 <div>
-                    <label class="demo-label">Hook calls / reads:</label>
+                    <label class="demo-label">Hook calls:</label>
                     <div class="log-panel log-panel--dark" id="in05-log" style="--log-max-height: 420px"></div>
                 </div>
             </div>
@@ -312,8 +309,6 @@ document.body.append(fresh);            // ONE reinit() with the full config</pr
     })[mode] ?? null },                                   // null / {} → set nothing else
   { configKey: 'editTrigger',  attribute: 'edit-trigger', converter: toEnum(['click', 'dblclick', 'none']), shouldReflect: true },
   { configKey: 'hasGridLines', attribute: 'grid-lines',   converter: toBool('presence'), shouldReflect: true },
-  { configKey: 'items', converter: toObjectArray(), default: [], on: 'reinit',
-    getLiveValue: (el) =&gt; el.liveRows },                 // undefined → falls back to the stored value
 ];
 
 el.mode = 'excel';                  // → ONE update({ mode, editTrigger: 'dblclick', hasGridLines: true })
@@ -321,10 +316,53 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
         </div>
 
         <!-- ============================================================= -->
-        <!-- IN06 · API summary                                            -->
+        <!-- IN06 · Live getters                                           -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>IN06 · API summary</h2>
+            <h2>IN06 · Live getters (<code>getLiveValue</code>)</h2>
+            <p>
+                A row's <code>getLiveValue(el)</code> makes the property <em>getter</em> return live component state instead
+                of the value you assigned. The component below lets the user add rows: <code>el.items</code> reports them,
+                while <code>this.config.items</code> keeps the array you assigned. The setter is unchanged. Right after an
+                assignment (still staged, not built yet) the getter returns what you just assigned.
+            </p>
+            <div class="grid-2">
+                <div>
+                    <core-demo-presets id="in06-el"></core-demo-presets>
+                    <div class="controls mt-1">
+                        <button id="in06-assign">1 · <code>el.items = ['Alpha', 'Beta']</code></button>
+                        <span class="muted">A plain assignment: both rows of the table below show the same two items.</span>
+                    </div>
+                    <div class="controls">
+                        <span class="muted"><strong>2 ·</strong> Click <strong>+ Add row</strong> inside the component above, then compare the last two table rows: <code>el.items</code> has the new row, <code>this.config.items</code> does not.</span>
+                    </div>
+                    <div class="controls">
+                        <button id="in06-staged">3 · <code>el.items = ['Fresh']</code>, read <code>el.items</code> at once</button>
+                        <span class="muted">Before the flush runs, the getter returns <code>['Fresh']</code> (what you assigned), not the old live rows.</span>
+                    </div>
+                    <table class="reference-table table-compact mt-1">
+                        <tbody id="in06-state"></tbody>
+                    </table>
+                </div>
+                <div>
+                    <label class="demo-label">Reads:</label>
+                    <div class="log-panel log-panel--dark" id="in06-log" style="--log-max-height: 420px"></div>
+                </div>
+            </div>
+            <div class="code-block"><pre>static inputs = [
+  { configKey: 'items', converter: toObjectArray(), default: [], on: 'reinit',
+    getLiveValue: (el) =&gt; el.liveRows },                 // undefined → falls back to the stored value
+];
+
+el.items = ['Alpha', 'Beta'];       // setter: stored in this.config.items, as always
+el.items;                           // getter: the component's live rows (user-added ones included)</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- IN07 · API summary                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>IN07 · API summary</h2>
             <table class="reference-table">
                 <thead><tr><th>API</th><th>What it does</th></tr></thead>
                 <tbody>
@@ -635,7 +673,7 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
             sandbox.replaceChildren();
         });
 
-        // ── IN05 · presets & live getters ────────────────────────────────────
+        // ── IN05 · presets ───────────────────────────────────────────────────
         const el5 = $('in05-el');
         const log5 = $('in05-log');
         const state5 = () => {
@@ -643,11 +681,9 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
                 ['el.mode', fmt(el5.mode), fmtAttr(el5.getAttribute('mode'))],
                 ['el.editTrigger', fmt(el5.editTrigger), fmtAttr(el5.getAttribute('edit-trigger'))],
                 ['el.hasGridLines', fmt(el5.hasGridLines), fmtAttr(el5.getAttribute('grid-lines'))],
-                ['el.items (live getter)', fmt(el5.items), '—'],
-                ['this.config.items (assigned)', fmt(el5.assignedItems), '—'],
             ];
             $('in05-state').innerHTML = '<tr><th>read</th><th>value</th><th>attribute</th></tr>'
-                + rows.map(([k, v, a]) => `<tr data-read="${esc(k)}"><td><code>${esc(k)}</code></td><td><code>${esc(v)}</code></td><td>${a === '—' ? a : `<code>${esc(a)}</code>`}</td></tr>`).join('');
+                + rows.map(([k, v, a]) => `<tr data-read="${esc(k)}"><td><code>${esc(k)}</code></td><td><code>${esc(v)}</code></td><td><code>${esc(a)}</code></td></tr>`).join('');
         };
         el5.addEventListener('hook', (e) => log(log5, `◆ ${esc(describeHook(e.detail))}`, 'info'));
         $('in05-mode').addEventListener('change', async (e) => {
@@ -662,25 +698,40 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
             $('in05-mode').value = 'excel';
             state5();
         });
-        $('in05-assign').addEventListener('click', async () => {
-            log(log5, "› <code>el.items = ['Alpha', 'Beta']</code>", 'action');
-            el5.items = ['Alpha', 'Beta'];
-            await el5.whenSettled();
-            state5();
-        });
-        $('in05-staged').addEventListener('click', async () => {
-            log(log5, "› <code>el.items = ['Fresh']; el.items</code>", 'action');
-            el5.items = ['Fresh'];
-            log(log5, `  read while staged → ${esc(fmt(el5.items))} (what you just assigned)`, 'ok');
-            await el5.whenSettled();
-            state5();
-        });
-        // The component's own "+ Add row" button lives in its shadow DOM; the click is composed.
-        el5.addEventListener('click', (e) => {
-            if (!e.composedPath().some((n) => n.classList?.contains('add-row'))) return;
-            log(log5, `  component added a row → el.items has ${el5.items.length}, this.config.items still ${el5.assignedItems.length}`, 'muted');
-            state5();
-        });
         await el5.whenSettled();
         state5();
+
+        // ── IN06 · live getters ──────────────────────────────────────────────
+        const el6 = $('in06-el');
+        const log6 = $('in06-log');
+        const state6 = () => {
+            const rows = [
+                ['el.items (live getter)', fmt(el6.items)],
+                ['this.config.items (assigned)', fmt(el6.assignedItems)],
+            ];
+            $('in06-state').innerHTML = '<tr><th>read</th><th>value</th></tr>'
+                + rows.map(([k, v]) => `<tr data-read="${esc(k)}"><td><code>${esc(k)}</code></td><td><code>${esc(v)}</code></td></tr>`).join('');
+        };
+        $('in06-assign').addEventListener('click', async () => {
+            log(log6, "› <code>el.items = ['Alpha', 'Beta']</code>", 'action');
+            el6.items = ['Alpha', 'Beta'];
+            await el6.whenSettled();
+            log(log6, `  el.items → ${esc(fmt(el6.items))}, this.config.items → ${esc(fmt(el6.assignedItems))} (the same)`, 'ok');
+            state6();
+        });
+        $('in06-staged').addEventListener('click', async () => {
+            log(log6, "› <code>el.items = ['Fresh']; el.items</code>", 'action');
+            el6.items = ['Fresh'];
+            log(log6, `  read while staged → ${esc(fmt(el6.items))} (what you just assigned)`, 'ok');
+            await el6.whenSettled();
+            state6();
+        });
+        // The component's own "+ Add row" button lives in its shadow DOM; the click is composed.
+        el6.addEventListener('click', (e) => {
+            if (!e.composedPath().some((n) => n.classList?.contains('add-row'))) return;
+            log(log6, `  component added a row → el.items has ${el6.items.length}, this.config.items still ${el6.assignedItems.length}`, 'muted');
+            state6();
+        });
+        await el6.whenSettled();
+        state6();
     </script>
