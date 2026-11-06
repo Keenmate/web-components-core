@@ -413,10 +413,13 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
                 const now = performance.now();
                 if (now - lastHop > 400) hop = 0;
                 lastHop = now;
-                const ring = (color) => ({ outline: `3px solid ${color}`, outlineOffset: '3px' });
-                target.animate([ring('#f59e0b'), ring('transparent')], {
-                    duration: reduceMotion.matches ? 1 : 700,
-                    delay: reduceMotion.matches ? 0 : hop++ * 180,
+                // A sonar ping: the ring leaves the edge and fades as it grows.
+                target.animate([
+                    { outline: '3px solid #f59e0b', outlineOffset: '0px' },
+                    { outline: '1px solid transparent', outlineOffset: '12px' },
+                ], {
+                    duration: reduceMotion.matches ? 1 : 300,
+                    delay: reduceMotion.matches ? 0 : hop++ * 120,
                     easing: 'ease-out',
                     fill: 'backwards',
                 });
