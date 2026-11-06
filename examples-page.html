@@ -229,9 +229,9 @@ window.components.renderLoadingCallback = null;     // a non-function reads as u
                 component, together with the page-wide layer in PG05. Only C changes here; D shows the shared sheet.
             </p>
             <div class="controls">
-                <button id="pg04-c-css">C.customStyles = thick green</button>
-                <button id="pg04-c-cb">C.getCustomStylesCallback = by tone</button>
-                <button id="pg04-c-clear">clear both on C</button>
+                <button id="pg04-c-css">Set C.customStyles = thick green</button>
+                <button id="pg04-c-cb">Set C.getCustomStylesCallback = by tone</button>
+                <button id="pg04-c-clear">Clear both on C</button>
             </div>
             <div class="demo-area">
                 <div class="field-row">
@@ -271,7 +271,7 @@ destroyCallback() { this.#styles.destroy(); }</pre></div>
                 PG01, PG03 and PG04 too. <strong>Reset page-wide state</strong> (top) clears it.
             </p>
             <div class="controls">
-                <button id="pg05-import">customStyles = "@import url('examples/pg-page-styles.css')"</button>
+                <button id="pg05-import">Set customStyles = "@import url('examples/pg-page-styles.css')"</button>
                 <span class="muted">One CSS file from the server for every card, fetched once: dotted purple borders everywhere.</span>
             </div>
             <div class="controls">
@@ -279,23 +279,23 @@ destroyCallback() { this.#styles.destroy(); }</pre></div>
                 <span class="muted">A card created now gets the page layer straight away.</span>
             </div>
             <div class="controls">
-                <button id="pg05-cb">getCustomStylesCallback = background by tone</button>
+                <button id="pg05-cb">Set getCustomStylesCallback = background by tone</button>
                 <span class="muted">Runs once per card with that card's context: each card gets the background for its own tone (printed on the card). While it is set it <strong>replaces</strong> <code>customStyles</code>, so the file's dotted borders go away.</span>
             </div>
             <div class="controls">
-                <button id="pg05-cb-null">getCustomStylesCallback = null</button>
+                <button id="pg05-cb-null">Set getCustomStylesCallback = null</button>
                 <span class="muted">No callback any more: <code>customStyles</code> (the file) applies again.</span>
             </div>
             <div class="controls">
-                <button id="pg05-override">G.customStyles = solid orange</button>
+                <button id="pg05-override">Set G.customStyles = solid orange</button>
                 <span class="muted">G's own CSS comes after the page layer and overrides it, on G only.</span>
             </div>
             <div class="controls">
-                <button id="pg05-bad">customStyles = 42</button>
+                <button id="pg05-bad">Set customStyles = 42</button>
                 <span class="muted">Not a string: a warning (see the log) and the previous value stays.</span>
             </div>
             <div class="controls">
-                <button id="pg05-late"><code>window.components['core-demo-pg-late'].register()</code></button>
+                <button id="pg05-late">Call <code>window.components['core-demo-pg-late'].register()</code></button>
                 <span class="muted">The page set this tag's <code>customStyles</code> in an early <code>&lt;script&gt;</code>, before core loaded. <code>registerComponent()</code> kept it, so the card upgrades already styled (double orange border).</span>
             </div>
             <div class="controls">
