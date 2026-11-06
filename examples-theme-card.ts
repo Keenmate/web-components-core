@@ -41,9 +41,11 @@ export class ThemeCard extends BlissElement {
   #changes = 0;
   #meta?: HTMLElement;
 
-  protected override connect(): void {
-    if (this.shadowRoot) return;
-    const root = this.attachShadow({ mode: 'open' });
+  // Structure is built once, in reinit() (first connect). A DOM move only re-runs
+  // connect()/disconnect(), so the card keeps its counter. The theme subscription is
+  // core's own live side — it starts and stops with connect / disconnect.
+  protected override reinit(): void {
+    const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
     root.innerHTML = `
       <style>${STYLES}</style>
       <div class="tc">

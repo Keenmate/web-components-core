@@ -168,11 +168,24 @@
         <!-- ============================================================= -->
         <div class="card">
             <h2>TH05 · API &amp; component CSS</h2>
+            <table class="reference-table">
+                <thead><tr><th>API</th><th>What it does</th></tr></thead>
+                <tbody>
+                    <tr><td><code>setThemeMode(mode)</code></td><td>Force every component to <code>'dark'</code> or <code>'light'</code>; <code>'auto'</code> goes back to detection. While forced, the observers pause.</td></tr>
+                    <tr><td><code>getThemeMode()</code></td><td><code>'auto' | 'dark' | 'light'</code>.</td></tr>
+                    <tr><td><code>getThemeContext(host?, source?)</code></td><td>The <strong>effective</strong> scheme right now: the forced mode, else the detected one (the <code>source</code> element's signal, else the page). <code>'dark' | 'light' | null</code>.</td></tr>
+                    <tr><td><code>observeThemeContext(host, source, cb, { shouldFireImmediately? })</code></td><td>Calls <code>cb(scheme)</code> now (unless <code>shouldFireImmediately: false</code>), then only when the effective scheme changes. The source is resolved once. Returns the unsubscribe. <code>BlissElement</code> does this for you: hook <code>themeChanged(scheme)</code>.</td></tr>
+                    <tr><td><code>readThemeSignal(el)</code></td><td>The signal on one element: <code>data-theme</code>, then <code>data-bs-theme</code>, then <code>.dark</code> / <code>.light</code>. Only <code>dark</code> / <code>light</code> count; else <code>null</code>.</td></tr>
+                    <tr><td><code>resolveThemeSource(host, source)</code></td><td>The element a <code>source</code> points at for <code>host</code>, or <code>null</code> for the page (also for <code>&lt;html&gt;</code> / <code>&lt;body&gt;</code> and an invalid selector).</td></tr>
+                    <tr><td><code>THEME_CONTEXT_ATTRIBUTE</code> · <code>THEME_SOURCE_ATTRIBUTE</code></td><td><code>'data-context-theme'</code> (what core writes on the host) · <code>'theme-source'</code> (the attribute every <code>BlissElement</code> reads).</td></tr>
+                    <tr><td>Types</td><td><code>ColorScheme</code> (<code>'dark' | 'light'</code>), <code>ThemeMode</code> (<code>ColorScheme | 'auto'</code>), <code>ThemeSource</code> (<code>string | Element | null</code>), <code>ThemeListener</code>, <code>ObserveThemeContextOptions</code>.</td></tr>
+                </tbody>
+            </table>
             <div class="code-block"><pre>import { setThemeMode, getThemeMode, getThemeContext } from '@keenmate/web-components-core';
 
 setThemeMode('dark');   // force every component; 'light' | 'auto' (detect)
 getThemeMode();         // 'auto' | 'dark' | 'light'
-getThemeContext();      // the detected page scheme: 'dark' | 'light' | null
+getThemeContext();      // the effective page scheme: forced mode, else detected; 'dark' | 'light' | null
 
 // Per component (every BlissElement):
 //   &lt;my-el data-theme="dark"&gt;           force this one (component CSS, wins)

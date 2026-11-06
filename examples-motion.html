@@ -93,13 +93,17 @@ el.motion = 'snappy';</pre></div>
                     <core-demo-motion id="mo02-c" label="C · motion=&quot;auto&quot;"></core-demo-motion>
                 </div>
             </div>
-            <div class="grid-2">
+            <div class="grid-2" id="mo02-d-wrap">
                 <core-demo-motion id="mo02-d" label="D · motion=&quot;auto&quot;, outside the section"></core-demo-motion>
             </div>
             <table class="reference-table table-compact table-full mt-1">
-                <thead><tr><th>Component</th><th>Effective level</th><th>Decided by</th><th>Knob speed</th></tr></thead>
+                <thead><tr><th>Component</th><th>Effective level <span class="pill pill--warn">demo helper</span></th><th>Decided by <span class="pill pill--warn">demo helper</span></th><th>Knob speed</th></tr></thead>
                 <tbody id="mo02-table"></tbody>
             </table>
+            <p class="muted">
+                “Effective level” and “Decided by” are worked out by this page (it walks up the DOM the way CSS
+                inheritance does), not by core. “Knob speed” is real: the computed transition the knob runs at.
+            </p>
             <div class="output">
                 <div class="output-label">What core wrote to the DOM (<code>data-motion</code> attributes):</div>
                 <pre id="mo02-dom"></pre>
@@ -110,6 +114,35 @@ el.motion = 'snappy';</pre></div>
   &lt;web-multiselect&gt;&lt;/web-multiselect&gt;             &lt;!-- auto: core writes nothing, inherits "none" --&gt;
   &lt;web-multiselect motion="snappy"&gt;&lt;/web-multiselect&gt;  &lt;!-- its own level beats the section --&gt;
 &lt;/section&gt;</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- MO03 · API summary                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>MO03 · API summary</h2>
+            <table class="reference-table">
+                <thead><tr><th>API</th><th>What it does</th></tr></thead>
+                <tbody>
+                    <tr><td><code>motion</code> input · <code>motion="…"</code></td><td>On every <code>BlissElement</code>: <code>auto</code> (default) <code>| none | snappy | smooth</code>. Reflects. Core writes the element's own level to <code>data-motion</code> on the host; <code>auto</code> writes nothing. An invalid value warns and keeps the previous one.</td></tr>
+                    <tr><td><code>window.components.motion</code></td><td>The page level (non-enumerable). Written once on <code>&lt;html data-motion&gt;</code>; <code>auto</code> removes it again (or puts back an author value). An invalid value reads as <code>auto</code>.</td></tr>
+                    <tr><td><code>getPageMotion()</code></td><td>The page level (<code>'auto'</code> when unset).</td></tr>
+                    <tr><td><code>observePageMotion(cb)</code></td><td>Calls <code>cb(level)</code> when the page level changes. Returns the unsubscribe.</td></tr>
+                    <tr><td><code>MOTION_VALUES</code></td><td><code>['auto', 'none', 'snappy', 'smooth']</code>.</td></tr>
+                    <tr><td><code>MOTION_PRESETS</code></td><td>The four speeds per level, as <code>--base-duration-fast / -normal / -medium / -slow</code>: <code>none</code> 0s · 0s · 0s · 0s; <code>snappy</code> 0.05s · 0.08s · 0.12s · 0.15s; <code>smooth</code> 0.15s · 0.25s · 0.35s · 0.45s. <code>--base-scroll-behavior</code> is <code>auto</code> for <code>none</code>, <code>smooth</code> for the others.</td></tr>
+                    <tr><td><code>MOTION_CSS</code></td><td>The <code>[data-motion]</code> rules that set those tokens, plus the <code>prefers-reduced-motion: reduce</code> rule that zeroes them.</td></tr>
+                    <tr><td><code>adoptMotionStyles(node)</code></td><td>Adopts <code>MOTION_CSS</code> into the root <code>node</code> lives in and into its document. Core does this for every element; idempotent.</td></tr>
+                    <tr><td><code>MOTION_ATTRIBUTE</code> · <code>MOTION_DATA_ATTRIBUTE</code></td><td><code>'motion'</code> (the input) · <code>'data-motion'</code> (what core writes).</td></tr>
+                    <tr><td>Types</td><td><code>Motion</code>.</td></tr>
+                </tbody>
+            </table>
+            <div class="note">
+                <div class="note-title">Rules of the road</div>
+                Closest wins, like CSS inheritance: the element's own <code>motion</code> → the nearest
+                <code>data-motion</code> (a section) → the page → the component's own speed. The OS "reduce motion"
+                setting always wins. Components animate only through the <code>--base-duration-*</code> /
+                <code>--base-scroll-behavior</code> tokens.
+            </div>
         </div>
 
     <script type="module" src="examples-motion-card.ts"></script>
@@ -234,7 +267,7 @@ el.motion = 'snappy';</pre></div>
         });
         $('mo02-slide').addEventListener('click', () => {
             slide('#mo02-section-el', 'mo02-log');
-            for (const demo of document.querySelectorAll('#mo02-d')) demo.toggle();
+            slide('#mo02-d-wrap', 'mo02-log');
             render2();
         });
         const resetMo02 = () => {

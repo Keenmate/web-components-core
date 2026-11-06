@@ -15,8 +15,10 @@
                 they are <strong>different axes</strong>: <code>classifyDevice(env)</code> decides by
                 <em>capability first</em> — a device whose primary pointer is not touch (<code>isTouchPrimary</code> =
                 <code>(pointer: coarse)</code> and not <code>(hover: hover)</code>) is <code>desktop</code> at
-                <em>any</em> width; only a touch-primary device looks at its shorter side (below
-                <code>TABLET_MIN_SHORT_SIDE</code> = 600 → <code>mobile</code>, else <code>tablet</code>).
+                <em>any</em> width; only a touch-primary device looks at its short side (below
+                <code>TABLET_MIN_SHORT_SIDE</code> = 600 → <code>mobile</code>, else <code>tablet</code>). The short side is
+                <code>min(viewport width, screen short side)</code>, not the viewport height — so a soft keyboard that
+                shrinks the height can't turn a tablet into a phone.
                 <code>env.breakpoint</code> is the plain window-width bucket: <code>mobile ≤ 768</code>,
                 <code>tablet ≤ 1024</code>, then <code>desktop</code> — lines taken once from the
                 <code>--base-breakpoint-mobile</code> / <code>--base-breakpoint-tablet</code> tokens when the page defines
@@ -66,7 +68,7 @@
             </div>
             <div class="code-block"><pre>import { getEnvironment, observeEnvironment, observeViewport, classifyDevice, configureBreakpoints } from '@keenmate/web-components-core';
 
-const env = getEnvironment();          // { pointer, canHover, isTouchPrimary, orientation, viewportWidth, breakpoint, os, … }
+const env = getEnvironment();          // { pointer, canHover, isTouchPrimary, orientation, viewportWidth, screenShortSide, breakpoint, os, … }
 classifyDevice(env);                   // 'mobile' | 'tablet' | 'desktop'
 
 const offDiscrete   = observeEnvironment((env) =&gt; …, { shouldFireImmediately: false }); // category flips only
@@ -104,6 +106,7 @@ configureBreakpoints({ mobile: 640, tablet: 1100, desktop: Infinity });         
             </table>
             <div class="code-block"><pre>import { resolvePresentation, DEFAULT_PRESENTATION_MAP } from '@keenmate/web-components-core';
 
+// setPresentation() / this.presentation are the component's own (not BlissElement API).
 protected override environmentChanged(env) {
   // "on a tablet, use a modal" — phone and desktop keep the defaults:
   this.setPresentation(resolvePresentation(this.presentation, env, { tablet: 'modal' }));
@@ -228,8 +231,9 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
                 Maps key on the two discrete axes only. Anything finer — your own width, orientation, a device class
                 <em>and</em> a width — goes in a callback. While any callback layer applies, the element also listens on
                 the <strong>continuous</strong> viewport channel, so <code>env.viewportWidth &lt; 600</code> is re-checked
-                between breakpoint lines. The result is diffed: the callback runs on every (throttled) size change, but
-                <code>update()</code> only fires when the returned values actually change.
+                between breakpoint lines. The callback also re-runs on every flush (a base value changed) and whenever a
+                page rule changes. The result is diffed: the callback runs often, but <code>update()</code> only fires
+                when the returned values actually change.
             </p>
             <div class="grid" style="--grid-min: 16rem; --grid-gap: 1rem">
                 <div class="demo-area">
@@ -299,18 +303,19 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
             <table class="reference-table">
                 <thead><tr><th>API</th><th>What it does</th></tr></thead>
                 <tbody>
-                    <tr><td><code>getEnvironment()</code></td><td>Synchronous <code>EnvironmentSnapshot</code>: <code>pointer</code>, <code>hasCoarsePointer</code>, <code>canHover</code>, <code>isTouchPrimary</code>, <code>orientation</code>, <code>viewportWidth</code>/<code>Height</code>, <code>breakpoint</code>, <code>os</code>, <code>isApple</code>, <code>isAndroid</code>.</td></tr>
+                    <tr><td><code>getEnvironment()</code></td><td>Synchronous <code>EnvironmentSnapshot</code>: <code>pointer</code>, <code>hasCoarsePointer</code>, <code>canHover</code>, <code>isTouchPrimary</code>, <code>orientation</code>, <code>viewportWidth</code>/<code>Height</code>, <code>screenShortSide</code> (shorter side of the screen; <code>undefined</code> without one), <code>breakpoint</code>, <code>os</code>, <code>isApple</code>, <code>isAndroid</code>.</td></tr>
                     <tr><td><code>observeEnvironment(cb, { shouldFireImmediately? })</code></td><td>Discrete channel — category flips only. Returns the unsubscribe. <code>BlissElement</code> hook: <code>environmentChanged(env)</code>.</td></tr>
                     <tr><td><code>observeViewport(cb, opts)</code></td><td>Continuous channel — size changes, throttled ≈30 ms (leading + trailing). Hook: <code>viewportChanged(env)</code>.</td></tr>
-                    <tr><td><code>sizeChanged(size)</code> · <code>observeElementSize(el, cb, opts)</code></td><td>The element's border-box <strong>layout</strong> size (transforms not applied), via one shared <code>ResizeObserver</code>; throttled ≈30 ms, deduped. The hook is override-gated (RS06).</td></tr>
+                    <tr><td><code>sizeChanged(size)</code> · <code>observeElementSize(el, cb, opts)</code></td><td>The element's border-box <strong>layout</strong> size (transforms not applied), via one shared <code>ResizeObserver</code>; deduped. <code>opts</code>: <code>shouldFireImmediately</code> (default <code>true</code>), <code>throttleMs</code> (default 30, <code>0</code> = off). The hook is override-gated (RS06).</td></tr>
                     <tr><td><code>configureBreakpoints(map)</code></td><td>Redefine the width buckets globally (beats the <code>--base-breakpoint-*</code> tokens). Default <code>{ mobile: 768, tablet: 1024, desktop: Infinity }</code>.</td></tr>
-                    <tr><td><code>classifyDevice(env)</code></td><td><code>'mobile' | 'tablet' | 'desktop'</code> — not touch-primary → desktop; else short side &lt; <code>TABLET_MIN_SHORT_SIDE</code> (600) → mobile, else tablet.</td></tr>
+                    <tr><td><code>classifyDevice(env)</code></td><td><code>'mobile' | 'tablet' | 'desktop'</code> — not touch-primary → desktop; else <code>min(viewportWidth, screenShortSide)</code> &lt; <code>TABLET_MIN_SHORT_SIDE</code> (600) → mobile, else tablet. Without a screen size it uses the shorter viewport side.</td></tr>
                     <tr><td><code>resolvePresentation(mode, env, map?)</code></td><td>Forced mode as-is; <code>auto</code> → <code>map[deviceClass] ?? DEFAULT_PRESENTATION_MAP[deviceClass]</code>.</td></tr>
+                    <tr><td><code>createPresentationContext(presentation)</code></td><td>Builds a <code>PresentationContext</code> — <code>{ presentation, isFullscreen, isModal }</code> — to spread into a render callback's context, so a custom renderer can adapt to how the panel is shown.</td></tr>
                     <tr><td><code>window.components.responsive</code> / <code>.responsiveCallback</code></td><td>Page-wide rule layers (non-enumerable; unknown keys skipped silently). Set to <code>null</code> to clear.</td></tr>
                     <tr><td><code>window.components[tag].responsive</code> / <code>.responsiveCallback</code></td><td>Per-tag layers (installed by <code>registerComponent()</code>; a pre-existing entry is adopted).</td></tr>
                     <tr><td><code>el.responsive</code> / <code>responsive='{…}'</code></td><td>Instance map <code>{ device?, breakpoint? }</code>; breakpoint entry first, device entry over it. A <code>null</code> entry = ignore page rules.</td></tr>
                     <tr><td><code>el.responsiveCallback = (ctx) =&gt; …</code></td><td>Instance callback; <code>ctx = { env, deviceClass, breakpoint, element, component, config }</code> (<code>config</code> = frozen base). Return a partial, <code>undefined</code> (nothing) or <code>null</code> (ignore page rules). A throw is logged and treated as <code>undefined</code>.</td></tr>
-                    <tr><td>Types</td><td><code>ResponsiveMap&lt;C&gt;</code>, <code>ResponsiveMapAxis</code>, <code>ResponsiveContext&lt;C&gt;</code>, <code>ResponsiveCallback&lt;C&gt;</code>, <code>EnvironmentSnapshot</code>, <code>DeviceClass</code>, <code>Presentation</code>, <code>ResolvedPresentation</code>, <code>PresentationMap</code>.</td></tr>
+                    <tr><td>Types</td><td><code>ResponsiveMap&lt;C&gt;</code>, <code>ResponsiveMapAxis</code>, <code>ResponsiveContext&lt;C&gt;</code>, <code>ResponsiveCallback&lt;C&gt;</code>, <code>EnvironmentSnapshot</code>, <code>ObserveEnvironmentOptions</code>, <code>PointerAccuracy</code>, <code>BreakpointMap</code>, <code>DeviceClass</code>, <code>ElementSize</code>, <code>ObserveElementSizeOptions</code>, <code>Presentation</code>, <code>ResolvedPresentation</code>, <code>PresentationMap</code>, <code>PresentationContext</code>.</td></tr>
                 </tbody>
             </table>
             <div class="note">
@@ -365,7 +370,8 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
                 `pointer: <b id="env-pointer">${env.pointer}</b> · canHover: <b id="env-hover">${env.canHover}</b> · hasCoarsePointer: <b>${env.hasCoarsePointer}</b>`,
                 `orientation: <b id="env-orientation">${env.orientation}</b>`,
                 `os: <b>${env.os}</b> (UA hint) · isApple: <b>${env.isApple}</b> · isAndroid: <b>${env.isAndroid}</b>`,
-                `short side ${Math.min(env.viewportWidth, env.viewportHeight)} vs TABLET_MIN_SHORT_SIDE ${TABLET_MIN_SHORT_SIDE}`,
+                `screenShortSide: <b>${env.screenShortSide ?? '(none)'}</b>`,
+                `short side min(${env.viewportWidth}, ${env.screenShortSide ?? env.viewportHeight}) = <b id="env-short">${Math.min(env.viewportWidth, env.screenShortSide ?? env.viewportHeight)}</b> vs TABLET_MIN_SHORT_SIDE ${TABLET_MIN_SHORT_SIDE}`,
             ].join('<br>');
         };
         observeEnvironment((env) => {
@@ -398,6 +404,7 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
         ];
         const simEnv = ([, w, h, cap]) => ({
             ...getEnvironment(), ...cap, viewportWidth: w, viewportHeight: h,
+            screenShortSide: Math.min(w, h), // a simulated device: its screen is its viewport
             orientation: h >= w ? 'portrait' : 'landscape', breakpoint: bucket(w),
         });
         const renderSim = () => {
@@ -453,7 +460,8 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
         }
         mapCard.addEventListener('config-applied', (e) => {
             const { kind, partial } = e.detail;
-            logTo($('map-log'), kind === 'reinit' ? 'reinit()  (layout changed → full rebuild)' : `update(${JSON.stringify(partial)})`);
+            const label = mapCard.reinitCount === 1 ? 'reinit()  (first build)' : 'reinit()  (layout changed → full rebuild)';
+            logTo($('map-log'), kind === 'reinit' ? label : `update(${JSON.stringify(partial)})`);
             renderMapReadout();
         });
         $('map-apply').addEventListener('click', () => {
