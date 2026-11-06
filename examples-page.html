@@ -31,8 +31,11 @@
                 connect / disconnect (a DOM move re-tracks the same element, no duplicate), so
                 <code>getInstances(tag)</code> and <code>getRegisteredTags()</code> (tags with at least one connected
                 instance) need no per-component bookkeeping. The page-wide <code>logging</code>,
-                <code>renderLoadingCallback</code> and <code>responsive*</code> members are non-enumerable, so
-                <code>Object.keys(window.components)</code> still lists tags only.
+                <code>renderLoadingCallback</code>, <code>motion</code> and <code>responsive*</code> members are
+                non-enumerable, so <code>Object.keys(window.components)</code> still lists tags only.
+                The readout's <code>getInstances()</code> also lists PG03's two loader demos
+                (<code>#demo-pg-load-a</code> / <code>-b</code>): they are <code>&lt;core-demo-pg&gt;</code> elements too.
+                <strong>Remove the last one</strong> removes only elements added here, so it does nothing until you add one.
             </p>
             <div class="controls">
                 <button id="pg01-add">Add a <code>&lt;core-demo-pg&gt;</code></button>
@@ -256,6 +259,9 @@ a.shadowRoot.querySelectorAll('style.pgd-custom').length;                    // 
                     <tr><td><code>this.log.&lt;CATEGORY&gt;</code></td><td>Protected instance loggers: <code>[NS:CAT] #id</code>; a tag with no bundle → <code>[CORE:ELEMENT] tag#id</code>.</td></tr>
                     <tr><td><code>el.enableLogging(level?)</code> · <code>el.disableLogging()</code> · <code>el.resetLogging()</code> · <code>el.isLoggingEnabled</code></td><td>The element's own level; it wins over its type and the page (louder or quieter).</td></tr>
                     <tr><td><code>window.components.logging</code> / <code>getGlobalLogging()</code></td><td>The page level (<code>enableLogging</code> / <code>disableLogging</code> / <code>setLogLevel</code> / <code>resetLogging</code> / <code>getCategories</code>) for every bundle, CORE included, and later ones, wherever a type has no own level. Non-enumerable; state on <code>globalThis</code>.</td></tr>
+                    <tr><td><code>createPerfLogger(namespace)</code></td><td>Opt-in timings through a <code>NAMESPACE:PERF</code> logger: <code>start</code> / <code>end</code> / <code>measure</code> / <code>summary</code> / <code>clear</code>. Records and prints only at <code>debug</code> or below.</td></tr>
+                    <tr><td><code>setLogPersistKeyPrefix(prefix)</code> · <code>getLogPersistKeyPrefix()</code></td><td>The <code>localStorage</code> key prefix for levels saved by <code>logger.setLevel(x)</code>: <code>${prefix}:${loggerName}</code>, default <code>km-log</code>. Page-wide; existing loggers re-read their level.</td></tr>
+                    <tr><td><code>LOG_LEVELS</code> · <code>isLogLevel(x)</code> · <code>toLogLevelNumber(x)</code></td><td>Level ranks (<code>TRACE</code> 0 … <code>SILENT</code> 5); is <code>x</code> a level name (either case) or rank; name or rank → rank (<code>undefined</code> if neither).</td></tr>
                     <tr><td><code>coreLogging</code> · <code>getCoreLogging()</code> · <code>CORE_LOG_CATEGORIES</code></td><td>Core's own bundle: <code>CORE:ELEMENT</code> / <code>ACTIONS</code> / <code>MENU</code> / <code>THEME</code>, created on first use (importing core has no side effect).</td></tr>
                     <tr><td><code>renderLoader(host, container, context, { label, prefix, renderLoadingCallback? })</code></td><td>Draws a loading state (instance hook &gt; page hook &gt; default span) and returns an idempotent <code>remove()</code>.</td></tr>
                     <tr><td><code>window.components.renderLoadingCallback</code></td><td>Page-wide loader hook (non-enumerable accessor; a non-function reads as unset).</td></tr>
@@ -369,7 +375,11 @@ a.shadowRoot.querySelectorAll('style.pgd-custom').length;                    // 
             log(panel2, `▶ ${text}`, 'action');
             const lines = captureConsole(fn);
             if (lines.length === 0) log(panel2, '(no console output)');
-            for (const { level, text: t } of lines) log(panel2, `${level.padEnd(5)} ${t}`, LEVEL_TONE[level]);
+            // The logger emits debug() through console.log (as loglevel does) — label it as debug.
+            for (const { level, text: t } of lines) {
+                const shown = level === 'log' ? 'debug' : level;
+                log(panel2, `${shown.padEnd(5)} ${t}`, LEVEL_TONE[shown]);
+            }
             render2();
         });
         act2('pg02-sample-a', 'A.logSample()', () => elA.logSample());

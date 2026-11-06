@@ -82,12 +82,13 @@ scrollIntoContainer(row, { block: 'start' });   // → the container it scrolled
                 scroller is the page's panel around the component. Right: the page's own rows slotted into
                 <code>&lt;core-demo-slot-box&gt;</code>, the scroller is inside that component's shadow root.
                 <code>&lt;html&gt;</code> and <code>&lt;body&gt;</code> never count, and neither does
-                <code>overflow: hidden</code>.
+                <code>overflow: hidden</code>: the last button switches the left panel to it for one call.
             </p>
             <div class="controls">
                 <label>row <input id="sc03-row" type="number" class="w-xs" min="0" max="39" value="25"></label>
                 <button id="sc03-find">findScrollContainer()</button>
                 <button id="sc03-scroll">scrollIntoContainer()</button>
+                <button id="sc03-hidden">find with the left panel <code>overflow: hidden</code></button>
             </div>
             <div class="grid-2">
                 <div>
@@ -121,6 +122,33 @@ scrollIntoContainer(row, { block: 'start' });   // → the container it scrolled
             <div class="code-block"><pre>scrollIntoContainer(row, { block: 'center', behavior: 'smooth', shouldRevealContainer: true });</pre></div>
         </div>
 
+        <!-- ============================================================= -->
+        <!-- SC05 · API                                                    -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>SC05 · API</h2>
+            <div class="code-block"><pre>import { findScrollContainer, scrollIntoContainer } from '@keenmate/web-components-core';
+
+findScrollContainer(el, {
+  stopAt,       // Element — stop the walk here (exclusive); default: walk up to &lt;body&gt;
+  axis,         // 'y' (default) | 'x' | 'both' — the axis that must actually scroll
+});             // → the nearest scrolling ancestor (flat tree), or null = only the page scrolls
+
+scrollIntoContainer(el, {
+  block,        // 'nearest' (default) | 'start' | 'center' | 'end'
+  inline,       // same values, horizontal; default 'nearest'
+  behavior,     // 'auto' (default, instant) | 'smooth'
+  container,    // scroll this one instead of searching
+  stopAt, axis, // passed to findScrollContainer()
+  shouldRevealContainer, // also bring the container into the viewport; default false
+});             // → the container it scrolled, or null (page fallback, or nothing scrolled)</pre></div>
+            <p>
+                No container found: the page scrolls with <code>window.scrollTo()</code> and the same alignment rules.
+                With <code>stopAt</code> set and no container below it, nothing scrolls. Nothing to move: no
+                <code>scrollTo()</code> call at all.
+            </p>
+        </div>
+
     <script type="module" src="examples-scroll-card.ts"></script>
 
     <script type="module">
@@ -147,7 +175,7 @@ scrollIntoContainer(row, { block: 'start' });   // → the container it scrolled
 
         /** Human name of a container the helper returned. */
         function describe(container) {
-            if (!container) return 'none — page fallback (scrollIntoView nearest)';
+            if (!container) return 'none — page fallback (window.scrollTo, same alignment)';
             if (container.id) return `#${container.id} (light DOM)`;
             const host = container.getRootNode()?.host;
             return host ? `the scroller inside <${host.localName}#${host.id}>'s shadow root` : container.localName;
@@ -222,6 +250,15 @@ scrollIntoContainer(row, { block: 'start' });   // → the container it scrolled
             const { i, shadowRow, slotted } = sc03Rows();
             log('sc03-log', 'ok', 'scroll', `left row ${i} → scrolled ${describe(scrollIntoContainer(shadowRow, { block: 'center' }))}`);
             log('sc03-log', 'ok', 'scroll', `right row ${i} → scrolled ${describe(scrollIntoContainer(slotted, { block: 'center' }))}`);
+        });
+
+        $('sc03-hidden').addEventListener('click', () => {
+            const { i, shadowRow } = sc03Rows();
+            const box = $('sc03-light-box');
+            box.style.overflowY = 'hidden';
+            const found = findScrollContainer(shadowRow);
+            box.style.overflowY = '';
+            log('sc03-log', 'warn', 'hidden', `left row ${i}, panel overflow: hidden → ${describe(found)}`);
         });
 
         // SC04 ------------------------------------------------------------

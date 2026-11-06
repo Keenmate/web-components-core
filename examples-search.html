@@ -69,9 +69,12 @@
         <div class="card">
             <h2>SE02 · <code>normalizeSearchText</code> — the three behaviors</h2>
             <p>
-                <code>normalized</code> strips combining marks after NFD and hand-folds the letters Unicode can't
-                decompose (<code>ł ø đ ð ħ ı ß→ss æ→ae œ→oe</code>, final <code>ς→σ</code>). Every behavior applies NFC
-                first, so the decomposed <code>Zlín</code> row (5 code units) equals the composed one (4).
+                <code>normalized</code> decomposes with NFKD (ligatures and full-width forms fold too: <code>ﬁ→fi</code>),
+                strips combining marks only after Latin, Greek and Cyrillic letters (a Devanagari vowel sign or a kana
+                dakuten stays), lowercases, and hand-folds the letters Unicode can't decompose
+                (<code>ł ø đ ð ħ ı ŧ ŀ ß→ss æ→ae œ→oe þ→th ĳ→ij</code>, final <code>ς→σ</code>).
+                <code>case-insensitive</code> lowercases and also folds <code>ß→ss</code> and <code>İ→i</code>.
+                Every behavior applies NFC first, so the decomposed <code>Zlín</code> row (5 code units) equals the composed one (4).
                 Export it to normalize a custom index exactly like built-in search.
             </p>
             <div class="controls">
@@ -89,8 +92,8 @@
         <div class="card">
             <h2>SE03 · <code>search-match</code> — where the term must sit</h2>
             <p>
-                One term against a few values, every mode at once. A word is a run of letters and digits
-                (<code>[\p{L}\p{N}]</code>), so <code>-</code> and <code>/</code> separate words and <code>324</code>
+                One term against a few values, every mode at once. A word is a run of letters, digits and
+                combining marks (<code>[\p{L}\p{N}\p{M}]</code>), so <code>-</code> and <code>/</code> separate words and <code>324</code>
                 starts a word in <code>HA-324/56</code> but not in <code>HA324</code> — try <code>324</code>, <code>ha</code>, <code>56</code>.
             </p>
             <div class="controls">
@@ -123,12 +126,15 @@
                     </tbody>
             </table>
             <p>
-                Markup is the caller's decision: <code>wrapRanges</code> takes <code>open</code> / <code>close</code> and
-                an <code>escape</code> applied to every slice of the text (never to the markers). Pass an HTML escaper when
-                labels are plain text; omit it when they are trusted HTML (web-multiselect's display values).
+                <code>wrapRanges</code> takes <code>open</code> / <code>close</code> and an <code>escape</code> applied to
+                every slice of the text (never to the markers). <code>escape</code> defaults to <code>escapeHtml</code>, so a
+                plain-text label comes out as safe HTML. A label that is already trusted HTML (web-multiselect's display
+                values) goes through <code>highlightHtml</code> instead: tags are kept and never marked, entities are never split.
+                The label below is <code>R&amp;D &lt;b&gt;Brno&lt;/b&gt;</code>, the term <code>brno</code>.
             </p>
             <div class="controls">
-                <label><input type="checkbox" id="hl-escape" checked> escape (label is plain text: <code>R&amp;D &lt;b&gt;Brno&lt;/b&gt;</code>, term <code>brno</code>)</label>
+                <label><input type="radio" name="hl-mode" value="text" checked> plain text — <code>wrapRanges(r.text, r.ranges)</code></label>
+                <label><input type="radio" name="hl-mode" value="html"> trusted HTML — <code>highlightHtml(label, term, opts)</code></label>
             </div>
             <div class="demo-area">
                 <div id="hl-escaped"></div>
@@ -143,11 +149,13 @@
             <h2>SE05 · Preparing the term — <code>getSearchTermCallback</code></h2>
             <p>
                 Users type part numbers however they like: <code>ha-324/56</code>, <code>ha 32456</code>,
-                <code>HA32456</code>. A component passes its <code>getSearchTermCallback</code> straight to
-                <code>prepareSearchTerm</code>: return a <code>RegExp</code> and it is matched against the raw value (made
-                stateless, so a <code>g</code> flag is harmless); return a string and it is used as-is, not normalized
-                again; return an object and built-in search can't use it (<code>onObjectTerm</code> — the component
-                warns; objects are for a custom <code>searchCallback</code>).
+                <code>HA32456</code>. The consumer's <code>getSearchTermCallback</code> gets one context object,
+                <code>{ term, target, behavior, match }</code>. For built-in search the component binds it to
+                <code>target: 'internal'</code> and hands <code>prepareSearchTerm</code> a plain <code>(term) =&gt; …</code>.
+                Return a <code>RegExp</code> and it is matched against the raw value (made stateless, so a <code>g</code>
+                flag is harmless); return a string and it is used as-is, not normalized again; return an object and
+                built-in search can't use it (<code>onObjectTerm</code> — the component warns; objects are for
+                <code>target: 'callback'</code>, the consumer's own <code>searchCallback</code>).
             </p>
             <div class="controls">
                 <input id="pn-term" type="search" value="ha-324/56" autocomplete="off">
@@ -157,11 +165,18 @@
                 <span class="pill">ActiveSearchTerm:&nbsp;<b id="pn-active"></b></span>
                 <ul class="results" id="pn-results"></ul>
             </div>
-            <div class="code-block"><pre>const getSearchTermCallback = (term) => {
+            <div class="code-block"><pre>// consumer side
+el.getSearchTermCallback = ({ term, target, behavior, match }) => {
   const parts = term.split(/[^a-z0-9]+/i).filter(Boolean);
   return parts.length ? new RegExp(parts.join('[^a-z0-9]*'), 'i') : null;
 };
-prepareSearchTerm(typed, { behavior, match, regex, getSearchTermCallback });</pre></div>
+
+// component side — bind the context, pass core a (term) => …
+const cb = this.getSearchTermCallback;
+prepareSearchTerm(typed, {
+  behavior, match, regex,
+  getSearchTermCallback: cb ? (term) => cb({ term, target: 'internal', behavior, match }) : undefined,
+});</pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -171,11 +186,15 @@ prepareSearchTerm(typed, { behavior, match, regex, getSearchTermCallback });</pr
             <h2>SE06 · Your own search — the <code>searchCallback</code> context</h2>
             <p>
                 Built-in search is strings only. Anything richer goes to the consumer's
-                <code>searchCallback(term, signal, { searchTerm, entries })</code> — the shape core's
-                <code>SearchCallbackContext</code> fixes for every component. <code>entries</code> pairs each item with
-                its search value (here an object, <code>{ title, zip }</code>), is built on first access, and stays the
-                <strong>same array</strong> until the items change, so an engine (FlexSearch, …) can key its index on
-                it. Type a city or a postal code (<code>335</code>, <code>602 00</code>).
+                <code>searchCallback(ctx)</code> — one argument, <code>{ term, signal, entries }</code>, the shape core's
+                <code>SearchCallbackContext</code> fixes for every component (a component adds its
+                <code>controller</code> / <code>element</code>). <code>term</code> is what
+                <code>getSearchTermCallback</code> returned for <code>target: 'callback'</code> (here an object), else
+                the typed text. <code>signal</code> aborts when a newer search starts. <code>entries</code> pairs each
+                record with its search value, <code>{ data, searchValue }</code> (here <code>searchValue</code> is
+                <code>{ title, zip }</code>). It is built on first access and stays the <strong>same array</strong> until
+                the items change, so an engine (FlexSearch, …) can key its index on it.
+                Type a city or a postal code (<code>335</code>, <code>602 00</code>).
             </p>
             <div class="controls">
                 <input id="cb-term" type="search" placeholder="City or postal code…" autocomplete="off">
@@ -185,21 +204,24 @@ prepareSearchTerm(typed, { behavior, match, regex, getSearchTermCallback });</pr
                 <div class="controls">
                     <span class="pill">entries built:&nbsp;<b id="cb-built">0</b></span>
                     <span class="pill">index (re)built:&nbsp;<b id="cb-indexed">0</b></span>
-                    <span class="pill">context.searchTerm:&nbsp;<b id="cb-searchterm">—</b></span>
+                    <span class="pill">ctx.term:&nbsp;<b id="cb-searchterm">—</b></span>
                 </div>
                 <ul class="results" id="cb-results"></ul>
             </div>
             <div class="code-block"><pre>// component side — what web-multiselect does
-const context = { searchTerm, get entries() { return cachedEntries ??= Object.freeze(items.map(
-  (item) => ({ item, searchValue: getSearchValueCallback(item) }))); } };
-await searchCallback(term, signal, context);
+const term = getSearchTermCallback
+  ? getSearchTermCallback({ term: typed, target: 'callback', behavior, match })
+  : typed;
+const ctx = { term, signal, get entries() { return cachedEntries ??= Object.freeze(items.map(
+  (data) => ({ data, searchValue: getSearchValueCallback(data) }))); } };
+await searchCallback(ctx);
 
 // consumer side
 getSearchValueCallback = (c) => ({ title: normalizeSearchText(c.city), zip: c.zip.replace(/[\s-]/g, '') });
-getSearchTermCallback  = (t) => ({ text: normalizeSearchText(t.trim()), zip: t.replace(/[\s-]/g, '') });
-searchCallback = (t, signal, { searchTerm, entries }) => {
+getSearchTermCallback  = ({ term }) => ({ text: normalizeSearchText(term.trim()), zip: term.replace(/[\s-]/g, '') });
+searchCallback = ({ term, signal, entries }) => {
   if (entries !== indexedFor) { index = buildIndex(entries); indexedFor = entries; } // once per item set
-  return index.search(searchTerm);
+  return index.search(term);
 };</pre></div>
         </div>
 
@@ -216,21 +238,23 @@ searchCallback = (t, signal, { searchTerm, entries }) => {
   prepareSearchTerm,                      // (term, { behavior, match, regex, getSearchTermCallback?, onObjectTerm? }) → ActiveSearchTerm
   matchesSearchTerm,                      // (term, match, prepared | () => prepared, raw | () => raw) → boolean
   findHighlightRanges,                    // (label, term, { behavior, match }) → { text, ranges }
-  wrapRanges,                             // (text, ranges, { open?, close?, escape? }) → string
+  wrapRanges,                             // (text, ranges, { open?, close?, escape? }) → string; escape defaults to escapeHtml
+  highlightHtml,                          // (trustedHtml, term, { behavior, match, open?, close? }) → string
+  escapeHtml,                             // (text) → text with &amp; &lt; &gt; " ' escaped
 } from '@keenmate/web-components-core/search';
 
 // types: SearchBehavior, SearchMatch, SearchTermContext, PreparedSearchTerm,
-//        SearchEntry, SearchCallbackContext, ActiveSearchTerm, SearchRange, HighlightResult</pre></div>
+//        SearchEntry, SearchCallbackContext, ActiveSearchTerm, SearchRange, HighlightResult,
+//        RegexCompiler, PrepareSearchTermOptions, WrapRangesOptions</pre></div>
         </div>
 
     <script type="module">
         import {
-            createRegexCompiler, findHighlightRanges, matchesSearchTerm, normalizeSearchText,
-            prepareSearchTerm, wrapRanges,
+            createRegexCompiler, escapeHtml, findHighlightRanges, highlightHtml, matchesSearchTerm,
+            normalizeSearchText, prepareSearchTerm, wrapRanges,
         } from '/src/search/index.ts';
 
         const $ = (id) => document.getElementById(id);
-        const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         const describe = (t) => t.kind === 'none' ? 'none'
             : t.kind === 'text' ? `text "${t.text}"` : `regex ${t.re}`;
         const NFD_ZLIN = 'Zli\u0301n'; // decomposed: i + combining acute
@@ -269,7 +293,7 @@ searchCallback = (t, signal, { searchTerm, entries }) => {
                 if (hit) count++;
                 if (!hit && !showMisses) return '';
                 const r = findHighlightRanges(label, term, { behavior, match });
-                const html = hit ? wrapRanges(r.text, r.ranges, { escape: escapeHtml }) : escapeHtml(label);
+                const html = hit ? wrapRanges(r.text, r.ranges) : escapeHtml(label);
                 return `<li class="${hit ? '' : 'is-miss'}">${html}<small>${escapeHtml(prepared[i])}</small></li>`;
             }).join('');
             $('pg-count').textContent = `${count} / ${PLACES.length}`;
@@ -314,7 +338,7 @@ searchCallback = (t, signal, { searchTerm, entries }) => {
                     if (term.kind === 'none') return '<td class="muted">—</td>';
                     if (!matchesSearchTerm(term, match, prepared, value)) return '<td class="muted">✗</td>';
                     const r = findHighlightRanges(value, term, { behavior, match });
-                    return `<td class="is-highlight">${wrapRanges(r.text, r.ranges, { escape: escapeHtml })}</td>`;
+                    return `<td class="is-highlight">${wrapRanges(r.text, r.ranges)}</td>`;
                 }).join('');
                 return `<tr><td class="mono">${escapeHtml(value)}</td>${cells}</tr>`;
             }).join('');
@@ -347,12 +371,20 @@ searchCallback = (t, signal, { searchTerm, entries }) => {
             const label = 'R&D <b>Brno</b>';
             const opts = { behavior: 'normalized', match: 'contains' };
             const term = prepareSearchTerm('brno', { ...opts, regex: createRegexCompiler() });
-            const r = findHighlightRanges(label, term, opts);
-            const html = wrapRanges(r.text, r.ranges, $('hl-escape').checked ? { escape: escapeHtml } : {});
+            let html;
+            if (document.querySelector('input[name="hl-mode"]:checked').value === 'html') {
+                // Trusted HTML: the <b> stays a tag, only the text between tags is marked.
+                // (As HTML, "R&D" is a bare & — fine; a real entity like &amp; would count as one character.)
+                html = highlightHtml(label, term, opts);
+            } else {
+                // Plain text: every slice is escaped (escape defaults to escapeHtml).
+                const r = findHighlightRanges(label, term, opts);
+                html = wrapRanges(r.text, r.ranges);
+            }
             $('hl-escaped').innerHTML = html;
             $('hl-escaped-src').textContent = html;
         }
-        $('hl-escape').addEventListener('change', renderEscape);
+        document.querySelectorAll('input[name="hl-mode"]').forEach((r) => r.addEventListener('change', renderEscape));
         renderEscape();
 
         // ---------------------------------------------------------------
@@ -360,21 +392,24 @@ searchCallback = (t, signal, { searchTerm, entries }) => {
         // ---------------------------------------------------------------
         const PARTS = ['HA-324/56', 'HA 324-56', 'HA32456', 'ha.324.56', 'HA-324/57', 'HB-324/56', 'XHA-324/56-B'];
         const pnRegex = createRegexCompiler();
-        const partPrepare = (t) => {
-            const parts = t.split(/[^a-z0-9]+/i).filter(Boolean);
+        // consumer's callback — one context object
+        const partPrepare = ({ term }) => {
+            const parts = term.split(/[^a-z0-9]+/i).filter(Boolean);
             return parts.length ? new RegExp(parts.join('[^a-z0-9]*'), 'i') : null;
         };
         function renderParts() {
             const behavior = 'normalized', match = 'contains';
+            const cb = $('pn-prepare').checked ? partPrepare : null;
+            // component side: bind the context for built-in search
             const term = prepareSearchTerm($('pn-term').value, {
                 behavior, match, regex: pnRegex,
-                getSearchTermCallback: $('pn-prepare').checked ? partPrepare : undefined,
+                getSearchTermCallback: cb ? (t) => cb({ term: t, target: 'internal', behavior, match }) : undefined,
             });
             $('pn-active').textContent = describe(term);
             $('pn-results').innerHTML = PARTS.map((p) => {
                 const hit = matchesSearchTerm(term, match, () => normalizeSearchText(p, behavior), p);
                 const r = findHighlightRanges(p, term, { behavior, match });
-                return `<li class="${hit ? '' : 'is-miss'}">${hit ? wrapRanges(r.text, r.ranges, { escape: escapeHtml }) : escapeHtml(p)}</li>`;
+                return `<li class="${hit ? '' : 'is-miss'}">${hit ? wrapRanges(r.text, r.ranges) : escapeHtml(p)}</li>`;
             }).join('');
         }
         $('pn-term').addEventListener('input', renderParts);
@@ -398,13 +433,14 @@ searchCallback = (t, signal, { searchTerm, entries }) => {
         // "component" state
         const comp = { items: CITY_SETS[0], set: 0, entries: null, builtCount: 0, controller: null };
         const getSearchValueCallback = (c) => ({ title: normalizeSearchText(c.city), zip: c.zip.replace(/[\s-]/g, '') });
-        const getSearchTermCallback = (t) => ({ text: normalizeSearchText(t.trim()), zip: t.replace(/[\s-]/g, '') });
-        function makeContext(searchTerm) {
+        const getSearchTermCallback = ({ term }) => ({ text: normalizeSearchText(term.trim()), zip: term.replace(/[\s-]/g, '') });
+        function makeContext(term, signal) {
             return {
-                searchTerm,
+                term,
+                signal,
                 get entries() {
                     if (!comp.entries) {
-                        comp.entries = Object.freeze(comp.items.map((item) => Object.freeze({ item, searchValue: getSearchValueCallback(item) })));
+                        comp.entries = Object.freeze(comp.items.map((data) => Object.freeze({ data, searchValue: getSearchValueCallback(data) })));
                         comp.builtCount++;
                     }
                     return comp.entries;
@@ -413,26 +449,26 @@ searchCallback = (t, signal, { searchTerm, entries }) => {
         }
         // consumer state — a toy "engine" indexed per entries identity
         const consumer = { indexedFor: null, index: null, indexCount: 0 };
-        async function searchCallback(term, signal, { searchTerm, entries }) {
+        async function searchCallback({ term, entries }) {
             if (entries !== consumer.indexedFor) {
-                consumer.index = entries.map((e) => ({ item: e.item, ...e.searchValue }));
+                consumer.index = entries.map((e) => ({ data: e.data, ...e.searchValue }));
                 consumer.indexedFor = entries;
                 consumer.indexCount++;
             }
             return consumer.index
-                .filter((r) => (searchTerm.zip && /\d/.test(searchTerm.zip) && r.zip.startsWith(searchTerm.zip))
-                    || (searchTerm.text && r.title.includes(searchTerm.text)))
-                .map((r) => r.item);
+                .filter((r) => (term.zip && /\d/.test(term.zip) && r.zip.startsWith(term.zip))
+                    || (term.text && r.title.includes(term.text)))
+                .map((r) => r.data);
         }
         async function runCallback() {
             comp.controller?.abort();
             comp.controller = new AbortController();
-            const term = $('cb-term').value;
+            const typed = $('cb-term').value;
             let results = comp.items;
-            if (term.trim()) {
-                const searchTerm = getSearchTermCallback(term);
-                $('cb-searchterm').textContent = JSON.stringify(searchTerm);
-                results = await searchCallback(term, comp.controller.signal, makeContext(searchTerm));
+            if (typed.trim()) {
+                const term = getSearchTermCallback({ term: typed, target: 'callback', behavior: 'normalized', match: 'contains' });
+                $('cb-searchterm').textContent = JSON.stringify(term);
+                results = await searchCallback(makeContext(term, comp.controller.signal));
             } else {
                 $('cb-searchterm').textContent = '—';
             }
