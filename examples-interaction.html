@@ -97,17 +97,35 @@ JSON.stringify(e.detail);                            // '{"count":1,"emittedBy":
         <div class="card">
             <h2>IA02 · <code>before*Callback</code>: one contract</h2>
             <p>
-                Every interceptor hook takes one <code>ctx</code> and answers with its return value:
-                <code>false</code> rejects (nothing starts), <code>undefined</code> continues unchanged, and any other
-                value (including <code>null</code>) continues <strong>with that value</strong>. What the value replaces
-                is the hook's own documented contract; here it's the new label, or the id to select instead. The hook
-                may be async. A throw counts as a reject and is logged as an error. Core runs it with
-                <code>runBeforeCallback(fn, ctx, name)</code>, which always returns a promise of
-                <code>{ isRejected, hasValue, value }</code>. <code>runBeforeCallbackEager</code> answers
-                <strong>synchronously when the hook does</strong> and returns a promise only for an async hook, so a
-                click that selects in the same tick stays synchronous for sync hooks. Pick what each hook returns, then
-                rename or select an item. The log shows whether <code>selectedId</code> had changed by the time
-                <code>select()</code> returned.
+                A <strong>before-callback</strong> lets the page veto or change an action before the component does
+                it. Here <code>beforeRenameCallback</code> runs before an item is renamed and
+                <code>beforeSelectCallback</code> before one is selected. Every component's before-callbacks follow the
+                same contract.
+            </p>
+            <p>
+                The hook gets one <code>ctx</code> describing what is about to happen (plus the hidden
+                <code>element</code> / <code>controller</code> from IA01) and answers with its return value:
+                <code>false</code> cancels and nothing happens; <code>undefined</code> (or no return) goes ahead
+                unchanged; any other value, even <code>null</code>, goes ahead <strong>with that value
+                instead</strong>. What the value means is up to each hook: here a replacement label, or a different id
+                to select. The hook may be async (return a promise). A hook that throws counts as a cancel and is logged
+                as an error.
+            </p>
+            <p>
+                Components run the hook through a core helper. <code>runBeforeCallback(fn, ctx, name)</code> always
+                waits (it returns a promise), which suits rename, an async method anyway.
+                <code>runBeforeCallbackEager</code> answers right away when the hook is synchronous and returns a promise
+                only for an async hook. Select uses it, so with a sync hook (or none) <code>el.select('beta')</code> has
+                already selected by the time it returns: the very next line reads <code>el.selectedId === 'beta'</code>.
+                With an async hook the selection lands later.
+            </p>
+            <p>
+                <strong>Try it.</strong> Pick a return value for each hook, then use the buttons below or the
+                <em>select</em> / <em>rename</em> buttons in each row. A rename proposes <code>"Alpha #1"</code>,
+                <code>"#2"</code>, …; the log shows what the hook answered, the final label and
+                <code>rename() resolved true / false</code>. For select, watch the line
+                <code>select() returned — el.selectedId = …</code>: with a sync hook it already shows the new id, with
+                an async one it still shows the old id and the <code>selected</code> line follows about 400 ms later.
             </p>
             <div class="controls">
                 <label><code>beforeRenameCallback</code>
@@ -136,6 +154,7 @@ JSON.stringify(e.detail);                            // '{"count":1,"emittedBy":
                 <button id="do-ia02-rename"><code>el.rename('alpha')</code></button>
                 <button id="do-ia02-select-beta"><code>el.select('beta')</code></button>
                 <button id="do-ia02-select-alpha"><code>el.select('alpha')</code></button>
+                <button id="do-ia02-reset" class="btn-danger">↺ Reset demo</button>
             </div>
             <div class="demo-area">
                 <core-demo-guarded id="demo-ia02-list" data-log="ia02"></core-demo-guarded>
@@ -162,22 +181,47 @@ else apply(s);                             // sync hook (or unset): same tick</p
         <div class="card">
             <h2>IA03 · <code>/actions</code>: clickable items and the <code>action</code> event</h2>
             <p>
-                Every clickable item a consumer configures (action buttons, toolbars, menu items) is an
-                <code>ActionItem</code>: a built-in <code>action</code> name or a custom <code>id</code>,
-                <code>text</code>, <code>tooltip</code>, <code>isDisabled</code>, <code>isDanger</code>,
-                <code>isToggled</code> and more, each dynamic field with a <code>get*Callback(ctx)</code> that wins
-                over the static value. <code>resolveActionItem(item, ctx, defaults)</code> resolves them. Here
-                <code>reset</code> is disabled by the component's own default while the count is 0, and
-                <code>Bold</code> is a toggle (<code>aria-pressed</code>). A click goes through
-                <code>runAction()</code> in one fixed order: <code>beforeActionCallback</code> (<code>false</code>
-                cancels everything) → the item's <code>onClick</code> → the built-in behaviour → the
-                <code>action</code> event and its <code>onAction</code> twin. The event is a notification
-                <strong>after the fact</strong>: the listener already sees the state the built-in left. A throwing
-                <code>onClick</code> or built-in is logged (console) and the event still fires. While an activation
-                runs, the item is busy (<code>aria-busy</code> on the button) and a second click is ignored. HTML in
-                the light DOM joins in with <code>data-action</code> / <code>data-id</code>, and its other
-                <code>data-*</code> attributes arrive as <code>detail.dataset</code>. Its <code>source</code> is
-                <code>"markup"</code>: <code>ActionSource</code> has no built-in name for page HTML, and any custom string is allowed.
+                <code>/actions</code> is how a component draws clickable things the page configures (toolbar buttons,
+                action buttons, menu items) and reports every click through one <code>action</code> event. The demo
+                toolbar gets its buttons from <code>el.items</code> (code below).
+            </p>
+            <p>
+                Each item is an <code>ActionItem</code>: either a built-in <code>action</code> the component knows
+                (<code>add</code>, <code>reset</code>, <code>fail</code> here) or your own <code>id</code>
+                (<code>hello</code>, <code>bold</code>), plus <code>text</code>, <code>tooltip</code>,
+                <code>isDisabled</code>, <code>isDanger</code>, <code>isToggled</code>, <code>isVisible</code> and
+                more. Any of these can also be a callback (<code>getIsToggledCallback(ctx)</code>, …) that is asked on
+                every render and wins over the fixed value. The component adds its own rules: <em>Reset</em> is disabled
+                while the count is 0. <em>Bold</em> is a toggle, its <code>aria-pressed</code> follows
+                <code>isBold</code>. A sixth item, <em>Hidden</em>, has <code>isVisible: false</code>, so it isn't drawn.
+            </p>
+            <p>
+                A click runs <code>runAction()</code>, always in this order: <code>beforeActionCallback</code>
+                (<code>false</code> cancels the whole click, the IA02 contract) → the item's own <code>onClick</code> →
+                the built-in behaviour (<code>add</code> increments the count) → the <code>action</code> event and its
+                <code>onAction</code> twin. The event comes last, as a notification: the listener already sees the new
+                state, so <code>el.count</code> is updated while <code>detail.count</code> still holds the value at
+                click time. If <code>onClick</code> or the built-in throws, the error is logged and the event still
+                fires. While a click is still running (for example, waiting for an async
+                <code>beforeActionCallback</code>), its button is <code>aria-busy</code> and further clicks on it are
+                ignored.
+            </p>
+            <p>
+                Plain HTML inside the component joins in too: a button with <code>data-action</code> /
+                <code>data-id</code> goes through the same steps, and its other <code>data-*</code> attributes arrive as
+                <code>detail.dataset</code>. <code>detail.source</code> says where the click came from:
+                <code>"toolbar"</code> for the drawn buttons, <code>"markup"</code> for the HTML one. That is a name this
+                demo chose; <code>source</code> accepts any string.
+            </p>
+            <p>
+                <strong>Try it.</strong> The button pings when its <code>action</code> event arrives.
+                Click <em>+1</em> and compare <code>detail.count (at click)</code> with <code>el.count (now)</code> in
+                the <code>action event</code> line. Tick the checkbox and click <em>Say hello</em>, or click
+                <em>Broken built-in</em>: the error is logged and the event still fires. Click <em>Markup button</em>
+                for <code>source "markup"</code> and <code>dataset {"row":"42"}</code>. Set
+                <code>beforeActionCallback</code> to <em>returns false</em> and clicks do nothing; set it to
+                <em>async: continue after 800 ms</em> and double-click <em>+1</em>: the second click logs
+                <code>item is busy</code>.
             </p>
             <div class="controls">
                 <label><code>beforeActionCallback</code>
@@ -190,6 +234,7 @@ else apply(s);                             // sync hook (or unset): same tick</p
                     </select>
                 </label>
                 <label><input type="checkbox" id="do-ia03-click-throws"> <code>Say hello</code>'s <code>onClick</code> throws</label>
+                <button id="do-ia03-reset" class="btn-danger">↺ Reset demo</button>
             </div>
             <div class="demo-area">
                 <core-demo-toolbar id="demo-ia03-bar" data-log="ia03">
@@ -380,7 +425,9 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
         const originalError = console.error;
         console.error = (...args) => {
             originalError.apply(console, args);
-            const text = args.filter((a) => typeof a === 'string').join(' ').replace(/%c/g, '').trim();
+            // A `%c` in the first argument consumes one CSS argument each; leave those out.
+            const styled = typeof args[0] === 'string' ? (args[0].match(/%c/g) ?? []).length : 0;
+            const text = [args[0], ...args.slice(1 + styled)].filter((a) => typeof a === 'string').join(' ').replace(/%c/g, '').trim();
             const err = args.find((a) => a instanceof Error);
             activeTl?.add('error', null, 'console.error', `${text}${err ? ` — ${err.message}` : ''}`);
         };
@@ -395,6 +442,28 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
         const delay = (ms) => new Promise((r) => setTimeout(r, ms));
         const describe = (d) => (d && typeof d === 'object' ? JSON.stringify(d) : String(d));
 
+        /**
+         * A sonar ping on an element: a ring grows out of its edge and fades (1 s). Pings fired in quick
+         * succession from one pinger are staggered 250 ms apart, so a path reads in order.
+         */
+        const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+        function createPinger() {
+            let hop = 0, lastHop = 0;
+            return (target) => {
+                const now = performance.now();
+                if (now - lastHop > 400) hop = 0;
+                lastHop = now;
+                target.animate([
+                    { outline: '3px solid #f59e0b', outlineOffset: '0px' },
+                    { outline: '1px solid transparent', outlineOffset: '12px' },
+                ], {
+                    duration: reduceMotion.matches ? 1 : 1000,
+                    delay: reduceMotion.matches ? 0 : hop++ * 250,
+                    easing: 'ease-out',
+                });
+            };
+        }
+
         // ── IA01 · emit() ────────────────────────────────────────────────────
         {
             const tl = new Timeline('ia01');
@@ -406,23 +475,7 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
             let twinDetail = null;
             const card = readout.closest('.card');
 
-            // Each arrival flashes its element; arrivals of one event are staggered so the path reads in order.
-            let hop = 0, lastHop = 0;
-            const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
-            const flash = (target) => {
-                const now = performance.now();
-                if (now - lastHop > 400) hop = 0;
-                lastHop = now;
-                // A sonar ping: the ring leaves the edge and fades as it grows.
-                target.animate([
-                    { outline: '3px solid #f59e0b', outlineOffset: '0px' },
-                    { outline: '1px solid transparent', outlineOffset: '12px' },
-                ], {
-                    duration: reduceMotion.matches ? 1 : 1000,
-                    delay: reduceMotion.matches ? 0 : hop++ * 250,
-                    easing: 'ease-out',
-                });
-            };
+            const flash = createPinger();   // each arrival pings its element, in order
 
             /** `<b>key</b> value · …` → the kit's `.css-readout` chips. */
             const chips = (line) => line.split(' · ').map((part) => {
@@ -554,6 +607,14 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
             };
             bind('do-ia02-select-beta', tl, select('beta'));
             bind('do-ia02-select-alpha', tl, select('alpha'));
+            document.getElementById('do-ia02-reset').addEventListener('click', () => {
+                renameMode.value = 'unset';
+                selectMode.value = 'unset';
+                apply();
+                el.resetDemo();
+                tl.list.replaceChildren();
+                tl.seq = 0;
+            });
         }
 
         // ── IA03 · /actions ──────────────────────────────────────────────────
@@ -597,10 +658,18 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
             applyBefore();
 
             el.onAction = (d) => tl.add('event', el, 'onAction twin', `action "${d.action}" id ${JSON.stringify(d.id)} source "${d.source}"`);
+            const ping = createPinger();
             el.addEventListener('action', (e) => {
                 const d = e.detail;
                 tl.add('event', el, 'action event',
                     `detail.count (at click) = ${d.count} · el.count (now) = ${el.count} · dataset ${JSON.stringify(d.dataset)}`);
+                // The toolbar re-renders its buttons right after the click; ping the button that is there then.
+                const label = d.triggerElement?.textContent.trim();
+                setTimeout(() => {
+                    const btn = d.triggerElement?.isConnected ? d.triggerElement
+                        : [...el.shadowRoot.querySelectorAll('button')].find((b) => b.textContent.trim() === label);
+                    if (btn) ping(btn);
+                });
             });
 
             // A section-level marker for clicks inside the toolbar (shadow buttons + the markup button).
@@ -608,6 +677,17 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
                 const path = e.composedPath();
                 const btn = path.find((n) => n instanceof HTMLButtonElement);
                 if (btn && !btn.disabled) tl.action(`click "${btn.textContent.trim()}"`);
+            });
+
+            document.getElementById('do-ia03-reset').addEventListener('click', () => {
+                beforeMode.value = 'unset';
+                applyBefore();
+                clickThrows.checked = false;
+                isBold = false;
+                el.count = 0;
+                el.refresh();
+                tl.list.replaceChildren();
+                tl.seq = 0;
             });
         }
 

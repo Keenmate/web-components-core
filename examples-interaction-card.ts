@@ -191,6 +191,14 @@ export class GuardedDemo extends BlissElement<GuardedEvents> {
   selectedId: string | null = null;
   #renames = 0;
 
+  /** Demo page only: back to the original labels, nothing selected. */
+  resetDemo(): void {
+    this.items = this.items.map((i) => ({ id: i.id, label: i.id[0]!.toUpperCase() + i.id.slice(1) }));
+    this.selectedId = null;
+    this.#renames = 0;
+    this.#render();
+  }
+
   /**
    * Rename an item: `beforeRenameCallback({ id, oldLabel, newLabel })` decides —
    * `false` rejects, `undefined` keeps `newLabel`, a string replaces it.
