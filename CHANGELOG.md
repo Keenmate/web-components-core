@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Page-wide custom CSS per component type.** `window.components['web-daterangepicker'].customStyles
+  = "@import url('/css/drp-days.css');"` styles every picker on the page (one file, fetched once),
+  and `window.components[tag].getCustomStylesCallback(ctx)` computes it per instance from the
+  component's own context (it wins over `customStyles`, like on the instance). It sits in its own
+  `<style>` before the instance's `customStyles` / `getCustomStylesCallback`, so an instance still
+  overrides it; assigning it updates every live instance. Components adopt it through the new
+  **`createCustomStyles(host, root, { getContext, getInstanceStyles, … })`** → `{ refresh, destroy }`
+  (replaces their own `createStyleSlot` + callback-vs-attribute code). `StyleSlot` gains a read-only
+  `element`.
+
 ### Changed — BREAKING
 
 - **Two exported types renamed** (the rulebook's closed TS suffix set forbids `Type`, C-NC-11):

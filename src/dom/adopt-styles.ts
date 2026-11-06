@@ -132,6 +132,8 @@ export interface StyleSlot {
   clear(): void;
   /** Remove the element and drop the reference. */
   destroy(): void;
+  /** The `<style>` element while it is in the DOM, else `null`. */
+  readonly element: HTMLStyleElement | null;
 }
 
 /** Options for {@link createStyleSlot}. */
@@ -190,6 +192,9 @@ export function createStyleSlot(
     destroy() {
       element?.remove();
       element = null;
+    },
+    get element() {
+      return element?.parentNode ? element : null;
     },
   };
 }

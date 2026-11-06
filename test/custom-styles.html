@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test — custom CSS, page-wide per tag + per instance</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>Custom CSS (SPEC §12.8)</h1>
+    <p>Fixture for <code>e2e/custom-styles.spec.ts</code> — <code>window.components[tag].customStyles</code> /
+        <code>.getCustomStylesCallback</code> + the instance layer, through <code>createCustomStyles()</code>.</p>
+
+    <div class="fixture">
+        <div class="fixture-label">stage</div>
+        <div id="stage">
+            <fx-cs id="a" label="A"></fx-cs>
+            <fx-cs id="b" label="B"></fx-cs>
+        </div>
+    </div>
+
+    <script type="module" src="custom-styles-fixtures.ts"></script>
+</body>
+</html>

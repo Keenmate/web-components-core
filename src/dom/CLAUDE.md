@@ -8,7 +8,16 @@ SSR-safe, dedup per root) — the `main.css?inline` case. `createStyleSlot(root,
 position?, cssClass? })` → `{ set, clear, destroy }` is a per-instance
 replaceable `<style>` slot for the `customStylesCallback` case (consistent
 position so re-set replaces; `<style>`-based so user `@import` works). Authoring
-rules (`@layer` order, `?inline`) stay CSS-guideline, not code.
+rules (`@layer` order, `?inline`) stay CSS-guideline, not code — but the component's
+own CSS MUST be in `@layer component`, or custom CSS (a `<style>`) loses to it (adopted
+sheets cascade after every `<style>`).
+
+`createCustomStyles(host, root, { getContext, getInstanceStyles, cssClass?, position?,
+onApply? })` (`src/dom/custom-styles.ts`) → `{ refresh, destroy }`: two slots, page layer
+(`window.components[tag].getCustomStylesCallback` > `.customStyles`, accessors installed by
+`registerComponent()`) before the instance layer (callback > CSS). Page writes refresh every
+live handle of the tag (WeakRef set in shared state). Components call `refresh()` where they
+used to set their slot, `destroy()` in `destroyCallback()`.
 
 ## Loader (`src/dom/render-loader.ts`, SPEC §12.14 — implemented)
 

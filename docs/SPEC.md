@@ -1211,10 +1211,28 @@ free functions taking a root + CSS strings, NOT `BlissElement` methods.
   user CSS may use `@import`, which constructable stylesheets reject. Core owns
   the mechanism; the `customStylesCallback` input row stays in each component's
   table (a `toFunction()` returning a CSS string).
+- **`createCustomStyles(host, root, { getContext, getInstanceStyles, cssClass?,
+  position?, onApply? })`** → `{ refresh, destroy }` — the whole custom-CSS story on
+  top of two style slots: the **page layer** for the host's tag
+  (`window.components[tag].getCustomStylesCallback(ctx)`, else
+  `window.components[tag].customStyles`) and, after it, the **instance layer**
+  (`getInstanceStyles()` → the element's callback, else its `custom-styles`). Within a
+  layer the callback wins when it is a function; both callbacks get the component's own
+  context (`getContext()`). The page slot always precedes the instance slot, so an
+  instance overrides shared rules. The per-tag accessors are installed by
+  `registerComponent()` (enumerable, adopt a value set on a pre-created entry, a wrong
+  type warns and keeps the previous value); assigning one refreshes every live handle of
+  that tag (held weakly — a dropped element stays collectable). A throwing callback is
+  logged and leaves its layer empty. Use case: `window.components['web-daterangepicker']
+  .customStyles = "@import url('/css/drp-days.css')"` — one file for every picker,
+  fetched once. No page-wide (all tags) layer: selectors are per component.
 
 The `?inline` import (Vite build concern) and the `@layer variables, component,
 overrides` order (CSS guidelines, invariants #6–#9) stay authoring rules — the
-helpers take strings and don't care how you got them or how they're layered.
+helpers take strings and don't care how you got them or how they're layered. The
+layer order is what makes custom CSS work: adopted sheets cascade after every
+`<style>`, so a component's own CSS must sit in `@layer component` for un-layered
+custom CSS (either layer) to beat it at equal specificity.
 
 ### 12.5 Callbacks & events — IMPLEMENTED (`src/element/`)
 

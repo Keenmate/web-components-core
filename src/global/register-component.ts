@@ -27,6 +27,8 @@ import {
   type ResponsiveCallback,
   type ResponsiveMap,
 } from '../element/responsive.js';
+import { installTagStyleHooks } from '../dom/custom-styles.js';
+import type { CustomStylesCallback } from '../dom/custom-styles.js';
 
 /** Build/package metadata surfaced for runtime introspection. Extra keys are allowed. */
 export interface ComponentConfig {
@@ -78,6 +80,14 @@ export interface RegisteredComponent<T extends HTMLElement = HTMLElement> {
   responsive?: ResponsiveMap;
   /** Per-tag responsive callback (SPEC §6.7) — runs after the per-tag map. */
   responsiveCallback?: ResponsiveCallback;
+  /**
+   * CSS for every instance of this tag (SPEC §12.8), in its own `<style>` before the
+   * instance's own custom CSS — so `@import url(…)` works and an instance can override it.
+   * Assigning updates the live instances. `getCustomStylesCallback` wins when both are set.
+   */
+  customStyles?: string;
+  /** Per-tag CSS computed per instance from the component's context (SPEC §12.8); beats `customStyles`. */
+  getCustomStylesCallback?: CustomStylesCallback;
 }
 
 export interface RegisterComponentOptions {
@@ -187,6 +197,7 @@ export function registerComponent<T extends HTMLElement = HTMLElement>(
       entry = Object.assign(existing, fields) as RegisteredComponent<T>;
     }
     installTagResponsiveHooks(entry, tagName); // adopts a pre-set responsive / responsiveCallback
+    installTagStyleHooks(entry, tagName); // adopts a pre-set customStyles / getCustomStylesCallback
     components[tagName] = entry as RegisteredComponent;
     publishGlobalLogging(); // re-publish if the page replaced window.components
     publishLoaderHook();
@@ -194,6 +205,7 @@ export function registerComponent<T extends HTMLElement = HTMLElement>(
     publishResponsiveHooks();
   } else {
     installTagResponsiveHooks(entry, tagName);
+    installTagStyleHooks(entry, tagName);
   }
   if (shouldAutoDefine) define(tagName, elementClass);
   return entry;
