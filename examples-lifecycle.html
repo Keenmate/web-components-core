@@ -36,7 +36,7 @@
                 <button id="lc01-label">label → rebuild (<code>reinit</code>)</button>
                 <button id="lc01-accent">accent → patch (<code>update</code>)</button>
                 <button id="lc01-both">both in one <code>batch()</code></button>
-                <button id="lc01-reset" title="destroy() the element, clear the timeline, start over">↺ Reset</button>
+                <button id="lc01-reset" class="btn-danger" title="destroy() the element, clear the timeline, start over">↺ Reset</button>
             </div>
             <div class="demo-area">
                 <div class="field-row" id="lc01-stage"></div>
@@ -79,7 +79,7 @@ el.batch(() =&gt; { el.label = 'B'; el.accent = 'amber'; });   // one reinit(), 
                 <button id="lc02-release"><code>release()</code></button>
                 <button id="lc02-remove-defer"><code>removeAttribute('defer')</code></button>
                 <button id="lc02-redefer"><code>shouldDefer = true</code> again, then set label</button>
-                <button id="lc02-reset" title="destroy() the element, clear the timeline, start over">↺ Reset</button>
+                <button id="lc02-reset" class="btn-danger" title="destroy() the element, clear the timeline, start over">↺ Reset</button>
             </div>
             <div class="demo-area">
                 <div class="field-row" id="lc02-stage"></div>
@@ -116,7 +116,7 @@ el.shouldDefer = true;                         // latched: no effect after the f
                 <button id="lc03-detach">Detach</button>
                 <button id="lc03-detached-label">Change label while detached</button>
                 <button id="lc03-attach">Re-attach</button>
-                <button id="lc03-reset" title="destroy() the element, clear the timeline, start over">↺ Reset</button>
+                <button id="lc03-reset" class="btn-danger" title="destroy() the element, clear the timeline, start over">↺ Reset</button>
             </div>
             <div class="demo-area">
                 <div class="grid" style="--grid-min: 14rem; --grid-gap: 1rem">
@@ -153,7 +153,7 @@ boxA.append(el);                  // reinit() (the held change) → connect()</p
                 <button id="lc04-sync">Synchronous move (remove + re-add in one task)</button>
                 <button id="lc04-remove"><code>el.remove()</code></button>
                 <button id="lc04-readd">Re-add</button>
-                <button id="lc04-reset" title="destroy() the element, clear the timeline, start over">↺ Reset</button>
+                <button id="lc04-reset" class="btn-danger" title="destroy() the element, clear the timeline, start over">↺ Reset</button>
             </div>
             <div class="demo-area">
                 <div class="field-row" id="lc04-stage"></div>
@@ -191,7 +191,7 @@ el.remove();                               // disconnect() … next frame: remov
                 <button id="lc05-label">set label</button>
                 <button id="lc05-reinsert">Remove + re-insert</button>
                 <button id="lc05-new">Create a new element</button>
-                <button id="lc05-reset" title="destroy() the element, clear the timeline, start over">↺ Reset</button>
+                <button id="lc05-reset" class="btn-danger" title="destroy() the element, clear the timeline, start over">↺ Reset</button>
             </div>
             <div class="demo-area">
                 <div class="field-row" id="lc05-stage"></div>
@@ -225,7 +225,7 @@ stage.append(el);   // console warning: "&lt;core-demo-lifecycle&gt; was destroy
                 <button id="lc06-accent">accent → <code>batch()</code> (update-level)</button>
                 <button id="lc06-flush"><code>el.flush()</code></button>
                 <button id="lc06-fresh">Create a fresh element with the throw armed</button>
-                <button id="lc06-reset" title="destroy() the element, clear the timeline, start over">↺ Reset</button>
+                <button id="lc06-reset" class="btn-danger" title="destroy() the element, clear the timeline, start over">↺ Reset</button>
             </div>
             <div class="demo-area">
                 <div class="field-row" id="lc06-stage"></div>
