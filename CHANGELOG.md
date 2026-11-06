@@ -75,7 +75,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - forms page: FO01 explains DOM position vs form membership (`form="id"`: Extra sits outside
     the `<form>` yet submits with it); FO02's intro rewritten (two disable sources, one combined
     `isEffectivelyDisabled`; why `isDisabled` must reflect, with the concrete case); FO01–FO03 get
-    a Reset demo button; FO04 adds `formResetCallback` (not core's) and the rejected-anchor warning.
+    a Reset demo button; FO04 adds `formResetCallback` (not core's) and the rejected-anchor warning;
+  - interaction page: IA01–IA04 rewritten as short paragraphs with a "Try it" guide (IA01: the
+    twin, the detail's hidden `controller` / `element`, why events stay inside a shadow root;
+    IA02: what a before-callback is for, `runBeforeCallbackEager` shown through `el.selectedId`;
+    IA03: `ActionItem`, the hidden item, the `runAction()` order, the busy double-click; IA04: the
+    menu's close reasons, including any outside scroll, and its two theming layers); every place
+    an event or action arrives pings (a 1 s ring, in path order); each card gets a Reset demo
+    button; IA03's page-HTML button sits in its own captioned strip; IA04's dropdown now really
+    shows divider trimming; IA05 lists every `ActionItem` field and every built-in
+    `ActionSource`; logged core errors no longer show the `%c` CSS strings in the timelines.
 
 ## [1.0.0-rc18] - 2026-11-04
 
