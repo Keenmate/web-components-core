@@ -187,7 +187,7 @@ const STEPS: { say: string; without: LaneState; with: LaneState }[] = (() => {
   ];
 })();
 
-const BASE_DELAY = 2200; // ms per step at 1×
+const BASE_DELAY = 1100; // ms per step at 1×
 
 const esc = (s: string): string =>
   s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
