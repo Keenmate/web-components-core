@@ -58,7 +58,8 @@
                 genuine <code>!== undefined</code> merge. Row&nbsp;2 is focused; its highlight class comes from the
                 <code>focused-node-class</code> input, falling back to a built-in default
                 (<code>nc-focus-default</code>, the blue bar). <strong>Set</strong> a custom class, then
-                <strong>Clear</strong> it:
+                <strong>Clear</strong> it. Clear removes the attribute, so it only does something when the attribute is
+                set. After switching the mode, Set again, then Clear.
             </p>
             <ul>
                 <li><strong>preserve</strong> (<code>engineConfig</code>): clearing reverts to the blue default. ✅</li>
@@ -81,7 +82,7 @@
             <div class="demo-area">
                 <nullclear-card id="live" tabindex="0"></nullclear-card>
                 <label class="demo-label mt-1">What the engine's <code>updateProps</code> last received:</label>
-                <div class="code-block"><pre id="c-out"></pre></div>
+                <div class="code-block"><pre id="c-out"><span class="comment">// nothing yet: press Set, then Clear</span></pre></div>
                 <div id="c-verdict"></div>
             </div>
         </div>
@@ -91,18 +92,37 @@
         <!-- ============================================================= -->
         <div class="card">
             <h2>NC04 · API summary</h2>
-            <div class="code-block"><pre>import { collectEngineConfig } from '@keenmate/web-components-core';
-
-// Component side — assemble the config to hand your engine:
+            <div class="code-block"><pre>// Component side — assemble the config to hand your engine:
 protected override update(partial = {}) {
   const cfg = this.engineConfig(NON_ENGINE_KEYS); // shallow copy, nulls PRESERVED
   Object.assign(cfg, partial);                    // partial already carries null
   this.#engine.update(cfg);
 }
 
+// The same step outside a component (what engineConfig() calls):
+import { collectEngineConfig } from '@keenmate/web-components-core';
+const cfg = collectEngineConfig(bag, { exclude: ['theme'] });
+
 // Engine side — treat null as a real value, per field:
 if (updates.x !== undefined) this._x = updates.x;          // clearable: null clears
 if (updates.y !== undefined) this._y = updates.y ?? DEFAULT;// defaulted: null → default</pre></div>
+            <table class="reference-table mt-1">
+                <thead><tr><th>Member</th><th>Where</th><th>What</th></tr></thead>
+                <tbody>
+                    <tr><td><code>engineConfig(exclude?)</code></td><td>protected method</td><td>A fresh shallow copy of <code>this.config</code> minus <code>exclude</code>, every <code>null</code> kept.</td></tr>
+                    <tr><td><code>clearableConfigKeys</code></td><td>protected getter</td><td>The <code>configKey</code>s whose <code>null</code> means “clear”. Derived once from the input table; empty without one.</td></tr>
+                    <tr><td><code>collectEngineConfig(config, { exclude })</code></td><td>main index</td><td>The pure assembler under <code>engineConfig()</code>. <code>exclude</code> drops keys, never nulls.</td></tr>
+                    <tr><td><code>deriveClearableKeys(defs)</code></td><td>main index</td><td>The set of clearable <code>configKey</code>s for an input table.</td></tr>
+                    <tr><td><code>isClearableInput(def)</code></td><td>main index</td><td>One row: <code>default: null</code>, or a clearable converter.</td></tr>
+                    <tr><td><code>isClearableConverter(converter, attribute?)</code></td><td>main index</td><td>Probes the converter: <code>validate(null)</code> is true (or there is no <code>validate</code>), or <code>fromAttribute(null)</code> returns <code>null</code>. A converter that throws counts as not clearable.</td></tr>
+                </tbody>
+            </table>
+            <p class="mt-1">
+                Inputs that admit <code>null</code>: <code>toText({ isNullable: true })</code>, <code>toBool('tristate')</code>,
+                <code>toFunction()</code>, <code>toEnum(values, { isNullable: true })</code> with no default, a converter with no
+                <code>validate</code>, and any row with <code>default: null</code>. Everything else unsets to
+                <code>''</code>, <code>0</code>, <code>false</code> or <code>[]</code>, so <code>null</code> never lands in its config.
+            </p>
             <div class="note">
                 <div class="note-title">Never re-drop the null</div>
                 A field that is neither clearable nor <code>?? DEFAULT</code>-guarded will now receive <code>null</code>
@@ -168,12 +188,22 @@ if (updates.y !== undefined) this._y = updates.y ?? DEFAULT;// defaulted: null �
             else { cVerdict.className = 'note success'; cVerdict.textContent = `✅ custom class "${info.appliedClass}" applied`; }
         };
         for (const r of document.querySelectorAll('input[name="mode"]')) {
-            r.addEventListener('change', () => { card.assembleMode = document.querySelector('input[name="mode"]:checked').value; });
+            r.addEventListener('change', () => {
+                card.assembleMode = document.querySelector('input[name="mode"]:checked').value;
+                // The old verdict described the other mode. A Clear needs a set attribute to remove.
+                cVerdict.className = 'note';
+                cVerdict.textContent = `Mode is now ${card.assembleMode}. Set a class again, then Clear.`;
+            });
         }
         document.getElementById('c-set').addEventListener('click', () => {
             card.setAttribute('focused-node-class', document.getElementById('c-value').value);
         });
         document.getElementById('c-clear').addEventListener('click', () => {
+            if (!card.hasAttribute('focused-node-class')) {
+                cVerdict.className = 'note';
+                cVerdict.textContent = 'Nothing to clear: the attribute is not set, so no update runs. Set a class first.';
+                return;
+            }
             card.removeAttribute('focused-node-class');
         });
     </script>

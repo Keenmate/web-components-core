@@ -327,7 +327,8 @@ export class ToolbarDemo extends BlissElement<{ action: ToolbarDetail }> {
         id: target.dataset.id,
         text: target.textContent?.trim() ?? '',
       }).get(target))!;
-    void this.#activate(item, target, event, 'message');
+    // No built-in source fits light-DOM markup; ActionSource takes any custom string.
+    void this.#activate(item, target, event, 'markup');
   };
 
   #htmlItems = new WeakMap<HTMLElement, ToolbarItem>();
@@ -587,8 +588,8 @@ export class FilesDemo extends BlissElement<{ action: FilesDetail }> {
       shouldFocusFirst,
       inheritThemeFrom: this,
       runAction: (item, inv) => this.#run(item, inv, ctx, source),
-      closeCallback: (reason) => {
-        trace(this, 'event', 'closeCallback', `reason "${reason}"`);
+      onClose: (reason) => {
+        trace(this, 'event', 'onClose', `reason "${reason}"`);
         if (this.menu === handle) this.menu = null;
       },
     });

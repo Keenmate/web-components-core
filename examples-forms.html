@@ -135,6 +135,9 @@ el.isDisabled = true;       // reflects disabled="" → still disabled → no se
                 clears it, and clears <em>all</em> validity flags. While invalid, <code>:invalid</code> matches and the form
                 fires <code>invalid</code> instead of <code>submit</code> — unless it is <code>&lt;form novalidate&gt;</code>.
                 Type something that isn't a whole number (<code>abc</code>) into either field, then submit both.
+                The buttons call <code>setFormatError()</code> directly and override the field's own check until the next
+                keystroke. So after <code>setFormatError(null)</code> the field can still hold <code>abc</code> and its hint
+                still says invalid, while the readout says valid.
             </p>
             <div class="controls">
                 <button id="fo03-check"><code>checkValidity()</code></button>
