@@ -34,7 +34,8 @@
                 <code>renderLoadingCallback</code>, <code>motion</code> and <code>responsive*</code> members are
                 non-enumerable, so <code>Object.keys(window.components)</code> still lists tags only.
                 The readout's <code>getInstances()</code> also lists PG03's two loader demos
-                (<code>#demo-pg-load-a</code> / <code>-b</code>): they are <code>&lt;core-demo-pg&gt;</code> elements too.
+                (<code>#demo-pg-load-a</code> / <code>-b</code>) and PG04's <code>#demo-pg-c</code> / <code>-d</code>: they are
+                <code>&lt;core-demo-pg&gt;</code> elements too.
                 <strong>Remove the last one</strong> removes only elements added here, so it does nothing until you add one.
             </p>
             <div class="controls">
@@ -212,36 +213,57 @@ window.components.renderLoadingCallback = null;     // a non-function reads as u
         <!-- PG04 · Style injection                                        -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>PG04 · Style injection: <code>adoptStyles()</code> / <code>createStyleSlot()</code></h2>
+            <h2>PG04 · Styles: <code>adoptStyles()</code>, custom CSS per page and per instance</h2>
             <p>
-                Two free functions, because core itself doesn't assume shadow DOM. <code>adoptStyles(root, ...css)</code>
-                is for <strong>static</strong> CSS (the <code>main.css?inline</code> case): one cached
-                <code>CSSStyleSheet</code> per unique string, shared by every instance through
-                <code>adoptedStyleSheets</code> and deduplicated per root (with a <code>&lt;style&gt;</code> fallback where
-                constructable sheets aren't supported). <code>createStyleSlot(root, { position?, cssClass? })</code> returns
-                <code>{ set, clear, destroy }</code>, a <strong>per-instance</strong> replaceable <code>&lt;style&gt;</code> for
-                the <code>customStylesCallback</code> pattern: setting it again replaces the CSS in the same element (no
-                stacking), and a falsy value removes it. It is a <code>&lt;style&gt;</code> on purpose, because user CSS may use
-                <code>@import</code>, which constructable sheets reject.
+                <code>adoptStyles(root, ...css)</code> is for a component's <strong>own, static</strong> CSS (the
+                <code>main.css?inline</code> case): one cached <code>CSSStyleSheet</code> per unique string, shared by every
+                instance through <code>adoptedStyleSheets</code>. Put that CSS in <code>@layer component</code>: adopted
+                sheets cascade after every <code>&lt;style&gt;</code>, and only a layered rule loses to un-layered custom CSS.
+            </p>
+            <p>
+                Custom CSS comes in two layers, each a <code>&lt;style&gt;</code> (so <code>@import url(…)</code> works) and each
+                with a CSS string and a callback (the callback wins). The <strong>page layer</strong>,
+                <code>window.components['core-demo-pg'].customStyles</code> / <code>.getCustomStylesCallback(ctx)</code>, styles
+                every instance of the tag — the cards above in PG01/PG03 too. The <strong>instance layer</strong>,
+                <code>custom-styles</code> / <code>getCustomStylesCallback</code>, comes after it, so one card can override the
+                shared rules. <code>createCustomStyles()</code> does all of this for a component.
             </p>
             <div class="controls">
-                <button id="pg04-red">A.customStylesCallback = () =&gt; 'dashed red'</button>
-                <button id="pg04-green">… = () =&gt; 'thick green'</button>
-                <button id="pg04-null">A.customStylesCallback = null</button>
+                <span class="muted">Page layer:</span>
+                <button id="pg04-page-css">customStyles = dashed border</button>
+                <button id="pg04-page-cb">getCustomStylesCallback = by tone</button>
+                <button id="pg04-page-clear">clear both</button>
+            </div>
+            <div class="controls">
+                <span class="muted">Instance D:</span>
+                <button id="pg04-d-css">D.customStyles = thick green</button>
+                <button id="pg04-d-clear">D.customStyles = null</button>
             </div>
             <div class="demo-area">
-                <div class="output"><pre id="pg04-readout"></pre></div>
+                <div class="field-row">
+                    <core-demo-pg id="demo-pg-c" label="Instance C" tone="info"></core-demo-pg>
+                    <core-demo-pg id="demo-pg-d" label="Instance D" tone="success"></core-demo-pg>
+                </div>
+                <div class="output mt-1"><pre id="pg04-readout"></pre></div>
             </div>
-            <div class="code-block"><pre>reinit() {
-  const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
-  adoptStyles(root, SHARED_CSS);                       // one sheet, shared by A and B
-  this.#slot ??= createStyleSlot(root, { cssClass: 'pgd-custom' });
-  this.#slot.set(this.config.customStylesCallback?.());
-}
-update(p) { if ('customStylesCallback' in p) this.#slot.set(this.config.customStylesCallback?.()); }
+            <div class="code-block"><pre>// page: every &lt;core-demo-pg&gt; — e.g. one file from the server, fetched once
+window.components['core-demo-pg'].customStyles = "@import url('/css/pg-overrides.css');";
+window.components['core-demo-pg'].getCustomStylesCallback = (ctx) =&gt;      // wins over customStyles
+  ctx.tone === 'success' ? '.pg { background: #f0fdf4 }' : null;
+d.customStyles = '.pg { border: 4px solid #16a34a }';                     // instance: after the page layer
 
-a.shadowRoot.adoptedStyleSheets[0] === b.shadowRoot.adoptedStyleSheets[0];   // true
-a.shadowRoot.querySelectorAll('style.pgd-custom').length;                    // 1, however often it is set</pre></div>
+// in the component
+reinit() {
+  adoptStyles(root, SHARED_CSS);                                          // '@layer component { … }'
+  this.#styles ??= createCustomStyles(this, root, {
+    cssClass: 'pgd-custom',
+    getContext: () =&gt; ({ element: this, label: …, tone: … }),
+    getInstanceStyles: () =&gt; ({ css: this.config.customStyles, callback: this.config.getCustomStylesCallback }),
+  });
+  this.#styles.refresh();
+}
+update(p) { if ('customStyles' in p || 'getCustomStylesCallback' in p) this.#styles.refresh(); }
+destroyCallback() { this.#styles.destroy(); }</pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -266,7 +288,9 @@ a.shadowRoot.querySelectorAll('style.pgd-custom').length;                    // 
                     <tr><td><code>renderLoader(host, container, context, { label, prefix, renderLoadingCallback? })</code></td><td>Draws a loading state (instance hook &gt; page hook &gt; default span) and returns an idempotent <code>remove()</code>.</td></tr>
                     <tr><td><code>window.components.renderLoadingCallback</code></td><td>Page-wide loader hook (non-enumerable accessor; a non-function reads as unset).</td></tr>
                     <tr><td><code>adoptStyles(root, ...css)</code></td><td>Shared, cached constructable sheets; deduplicated per root.</td></tr>
-                    <tr><td><code>createStyleSlot(root, { position?, cssClass? })</code></td><td>A replaceable per-instance <code>&lt;style&gt;</code>: <code>set(css)</code> / <code>clear()</code> / <code>destroy()</code>.</td></tr>
+                    <tr><td><code>createStyleSlot(root, { position?, cssClass? })</code></td><td>A replaceable per-instance <code>&lt;style&gt;</code>: <code>set(css)</code> / <code>clear()</code> / <code>destroy()</code>, read-only <code>element</code>.</td></tr>
+                    <tr><td><code>createCustomStyles(host, root, { getContext, getInstanceStyles, cssClass?, position?, onApply? })</code></td><td>Custom CSS for a component: the page layer, then the instance layer, each a <code>&lt;style&gt;</code> (callback wins over CSS). Returns <code>{ refresh, destroy }</code>; follows page changes until <code>destroy()</code>.</td></tr>
+                    <tr><td><code>window.components[tag].customStyles</code> / <code>.getCustomStylesCallback(ctx)</code></td><td>Page layer for every instance of the tag (installed by <code>registerComponent()</code>; a value set on a pre-created entry is adopted). Assigning updates the live instances.</td></tr>
                 </tbody>
             </table>
         </div>
@@ -488,20 +512,32 @@ a.shadowRoot.querySelectorAll('style.pgd-custom').length;                    // 
         render3();
         render1(); // PG03's instances count too
 
-        // ── PG04 · style injection ───────────────────────────────────────────
-        function render4() {
-            const a = elA.shadowRoot, b = elB.shadowRoot;
-            const slot = a.querySelectorAll('style.pgd-custom');
+        // ── PG04 · styles ────────────────────────────────────────────────────
+        const elC = $('demo-pg-c'), elD = $('demo-pg-d');
+        const entry = window.components['core-demo-pg'];
+        async function render4() {
+            await Promise.all([elC.whenSettled(), elD.whenSettled()]);
+            const line = (el, name) => {
+                const root = el.shadowRoot;
+                const card = root.querySelector('.pg');
+                const cs = getComputedStyle(card);
+                const slots = [...root.querySelectorAll('style')].map((st) => `${st.className}: ${st.textContent}`);
+                return `<b>${name}</b> border ${esc(cs.borderTopStyle + ' ' + cs.borderTopWidth)} · background ${esc(cs.backgroundColor)}\n   style slots: ${esc(slots.length ? slots.join(' | ') : '(none)')}`;
+            };
             $('pg04-readout').innerHTML = [
-                `<b>A.adoptedStyleSheets.length</b> ${a.adoptedStyleSheets.length} · <b>B</b> ${b.adoptedStyleSheets.length}`,
-                `<b>A.sheet[0] === B.sheet[0]</b> ${a.adoptedStyleSheets[0] === b.adoptedStyleSheets[0]}`,
-                `<b>A style.pgd-custom count</b> ${slot.length} · <b>css</b> ${esc(JSON.stringify(slot[0]?.textContent ?? null))}`,
+                `<b>C.sheet[0] === D.sheet[0]</b> ${elC.shadowRoot.adoptedStyleSheets[0] === elD.shadowRoot.adoptedStyleSheets[0]} (one shared adopted sheet)`,
+                line(elC, 'C'),
+                line(elD, 'D'),
             ].join('\n');
         }
-        const setStyles = (cb) => { elA.customStylesCallback = cb; elA.flush(); render4(); };
-        $('pg04-red').addEventListener('click', () => setStyles(() => '.pg { border: 2px dashed #dc2626; }'));
-        $('pg04-green').addEventListener('click', () => setStyles(() => '.pg { border: 4px solid #16a34a; }'));
-        $('pg04-null').addEventListener('click', () => setStyles(null));
+        $('pg04-page-css').addEventListener('click', () => { entry.customStyles = '.pg { border-style: dashed; border-color: #dc2626; }'; render4(); });
+        $('pg04-page-cb').addEventListener('click', () => {
+            entry.getCustomStylesCallback = (ctx) => (ctx.tone === 'success' ? '.pg { background: #dcfce7; color: #14532d; }' : '.pg { background: #e0f2fe; color: #0c4a6e; }');
+            render4();
+        });
+        $('pg04-page-clear').addEventListener('click', () => { entry.customStyles = null; entry.getCustomStylesCallback = null; render4(); });
+        $('pg04-d-css').addEventListener('click', () => { elD.customStyles = '.pg { border: 4px solid #16a34a; }'; render4(); });
+        $('pg04-d-clear').addEventListener('click', () => { elD.customStyles = null; render4(); });
         render4();
 
         // ── Reset page-wide state (also on pagehide) ─────────────────────────

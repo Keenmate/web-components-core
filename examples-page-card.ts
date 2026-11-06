@@ -8,8 +8,10 @@
  *                             loggers (`this.log.INIT/DATA/UI`) and core's own messages for it
  *                             carry `[PGDEMO:…] #id`. It draws loading states with `renderLoader()`
  *                             (instance `renderLoadingCallback` input), adopts one shared stylesheet
- *                             with `adoptStyles()` and applies `customStylesCallback` through a
- *                             `createStyleSlot()`.
+ *                             (its CSS in `@layer component`) with `adoptStyles()` and applies custom
+ *                             CSS with `createCustomStyles()`: the page layer
+ *                             `window.components['core-demo-pg'].customStyles / .getCustomStylesCallback`,
+ *                             then its own `custom-styles` / `getCustomStylesCallback`.
  *   - `<core-demo-pg-early>`  registered with `shouldAutoDefine: false` and NO logging bundle — the
  *                             page pre-creates its `window.components` entry (adopted), defines it
  *                             later via `entry.register()`, and core's messages for it fall back to
@@ -20,23 +22,34 @@
 import {
   BlissElement,
   adoptStyles,
+  createCustomStyles,
   createLoggers,
-  createStyleSlot,
   registerComponent,
   renderLoader,
   toEnum,
   toFunction,
   toText,
 } from './src/index.js';
-import type { InputDef, RenderLoaderCallback, StyleSlot } from './src/index.js';
+import type { CustomStylesCallback, CustomStylesHandle, InputDef, RenderLoaderCallback } from './src/index.js';
 
 /** The demo tag's logger bundle (also reachable as `window.components['core-demo-pg'].logging`). */
 export const pgLogging = createLoggers('PGDEMO');
 
 const TONES = ['neutral', 'info', 'success'] as const;
 
-/** Static, shared CSS — ONE CSSStyleSheet for every instance (adoptStyles caches it per string). */
-const SHARED_CSS = `
+/** What a page / instance `getCustomStylesCallback` receives. */
+export interface PgContext {
+  element: HTMLElement;
+  label: string;
+  tone: string;
+}
+
+/**
+ * Static, shared CSS — ONE CSSStyleSheet for every instance (adoptStyles caches it per string).
+ * In `@layer component` (the KeenMate authoring rule): adopted sheets cascade after every
+ * `<style>`, so un-layered custom CSS only wins because this is layered.
+ */
+const SHARED_CSS = `@layer component {
   :host { display: inline-block; vertical-align: top;
     --pgd-loader-icon: var(--base-loader-icon, url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M21 12a9 9 0 1 1-6.219-8.56%22/%3E%3C/svg%3E"));
     --pgd-loader-rotate: var(--base-loader-rotate, 1turn);
@@ -63,7 +76,7 @@ const SHARED_CSS = `
     animation: pgd-loader-spin var(--pgd-loader-duration) linear infinite;
   }
   @keyframes pgd-loader-spin { to { transform: rotate(var(--pgd-loader-rotate)); } }
-`;
+}`;
 
 export class CoreDemoPg extends BlissElement {
   protected static override inputs: readonly InputDef[] = [
@@ -71,11 +84,12 @@ export class CoreDemoPg extends BlissElement {
     { configKey: 'tone', attribute: 'tone', converter: toEnum(TONES, { default: 'neutral' }), shouldReflect: true },
     // Same name in every component (SPEC §12.14); read by renderLoader() from the host property.
     { configKey: 'renderLoadingCallback', converter: toFunction<RenderLoaderCallback>(), default: null, on: 'none' },
-    // A toFunction() returning a CSS string, applied through a createStyleSlot() (SPEC §12.8).
-    { configKey: 'customStylesCallback', converter: toFunction<() => string | null>(), default: null },
+    // Custom CSS (SPEC §12.8): the callback wins over the attribute; both go through createCustomStyles().
+    { configKey: 'customStyles', attribute: 'custom-styles', converter: toText({ isNullable: true }) },
+    { configKey: 'getCustomStylesCallback', converter: toFunction<CustomStylesCallback<PgContext>>(), default: null },
   ];
 
-  #slot?: StyleSlot;
+  #styles?: CustomStylesHandle;
   #removeLoader?: () => void;
 
   get isLoading(): boolean {
@@ -116,19 +130,28 @@ export class CoreDemoPg extends BlissElement {
     root.querySelector('.pg-label')!.textContent = this.config.label as string;
     root.querySelector('.pg-id')!.textContent = this.id ? `#${this.id}` : '';
     this.#applyTone();
-    this.#slot ??= createStyleSlot(root, { cssClass: 'pgd-custom' });
-    this.#applyCustomStyles();
+    // innerHTML above dropped the slots; refresh() puts them back (page layer first).
+    this.#styles ??= createCustomStyles<PgContext>(this, root, {
+      cssClass: 'pgd-custom',
+      getContext: () => ({ element: this, label: this.config.label as string, tone: this.config.tone as string }),
+      getInstanceStyles: () => ({
+        css: this.config.customStyles as string | null,
+        callback: this.config.getCustomStylesCallback as CustomStylesCallback<PgContext> | null,
+      }),
+    });
+    this.#styles.refresh();
     if (wasLoading) this.startLoading();
   }
 
   protected override update(partial: Record<string, unknown>): void {
     if ('tone' in partial) this.#applyTone();
-    if ('customStylesCallback' in partial) this.#applyCustomStyles();
+    // tone is in the callbacks' context, so it re-runs them too.
+    if ('customStyles' in partial || 'getCustomStylesCallback' in partial || 'tone' in partial) this.#styles?.refresh();
   }
 
   protected override destroyCallback(): void {
     this.stopLoading();
-    this.#slot?.destroy();
+    this.#styles?.destroy();
   }
 
   #applyTone(): void {
@@ -137,10 +160,6 @@ export class CoreDemoPg extends BlissElement {
     for (const t of TONES) card.classList.toggle(`tone-${t}`, t === this.config.tone);
   }
 
-  #applyCustomStyles(): void {
-    const cb = this.config.customStylesCallback as (() => string | null) | null;
-    this.#slot?.set(cb ? cb() : null);
-  }
 }
 
 /** No logging bundle: core's messages for it go to `CORE:ELEMENT`, labelled `tag#id`. */
