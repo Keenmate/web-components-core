@@ -84,15 +84,26 @@ export interface RegisterOverlayOptions {
   getElement?: () => Element | null | undefined;
   /**
    * Close on Escape (overlay tree step 2): Escape closes only the DEEPEST open overlay that opts
-   * in — one level per press — and returns focus to what opened it. Default `false`.
+   * in — one level per press — and returns focus to what opened it. A function is asked at each
+   * Escape (`false` = this overlay doesn't take part in that press). Default `false`.
    */
-  shouldCloseOnEscape?: boolean;
+  shouldCloseOnEscape?: boolean | (() => boolean);
   /**
-   * Close on a pointer press outside the panel: everything above the overlay that was pressed
-   * in closes (outside every overlay → the whole chain), deepest first. A press on the overlay's
-   * own trigger is ignored (the trigger toggles it). Default `false`.
+   * Close on a click outside the panel: a press that STARTED outside and a click that ENDED
+   * outside, decided once that click has finished (after the page's own click handlers), like the
+   * browser's popover light dismiss. Everything above the overlay that was clicked in closes
+   * (outside every overlay → the whole chain), deepest first. Not counted as outside: the
+   * overlay's own trigger (it toggles it), {@link getInsideElements}, a click during which the
+   * overlay was (re)activated or {@link OverlayHandle.claimCurrentClick claimed} (a page button
+   * that drives it through its API). A keyboard "click" (Enter on a button) never closes it. A
+   * function is asked at each click (`false` = this click doesn't close it). Default `false`.
    */
-  shouldCloseOnOutsideClick?: boolean;
+  shouldCloseOnOutsideClick?: boolean | (() => boolean);
+  /**
+   * More elements a press on doesn't count as outside (besides the panel and the trigger) — the
+   * host around the trigger, a hint, a counter that toggles the panel. Read at each press.
+   */
+  getInsideElements?: () => readonly (Element | null | undefined)[];
 }
 
 /** Options of {@link OverlayHandle.activate}. */
@@ -101,6 +112,11 @@ export interface ActivateOverlayOptions {
   trigger?: Element | null;
   /** The parent overlay's source, when known (overrides the `trigger` lookup). */
   parent?: unknown;
+  /**
+   * Where focus goes after an Escape close. Default: the `trigger`. `null` returns focus nowhere
+   * (a focus-triggered picker would reopen on it).
+   */
+  returnFocusTo?: HTMLElement | null;
 }
 
 /** Handle returned by {@link registerOverlay}. */
@@ -112,6 +128,12 @@ export interface OverlayHandle {
   activate(opts?: ActivateOverlayOptions): void;
   /** This overlay closed: the overlays opened inside it are dismissed too (deepest first). */
   deactivate(): void;
+  /**
+   * Keep this overlay open through the click being handled right now: call it from an API
+   * method a page control may invoke (`scrollToIndex()`, `refresh()` from a button outside the
+   * panel), so that click isn't taken as an outside click. No-op outside a click.
+   */
+  claimCurrentClick(): void;
   /** Stop participating (call on disconnect/destroy). Also deactivates. */
   destroy(): void;
 }
@@ -136,15 +158,52 @@ interface OpenOverlay {
   readonly dismiss: (reason: OverlayDismissReason) => void;
   /** The element that opened it — focus returns there; a press on it doesn't count as outside. */
   readonly trigger?: Element | null;
-  readonly shouldCloseOnEscape?: boolean;
-  readonly shouldCloseOnOutsideClick?: boolean;
+  /** Overrides `trigger` as the focus target after Escape; `null` = none. */
+  readonly returnFocusTo?: HTMLElement | null;
+  readonly shouldCloseOnEscape?: boolean | (() => boolean);
+  /**
+   * Written by copies of core older than the click-time rule: their routers close on the
+   * `pointerdown`. This copy's router honours it too (at click time).
+   */
+  readonly shouldCloseOnOutsideClick?: boolean | (() => boolean);
+  /**
+   * The outside-click rule, decided at click time. Stored under its own name so an older core
+   * copy's `pointerdown` router (same page, shared registry) never acts on it.
+   */
+  readonly outsideClickRule?: boolean | (() => boolean);
+  readonly getInsideElements?: () => readonly (Element | null | undefined)[];
 }
 
 /**
- * Escape / outside-press routing (step 2), installed ONCE per page by whichever copy of core
- * needs it first; it reads the shared registry, so overlays from every copy are routed.
+ * A `shouldCloseOn*` value now: a function is asked (a throw counts as `false`, logged).
+ * Note: on a page with several core copies, routing runs in the copy that installed it first;
+ * a copy older than this treats any function as `true`.
  */
-const routing = (): { isInstalled: boolean } => sharedState(sharedStateKey('overlay-routing'), () => ({ isInstalled: false }));
+function isOn(value: boolean | (() => boolean) | undefined): boolean {
+  if (typeof value !== 'function') return !!value;
+  try {
+    return value() === true;
+  } catch (error) {
+    coreLog(null, 'UI', 'ELEMENT').error('overlay shouldCloseOn* callback threw', error);
+    return false;
+  }
+}
+
+/**
+ * Escape / outside-click routing (step 2), installed ONCE per page by whichever copy of core
+ * needs it first; it reads the shared registry, so overlays from every copy are routed. The key
+ * is versioned: the click-time outside rule needs this copy's router even when an older copy
+ * installed its `pointerdown` one (both handle Escape; the second sees `defaultPrevented`).
+ */
+const routing = (): { isInstalled: boolean } => sharedState(sharedStateKey('overlay-routing-v2'), () => ({ isInstalled: false }));
+
+/**
+ * The click in progress: the overlays its press started outside of, and the overlays claimed
+ * (re-activated or {@link OverlayHandle.claimCurrentClick}) since that press. Shared, so a
+ * claim from any copy of core reaches the router.
+ */
+const pendingClick = (): { candidates: Set<unknown> | null; claimed: Set<unknown> } =>
+  sharedState(sharedStateKey('overlay-pending-click'), () => ({ candidates: null, claimed: new Set<unknown>() }));
 
 /** Does the event's composed path contain `el`? */
 function pathContains(path: readonly EventTarget[], el: Element | null | undefined): boolean {
@@ -176,7 +235,7 @@ function closeRouted(source: unknown, entry: OpenOverlay, reason: OverlayDismiss
 
 function onRoutedKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing) return;
-  const hit = deepestOpen((e) => !!e.shouldCloseOnEscape);
+  const hit = deepestOpen((e) => isOn(e.shouldCloseOnEscape));
   if (!hit) return;
   const [source, entry] = hit;
   const panel = entry.getElement?.();
@@ -184,20 +243,57 @@ function onRoutedKeydown(event: KeyboardEvent): void {
   const hadFocus = !!panel && !!active && (panel === active || panel.contains(active) || active === document.body);
   closeRouted(source, entry, 'escape');
   // Focus goes back to what opened it — if it was inside the closed panel (or lost to <body>).
-  if (hadFocus && entry.trigger instanceof HTMLElement && entry.trigger.isConnected) entry.trigger.focus({ preventScroll: true });
+  const focusTarget = entry.returnFocusTo === undefined ? entry.trigger : entry.returnFocusTo;
+  if (hadFocus && focusTarget instanceof HTMLElement && focusTarget.isConnected) focusTarget.focus({ preventScroll: true });
   event.preventDefault();
   event.stopPropagation();
 }
 
-function onRoutedPointerDown(event: PointerEvent): void {
-  const path = event.composedPath();
+/** The open overlays with an outside-click rule that an event with this `path` is outside of. */
+function outsideOf(path: readonly EventTarget[]): [unknown, OpenOverlay][] {
   // The overlay pressed in (the deepest whose panel is on the path) and its ancestors stay.
   const inside = deepestOpen((e) => pathContains(path, e.getElement?.()));
   const keep = new Set<unknown>(inside ? [inside[0], ...inside[1].ancestors] : []);
-  const toClose = [...openOverlays()]
-    .filter(([source, e]) => e.shouldCloseOnOutsideClick && !keep.has(source) && !pathContains(path, e.trigger ?? null))
+  return [...openOverlays()].filter(
+    ([source, e]) =>
+      (e.outsideClickRule ?? e.shouldCloseOnOutsideClick) !== undefined &&
+      !keep.has(source) &&
+      !pathContains(path, e.trigger ?? null) &&
+      !(e.getInsideElements?.() ?? []).some((el) => pathContains(path, el)),
+  );
+}
+
+/** A press: remember what it started outside of. Nothing closes yet — the click decides. */
+function onRoutedPointerDown(event: PointerEvent): void {
+  const pending = pendingClick();
+  pending.claimed.clear();
+  pending.candidates = new Set(outsideOf(event.composedPath()).map(([source]) => source));
+}
+
+/**
+ * The click has run every page handler (this listens on `window`, bubble phase): close what it
+ * both started and ended outside of, unless claimed meanwhile.
+ */
+function onRoutedClick(event: MouseEvent): void {
+  const pending = pendingClick();
+  const candidates = pending.candidates;
+  pending.candidates = null;
+  if (!candidates || candidates.size === 0) {
+    pending.claimed.clear();
+    return;
+  }
+  const toClose = outsideOf(event.composedPath())
+    .filter(([source, e]) => candidates.has(source) && !pending.claimed.has(source) && isOn(e.outsideClickRule ?? e.shouldCloseOnOutsideClick))
     .sort((a, b) => b[1].ancestors.length - a[1].ancestors.length);
+  pending.claimed.clear();
   for (const [source, entry] of toClose) closeRouted(source, entry, 'outside-click');
+}
+
+/** A cancelled press (a touch that became a scroll) never ends in a click: forget it. */
+function onRoutedPointerCancel(): void {
+  const pending = pendingClick();
+  pending.candidates = null;
+  pending.claimed.clear();
 }
 
 function ensureRouting(): void {
@@ -206,6 +302,8 @@ function ensureRouting(): void {
   state.isInstalled = true;
   document.addEventListener('keydown', onRoutedKeydown, true);
   document.addEventListener('pointerdown', onRoutedPointerDown, true);
+  document.addEventListener('pointercancel', onRoutedPointerCancel, true);
+  window.addEventListener('click', onRoutedClick);
 }
 
 /** The focused element, descending into shadow roots. */
@@ -346,15 +444,22 @@ export function registerOverlay(
         ancestors,
         dismiss: onDismiss,
         trigger: activateOpts?.trigger ?? null,
+        ...(activateOpts?.returnFocusTo !== undefined ? { returnFocusTo: activateOpts.returnFocusTo } : {}),
         shouldCloseOnEscape: opts.shouldCloseOnEscape,
-        shouldCloseOnOutsideClick: opts.shouldCloseOnOutsideClick,
+        outsideClickRule: opts.shouldCloseOnOutsideClick,
+        getInsideElements: opts.getInsideElements,
       });
+      // Opened (or re-opened) during a click: that click doesn't close it.
+      pendingClick().claimed.add(participant.id);
       if (opts.shouldCloseOnEscape || opts.shouldCloseOnOutsideClick) ensureRouting();
       // Route through the event so external listeners see KM activations too; the shared
       // listener dismisses every *other* same-group participant that isn't an ancestor.
       broadcast(participant.id, participant.group, ancestors);
     },
     deactivate,
+    claimCurrentClick(): void {
+      pendingClick().claimed.add(participant.id);
+    },
     destroy(): void {
       participants.delete(participant);
       deactivate();
@@ -409,6 +514,9 @@ export function __resetOverlays(): void {
   if (route.isInstalled && hasDocument()) {
     document.removeEventListener('keydown', onRoutedKeydown, true);
     document.removeEventListener('pointerdown', onRoutedPointerDown, true);
+    document.removeEventListener('pointercancel', onRoutedPointerCancel, true);
+    window.removeEventListener('click', onRoutedClick);
   }
   route.isInstalled = false;
+  onRoutedPointerCancel();
 }

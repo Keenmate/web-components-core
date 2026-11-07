@@ -110,6 +110,11 @@ export interface AnchorOptions {
   /** Extra viewport-edge padding (px) before flipping switches sides. Default `0`. */
   flipPadding?: number;
   /**
+   * The placements flip tries, in order, when the preferred one doesn't fit (floating-ui
+   * `flip({ fallbackPlacements })`). Default: the opposite side. Ignored when flipping is off.
+   */
+  fallbackPlacements?: Placement[];
+  /**
    * Cap the floating element's height to the space available on the resolved side
    * (floating-ui `size()`), so it scrolls internally instead of overflowing the
    * viewport — a calendar/dropdown that should stay on-screen. `true` uses no
@@ -154,6 +159,10 @@ export interface AnchorOptions {
 export interface AnchorHandle {
   /** Recompute the position once, now. */
   update(): void;
-  /** Stop `autoUpdate` and release listeners. Idempotent. */
+  /**
+   * Stop `autoUpdate` and release listeners. Puts back the inline sizes the anchor wrote
+   * (`width` / `min-width` / `max-width` / `max-height` from `matchWidth`, `maxWidth`,
+   * `maxHeight`) and the copied theme. Position (`left` / `top`) stays. Idempotent.
+   */
   destroy(): void;
 }

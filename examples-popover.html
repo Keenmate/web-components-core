@@ -1,5 +1,5 @@
 <meta name="kmwc:title" content="Popovers">
-<meta name="kmwc:subtitle" content="The <code>createPopover()</code> preset — a portaled dropdown/panel anchored to a reference, with width-matching and placement locking. The dropdown shape the five components used to re-wrap ~15 different ways.">
+<meta name="kmwc:subtitle" content="The <code>createPopover()</code> preset: a panel that floats next to a reference and stays until something closes it — the shape of a dropdown, a calendar, a picker or an info panel.">
 <meta name="kmwc:entry" content="none">
 <link rel="stylesheet" href="examples-positioning.css">
 <style>
@@ -24,6 +24,14 @@
         <!-- ============================================================= -->
         <div class="card">
             <h2>PO01 · Playground</h2>
+            <p>
+                A <strong>popover</strong> is a panel that floats next to another element (the <em>reference</em>, such
+                as a button or an input) and stays until something closes it. Compare a tooltip, which shows and hides
+                by itself on hover, and a menu (<code>/menu</code>), which is a ready-made list with its own keyboard
+                handling. A popover's content is yours; core moves it out of the component (so no
+                <code>overflow: hidden</code> clips it), places it next to the reference, keeps it there while the page
+                scrolls, and optionally closes it. It is not the browser's <code>popover</code> attribute.
+            </p>
             <p>
                 One popover, every option live. <code>createPopover({ reference, panel })</code> returns
                 <code>{ open, close, update, isOpen, destroy }</code>; the panel is portaled to <code>&lt;body&gt;</code> and
@@ -97,10 +105,19 @@ const pop = createPopover({
   reference,                 // element (or VirtualElement) to anchor to
   panel,                     // the panel element to position + portal
   container,                 // default: the open modal &lt;dialog&gt; / :popover-open around the reference, else body
-  shouldCloseOnEscape: true,       // close on Escape (deepest open overlay only), focus back to the reference
+  inheritThemeFrom: false,   // default: the reference; false when the panel stays in your shadow root
+  visibleClass: 'is-open',   // added on open (hidden by visibility until placed: no flash at 0,0), removed on close
+  shouldKeepMounted: true,   // the panel stays where you put it; open / close only toggle visibleClass
+  isAnchored: true,          // false: open unpositioned (fullscreen / modal); switch with setAnchored()
+  shouldCloseOnEscape: true,       // close on Escape (deepest open overlay only)
   shouldCloseOnOutsideClick: true, // close on a press outside the panel and the reference
+  getInsideElements: () =&gt; [hint], // more elements a press on doesn't count as outside
+  returnFocusTo: input,      // focus target after Escape (default: the reference; null = none)
+  shouldCloseOnScroll: true, // a scroll outside the panel (page or a scroller around the reference)
+  shouldCloseOnResize: true, // a window resize
   overlayGroup: 'menus',     // opening another overlay of the group closes this one
-  onClose(reason) {},        // it closed itself: Escape, outside press, another overlay
+  onClose(reason) {},        // every close: 'escape' | 'outside-click' | 'overlay' | 'parent' | 'scroll' | 'resize' | 'api'
+  // Every shouldCloseOn* also takes a function, asked each time: () =&gt; !hasStagedSelection
 
   // Every anchor() option is forwarded as given:
   placement: 'bottom-start', // default 'bottom-start'
@@ -108,12 +125,17 @@ const pop = createPopover({
   matchWidth: 'min',         // 'min' | 'exact' | 'max' | false — size against the reference width
   lockPlacement: 'freeze',   // true = return to initial on overflow; 'freeze' = flip once then pin
   shouldFlip: true, shift: 8, // middleware toggles
+  fallbackPlacements: ['top-start', 'bottom-end'], // what flip tries, in order
   onPlaced(placement) {},    // resolved placement callback
 });
 
-pop.open(); pop.close(); pop.update(); pop.isOpen; pop.destroy();</pre></div>
+pop.open(); pop.close(); pop.update(); pop.isOpen; pop.destroy();
+pop.setAnchored(false);   // e.g. the phone layout: still open, now placed by your CSS
+pop.reanchor();           // async content changed the height: pick the side again (lockPlacement 'freeze')
+// reference may be a function: () =&gt; currentAnchorElement, asked at each open / reanchor</pre></div>
             <p class="muted">
-                <code>inheritThemeFrom</code> defaults to the reference. See the anchor page for every forwarded option.
+                <code>container</code> may be a <code>ShadowRoot</code> (the panel keeps the component's styles). See the
+                anchor page for every forwarded option.
             </p>
         </div>
 
@@ -151,9 +173,9 @@ pop.open(); pop.close(); pop.update(); pop.isOpen; pop.destroy();</pre></div>
         };
 
         let pop;
-        // shouldCloseOnOutsideClick closes the popover when you press a control too.
-        // Remember it was open, so the rebuild below reopens it and you see the change.
-        // (window capture runs before core's document-level listener.)
+        // shouldCloseOnOutsideClick closes the popover when you click a control too (when the
+        // click ends, before the control's change handler rebuilds it). Remember it was open at
+        // the press, so the rebuild below reopens it and you see the change.
         let wasOpenAtPress = false;
         window.addEventListener('pointerdown', (e) => {
             wasOpenAtPress = !!pop?.isOpen && !!e.target.closest?.('.controls, .display-sliders');
@@ -161,15 +183,7 @@ pop.open(); pop.close(); pop.update(); pop.isOpen; pop.destroy();</pre></div>
 
         const build = () => {
             const wasOpen = pop?.isOpen || wasOpenAtPress;
-            pop?.destroy();
-            // Core gap: anchor() doesn't clear matchWidth's inline sizes yet.
-            // Reset the inline sizing the previous matchWidth mode wrote — anchor()
-            // sets width / minWidth / maxWidth but never clears them, so without this
-            // a stale value from the prior mode would leak (e.g. 'max''s max-width
-            // capping 'none'/'min', making long content stop growing).
-            panel.style.width = '';
-            panel.style.minWidth = '';
-            panel.style.maxWidth = '';
+            pop?.destroy(); // also puts back the sizes the previous matchWidth mode wrote
             const m = mode();
             const opts = {
                 reference: btn,

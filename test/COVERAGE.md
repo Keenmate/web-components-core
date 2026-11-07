@@ -169,6 +169,8 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | BlissElement-owned tooltip (connect build, on:'reinit' rebuild) | ✓ | `tooltip.spec.ts` | `tooltip.html` |
 | createPopover: portaled, open/close/toggle, outside-click (page handler) | ✓ | `popover.spec.ts` | `popover.html` |
 | createPopover: placement + offset + matchWidth exact | △ (exact only) | `popover.spec.ts` | `popover.html` |
+| createPopover: close() puts back anchor's inline sizes (maxHeight / matchWidth) | ✓ | `popover.spec.ts` | `popover.html` |
+| createPopover: ShadowRoot container, visibleClass after placement, close on a scroll inside a shadow root | ✓ | `popover.spec.ts` | `popover.html` |
 | anchor(): fixed, resolved left/top, placement + offset; re-anchor | ✓ | `anchor.spec.ts` | `anchor.html` |
 
 ## 11. Null-clear contract

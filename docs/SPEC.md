@@ -1044,7 +1044,16 @@ anchor(floating: HTMLElement, reference: HTMLElement | VirtualElement, opts: {
 }): { update(): void; destroy(): void };
 
 createTooltip(opts: { trigger; container; content; placement?; offset?; delay?; cssClass?; visibleClass? }): TooltipHandle;
-createPopover(opts: { reference; panel; container?; placement?; matchWidth?; lockPlacement?; strategy? }): PopoverHandle;
+createPopover(opts: { reference: Reference | (() => Reference); panel; shouldKeepMounted?; isAnchored?;
+  container?: HTMLElement | ShadowRoot; inheritThemeFrom?: HTMLElement | false;
+  visibleClass?; shouldCloseOnEscape?; shouldCloseOnOutsideClick?; getInsideElements?; returnFocusTo?;
+  shouldCloseOnScroll?; shouldCloseOnResize?; overlayGroup?; onClose?(reason: PopoverCloseReason);
+  ...AnchorOptions }): PopoverHandle;   // shouldCloseOn*: boolean | (() => boolean), asked each time
+// PopoverHandle: { isOpen, isAnchored, open(), close(), update(), reanchor(), setAnchored(bool), destroy() }
+// open (state + overlay tree + visibleClass), mounted (shouldKeepMounted) and anchored (setAnchored) are separate.
+// onClose fires for every close; reason adds 'scroll' | 'resize' | 'api' to OverlayDismissReason.
+// anchor() also takes fallbackPlacements; its destroy() puts back the inline sizes it wrote.
+// Fit study (who uses it, what the big panels still need): docs/review/2026-11-06-createpopover-fit.md
 ```
 
 Pin one `@floating-ui/dom` version in core (ends the 1.5/1.7 drift).
@@ -1527,16 +1536,30 @@ overrides it. The rules:
 
 **Step 2 — routing (since rc20 work, opt-in).** `registerOverlay(onDismiss, group, {
 getElement, shouldCloseOnEscape, shouldCloseOnOutsideClick })`: one page-wide `keydown` /
-`pointerdown` capture listener (installed once, by whichever copy needs it first) routes
+`pointerdown` capture + `window` `click` listener set (installed once, by whichever copy needs
+it first; the routing key is versioned, see below) routes
 - **Escape** to the DEEPEST open overlay that opts in — one level per press; focus returns
   to its trigger when it was inside the panel; the key is consumed;
-- an **outside press**: the overlay pressed in (the deepest whose panel is on the event's
-  composed path) and its ancestors stay; every other opted-in overlay closes, deepest first; a
-  press on an overlay's own trigger doesn't close it (the trigger toggles it).
+- an **outside click**, decided when the click ENDS (the `window` bubble listener runs after the
+  page's own click handlers), like the browser's popover light dismiss: the press records the
+  overlays it started outside of, the click closes those it also ended outside of. The overlay
+  clicked in (the deepest whose panel is on the event's composed path) and its ancestors stay;
+  the rest close, deepest first. Not outside: the overlay's own trigger (it toggles it), its
+  `getInsideElements`, and a click during which it was (re)activated or claimed
+  (`handle.claimCurrentClick()`: a page button driving it through its API, e.g.
+  `scrollToIndex()`). A keyboard "click" (no press) and a cancelled press (`pointercancel`)
+  close nothing. Decided at `pointerdown` instead (rc18), a page "toggle" button closed the
+  overlay on the press and its click reopened it (createPopover fit study, B7).
+  Mixed core copies: the click-time rule is stored as `outsideClickRule`, so an older copy's
+  `pointerdown` router ignores it; this copy honours an older entry's `shouldCloseOnOutsideClick`
+  at click time.
 `onDismiss(reason)` gets an `OverlayDismissReason`: `'overlay'` (another activation,
 `dismissAllOverlays`), `'parent'` (the overlay it was opened from closed), `'escape'`,
-`'outside-click'`. `createPopover({ shouldCloseOnEscape, shouldCloseOnOutsideClick,
-overlayGroup, onClose })` joins the tree with them. `/menu` keeps its own keyboard and
+`'outside-click'`. `registerOverlay()` options: `shouldCloseOnEscape` / `shouldCloseOnOutsideClick`
+(a boolean or a function asked at each key / press), `getInsideElements` (more elements a press
+on doesn't count as outside); `activate({ returnFocusTo })` overrides the trigger as the focus
+target (`null` = none). `createPopover({ shouldCloseOnEscape, shouldCloseOnOutsideClick,
+getInsideElements, returnFocusTo, overlayGroup, onClose })` joins the tree with them. `/menu` keeps its own keyboard and
 dismiss handling (its submenus are levels of ONE overlay) but is a node of the tree;
 components move their own dropdown dismissal onto the stack when they next touch it.
 `lockBodyScroll()` pads `<body>` by the scrollbar width while pinned (no sideways jump).
@@ -1574,8 +1597,10 @@ not per component:
    forced (nothing to detect); `setThemeMode('auto')` re-detects once and resumes.
 3. **`theme-source`** — a per-component source instead of the page: a CSS selector
    (nearest matching ancestor, crossing shadow roots; else the first match in the
-   document), `closest` (the nearest ancestor carrying a signal *at connect* — the
-   old `:host-context` reach, opt-in), or an `Element` (property). Components sharing
+   document), `closest` (the nearest ancestor carrying a signal, re-resolved whenever
+   one of the host's ancestors gains or loses one — the old `:host-context` reach,
+   opt-in; one shared observer watches every `closest` subscriber's ancestors), or an
+   `Element` (property). Components sharing
    a source share its cache and observer. `<html>` / `<body>` as a source collapse
    to the page watch. A source without a signal falls back to the page.
 4. **The page.**
@@ -1588,9 +1613,11 @@ Forcing beats detection at every level, so a global `setThemeMode()` also beats 
 
 **Trade-off, on purpose.** The default is page-level. A `data-bs-theme="dark"` on a
 wrapper `<div>` is no longer picked up automatically (`:host-context` did that in
-Chromium only); use `theme-source="closest"` or a selector there. A source resolved
-by `closest` / selector is fixed for the subscription — changing `theme-source`
-re-resolves, a signal added later to some *other* ancestor does not.
+Chromium only); use `theme-source="closest"` or a selector there. A selector source is
+fixed for the subscription — changing `theme-source` re-resolves, a matching element
+added later does not. `closest` follows its ancestors: a section switched to dark after
+the component connected (it had no signal then) becomes its source, and a source that
+loses its signal hands over to the next ancestor that has one, then the page.
 
 **Cross-copy safety.** The state (mode, page watch, source watches) lives on
 `globalThis[Symbol.for('@keenmate/web-components-core/theme@1')]`, so two components

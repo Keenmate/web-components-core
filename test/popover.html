@@ -18,6 +18,11 @@
         <button id="ref" type="button">Toggle popover (360px reference)</button>
     </div>
 
+    <div class="fixture">
+        <div class="fixture-label">shadow host: a scroller with a reference inside (close-on-scroll across a shadow root)</div>
+        <div id="shadow-host"></div>
+    </div>
+
     <script type="module">
         import { createPopover } from '/src/positioning/index.ts';
 
@@ -27,6 +32,11 @@
         panel.textContent = 'portaled panel';
         const pop = createPopover({ reference: ref, panel, placement: 'bottom-start', offset: 6, matchWidth: 'exact' });
         window.pop = pop;
+        window.createPopover = createPopover;
+
+        const root = document.getElementById('shadow-host').attachShadow({ mode: 'open' });
+        root.innerHTML = `<div class="scroller" style="height: 80px; overflow: auto; border: 1px solid #ccc">
+            <div style="height: 400px"><button class="inner-ref" type="button">inner reference</button></div></div>`;
 
         ref.addEventListener('click', () => (pop.isOpen ? pop.close() : pop.open()));
         document.addEventListener('click', (e) => {

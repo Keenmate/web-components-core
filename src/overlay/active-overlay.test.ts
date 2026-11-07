@@ -335,7 +335,12 @@ describe('active-overlay routing (step 2)', () => {
     return e;
   };
   // jsdom has no PointerEvent; the router only reads composedPath().
-  const press = (target: Element) => target.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, composed: true }));
+  /** A full click: the press records, the click (after page handlers) decides. */
+  const press = (target: EventTarget, onClick?: () => void) => {
+    target.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, composed: true }));
+    onClick?.(); // what the clicked element's own handler does
+    target.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+  };
 
   it('Escape closes only the deepest open overlay, one level per press', () => {
     const reasons: string[] = [];

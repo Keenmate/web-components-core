@@ -18,6 +18,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **`createCustomStyles(host, root, { getContext, getInstanceStyles, … })`** → `{ refresh, destroy }`
   (replaces their own `createStyleSlot` + callback-vs-attribute code). `StyleSlot` gains a read-only
   `element`.
+- **`createPopover()` covers more of what components hand-roll** (the additive part of the
+  `createPopover()` fit study, `docs/review/2026-11-06-createpopover-fit.md`):
+  - `container` may be a `ShadowRoot`, so the panel keeps the component's styles;
+  - `visibleClass` is added on open and removed on close; until the first position the panel
+    also has an inline `visibility: hidden`, so a `display: none` panel is measurable and nothing
+    shows at 0,0 (multiselect's label reveal adds its class a frame later by hand today);
+  - `shouldCloseOnScroll` (a scroll outside the panel: the page or any scroller around the
+    reference, also inside shadow roots) and `shouldCloseOnResize` (treeview's full-label panel
+    listens to its body scroll by hand today);
+  - every `shouldCloseOn*` also takes a function, asked each time (return `false` to stay open);
+  - `getInsideElements` (more elements a press on doesn't count as outside) and `returnFocusTo`
+    (focus target after Escape; `null` = none);
+  - `inheritThemeFrom: false` copies no theme;
+  - new types `PopoverCloseReason`, `PopoverCloseRule`;
+  - **open, mounted and anchored kept apart** (the structural part of the study):
+    `shouldKeepMounted` leaves a component-owned panel where it is (open / close toggle
+    `visibleClass`, or `hidden`); `isAnchored` / `setAnchored(bool)` open or switch the panel
+    without positioning it (a fullscreen / modal presentation; un-anchoring puts back its own
+    `position` / `left` / `top`); `reanchor()` re-reads the reference and forgets a frozen
+    placement while open; `reference` may be a function, asked at each open / re-anchor.
+  The overlay tree takes the same: `registerOverlay()` options `shouldCloseOn*` as functions and
+  `getInsideElements`, `activate({ returnFocusTo })`.
+- **`anchor()` `fallbackPlacements`**: the placements flip tries, in order (grid's dropdown,
+  datepicker, toolbar and tooltip each pass a list to floating-ui directly today). pure-css port affected.
 
 ### Changed — BREAKING
 
@@ -29,12 +53,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The overlay tree decides an outside click when the click ends**, not at `pointerdown`: the
+  press records the overlays it started outside of, and once the click has run the page's own
+  handlers, those it also ended outside of close (the browser's popover light dismiss works the
+  same way). A page button that drives an overlay through its API (`toggle()`, `scrollToIndex()`)
+  no longer closes it on the press for the click to reopen it: an overlay (re)activated during
+  the click stays open, and an API method can call the new **`claimCurrentClick()`**
+  (`OverlayHandle`, `PopoverHandle`). A keyboard "click" and a cancelled touch close nothing.
+  Affects `registerOverlay({ shouldCloseOnOutsideClick })` and `createPopover()` users (today
+  treeview's full-label panel); `/menu` keeps its own `pointerdown` dismissal. Mixed core copies
+  on one page: an older copy's router leaves the new entries alone.
+- **`createPopover()` `onClose(reason)` fires for every close.** It reported only the overlay tree's
+  closes; `close()` / `destroy()` in code now report `'api'`, and the new scroll / resize closes
+  `'scroll'` / `'resize'`. A handler that cleans up on close sees the programmatic close too
+  (treeview's full-label panel handler is a no-op there).
+- **`anchor().destroy()` puts back the inline sizes it wrote**: the `width` / `min-width` /
+  `max-width` / `max-height` from `matchWidth`, `maxWidth` and `maxHeight` return to their value
+  from before the anchor (a reused panel kept a stale cap; daterangepicker clears them by hand).
+  `left` / `top` stay. pure-css port affected.
 - **`toCssLength()` takes a number on the property path too.** `el.maxWidth = 120` stores
   `"120px"`, like the attribute `max-width="120"` (it was refused). Negative numbers still need
   `allowNegative`; `NaN` / `Infinity` are refused.
 
 ### Fixed
 
+- **`theme-source="closest"` follows a section themed later.** The nearest ancestor with a theme
+  signal was picked once, at connect: a section that had no `data-theme` then (an "auto" state)
+  and got `data-theme="dark"` later never reached the component, which stayed light (multiselect's
+  TH01 demo). Core now re-resolves `closest` whenever one of the host's ancestors gains or loses a
+  signal (`class` / `data-theme` / `data-bs-theme`), so a nearer section takes over and a source that
+  loses its signal hands back to the next one up; one shared observer watches every `closest`
+  subscriber's ancestors, paused while a mode is forced.
 - **`/menu` toggled-item colour falls back to `--base-primary-color`.** It read
   `--base-accent-color`, renamed in base-css-variables 2.0.0, so the base fallback never
   resolved and `check:vars` in components flagged it.

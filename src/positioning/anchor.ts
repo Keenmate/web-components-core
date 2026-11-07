@@ -68,24 +68,44 @@ function positionArrow(el: HTMLElement, placement: Placement, data: { x?: number
   el.style[staticSide] = `-${size / 2}px`;
 }
 
+/** The inline size properties the `size()` steps write (matchWidth, maxHeight, maxWidth). */
+type SizeProperty = 'width' | 'minWidth' | 'maxWidth' | 'maxHeight';
+
+/**
+ * Writes the size properties and remembers each one's inline value from before the first
+ * write, so `destroy()` can put back exactly what the anchor changed (a reused panel must not
+ * keep a stale `max-height` or a width from a reference it no longer follows).
+ */
+function createSizeWriter(floating: HTMLElement): { set(prop: SizeProperty, value: string): void; restore(): void } {
+  const original = new Map<SizeProperty, string>();
+  return {
+    set(prop, value) {
+      if (!original.has(prop)) original.set(prop, floating.style[prop]);
+      floating.style[prop] = value;
+    },
+    restore() {
+      for (const [prop, value] of original) floating.style[prop] = value;
+      original.clear();
+    },
+  };
+}
+
 /**
  * Build the middleware stack in the canonical order: offset → size → flip → shift.
  * `flipEnabled` lets the caller drop `flip` after freezing (`lockPlacement: 'freeze'`).
  */
-function buildMiddleware(opts: AnchorOptions, flipEnabled: boolean): Middleware[] {
+function buildMiddleware(opts: AnchorOptions, flipEnabled: boolean, sizes: ReturnType<typeof createSizeWriter>): Middleware[] {
   const middleware: Middleware[] = [offsetMiddleware(opts.offset ?? 4)];
 
   if (opts.matchWidth) {
     const mode = opts.matchWidth;
     middleware.push(
       sizeMiddleware({
-        apply({ rects, elements }) {
+        apply({ rects }) {
           const width = `${rects.reference.width}px`;
           // 'exact' pins the width; 'min' floors it (grow for wider content);
           // 'max' caps it (shrink for narrower content).
-          if (mode === 'exact') elements.floating.style.width = width;
-          else if (mode === 'max') elements.floating.style.maxWidth = width;
-          else elements.floating.style.minWidth = width;
+          sizes.set(mode === 'exact' ? 'width' : mode === 'max' ? 'maxWidth' : 'minWidth', width);
         },
       }),
     );
@@ -98,6 +118,7 @@ function buildMiddleware(opts: AnchorOptions, flipEnabled: boolean): Middleware[
       flipMiddleware({
         ...(opts.lockPlacement === true ? { fallbackStrategy: 'initialPlacement' } : {}),
         ...(opts.flipPadding != null ? { padding: opts.flipPadding } : {}),
+        ...(opts.fallbackPlacements ? { fallbackPlacements: opts.fallbackPlacements } : {}),
       }),
     );
   }
@@ -111,8 +132,8 @@ function buildMiddleware(opts: AnchorOptions, flipEnabled: boolean): Middleware[
     middleware.push(
       sizeMiddleware({
         padding,
-        apply({ availableHeight, elements }) {
-          elements.floating.style.maxHeight = `${Math.max(0, availableHeight)}px`;
+        apply({ availableHeight }) {
+          sizes.set('maxHeight', `${Math.max(0, availableHeight)}px`);
         },
       }),
     );
@@ -125,8 +146,8 @@ function buildMiddleware(opts: AnchorOptions, flipEnabled: boolean): Middleware[
     middleware.push(
       sizeMiddleware({
         padding,
-        apply({ availableWidth, elements }) {
-          elements.floating.style.maxWidth = `${Math.max(0, availableWidth)}px`;
+        apply({ availableWidth }) {
+          sizes.set('maxWidth', `${Math.max(0, availableWidth)}px`);
         },
       }),
     );
@@ -161,7 +182,8 @@ export function anchor(
   // first resolved placement and drop `flip` for every subsequent frame.
   let placement = opts.placement ?? 'bottom-start';
   let flipEnabled = opts.shouldFlip ?? true;
-  let middleware = buildMiddleware(opts, flipEnabled);
+  const sizes = createSizeWriter(floating);
+  let middleware = buildMiddleware(opts, flipEnabled, sizes);
   const freeze = opts.lockPlacement === 'freeze';
   let frozen = false;
 
@@ -197,7 +219,7 @@ export function anchor(
         frozen = true;
         placement = resolved;
         flipEnabled = false;
-        middleware = buildMiddleware(opts, false);
+        middleware = buildMiddleware(opts, false, sizes);
       }
       // Each callback is isolated: one that throws is logged and the others still run.
       const { onPlaced, onComputed, onDrift } = opts;
@@ -240,6 +262,7 @@ export function anchor(
       cleanup?.();
       cleanup = undefined;
       restoreTheme?.();
+      sizes.restore();
     },
   };
 }

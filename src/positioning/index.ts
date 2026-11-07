@@ -33,4 +33,4 @@ export type {
   VirtualElement,
 } from './types.js';
 export type { TooltipDelay, TooltipHandle, TooltipOptions } from './tooltip.js';
-export type { PopoverHandle, PopoverOptions } from './popover.js';
+export type { PopoverCloseReason, PopoverCloseRule, PopoverHandle, PopoverOptions } from './popover.js';
