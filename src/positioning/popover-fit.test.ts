@@ -247,6 +247,20 @@ describe('createPopover — fit additions', () => {
       expect(onClose).toHaveBeenCalledWith('scroll');
     });
 
+    it('an unrelated scroller elsewhere does not close it; one around the reference does', () => {
+      const wrapper = document.createElement('div');
+      const reference = document.createElement('button');
+      wrapper.append(reference);
+      const logPanel = document.createElement('div'); // e.g. a log that auto-scrolls on events
+      document.body.append(wrapper, logPanel);
+      const pop = createPopover({ reference, panel: document.createElement('div'), shouldCloseOnScroll: true });
+      pop.open();
+      logPanel.dispatchEvent(new Event('scroll'));
+      expect(pop.isOpen).toBe(true);
+      wrapper.dispatchEvent(new Event('scroll'));
+      expect(pop.isOpen).toBe(false);
+    });
+
     it('hears a scroller inside the shadow root around the reference', () => {
       const host = document.createElement('div');
       document.body.append(host);

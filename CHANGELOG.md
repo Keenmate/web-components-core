@@ -24,8 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `visibleClass` is added on open and removed on close; until the first position the panel
     also has an inline `visibility: hidden`, so a `display: none` panel is measurable and nothing
     shows at 0,0 (multiselect's label reveal adds its class a frame later by hand today);
-  - `shouldCloseOnScroll` (a scroll outside the panel: the page or any scroller around the
-    reference, also inside shadow roots) and `shouldCloseOnResize` (treeview's full-label panel
+  - `shouldCloseOnScroll` (a scroll that moves the reference: the page or any scroller around it,
+    also inside shadow roots; a scroll inside the panel or of an unrelated scroller doesn't count) and `shouldCloseOnResize` (treeview's full-label panel
     listens to its body scroll by hand today);
   - every `shouldCloseOn*` also takes a function, asked each time (return `false` to stay open);
   - `getInsideElements` (more elements a press on doesn't count as outside) and `returnFocusTo`

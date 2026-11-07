@@ -19,6 +19,7 @@ import { anchor } from './anchor.js';
 import type { AnchorHandle, AnchorOptions } from './types.js';
 import { registerOverlay, type OverlayDismissReason, type OverlayHandle } from '../overlay/active-overlay.js';
 import { coreLog } from '../logging/element-logger.js';
+import { composedParent } from '../dom/composed-tree.js';
 
 /** A DOM element or a floating-ui `VirtualElement` to anchor against. */
 type Reference = Parameters<typeof anchor>[1];
@@ -102,8 +103,9 @@ export interface PopoverOptions extends Omit<AnchorOptions, 'inheritThemeFrom'> 
    */
   returnFocusTo?: HTMLElement | null;
   /**
-   * Close on a scroll outside the panel: the page, or any scroll container around the reference
-   * (also inside shadow roots). A function is asked at each scroll. Default `false`.
+   * Close when the page scrolls, or a scroll container around the reference does (also inside
+   * shadow roots) — what moves the reference. A scroll inside the panel, or of an unrelated
+   * scroller elsewhere on the page, doesn't count. A function is asked at each scroll. Default `false`.
    */
   shouldCloseOnScroll?: PopoverCloseRule;
   /** Close when the window resizes. A function is asked at each resize. Default `false`. */
@@ -304,6 +306,15 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
     }
   };
 
+  /** Is `target` the document, or a scroller that contains the reference (across shadow roots)? */
+  const isAroundReference = (target: EventTarget | null): boolean => {
+    if (!(target instanceof Element)) return true; // the document / window scrolled
+    const ref = referenceElement();
+    if (!ref) return false; // a virtual reference: only the page moves it
+    for (let n: Element | null = ref; n; n = composedParent(n)) if (n === target) return true;
+    return false;
+  };
+
   /** Scroll / resize listeners for the open popover; returns their removal. */
   const listen = (): (() => void) | undefined => {
     if (typeof window === 'undefined' || (!shouldCloseOnScroll && !shouldCloseOnResize)) return undefined;
@@ -312,6 +323,9 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
       const onScroll = (event: Event): void => {
         // A scroll inside the panel (its own list) is the user reading it, not leaving.
         if (event.composedPath().includes(panel)) return;
+        // Only a scroll that moves the reference counts: the page, or a scroller around it — not
+        // an unrelated scroller elsewhere (a log panel auto-scrolling, a sidebar list).
+        if (!isAroundReference(event.target)) return;
         if (isOn(shouldCloseOnScroll, panel)) closeWith('scroll');
       };
       for (const root of scrollRoots(referenceElement())) {
