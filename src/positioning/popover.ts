@@ -104,8 +104,9 @@ export interface PopoverOptions extends Omit<AnchorOptions, 'inheritThemeFrom'> 
   returnFocusTo?: HTMLElement | null;
   /**
    * Close when the page scrolls, or a scroll container around the reference does (also inside
-   * shadow roots) — what moves the reference. A scroll inside the panel, or of an unrelated
-   * scroller elsewhere on the page, doesn't count. A function is asked at each scroll. Default `false`.
+   * shadow roots), and the reference has actually moved since the popover opened. A scroll inside
+   * the panel, of an unrelated scroller elsewhere, or a late scroll event from a scroll that ended
+   * before the popover opened doesn't count. A function is asked at each scroll. Default `false`.
    */
   shouldCloseOnScroll?: PopoverCloseRule;
   /** Close when the window resizes. A function is asked at each resize. Default `false`. */
@@ -306,6 +307,19 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
     }
   };
 
+  /** Where the reference was when the popover opened (viewport coordinates). */
+  let openedAt: { top: number; left: number } | undefined;
+  const referenceSpot = (): { top: number; left: number } => {
+    const rect = reference.getBoundingClientRect();
+    return { top: rect.top, left: rect.left };
+  };
+  /** Has the reference moved (≥ 1px) since the popover opened? */
+  const hasReferenceMoved = (): boolean => {
+    if (!openedAt) return true;
+    const now = referenceSpot();
+    return Math.abs(now.top - openedAt.top) >= 1 || Math.abs(now.left - openedAt.left) >= 1;
+  };
+
   /** Is `target` the document, or a scroller that contains the reference (across shadow roots)? */
   const isAroundReference = (target: EventTarget | null): boolean => {
     if (!(target instanceof Element)) return true; // the document / window scrolled
@@ -326,6 +340,10 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
         // Only a scroll that moves the reference counts: the page, or a scroller around it — not
         // an unrelated scroller elsewhere (a log panel auto-scrolling, a sidebar list).
         if (!isAroundReference(event.target)) return;
+        // Only a scroll that actually MOVED the reference: a scroll event can arrive a frame late
+        // (a scroll that finished just before the click that opened the popover, a scroll-into-view
+        // before a click) — the reference is where it was at open, so nothing to close.
+        if (!hasReferenceMoved()) return;
         if (isOn(shouldCloseOnScroll, panel)) closeWith('scroll');
       };
       for (const root of scrollRoots(referenceElement())) {
@@ -358,6 +376,7 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
       reference = resolveReference();
       show();
       if (isAnchored) attach();
+      openedAt = shouldCloseOnScroll ? referenceSpot() : undefined;
       stopListening = listen();
       if (isInOverlayTree) {
         overlay = registerOverlay(

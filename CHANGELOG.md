@@ -25,7 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     also has an inline `visibility: hidden`, so a `display: none` panel is measurable and nothing
     shows at 0,0 (multiselect's label reveal adds its class a frame later by hand today);
   - `shouldCloseOnScroll` (a scroll that moves the reference: the page or any scroller around it,
-    also inside shadow roots; a scroll inside the panel or of an unrelated scroller doesn't count) and `shouldCloseOnResize` (treeview's full-label panel
+    also inside shadow roots, once the reference has actually moved since the popover opened; a
+    scroll inside the panel, of an unrelated scroller, or a late scroll event from a scroll that ended
+    before the popover opened doesn't count) and `shouldCloseOnResize` (treeview's full-label panel
     listens to its body scroll by hand today);
   - every `shouldCloseOn*` also takes a function, asked each time (return `false` to stay open);
   - `getInsideElements` (more elements a press on doesn't count as outside) and `returnFocusTo`

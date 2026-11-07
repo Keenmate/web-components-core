@@ -233,6 +233,12 @@ describe('createPopover — fit additions', () => {
   });
 
   describe('shouldCloseOnScroll / shouldCloseOnResize', () => {
+    /** jsdom has no layout: a real scroll moves the reference, so tests move it themselves. */
+    const moveBy = (el: Element, dy: number) => {
+      const top = el.getBoundingClientRect().top + dy;
+      el.getBoundingClientRect = () => ({ top, left: 0, right: 0, bottom: top, width: 0, height: 0, x: 0, y: top, toJSON() {} }) as DOMRect;
+    };
+
     it('a page scroll closes it; a scroll inside the panel does not', () => {
       const { reference, panel } = setup();
       const onClose = vi.fn();
@@ -240,6 +246,7 @@ describe('createPopover — fit additions', () => {
       pop.open();
       const list = document.createElement('div');
       panel.append(list);
+      moveBy(reference, -40);
       list.dispatchEvent(new Event('scroll'));
       expect(pop.isOpen).toBe(true);
       document.dispatchEvent(new Event('scroll'));
@@ -255,6 +262,7 @@ describe('createPopover — fit additions', () => {
       document.body.append(wrapper, logPanel);
       const pop = createPopover({ reference, panel: document.createElement('div'), shouldCloseOnScroll: true });
       pop.open();
+      moveBy(reference, -40);
       logPanel.dispatchEvent(new Event('scroll'));
       expect(pop.isOpen).toBe(true);
       wrapper.dispatchEvent(new Event('scroll'));
@@ -271,7 +279,21 @@ describe('createPopover — fit additions', () => {
       root.append(body);
       const pop = createPopover({ reference, panel: document.createElement('div'), shouldCloseOnScroll: true });
       pop.open();
+      moveBy(reference, -40);
       body.dispatchEvent(new Event('scroll')); // doesn't bubble, doesn't leave the shadow root
+      expect(pop.isOpen).toBe(false);
+    });
+
+    it('a late scroll event that did not move the reference does not close it', () => {
+      // A scroll-into-view (or a wheel scroll) that ended just before the click that opened the
+      // popover delivers its event a frame later: the reference is where it was at open.
+      const { reference, panel } = setup();
+      const pop = createPopover({ reference, panel, shouldCloseOnScroll: true });
+      pop.open();
+      document.dispatchEvent(new Event('scroll'));
+      expect(pop.isOpen).toBe(true);
+      moveBy(reference, 1);
+      document.dispatchEvent(new Event('scroll'));
       expect(pop.isOpen).toBe(false);
     });
 
@@ -280,6 +302,7 @@ describe('createPopover — fit additions', () => {
       let isAllowed = false;
       const pop = createPopover({ reference, panel, shouldCloseOnScroll: () => isAllowed, shouldCloseOnResize: () => isAllowed });
       pop.open();
+      moveBy(reference, -40);
       document.dispatchEvent(new Event('scroll'));
       window.dispatchEvent(new Event('resize'));
       expect(pop.isOpen).toBe(true);
