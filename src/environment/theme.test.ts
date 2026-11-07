@@ -236,6 +236,76 @@ describe('theme-source', () => {
     expect(record(el, 'closest').seen).toEqual(['dark']);
   });
 
+  describe('"closest" follows ancestors that gain or lose a signal', () => {
+    it('a section switched to dark later wins over the page (TH01: no signal at connect)', async () => {
+      html().setAttribute('data-theme', 'light');
+      const section = document.createElement('section');
+      document.body.appendChild(section);
+      const { seen } = record(host(section), 'closest');
+      expect(seen).toEqual(['light']); // the page, for now
+
+      section.setAttribute('data-theme', 'dark');
+      await tick();
+      expect(seen).toEqual(['light', 'dark']);
+      section.setAttribute('data-theme', 'light');
+      await tick();
+      expect(seen).toEqual(['light', 'dark', 'light']); // the section is now the watched source
+    });
+
+    it('a nearer ancestor gaining a signal takes over; losing it hands back to the farther one', async () => {
+      const outer = document.createElement('div');
+      outer.classList.add('dark');
+      const inner = document.createElement('div');
+      outer.appendChild(inner);
+      document.body.appendChild(outer);
+      const { seen } = record(host(inner), 'closest');
+      expect(seen).toEqual(['dark']);
+
+      inner.setAttribute('data-bs-theme', 'light');
+      await tick();
+      expect(seen).toEqual(['dark', 'light']);
+      inner.removeAttribute('data-bs-theme'); // not the page: the outer section again
+      await tick();
+      expect(seen).toEqual(['dark', 'light', 'dark']);
+    });
+
+    it('works across a shadow root, with one shared observer for many subscribers', async () => {
+      const counter = countObservers();
+      const section = document.createElement('div');
+      const shadowHost = document.createElement('div');
+      section.appendChild(shadowHost);
+      document.body.appendChild(section);
+      const root = shadowHost.attachShadow({ mode: 'open' });
+      const a = record(host(root as unknown as Element), 'closest');
+      const b = record(host(root as unknown as Element), 'closest');
+      const before = counter.count;
+
+      section.classList.add('dark');
+      await tick();
+      expect(a.seen.at(-1)).toBe('dark');
+      expect(b.seen.at(-1)).toBe('dark');
+      // the ancestors share one observer; the section's own watch adds one when it becomes a source
+      expect(counter.count - before).toBeLessThanOrEqual(1);
+    });
+
+    it('pauses while a mode is forced and catches up on auto; unsubscribing stops it', async () => {
+      const section = document.createElement('section');
+      document.body.appendChild(section);
+      const { seen, unsub } = record(host(section), 'closest');
+      setThemeMode('light');
+      section.setAttribute('data-theme', 'dark'); // changed while paused
+      await tick();
+      expect(seen.at(-1)).toBe('light');
+      setThemeMode('auto');
+      expect(seen.at(-1)).toBe('dark');
+
+      unsub();
+      section.setAttribute('data-theme', 'light');
+      await tick();
+      expect(seen.at(-1)).toBe('dark');
+    });
+  });
+
   it('walks out of shadow roots', () => {
     const wrapper = document.createElement('div');
     wrapper.classList.add('dark');

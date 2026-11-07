@@ -44,7 +44,8 @@ export type ThemeMode = ColorScheme | 'auto';
  * Where a component reads its theme from instead of the page:
  * - a CSS selector — the nearest matching ancestor (crossing shadow roots),
  *   else the first match in the document;
- * - `'closest'` — the nearest ancestor that carries a theme signal at connect;
+ * - `'closest'` — the nearest ancestor that carries a theme signal, re-resolved
+ *   whenever an ancestor gains or loses one (a section switched to dark later);
  * - an `Element` (property only).
  * `null` / unset means the page.
  */
@@ -86,6 +87,8 @@ interface Subscriber {
   listener: ThemeListener;
   /** Last value delivered; `undefined` before the first delivery. */
   last: ColorScheme | null | undefined;
+  /** `'closest'` subscribers: the host, and its composed ancestors below the page (re-resolved on a signal change). */
+  closest?: { host: Element; chain: Element[] };
 }
 
 interface Watch {
@@ -107,6 +110,13 @@ interface ThemeState {
   mode: ThemeMode;
   page: Watch;
   sources: Map<Element, Watch>;
+  /** The `'closest'` subscribers and the ONE observer on their ancestors (added lazily: older copies of core share this state). */
+  closest?: ClosestState;
+}
+
+interface ClosestState {
+  subscribers: Set<Subscriber>;
+  observer: MutationObserver | null;
 }
 
 const STATE_KEY = '@keenmate/web-components-core/theme@1';
@@ -260,6 +270,70 @@ export function resolveThemeSource(host: Element, source: ThemeSource | undefine
   return found && !isPageElement(found) ? found : null;
 }
 
+// ── 'closest' re-resolution ────────────────────────────────────────────────
+
+function closestState(): ClosestState {
+  const s = state();
+  return (s.closest ??= { subscribers: new Set(), observer: null });
+}
+
+/** The host's composed ancestors below the page (the page watch covers <html> / <body>). */
+function ancestorChain(host: Element): Element[] {
+  const chain: Element[] = [];
+  for (let el = composedParent(host); el && !isPageElement(el); el = composedParent(el)) chain.push(el);
+  return chain;
+}
+
+/** Point a subscriber at `el`'s watch (or the page), keeping the shared watches in step. */
+function moveSubscriber(sub: Subscriber, el: Element | null): void {
+  const s = state();
+  const current = sub.source?.element ?? null;
+  if (current === el) return;
+  const previous = sub.source;
+  (previous ?? s.page).subscribers.delete(sub);
+  if (previous) {
+    syncWatch(previous);
+    if (previous.subscribers.size === 0) s.sources.delete(previous.element!);
+  }
+  let next: Watch | null = null;
+  if (el) {
+    next = s.sources.get(el) ?? null;
+    if (!next) s.sources.set(el, (next = newWatch('source', el)));
+  }
+  sub.source = next;
+  (next ?? s.page).subscribers.add(sub);
+  if (next) syncWatch(next);
+  syncWatch(s.page);
+}
+
+/** Re-resolve the `'closest'` subscribers whose ancestor chain contains one of `targets`. */
+function reresolveClosest(targets: ReadonlySet<Node>): void {
+  for (const sub of closestState().subscribers) {
+    if (!sub.closest || !sub.closest.chain.some((el) => targets.has(el))) continue;
+    moveSubscriber(sub, resolveThemeSource(sub.closest.host, 'closest'));
+    deliver(sub);
+  }
+}
+
+/**
+ * One observer for every `'closest'` subscriber's ancestors, while any exists and the mode is
+ * `'auto'`. `MutationObserver` can't unobserve one target, so a change in the set re-attaches it.
+ */
+function syncClosest(): void {
+  const c = closestState();
+  c.observer?.disconnect();
+  if (state().mode !== 'auto' || c.subscribers.size === 0) return;
+  c.observer ??= new MutationObserver((records) => reresolveClosest(new Set(records.map((r) => r.target))));
+  const observed = new Set<Element>();
+  for (const sub of c.subscribers) {
+    for (const el of sub.closest?.chain ?? []) {
+      if (observed.has(el)) continue;
+      observed.add(el);
+      c.observer.observe(el, { attributes: true, attributeFilter: SIGNAL_ATTRIBUTES });
+    }
+  }
+}
+
 // ── public API ─────────────────────────────────────────────────────────────
 
 /** The current global theme mode (`'auto'` unless {@link setThemeMode} forced one). */
@@ -284,6 +358,13 @@ export function setThemeMode(mode: ThemeMode): void {
   if (!hasDom()) return;
   const watches = [s.page, ...s.sources.values()];
   for (const w of watches) syncWatch(w);
+  syncClosest();
+  // Back to 'auto': an ancestor may have changed its signal while the observers were paused.
+  if (mode === 'auto') {
+    for (const sub of closestState().subscribers) {
+      if (sub.closest) moveSubscriber(sub, resolveThemeSource(sub.closest.host, 'closest'));
+    }
+  }
   for (const sub of dependents(s.page)) deliver(sub);
 }
 
@@ -312,8 +393,10 @@ export interface ObserveThemeContextOptions {
 /**
  * Subscribe `host` to its theme context. The listener fires immediately with
  * the current scheme (unless `shouldFireImmediately: false`), then only when
- * the effective scheme changes. The source is resolved once, now; to change it, unsubscribe
- * and subscribe again. Shared observers start with the first subscriber of a
+ * the effective scheme changes. The source is resolved now; `'closest'` is resolved again
+ * whenever one of the host's ancestors gains or loses a theme signal (the ancestors are the
+ * ones at subscribe time — a moved host re-subscribes on connect). To change the source,
+ * unsubscribe and subscribe again. Shared observers start with the first subscriber of a
  * watched element and stop with the last. SSR-safe: fires `null` once (or the
  * forced mode) and returns a no-op.
  */
@@ -339,17 +422,25 @@ export function observeThemeContext(
   (watch ?? s.page).subscribers.add(sub);
   if (watch) syncWatch(watch);
   syncWatch(s.page);
+  if (source === 'closest') {
+    sub.closest = { host, chain: ancestorChain(host) };
+    closestState().subscribers.add(sub);
+    syncClosest();
+  }
 
   if (opts.shouldFireImmediately !== false) deliver(sub);
   else sub.last = effective(sub);
 
   return once(() => {
-    (watch ?? s.page).subscribers.delete(sub);
-    if (watch) {
-      syncWatch(watch);
-      if (watch.subscribers.size === 0) s.sources.delete(watch.element!);
+    // `sub.source`, not `watch`: a 'closest' subscriber may have moved since.
+    const current = sub.source;
+    (current ?? s.page).subscribers.delete(sub);
+    if (current) {
+      syncWatch(current);
+      if (current.subscribers.size === 0) s.sources.delete(current.element!);
     }
     syncWatch(s.page);
+    if (sub.closest && closestState().subscribers.delete(sub)) syncClosest();
   });
 }
 
@@ -364,4 +455,8 @@ export function __resetTheme(): void {
   }
   s.sources.clear();
   s.mode = 'auto';
+  const c = closestState();
+  c.subscribers.clear();
+  c.observer?.disconnect();
+  c.observer = null;
 }
