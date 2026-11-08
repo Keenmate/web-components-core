@@ -534,8 +534,14 @@ owns the property.
 
 ### 6.4 Disabled state — the `isDisabled` input + `<fieldset disabled>`
 
-Every form-participating component has the `isDisabled` input (attribute
-`disabled`). A form-associated element (`static formAssociated = true`) can also
+**Every data-input component has the `isDisabled` input** (attribute `disabled`,
+reflects): a component through which the user enters or changes data — a value or
+selection, files, text, cells, a tree's checks / edits / moves — whether or not it
+is form-associated (rule set 2026-11-08). A component that only shows or launches
+things (a command palette) has none. Disabled follows native form-control
+semantics: no interaction at all, not focusable, styled as disabled — not
+"read-only". Apply it from `isEffectivelyDisabled` in `reinit()` and
+`disabledChanged()`. A form-associated element (`static formAssociated = true`) can also
 be disabled by an ancestor `<fieldset disabled>`, reported by the browser through
 `formDisabledCallback` — which **core implements once** (components don't):
 
