@@ -188,7 +188,7 @@ handle.destroy();  // stop autoUpdate, restore the copied data-theme</pre></div>
                     <tr><td><code>shift</code></td><td><code>8</code></td><td>Padding (px) to stay in view, or <code>false</code>.</td></tr>
                     <tr><td><code>matchWidth</code></td><td><code>false</code></td><td><code>'min'</code> (min-width) · <code>'exact'</code> (width) · <code>'max'</code> (max-width) = the reference width.</td></tr>
                     <tr><td><code>maxHeight</code> / <code>maxWidth</code></td><td>—</td><td><code>true</code> or <code>{ padding }</code>: cap to the available space. Sets only <code>max-height</code> / <code>max-width</code>. <code>destroy()</code> puts back the sizes the anchor wrote (also <code>matchWidth</code>'s).</td></tr>
-                    <tr><td><code>lockPlacement</code></td><td><code>false</code></td><td><code>true</code> = flip returns to the initial placement; <code>'freeze'</code> = flip once, then pin.</td></tr>
+                    <tr><td><code>lockPlacement</code></td><td><code>false</code></td><td><code>'initial'</code> = flip returns to the initial placement; <code>'freeze'</code> = flip once, then pin.</td></tr>
                     <tr><td><code>arrow</code></td><td>—</td><td><code>{ element, padding? }</code>: an arrow child of the floating element, positioned each frame.</td></tr>
                     <tr><td><code>shouldAutoUpdate</code></td><td><code>true</code></td><td>Keep it placed on scroll / resize (<code>autoUpdate</code>).</td></tr>
                     <tr><td><code>autoUpdateOptions</code></td><td>—</td><td>Passed to <code>autoUpdate</code>, e.g. <code>{ elementResize: false }</code>.</td></tr>

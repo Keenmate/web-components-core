@@ -27,6 +27,7 @@ export type {
   AnchorOffset,
   AnchorOptions,
   MatchWidth,
+  PlacementLock,
   Placement,
   Platform,
   Strategy,

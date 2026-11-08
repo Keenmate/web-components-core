@@ -64,7 +64,7 @@
                 <label>lockPlacement
                     <select id="po-lock">
                         <option value="false">false</option>
-                        <option value="true">true (return to initial)</option>
+                        <option value="initial">initial (return to initial)</option>
                         <option value="freeze">freeze (flip once, then pin)</option>
                     </select>
                 </label>
@@ -123,7 +123,7 @@ const pop = createPopover({
   placement: 'bottom-start', // default 'bottom-start'
   offset: 4,                 // px gap (default 4)
   matchWidth: 'min',         // 'min' | 'exact' | 'max' | false — size against the reference width
-  lockPlacement: 'freeze',   // true = return to initial on overflow; 'freeze' = flip once then pin
+  lockPlacement: 'freeze',   // 'initial' = return to initial on overflow; 'freeze' = flip once then pin
   shouldFlip: true, shift: 8, // middleware toggles
   fallbackPlacements: ['top-start', 'bottom-end'], // what flip tries, in order
   onPlaced(placement) {},    // resolved placement callback
@@ -150,7 +150,7 @@ pop.reanchor();           // async content changed the height: pick the side aga
         const mode = () => document.querySelector('input[name="po-mw"]:checked').value;
         const lockValue = () => {
             const v = $('po-lock').value;
-            return v === 'freeze' ? 'freeze' : v === 'true';
+            return v === 'false' ? false : v;
         };
 
         // Reflect the live options inside the panel so you can see what's applied.

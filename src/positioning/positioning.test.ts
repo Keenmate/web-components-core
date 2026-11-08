@@ -159,7 +159,7 @@ describe('anchor', () => {
   });
 
   it('locks placement by feeding flip an initialPlacement fallback', () => {
-    anchor(document.createElement('div'), document.createElement('button'), { lockPlacement: true });
+    anchor(document.createElement('div'), document.createElement('button'), { lockPlacement: 'initial' });
     expect(vi.mocked(fui.flip)).toHaveBeenCalledWith({ fallbackStrategy: 'initialPlacement' });
   });
 

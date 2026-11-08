@@ -3,7 +3,7 @@
 `@keenmate/web-components-core/positioning` is a subpath over one pinned
 `@floating-ui/dom`. `anchor(floating, reference, opts)` is the low-level
 primitive (`'fixed'` default; `offset→size→flip→shift` middleware;
-`matchWidth: 'min'|'exact'`; `lockPlacement` → `true` = `flip({ fallbackStrategy:
+`matchWidth: 'min'|'exact'`; `lockPlacement: PlacementLock` → `'initial'` = `flip({ fallbackStrategy:
 'initialPlacement' })`, `'freeze'` = flip once then pin the resolved placement;
 `beforeComputeCallback` per-frame hook (publish reference width to a CSS var / clamp
 before measuring); `data-theme` inheritance for portaled layers per C-CS-10;

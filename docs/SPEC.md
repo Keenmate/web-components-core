@@ -982,8 +982,10 @@ Ships the proposed shape below: `anchor()` + `createTooltip()` +
   `size()`), replacing the three per-component hacks. `'min'` floors the panel to
   the reference width (grows for wider content), `'exact'` pins it, `'max'` caps
   it (shrinks for narrower content).
-- **`lockPlacement`** → feeds `flip({ fallbackStrategy: 'initialPlacement' })`,
-  so the initial placement is preferred over reordering.
+- **`lockPlacement`** (`PlacementLock`: `'initial' | 'freeze' | false`) → `'initial'` feeds
+  `flip({ fallbackStrategy: 'initialPlacement' })`, so the initial placement is preferred over
+  reordering; `'freeze'` flips once on the first computation, then pins the resolved placement.
+  A three-way mode, not a flag (C-NC-3), like `matchWidth`.
 
 Tests mock `@floating-ui/dom` (jsdom has no layout / `ResizeObserver`) and cover
 the wrapper contract: middleware order/selection, `matchWidth`→`size`,
@@ -1037,7 +1039,7 @@ anchor(floating: HTMLElement, reference: HTMLElement | VirtualElement, opts: {
   shouldFlip?: boolean;               // default true (skipped when lockPlacement holds)
   shift?: number | false;             // padding; default 8
   matchWidth?: 'min' | 'exact' | 'max' | false;   // via size(); default false
-  lockPlacement?: boolean;            // keep first placement unless it must flip
+  lockPlacement?: 'initial' | 'freeze' | false;  // PlacementLock; default false
   shouldAutoUpdate?: boolean;         // default true
   inheritThemeFrom?: HTMLElement;     // copy data-theme onto `floating` (C-CS-10)
   onPlaced?(placement: Placement): void;

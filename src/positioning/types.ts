@@ -27,6 +27,12 @@ export type { Placement, Strategy, Platform, VirtualElement };
  */
 export type MatchWidth = 'min' | 'exact' | 'max' | false;
 
+/**
+ * How `anchor()` keeps the placement stable (`AnchorOptions.lockPlacement`): `'initial'` flips
+ * back to the initial placement, `'freeze'` flips once then pins, `false` flips freely.
+ */
+export type PlacementLock = 'initial' | 'freeze' | false;
+
 /** The object form of {@link AnchorOptions.offset} (floating-ui `offset()` axes, in px). */
 export interface AnchorOffset {
   /** Gap away from the reference. */
@@ -57,7 +63,7 @@ export interface AnchorOptions {
   matchWidth?: MatchWidth;
   /**
    * Keep the placement stable instead of re-flipping every frame. Requires `shouldFlip`.
-   * - `true` — flip returns to the initial placement rather than reordering
+   * - `'initial'` — flip returns to the initial placement rather than reordering
    *   (floating-ui `fallbackStrategy: 'initialPlacement'`).
    * - `'freeze'` — flip once on the FIRST computation, then pin the resolved
    *   placement and stop flipping (the "open where it fits, then don't jump as
@@ -65,7 +71,7 @@ export interface AnchorOptions {
    *
    * Default `false`.
    */
-  lockPlacement?: boolean | 'freeze';
+  lockPlacement?: PlacementLock;
   /** Keep the position updated on scroll/resize via floating-ui `autoUpdate`. Default `true`. */
   shouldAutoUpdate?: boolean;
   /**

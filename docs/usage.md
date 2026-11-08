@@ -467,7 +467,7 @@ const tip = createTooltip({ trigger, content: 'Help text', delay: { show: 200 } 
 
 `anchor(floating, reference, opts)` returns `{ update, destroy }`; options:
 `placement` (default `'bottom-start'`), `strategy` (default `'fixed'`), `offset`,
-`shouldFlip`, `shift`, `matchWidth: 'min' | 'exact'`, `lockPlacement`, `shouldAutoUpdate`,
+`shouldFlip`, `shift`, `matchWidth: 'min' | 'exact' | 'max'`, `lockPlacement: 'initial' | 'freeze' | false`, `shouldAutoUpdate`,
 `inheritThemeFrom` (copies `data-theme` onto portaled layers — C-CS-10), and a
 `platform` escape hatch.
 

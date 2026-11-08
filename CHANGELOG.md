@@ -52,6 +52,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `coarse` / `fine` / `none`; `EnvironmentSnapshot.pointer` keeps its name) and, in `/cem`,
   `ExtractedType` → **`ExtractedTypeAnnotation`**. Components that re-export `PointerType`
   (multiselect, daterangepicker) rename the re-export. No alias (v2 rule).
+- **`anchor()` / `createPopover()` `lockPlacement` is a named mode**, `PlacementLock` =
+  `'initial' | 'freeze' | false` (new exported type): `true` → **`'initial'`** (flip returns to the
+  initial placement); `'freeze'` and `false` are unchanged. It is a three-way mode, not a flag
+  (C-NC-3), like `matchWidth`. No component passes `true` (multiselect uses `'freeze'` / `false`).
+  pure-css port affected.
 
 ### Changed
 

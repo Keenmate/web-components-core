@@ -112,11 +112,11 @@ function buildMiddleware(opts: AnchorOptions, flipEnabled: boolean, sizes: Retur
   }
 
   if (flipEnabled) {
-    // lockPlacement:true — prefer returning to the initial placement over reordering.
+    // lockPlacement:'initial' — prefer returning to the initial placement over reordering.
     // ('freeze' flips normally on the first frame, then this rebuilds without flip.)
     middleware.push(
       flipMiddleware({
-        ...(opts.lockPlacement === true ? { fallbackStrategy: 'initialPlacement' } : {}),
+        ...(opts.lockPlacement === 'initial' ? { fallbackStrategy: 'initialPlacement' } : {}),
         ...(opts.flipPadding != null ? { padding: opts.flipPadding } : {}),
         ...(opts.fallbackPlacements ? { fallbackPlacements: opts.fallbackPlacements } : {}),
       }),
