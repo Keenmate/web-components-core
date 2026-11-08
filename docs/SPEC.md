@@ -387,6 +387,17 @@ before upgrade) fires on the next microtask. Not reported here: a bad value from
 responsive rule or a `getBatchValuesCallback` (page / component configuration, not
 a write — they keep their warning only).
 
+**Values assigned before upgrade ("lazy properties").** `el.x = v` on a not-yet-defined
+element stores an own data property that would hide the class accessor forever. Core lifts
+every such property at construction and routes it through the real accessor: input rows and
+`on*` twins and the core-declared properties at once, in the constructor; the component's OWN
+accessors (a getter / setter on the subclass prototype chain that is not an input — `value`,
+`items`, `columns`) are taken off in the constructor and replayed through their setter once the
+subclass is constructed (its private fields exist): at the first `connectedCallback`, before
+the first build, or a microtask later for an element that isn't attached. A getter-only accessor
+assigned early is dropped with a warning; a throwing setter is logged. Plain fields and methods
+are not touched. Components write no rescue code of their own (sweep C-A1, rc20).
+
 ### 6.1 The null-clear contract (`BlissElement` ↔ engine)
 
 The `partial` handed to `update()`, and the config an engine receives, carry

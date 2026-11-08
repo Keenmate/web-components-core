@@ -85,3 +85,65 @@ describe('input table check (E-16)', () => {
     expect(lines).toContain(`configKey "controller" hides BlissElement's own "controller"`);
   });
 });
+
+// Sweep C-A1 (2026-11-08): the component's own accessors (not inputs) assigned before upgrade.
+describe('own accessors assigned before upgrade (value, items, …)', () => {
+  class WithValue extends BlissElement {
+    #value: string[] = [];
+    #setCalls = 0;
+    built: string[] | null = null;
+    get value(): string[] {
+      return this.#value;
+    }
+    set value(v: string[]) {
+      this.#setCalls += 1; // a private field: only works once the subclass is constructed
+      this.#value = v;
+    }
+    get setCalls(): number {
+      return this.#setCalls;
+    }
+    get version(): string {
+      return '1';
+    }
+    protected override reinit(): void {
+      this.built = [...this.#value];
+    }
+  }
+
+  it('a connected element: replayed through the setter before the first build', () => {
+    const tag = tagName();
+    const el = document.createElement(tag) as unknown as WithValue;
+    (el as unknown as Record<string, unknown>).value = ['cz', 'sk'];
+    document.body.append(el);
+    customElements.define(tag, class extends WithValue {});
+    expect(Object.prototype.hasOwnProperty.call(el, 'value')).toBe(false); // no shadowing own property left
+    expect(el.value).toEqual(['cz', 'sk']);
+    expect(el.setCalls).toBe(1);
+    expect(el.built).toEqual(['cz', 'sk']); // the first build saw it
+    el.value = ['de'];
+    expect(el.value).toEqual(['de']); // later writes reach the setter too
+  });
+
+  it('a detached element: replayed on the next microtask', async () => {
+    const tag = tagName();
+    const el = document.createElement(tag) as unknown as Record<string, unknown>;
+    el.value = ['a'];
+    customElements.define(tag, class extends WithValue {});
+    customElements.upgrade(el as unknown as Element);
+    expect(Object.prototype.hasOwnProperty.call(el, 'value')).toBe(false);
+    await Promise.resolve();
+    expect((el as unknown as WithValue).value).toEqual(['a']);
+    expect((el as unknown as WithValue).setCalls).toBe(1);
+  });
+
+  it('a read-only accessor assigned early: dropped with a warning, the getter works again', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const tag = tagName();
+    const el = document.createElement(tag) as unknown as Record<string, unknown>;
+    el.version = '9';
+    customElements.define(tag, class extends WithValue {});
+    customElements.upgrade(el as unknown as Element);
+    expect(el.version).toBe('1');
+    expect(warn.mock.calls.map((c) => c.join(' ')).some((m) => m.includes('read-only'))).toBe(true);
+  });
+});

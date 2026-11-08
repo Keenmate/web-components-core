@@ -403,7 +403,50 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       const raw = isAttributeRouted && attribute ? this.getAttribute(attribute) : null;
       if (attribute && raw !== null) this.attributeChangedCallback(attribute, null, raw);
     }
+    // The component's own (non-input) accessors — `value`, `items`, … — assigned before upgrade:
+    // take them off now (so the subclass constructor already sees its accessors), replay them
+    // once the subclass is constructed (its private fields exist): at the first connect, or a
+    // microtask for an element that isn't attached.
+    this.#liftOwnAccessors();
     this.#isConstructing = false;
+  }
+
+  /** Values assigned before upgrade to the subclass's own accessors, replayed by {@link #replayOwnAccessors}. */
+  #preUpgradeOwn: Map<string, unknown> | undefined;
+
+  #liftOwnAccessors(): void {
+    const handled = new Set<string>([...this.#byConfigKey.keys(), ...CORE_PROPERTIES.map((p) => p.property)]);
+    for (const ev of this.#eventsByName.values()) if (ev.property) handled.add(ev.property);
+    for (let proto = Object.getPrototypeOf(this); proto && proto !== BlissElement.prototype; proto = Object.getPrototypeOf(proto)) {
+      for (const key of Object.getOwnPropertyNames(proto)) {
+        if (handled.has(key) || !Object.prototype.hasOwnProperty.call(this, key)) continue;
+        const d = Object.getOwnPropertyDescriptor(proto, key);
+        if (!d || (!d.get && !d.set)) continue; // methods / plain values: not an accessor
+        handled.add(key);
+        const pre = this.#liftPreUpgrade(key);
+        if (!pre.had) continue;
+        if (!d.set) {
+          this.#warn(`${key} was assigned before <${this.localName}> was defined, but it is read-only; the value is dropped`, pre.value);
+          continue;
+        }
+        (this.#preUpgradeOwn ??= new Map()).set(key, pre.value);
+      }
+    }
+    if (this.#preUpgradeOwn) queueMicrotask(() => this.#replayOwnAccessors());
+  }
+
+  /** Re-assign the lifted values through the subclass setters (once). A throwing setter is logged. */
+  #replayOwnAccessors(): void {
+    const pending = this.#preUpgradeOwn;
+    if (!pending) return;
+    this.#preUpgradeOwn = undefined;
+    for (const [key, value] of pending) {
+      try {
+        (this as Record<string, unknown>)[key] = value;
+      } catch (error) {
+        coreLog(this, 'INIT', 'ELEMENT').error(`replaying ${key} (assigned before <${this.localName}> was defined) threw`, error);
+      }
+    }
   }
 
   // ── lifecycle ──────────────────────────────────────────────────────────
@@ -521,6 +564,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     // Track the live instance for the window.components registry (SPEC §12.3),
     // before any build so a devtools overlay sees it even mid-reinit.
     trackInstance(this.localName, this);
+    // Own accessors assigned before upgrade, before the first build reads them.
+    this.#replayOwnAccessors();
     // Reconnected before the removal check ran → a DOM move, not a removal.
     this.#cancelRemovalCheck?.();
     this.#cancelRemovalCheck = undefined;

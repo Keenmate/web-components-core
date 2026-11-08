@@ -243,6 +243,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | Feature | Status | Spec | Fixture |
 | ------- | :----: | ---- | ------- |
 | Pre-upgrade properties win over initial attributes, incl. `motion` / `themeSource` / `onReady`; `:state(ready)` | ✓ | `upgrade.spec.ts` | `upgrade.html` |
+| A component's own accessor (`value`) assigned before upgrade reaches its setter (private field) before the first build | ✓ | `upgrade.spec.ts` | `upgrade.html` |
 | `setAttribute()` after upgrade, before the first connect, still applies | ✓ | `upgrade.spec.ts` | `upgrade.html` |
 | Appended into `<fieldset disabled>`: the first build sees it disabled, no `update()` first | ✓ | `upgrade.spec.ts` | `upgrade.html` |
 

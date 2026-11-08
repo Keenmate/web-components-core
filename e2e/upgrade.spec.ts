@@ -89,3 +89,25 @@ test('appended into a <fieldset disabled>: the first build already sees it disab
   expect(result[0]).toBe('reinit:true');
   expect(result).not.toContain('update');
 });
+
+test('the component\'s own accessors (value, items) assigned before upgrade reach their setters before the first build', async ({ page }) => {
+  // A string, so Playwright doesn't transpile the #private field the setter writes (the real case:
+  // a setter that needs the subclass constructed).
+  const result = await page.evaluate(`(async () => {
+    const { BlissElement, define } = window.core;
+    class OwnValue extends BlissElement {
+      #value = [];
+      built = null;
+      get value() { return this.#value; }
+      set value(v) { this.#value = v; }
+      reinit() { this.built = [...this.#value]; }
+    }
+    document.body.insertAdjacentHTML('beforeend', '<own-value-el></own-value-el>');
+    const el = document.querySelector('own-value-el');
+    el.value = ['cz', 'sk'];
+    define('own-value-el', OwnValue);
+    await el.whenReady();
+    return { value: el.value, built: el.built, isShadowed: Object.prototype.hasOwnProperty.call(el, 'value') };
+  })()`);
+  expect(result).toEqual({ value: ['cz', 'sk'], built: ['cz', 'sk'], isShadowed: false });
+});

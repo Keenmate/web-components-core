@@ -33,6 +33,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A component's own properties set before it was defined are no longer lost.** `el.value = …`
+  (web-multiselect, web-daterangepicker) or `el.items` / `el.columns` (web-grid) assigned before the
+  component's script loaded stayed a plain property on the element, hiding the component's setter
+  for good: the value never applied and later writes were swallowed too. Core rescued only input-table
+  properties and `on*` handlers; it now lifts every early property that shadows a getter / setter of
+  the component's class and replays it through that setter once the component is constructed (at the
+  first connect, before the first build). Components need no rescue code of their own. SPEC §6;
+  `src/element/bliss-element.ts`; e2e `upgrade.spec.ts`.
 - **Overlay tree: a click whose propagation a page handler stops closes overlays again.** rc19
   decides an outside click on a `window` bubble listener, so a stopped click (web-treeview's node
   checkbox, any app handler calling `stopPropagation()`) never reached it: an open popover stayed
