@@ -75,6 +75,10 @@ interface TagStyles {
 interface PageStylesState {
   /** Per tag: the live handles, held weakly (an element dropped without destroy() is still collectable). */
   listeners: Map<string, Set<WeakRef<CustomStylesHandle>>>;
+  /** Hosts that apply custom CSS through {@link createCustomStyles}. */
+  hosts?: WeakSet<Element>;
+  /** Tags already warned about a page layer they never apply. */
+  warnedTags?: Set<string>;
   /** Page-wide `window.components.shouldHoistImports`; `undefined` = not set. */
   shouldHoistImports?: boolean;
 }
@@ -192,6 +196,33 @@ function releaseImport(doc: Document, statement: string): void {
   held!.delete(statement);
 }
 
+/**
+ * Warn once per tag when the page set `window.components[tag].customStyles` /
+ * `.getCustomStylesCallback` but this built element doesn't apply custom CSS through
+ * {@link createCustomStyles} (the value would silently do nothing). BlissElement calls it at
+ * `ready`; a page assignment checks the live instances.
+ */
+export function warnUnusedPageStyles(host: Element): void {
+  if (typeof window === 'undefined') return;
+  const tag = host.localName;
+  const { css, callback } = readTagStyles(tag);
+  if (!css && !callback) return;
+  const st = state();
+  if (st.hosts?.has(host) || st.warnedTags?.has(tag)) return;
+  (st.warnedTags ??= new Set()).add(tag);
+  coreLog(host as HTMLElement, 'UI', 'THEME').warn(
+    `window.components['${tag}'].customStyles / getCustomStylesCallback is set, but <${tag}> doesn't apply page-wide custom CSS (it doesn't use createCustomStyles()) — the value has no effect`,
+  );
+}
+
+/** A page assignment for `tag`: warn when its live instances never apply it. */
+function checkLiveInstances(tag: string): void {
+  if (state().listeners.get(tag)?.size) return;
+  const entry = (window.components as Record<string, unknown> | undefined)?.[tag] as { getInstances?: () => readonly Element[] } | undefined;
+  const first = entry?.getInstances?.()[0];
+  if (first) warnUnusedPageStyles(first);
+}
+
 /** Re-run every live handle of `tag` (its page layer changed). */
 function notifyTag(tag: string): void {
   const refs = state().listeners.get(tag);
@@ -234,6 +265,7 @@ export function installTagStyleHooks(entry: object, tag: string): void {
     }
     store.css = value || undefined;
     notifyTag(tag);
+    checkLiveInstances(tag);
   };
   const setCallback = (value: unknown): void => {
     if (value != null && typeof value !== 'function') {
@@ -242,6 +274,7 @@ export function installTagStyleHooks(entry: object, tag: string): void {
     }
     store.callback = (value as CustomStylesCallback | null) ?? undefined;
     notifyTag(tag);
+    checkLiveInstances(tag);
   };
   const setHoist = (value: unknown): void => {
     if (value != null && typeof value !== 'boolean') {
@@ -361,6 +394,7 @@ export function createCustomStyles<Ctx = any>(
       state().listeners.get(tag)?.delete(ref);
     },
   };
+  (state().hosts ??= new WeakSet()).add(host);
   const unwatch = watchRemoval(host, {
     onRemoved() {
       isRemoved = true;

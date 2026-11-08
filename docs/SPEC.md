@@ -1240,6 +1240,12 @@ free functions taking a root + CSS strings, NOT `BlissElement` methods.
   logged and leaves its layer empty. Use case: `window.components['web-daterangepicker']
   .customStyles = "@import url('/css/drp-days.css')"` — one file for every picker,
   fetched once. No page-wide (all tags) layer: selectors are per component.
+  **One adoption everywhere** (rulebook C-CA-15, canonical code in `docs/usage.md`): the
+  `customStyles` / `getCustomStylesCallback` rows (`on: 'update'`), one handle
+  (`cssClass: '<prefix>-custom-styles'`, core's default position), refreshed per build and on
+  those keys, destroyed in `destroyCallback()`; no private custom-CSS code. A component that
+  doesn't apply the page layer: core warns once per tag (THEME) when the page sets it — at the
+  first instance's `ready`, or on the assignment when instances are live.
   **Fonts (`shouldHoistImports`, default `true`, rc20):** Chromium ignores `@font-face`
   inside a shadow root, so an `@import`ed icon font (FontAwesome from a CDN — cross-origin,
   its rules can't be read and copied) would draw boxes. Each `@import` URL of either layer is

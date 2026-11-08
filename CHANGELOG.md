@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   links this way; with this it adopts `createCustomStyles()`. `src/dom/custom-styles.ts`; e2e
   `custom-styles.spec.ts`.
 
+- **A page-wide `customStyles` a component never applies now warns.** `registerComponent()` puts
+  `customStyles` / `getCustomStylesCallback` on every `window.components[tag]`, but only components
+  that call `createCustomStyles()` read them; on the others a page value silently did nothing. Core
+  now warns once per tag (THEME logger), at the first instance's `ready` or on the assignment. The
+  one way to adopt it is in `docs/usage.md` → "Style injection" (rulebook C-CA-15).
+
 ### Fixed
 
 - **Overlay tree: a click whose propagation a page handler stops closes overlays again.** rc19

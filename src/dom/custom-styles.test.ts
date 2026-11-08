@@ -86,6 +86,49 @@ describe('createCustomStyles', () => {
     expect(styles(b.root)).toEqual(['x--page: .n2 {}']);
   });
 
+  it('a page value for a component that never applies it warns once (at ready, or on assignment)', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const unused = () => warn.mock.calls.map((c) => c.join(' ')).filter((m) => m.includes("doesn't apply page-wide custom CSS"));
+    const tag = `cs-unused-${seq++}`;
+    class El extends BlissElement {}
+    registerComponent(tag, El, { config: { name: 'x', version: '0.0.0' } });
+    document.body.append(document.createElement(tag), document.createElement(tag));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(unused()).toHaveLength(0); // nothing set yet
+    window.components![tag]!.customStyles = '.x {}';
+    expect(unused()).toHaveLength(1);
+    window.components![tag]!.customStyles = '.y {}';
+    expect(unused()).toHaveLength(1); // once per tag
+
+    // a component that does apply it never warns
+    const tag2 = `cs-used-${seq++}`;
+    class Used extends BlissElement {
+      constructor() {
+        super();
+        createCustomStyles(this, this.attachShadow({ mode: 'open' }), { getContext: () => ({}), getInstanceStyles: () => ({}) });
+      }
+    }
+    registerComponent(tag2, Used, { config: { name: 'x', version: '0.0.0' } });
+    window.components![tag2]!.customStyles = '.z {}';
+    document.body.append(document.createElement(tag2));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(unused()).toHaveLength(1);
+
+    // set before any instance exists → the first instance warns at ready
+    const tag3 = `cs-early-${seq++}`;
+    class Early extends BlissElement {}
+    registerComponent(tag3, Early, { config: { name: 'x', version: '0.0.0' } });
+    window.components![tag3]!.customStyles = '.e {}';
+    expect(unused()).toHaveLength(1);
+    document.body.append(document.createElement(tag3));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(unused()).toHaveLength(2);
+    warn.mockRestore();
+  });
+
   it('a wrong page value warns and keeps the previous one', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const tag = registeredTag({ customStyles: '.keep {}' });

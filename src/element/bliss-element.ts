@@ -72,6 +72,7 @@ import { DEFAULT_ENABLED_LEVEL, LOG_LEVELS, isLogLevel, toLogLevelNumber } from 
 import { dispatch, type DispatchOptions } from './dispatch.js';
 import { withComponentContext, type ComponentContext, type EmitDetail } from './context.js';
 import { hasRemovalWatchers, notifyRemoval } from './removal-watch.js';
+import { warnUnusedPageStyles } from '../dom/custom-styles.js';
 import {
   normalizeEventDefs,
   withCoreEvents,
@@ -632,6 +633,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       // CustomStateSet unavailable, or an older engine that only accepts `--dashed`
       // idents — the `ready` attribute is the portable hook then.
     }
+    warnUnusedPageStyles(this); // a page-wide customStyles this component never applies
     const resolvers = this.#readyResolvers;
     this.#readyResolvers = [];
     try {

@@ -426,18 +426,35 @@ const slot = createStyleSlot(this.shadowRoot, { cssClass: 'custom-styles' });
 slot.set(this.config.customStylesCallback?.());  // re-set replaces; falsy clears
 ```
 
-Components normally take the whole custom-CSS story from `createCustomStyles()`: a **page layer**
-per tag (`window.components['web-treeview'].customStyles` / `.getCustomStylesCallback(ctx)`) and
-the instance's own layer after it, so an instance overrides the shared rules.
+Every component takes custom CSS from `createCustomStyles()`, **always the same way** (rulebook
+C-CA-15 checks it). There is a **page layer** per tag (`window.components['web-treeview'].customStyles`
+/ `.getCustomStylesCallback(ctx)`), and the instance's own layer comes after it, so an instance
+overrides the shared rules. The canonical adoption:
 
 ```ts
-this.#customStyles ??= createCustomStyles(this, this.shadowRoot, {
-  cssClass: 'wtv-custom-styles',
-  getContext: () => this.withContext({}),
-  getInstanceStyles: () => ({ css: this.config.customStyles, callback: this.config.getCustomStylesCallback }),
-});
-this.#customStyles.refresh();   // after the instance inputs change; destroy() in destroyCallback()
+// 1. two input rows (both on: 'update'); the callback wins when both are set
+{ configKey: 'customStyles', attribute: 'custom-styles', converter: toText({ isNullable: true }), on: 'update' },
+{ configKey: 'getCustomStylesCallback', converter: toFunction(), on: 'update' },
+
+// 2. one handle, created on the first build (after the shadow content exists), refreshed per build
+#customStyles: CustomStylesHandle | null = null;
+#applyCustomStyles(): void {
+  this.#customStyles ??= createCustomStyles(this, this.shadowRoot!, {
+    cssClass: 'wtv-custom-styles',              // <prefix>-custom-styles; no `position` (core's default)
+    getContext: () => this.withContext({}),
+    getInstanceStyles: () => ({ css: this.config.customStyles, callback: this.config.getCustomStylesCallback }),
+  });
+  this.#customStyles.refresh();
+}
+protected override reinit() { /* … build … */ this.#applyCustomStyles(); }
+protected override update(partial) {
+  if ('customStyles' in partial || 'getCustomStylesCallback' in partial) this.#customStyles?.refresh();
+}
+protected override destroyCallback() { this.#customStyles?.destroy(); this.#customStyles = null; }
 ```
+
+No other custom-CSS code in the component: no `createStyleSlot`, no own `<style>` / `<link>`
+handling. A component that doesn't apply the page layer gets a core warning when a page sets it.
 
 An `@import` in either layer is also linked once in the document `<head>`, because Chromium ignores
 `@font-face` inside a shadow root (an icon font would draw boxes). The link is shared by every
