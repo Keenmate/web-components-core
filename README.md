@@ -20,6 +20,18 @@ theme context, motion level, a shared scroll lock and overlay tree, container sc
 > **[`docs/SPEC.md`](docs/SPEC.md) is the source of truth** for design intent. This README is
 > the landing page; read the relevant SPEC section before changing behavior.
 
+## What's New in v1.0.0-rc20
+
+**[Release notes](release-notes/1.0.0-rc20.md)** cover the upgrade: gaps the first component alignments found in core itself — fonts in custom CSS, values set before a component loads, overlay and menu dismissal, the phone scroll lock, and theme on portaled panels.
+
+- **Custom CSS — `@import`ed fonts work in a shadow root** — Chromium ignores `@font-face` inside a shadow root, so an icon font a page imports through `customStyles` / `getCustomStylesCallback` drew boxes. `createCustomStyles()` now also links each `@import` once in the document `<head>`, shared by every instance and released when the last one stops importing it or is removed from the page; `layer()` / media / `supports()` are kept, and a stylesheet the page links itself is reused. A page that loads its fonts itself switches it off with `window.components.shouldHoistImports = false` (or per component type).
+- **Custom CSS — one adoption for every component** — `docs/usage.md` shows the one way a component adopts `createCustomStyles()` (two input rows, one handle), and rulebook check C-CA-15 enforces it. Core warns when a page sets `window.components[tag].customStyles` for a component that never applies it, instead of silently ignoring the value.
+- **Values set before a component loads are kept** — `el.value = …` (web-multiselect, web-daterangepicker) or `el.items` / `el.columns` (web-grid) assigned before the component's script loaded hid the component's setter for good. Core now lifts every such early property and replays it through the real setter before the first build; components need no rescue code.
+- **Overlays — dismissal that holds up** — An outside click whose propagation a page handler stops (web-treeview's checkbox) closes overlays again. `createPopover()` closes when its reference leaves the page (`'reference-removed'`, a re-rendered row). `openMenu()` now closes on scroll by the popover's rule, one shared helper: only a scroll that moves what the menu belongs to — no unrelated scroller, no bare mouse wheel.
+- **Phone sheets over a page wider than the screen** — `lockBodyScroll()` also locks `<html>` sideways while held, so the browser no longer stays zoomed out and a fullscreen sheet (web-daterangepicker, web-commandpalette) fills the screen. web-multiselect did this on its own until now.
+- **Portaled panels keep the component's theme and motion** — `anchor()`'s `inheritThemeFrom` also copies the effective scheme `data-context-theme` (Tailwind `.dark`, `setThemeMode()`, `theme-source`) and `data-motion` onto a panel moved to `<body>`, so tooltips, popovers and menus match the component.
+- **Input-table check — dead class members** — An input named like the component's own getter / setter / method silently replaced it; the once-per-class check now warns. The SPEC also records the rule that core hooks stay `protected` (batch writes are `setAttributes()`, rulebook C-CA-14).
+
 ## What's New in v1.0.0-rc19
 
 **[Release notes](release-notes/1.0.0-rc19.md)** cover the upgrade: `createPopover()` grows to carry a component's big dropdown (web-multiselect's now runs on it), outside clicks are decided when the click ends, and three renames.
@@ -31,19 +43,6 @@ theme context, motion level, a shared scroll lock and overlay tree, container sc
 - **`theme-source="closest"` — follows a section themed later** — A section that gets `data-theme="dark"` after the component connected now reaches it; core re-resolves whenever an ancestor gains or loses a theme signal.
 - **`anchor()` — `fallbackPlacements`, sizes restored** — The placements flip tries, in order; `destroy()` puts back the `width` / `min-width` / `max-width` / `max-height` it wrote.
 - **Renames (BREAKING)** — `PointerType` → `PointerAccuracy` and `ExtractedType` → `ExtractedTypeAnnotation` (the rulebook's closed type-suffix set); `lockPlacement` is the named mode `PlacementLock` (`'initial' | 'freeze' | false`), so `true` becomes `'initial'`. No aliases.
-
-## What's New in v1.0.0-rc18
-
-**[Release notes](release-notes/1.0.0-rc18.md)** cover the upgrade: the results of a full code review, with every API change in this one release so each component migrates once.
-
-- **Page-wide state — many components, one page** — The scroll lock, breakpoints, overlay dismissal, instance registry and logging switch are shared by every component's bundled copy of core, so two components built against different copies no longer fight over the page. A throwing hook or listener no longer silences the others or leaves an element half-activated.
-- **Overlay tree — nested overlays** — A menu inside a dropdown, or a dropdown inside a modal `<dialog>`, keeps its parent open. Escape closes one level at a time and outside clicks are routed through the tree.
-- **Logging — the closest level wins** — The level resolves element → type → page → `warn`, with `resetLogging()` at every layer. BREAKING: `el.disableLogging()` now silences.
-- **API — renames (BREAKING)** — Notification hooks are `on*` (`onClose`, `onPlaced`, `onDrift`, …); also `createMenuDivider()`, `openMenu({ labels: { loading } })`, `toEnum({ isNullable })`, the page hook `renderLoadingCallback`, and the default loader class `<prefix>__loader`.
-- **`input-rejected` — refused values are reported** — Every invalid attribute / property write fires `input-rejected` (`{ configKey, value, reason?, kept, … }`) before it returns, and `setAttributes()` returns the list, so a framework wrapper can surface the error instead of only a console warning.
-- **Converters — safer inputs** — Strict number parsing, `el.x = undefined` resets, `toText` accepts `''`, and a new `toCssLength()`. `wrapRanges()` escapes by default, with `highlightHtml()` for trusted labels.
-
-See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
 
 ## Demos & docs
 

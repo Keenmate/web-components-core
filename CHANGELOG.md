@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc20] - 2026-11-08
+
 ### Added
 
 - **Input-table check: an input named like the component's own getter / setter / method warns.**
