@@ -129,6 +129,8 @@ describe('createCustomStyles', () => {
 
   describe('@import links in the document head (fonts)', () => {
     const hoisted = () => [...document.head.querySelectorAll<HTMLLinkElement>('link[data-km-custom-styles]')].map((l) => l.getAttribute('href'));
+    const hoistedStyles = () => [...document.head.querySelectorAll('style[data-km-custom-styles]')].map((s) => s.textContent);
+    const abs = (path: string) => new URL(path, document.baseURI).href;
 
     it('each @import URL is linked once in the head, shared by instances, removed with the last one', () => {
       const tag = registeredTag();
@@ -184,6 +186,38 @@ describe('createCustomStyles', () => {
       expect(hoisted()).toEqual([]);
       h1.destroy();
       h2.destroy();
+    });
+
+    it('conditions are kept: a layered / media / supports import is a head <style> with the whole statement', () => {
+      const tag = registeredTag();
+      const { el, root } = host(tag);
+      const css = "@import url('/fonts/l.css') layer(theme);\n@import '/fonts/p.css' print;\n@import url(/fonts/s.css) supports(display: grid) screen and (min-width: 600px);";
+      const handle = createCustomStyles(el, root, { getContext: () => ({}), getInstanceStyles: () => ({ css }) });
+      expect(hoisted()).toEqual([]);
+      expect(hoistedStyles()).toEqual([
+        `@import url("${abs('/fonts/l.css')}") layer(theme);`,
+        `@import url("${abs('/fonts/p.css')}") print;`,
+        `@import url("${abs('/fonts/s.css')}") supports(display: grid) screen and (min-width: 600px);`,
+      ]);
+      handle.destroy();
+      expect(hoistedStyles()).toEqual([]);
+    });
+
+    it('only the leading imports count: commented-out ones and ones after a rule are not loaded, so not hoisted', () => {
+      const tag = registeredTag();
+      const { el, root } = host(tag);
+      const css = '/* @import url(/fonts/old.css); */ @charset "utf-8"; @layer a, b; @import url(/fonts/ok.css); .x {} @import url(/fonts/late.css);';
+      const handle = createCustomStyles(el, root, { getContext: () => ({}), getInstanceStyles: () => ({ css }) });
+      expect(hoisted()).toEqual([abs('/fonts/ok.css')]);
+      handle.destroy();
+    });
+
+    it('each layer is its own sheet: an instance import after page rules still counts', () => {
+      const tag = registeredTag({ customStyles: '.page {}' });
+      const { el, root } = host(tag);
+      const handle = createCustomStyles(el, root, { getContext: () => ({}), getInstanceStyles: () => ({ css: '@import url(/fonts/inst.css);' }) });
+      expect(hoisted()).toEqual([abs('/fonts/inst.css')]);
+      handle.destroy();
     });
   });
 });

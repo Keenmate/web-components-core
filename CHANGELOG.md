@@ -14,7 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `getCustomStylesCallback` (FontAwesome from a CDN) drew boxes. `createCustomStyles()` now also
   links each `@import` URL once in the document `<head>` (`<link data-km-custom-styles>`), shared
   by every instance and removed when the last one stops importing it; a stylesheet the page links
-  itself is reused, never removed. New option `shouldHoistImports` (default `true`; shadow roots
+  itself is reused, never removed. Only the imports the browser loads count (the leading ones,
+  comments skipped); one with `layer()` / `supports()` / media goes in as a head `<style>` holding
+  the whole statement, so its conditions still apply. New option `shouldHoistImports` (default `true`; shadow roots
   only) — the imported rules also reach the page, `false` opts out. web-treeview hoisted its own
   links this way; with this it adopts `createCustomStyles()`. `src/dom/custom-styles.ts`; e2e
   `custom-styles.spec.ts`.

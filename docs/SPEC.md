@@ -1247,6 +1247,9 @@ free functions taking a root + CSS strings, NOT `BlissElement` methods.
   data-km-custom-styles>`), once per document: shared and ref-counted across every handle
   (page state, all core copies), dropped when the last handle stops importing it (CSS change
   or `destroy()`). A `<link>` the page already has for that URL is reused and never removed.
+  Only the imports the browser really loads count (the leading ones of each layer, comments
+  skipped); a plain one becomes a `<link>`, one with conditions (`layer()`, `supports()`, media)
+  a head `<style>` holding the whole statement, so its layer / media still apply.
   Shadow roots only (a light-DOM root registers fonts itself). Trade-off: the imported sheet's
   rules also reach the page — opt out per component with `shouldHoistImports: false`.
 

@@ -77,56 +77,96 @@ function state(): PageStylesState {
   return sharedState(sharedStateKey('custom-styles'), () => ({ listeners: new Map() }));
 }
 
-/** The document `<link>`s core added for `@import`s: absolute href → link + how many handles use it. */
-type HoistedImports = WeakMap<Document, Map<string, { link: HTMLLinkElement; count: number }>>;
+/** What core added to a document's head for `@import`s: statement key → element + how many handles use it. */
+type HoistedImports = WeakMap<Document, Map<string, { element: HTMLElement; count: number }>>;
 
 const hoisted = (): HoistedImports => sharedState(sharedStateKey('custom-styles-imports'), (): HoistedImports => new WeakMap());
 
-const IMPORT_RE = /@import\s+(?:url\(\s*(['"]?)([^'")\s]+)\1\s*\)|(['"])([^'"]+)\3)/g;
+/** One leading `@import`: its URL (`url(…)` or a string), then its conditions (`layer()`, `supports()`, media). */
+const IMPORT_RE = /^@import\s+(?:url\(\s*(['"]?)([^'")\s]+)\1\s*\)|(['"])([^'"]+)\3)([^;]*);/i;
+/** Statements allowed before an `@import` (`@charset`, a `@layer a, b;` declaration). */
+const PRELUDE_RE = /^@(?:charset\s+"[^"]*"|layer\s+[\w\s,.-]+);/i;
 
-/** The absolute URLs a CSS string `@import`s (resolved against the document's base URL). */
-export function importUrls(css: string, doc: Document): string[] {
-  const urls = new Set<string>();
-  for (const m of css.matchAll(IMPORT_RE)) {
+/** A hoisted `@import`: the absolute URL, its conditions and the statement written to the head. */
+export interface HoistedImport {
+  href: string;
+  conditions: string;
+  statement: string;
+}
+
+/**
+ * The `@import`s a CSS string really loads: only the leading ones (the browser ignores an
+ * `@import` after another rule), comments skipped, URLs resolved against the document's base
+ * URL, conditions (`layer()`, `supports()`, media) kept.
+ */
+export function importStatements(css: string, doc: Document): HoistedImport[] {
+  const out = new Map<string, HoistedImport>();
+  let rest = css.replace(/\/\*[\s\S]*?\*\//g, ' ');
+  for (;;) {
+    rest = rest.trimStart();
+    const prelude = PRELUDE_RE.exec(rest);
+    if (prelude) {
+      rest = rest.slice(prelude[0].length);
+      continue;
+    }
+    const m = IMPORT_RE.exec(rest);
+    if (!m) break;
+    rest = rest.slice(m[0].length);
     const raw = m[2] ?? m[4];
     if (!raw) continue;
+    let href: string;
     try {
-      urls.add(new URL(raw, doc.baseURI).href);
+      href = new URL(raw, doc.baseURI).href;
     } catch {
-      /* not a URL — the browser ignores that @import too */
+      continue; // not a URL — the browser ignores that @import too
     }
+    const conditions = (m[5] ?? '').trim().replace(/\s+/g, ' ');
+    const statement = `@import url(${JSON.stringify(href)})${conditions ? ` ${conditions}` : ''};`;
+    out.set(statement, { href, conditions, statement });
   }
-  return [...urls];
+  return [...out.values()];
 }
 
-/** Use (link if needed) `href` in `doc`'s head. */
-function acquireImport(doc: Document, href: string): void {
+/**
+ * Use (add if needed) one import in `doc`'s head: a plain one as a `<link>` (or the page's own
+ * `<link>` for that URL, reused), a conditional one as a `<style>` holding the statement, so its
+ * layer / media / supports still apply.
+ */
+function acquireImport(doc: Document, imp: HoistedImport): void {
   const map = hoisted();
-  let links = map.get(doc);
-  if (!links) map.set(doc, (links = new Map()));
-  const held = links.get(href);
-  if (held) {
-    held.count++;
+  let held = map.get(doc);
+  if (!held) map.set(doc, (held = new Map()));
+  const entry = held.get(imp.statement);
+  if (entry) {
+    entry.count++;
     return;
   }
-  const own = [...doc.querySelectorAll<HTMLLinkElement>('link[rel~="stylesheet"]')].some((l) => l.href === href);
-  if (own) return; // the page links it itself: nothing to add or remove
-  const link = doc.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = href;
-  link.setAttribute('data-km-custom-styles', '');
-  doc.head.append(link);
-  links.set(href, { link, count: 1 });
+  let element: HTMLElement;
+  if (imp.conditions) {
+    const style = doc.createElement('style');
+    style.textContent = imp.statement;
+    element = style;
+  } else {
+    const own = [...doc.querySelectorAll<HTMLLinkElement>('link[rel~="stylesheet"]')].some((l) => l.href === imp.href && !l.hasAttribute('data-km-custom-styles'));
+    if (own) return; // the page links it itself: nothing to add or remove
+    const link = doc.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = imp.href;
+    element = link;
+  }
+  element.setAttribute('data-km-custom-styles', '');
+  doc.head.append(element);
+  held.set(imp.statement, { element, count: 1 });
 }
 
-/** Stop using `href`; the last user removes the `<link>` core added. */
-function releaseImport(doc: Document, href: string): void {
-  const links = hoisted().get(doc);
-  const held = links?.get(href);
-  if (!held) return;
-  if (--held.count > 0) return;
-  held.link.remove();
-  links!.delete(href);
+/** Stop using one import; the last user removes what core added. */
+function releaseImport(doc: Document, statement: string): void {
+  const held = hoisted().get(doc);
+  const entry = held?.get(statement);
+  if (!entry) return;
+  if (--entry.count > 0) return;
+  entry.element.remove();
+  held!.delete(statement);
 }
 
 /** Re-run every live handle of `tag` (its page layer changed). */
@@ -215,14 +255,16 @@ export function createCustomStyles<Ctx = any>(
   let page: StyleSlot | null = createStyleSlot(root, { position, cssClass: `${cssClass}--page` });
   let instance: StyleSlot | null = createStyleSlot(root, { position, cssClass });
   const doc = typeof ShadowRoot !== 'undefined' && root instanceof ShadowRoot && opts.shouldHoistImports !== false ? root.ownerDocument : null;
-  /** The `@import` URLs this handle holds in the document head. */
+  /** The `@import` statements this handle holds in the document head. */
   let imports: string[] = [];
-  const syncImports = (css: string): void => {
+  /** Each layer is its own sheet: its leading `@import`s count, the union is held. */
+  const syncImports = (layers: readonly (string | null)[]): void => {
     if (!doc?.head) return;
-    const next = importUrls(css, doc);
-    for (const href of next) if (!imports.includes(href)) acquireImport(doc, href);
-    for (const href of imports) if (!next.includes(href)) releaseImport(doc, href);
-    imports = next;
+    const next = [...new Map(layers.flatMap((css) => (css ? importStatements(css, doc) : [])).map((i) => [i.statement, i])).values()];
+    const keys = next.map((i) => i.statement);
+    for (const imp of next) if (!imports.includes(imp.statement)) acquireImport(doc, imp);
+    for (const key of imports) if (!keys.includes(key)) releaseImport(doc, key);
+    imports = keys;
   };
 
   const resolve = (source: CustomStylesSource<Ctx>, layer: 'page' | 'instance'): string | null => {
@@ -255,13 +297,12 @@ export function createCustomStyles<Ctx = any>(
       page.set(pageCss);
       instance.set(instanceCss);
       order();
-      syncImports(`${pageCss ?? ''}
-${instanceCss ?? ''}`);
+      syncImports([pageCss, instanceCss]);
       if (pageCss) opts.onApply?.(pageCss, 'page');
       if (instanceCss) opts.onApply?.(instanceCss, 'instance');
     },
     destroy() {
-      syncImports('');
+      syncImports([]);
       page?.destroy();
       instance?.destroy();
       page = instance = null;

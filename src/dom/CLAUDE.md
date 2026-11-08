@@ -20,7 +20,8 @@ live handle of the tag (WeakRef set in shared state). Components call `refresh()
 used to set their slot, `destroy()` in `destroyCallback()`. `shouldHoistImports` (default on,
 shadow roots only): each `@import` URL is also a `<link data-km-custom-styles>` in the document
 head — Chromium ignores `@font-face` in a shadow root; ref-counted per document in shared state,
-a page-owned link is reused and never removed.
+a page-owned link is reused and never removed. Leading `@import`s per layer only (comments stripped);
+a conditional one (`layer()` / `supports()` / media) is a head `<style>` with the whole statement.
 
 ## Loader (`src/dom/render-loader.ts`, SPEC §12.14 — implemented)
 
