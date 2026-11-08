@@ -288,6 +288,7 @@ tip.element;  tip.isVisible;             // the tooltip node + state</pre></div>
             // Shadow-scoped tooltip styles: they apply only to elements inside this root.
             root.innerHTML = `<style>
                 :host { display: flex; gap: 1rem; flex-wrap: wrap; --tip-bg: var(--kmwc-accent-color); }
+                /* kmwc-fixed-colors */
                 .shadow-tt {
                     position: fixed; top: 0; left: 0;
                     background: var(--tip-bg); color: #fff;

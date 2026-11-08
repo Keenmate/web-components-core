@@ -114,6 +114,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - README is a landing page; the API reference, theming, examples and accessibility moved to
   `docs/usage.md`, `docs/theming.md`, `docs/examples.md`, `docs/accessibility.md` (shipped).
+- `examples-popover.html`: PO01 says what a popover is (vs a tooltip, a `/menu`, the browser's
+  `popover` attribute); PO02's API summary lists every new `createPopover()` option and method.
 - SPEC §12.8: why a component's own CSS must sit in `@layer component` (adopted sheets cascade
   after every `<style>`); `createCustomStyles()` and the page layer. SPEC §12.11 and the
   `SearchMatch` JSDoc state the current folding (NFKD, marks stripped after Latin / Greek /
