@@ -439,12 +439,12 @@ overrides the shared rules. The canonical adoption:
 // 2. one handle, created on the first build (after the shadow content exists), refreshed per build
 #customStyles: CustomStylesHandle | null = null;
 #applyCustomStyles(): void {
-  this.#customStyles ??= createCustomStyles(this, this.shadowRoot!, {
+  if (this.#customStyles) return this.#customStyles.refresh();
+  this.#customStyles = createCustomStyles(this, this.shadowRoot!, {   // writes both layers now
     cssClass: 'wtv-custom-styles',              // <prefix>-custom-styles; no `position` (core's default)
     getContext: () => this.withContext({}),
     getInstanceStyles: () => ({ css: this.config.customStyles, callback: this.config.getCustomStylesCallback }),
   });
-  this.#customStyles.refresh();
 }
 protected override reinit() { /* … build … */ this.#applyCustomStyles(); }
 protected override update(partial) {
