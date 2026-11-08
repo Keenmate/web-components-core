@@ -1226,7 +1226,7 @@ free functions taking a root + CSS strings, NOT `BlissElement` methods.
   the mechanism; the `customStylesCallback` input row stays in each component's
   table (a `toFunction()` returning a CSS string).
 - **`createCustomStyles(host, root, { getContext, getInstanceStyles, cssClass?,
-  position?, onApply? })`** → `{ refresh, destroy }` — the whole custom-CSS story on
+  position?, onApply?, shouldHoistImports? })`** → `{ refresh, destroy }` — the whole custom-CSS story on
   top of two style slots: the **page layer** for the host's tag
   (`window.components[tag].getCustomStylesCallback(ctx)`, else
   `window.components[tag].customStyles`) and, after it, the **instance layer**
@@ -1240,6 +1240,15 @@ free functions taking a root + CSS strings, NOT `BlissElement` methods.
   logged and leaves its layer empty. Use case: `window.components['web-daterangepicker']
   .customStyles = "@import url('/css/drp-days.css')"` — one file for every picker,
   fetched once. No page-wide (all tags) layer: selectors are per component.
+  **Fonts (`shouldHoistImports`, default `true`, rc20):** Chromium ignores `@font-face`
+  inside a shadow root, so an `@import`ed icon font (FontAwesome from a CDN — cross-origin,
+  its rules can't be read and copied) would draw boxes. Each `@import` URL of either layer is
+  therefore ALSO linked in the document `<head>` (`<link rel="stylesheet"
+  data-km-custom-styles>`), once per document: shared and ref-counted across every handle
+  (page state, all core copies), dropped when the last handle stops importing it (CSS change
+  or `destroy()`). A `<link>` the page already has for that URL is reused and never removed.
+  Shadow roots only (a light-DOM root registers fonts itself). Trade-off: the imported sheet's
+  rules also reach the page — opt out per component with `shouldHoistImports: false`.
 
 The `?inline` import (Vite build concern) and the `@layer variables, component,
 overrides` order (CSS guidelines, invariants #6–#9) stay authoring rules — the

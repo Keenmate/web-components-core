@@ -126,4 +126,64 @@ describe('createCustomStyles', () => {
     window.components![tag]!.customStyles = '.later {}';
     expect(styles(root)).toEqual([]);
   });
+
+  describe('@import links in the document head (fonts)', () => {
+    const hoisted = () => [...document.head.querySelectorAll<HTMLLinkElement>('link[data-km-custom-styles]')].map((l) => l.getAttribute('href'));
+
+    it('each @import URL is linked once in the head, shared by instances, removed with the last one', () => {
+      const tag = registeredTag();
+      const a = host(tag);
+      const b = host(tag);
+      const css = "@import url('/fonts/fa-1.css'); .x {}";
+      const ha = createCustomStyles(a.el, a.root, { getContext: () => ({}), getInstanceStyles: () => ({ css }) });
+      const hb = createCustomStyles(b.el, b.root, { getContext: () => ({}), getInstanceStyles: () => ({ css }) });
+      expect(hoisted()).toEqual([new URL('/fonts/fa-1.css', document.baseURI).href]);
+      expect(styles(a.root)).toEqual([`custom-styles: ${css}`]); // the @import stays in the shadow too
+      ha.destroy();
+      expect(hoisted()).toHaveLength(1);
+      hb.destroy();
+      expect(hoisted()).toEqual([]);
+    });
+
+    it('a changed CSS drops the URL it no longer imports; @import "x" and the page layer count too', () => {
+      const tag = registeredTag();
+      const { el, root } = host(tag);
+      let css = '@import url("/fonts/fa-2.css");';
+      const handle = createCustomStyles(el, root, { getContext: () => ({}), getInstanceStyles: () => ({ css }) });
+      css = "@import '/fonts/fa-3.css';";
+      handle.refresh();
+      expect(hoisted()).toEqual([new URL('/fonts/fa-3.css', document.baseURI).href]);
+      window.components![tag]!.customStyles = '@import url(/fonts/fa-4.css);';
+      expect(hoisted()).toHaveLength(2);
+      handle.destroy();
+      expect(hoisted()).toEqual([]);
+    });
+
+    it('a stylesheet the page links itself is reused and never removed', () => {
+      const own = document.createElement('link');
+      own.rel = 'stylesheet';
+      own.href = '/fonts/fa-5.css';
+      document.head.append(own);
+      const tag = registeredTag();
+      const { el, root } = host(tag);
+      const handle = createCustomStyles(el, root, { getContext: () => ({}), getInstanceStyles: () => ({ css: "@import url('/fonts/fa-5.css');" }) });
+      expect(hoisted()).toEqual([]);
+      handle.destroy();
+      expect(own.isConnected).toBe(true);
+      own.remove();
+    });
+
+    it('nothing is linked for a light-DOM root or with shouldHoistImports: false', () => {
+      const tag = registeredTag();
+      const { el, root } = host(tag);
+      const light = document.createElement('div');
+      document.body.append(light);
+      const css = "@import url('/fonts/fa-6.css');";
+      const h1 = createCustomStyles(el, light, { getContext: () => ({}), getInstanceStyles: () => ({ css }) });
+      const h2 = createCustomStyles(el, root, { getContext: () => ({}), getInstanceStyles: () => ({ css }), shouldHoistImports: false });
+      expect(hoisted()).toEqual([]);
+      h1.destroy();
+      h2.destroy();
+    });
+  });
 });

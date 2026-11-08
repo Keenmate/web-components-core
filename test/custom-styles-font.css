@@ -1,0 +1,6 @@
+/* e2e/custom-styles.spec.ts: an icon-font-like sheet — an @font-face that Chromium ignores inside a shadow root. */
+@font-face {
+  font-family: 'KmTestFont';
+  src: local('Courier New'), local('Courier');
+}
+.day { font-family: 'KmTestFont', serif; }

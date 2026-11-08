@@ -17,7 +17,10 @@ onApply? })` (`src/dom/custom-styles.ts`) → `{ refresh, destroy }`: two slots,
 (`window.components[tag].getCustomStylesCallback` > `.customStyles`, accessors installed by
 `registerComponent()`) before the instance layer (callback > CSS). Page writes refresh every
 live handle of the tag (WeakRef set in shared state). Components call `refresh()` where they
-used to set their slot, `destroy()` in `destroyCallback()`.
+used to set their slot, `destroy()` in `destroyCallback()`. `shouldHoistImports` (default on,
+shadow roots only): each `@import` URL is also a `<link data-km-custom-styles>` in the document
+head — Chromium ignores `@font-face` in a shadow root; ref-counted per document in shared state,
+a page-owned link is reused and never removed.
 
 ## Loader (`src/dom/render-loader.ts`, SPEC §12.14 — implemented)
 

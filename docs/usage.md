@@ -426,6 +426,24 @@ const slot = createStyleSlot(this.shadowRoot, { cssClass: 'custom-styles' });
 slot.set(this.config.customStylesCallback?.());  // re-set replaces; falsy clears
 ```
 
+Components normally take the whole custom-CSS story from `createCustomStyles()`: a **page layer**
+per tag (`window.components['web-treeview'].customStyles` / `.getCustomStylesCallback(ctx)`) and
+the instance's own layer after it, so an instance overrides the shared rules.
+
+```ts
+this.#customStyles ??= createCustomStyles(this, this.shadowRoot, {
+  cssClass: 'wtv-custom-styles',
+  getContext: () => this.withContext({}),
+  getInstanceStyles: () => ({ css: this.config.customStyles, callback: this.config.getCustomStylesCallback }),
+});
+this.#customStyles.refresh();   // after the instance inputs change; destroy() in destroyCallback()
+```
+
+An `@import` in either layer is also linked once in the document `<head>`, because Chromium ignores
+`@font-face` inside a shadow root (an icon font would draw boxes). The link is shared by every
+instance, removed when the last one stops importing it, and a stylesheet the page already links is
+reused. The imported rules then also reach the page; `shouldHoistImports: false` opts out.
+
 ## Container scroll
 
 `scrollIntoContainer()` brings an inner element (a row, an option, a day) into view by scrolling

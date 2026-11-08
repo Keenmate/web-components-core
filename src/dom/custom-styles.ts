@@ -14,6 +14,12 @@
  * instance overrides the shared rules. `<style>` on purpose: user CSS may `@import`,
  * which constructable sheets reject. Assigning a page value updates every live
  * instance of the tag (detached ones too — their shadow root keeps the CSS).
+ *
+ * Fonts: Chromium ignores `@font-face` inside a shadow root, so an `@import`ed icon font
+ * (FontAwesome from a CDN) would draw boxes. Each `@import` URL is therefore also linked
+ * once in the document `<head>` (`shouldHoistImports`, default on; shadow roots only),
+ * shared by every instance and removed when the last one stops using it. The imported
+ * sheet's rules then also reach the page.
  */
 import { coreLog } from '../logging/element-logger.js';
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
@@ -40,6 +46,13 @@ export interface CustomStylesOptions<Ctx = any> {
   position?: 'first' | 'last';
   /** Called with each non-empty CSS string applied (e.g. a dev-only variable-name lint). */
   onApply?: (css: string, layer: 'page' | 'instance') => void;
+  /**
+   * Also link each `@import` URL in the document `<head>`, so an imported `@font-face` (an
+   * icon font) registers — Chromium ignores it inside a shadow root. Shared and ref-counted
+   * across instances; a `<link>` the page already has is reused, never removed. Only when
+   * `root` is a ShadowRoot. Default `true`.
+   */
+  shouldHoistImports?: boolean;
 }
 
 /** The handle a component keeps (see {@link createCustomStyles}). */
@@ -62,6 +75,58 @@ interface PageStylesState {
 
 function state(): PageStylesState {
   return sharedState(sharedStateKey('custom-styles'), () => ({ listeners: new Map() }));
+}
+
+/** The document `<link>`s core added for `@import`s: absolute href → link + how many handles use it. */
+type HoistedImports = WeakMap<Document, Map<string, { link: HTMLLinkElement; count: number }>>;
+
+const hoisted = (): HoistedImports => sharedState(sharedStateKey('custom-styles-imports'), (): HoistedImports => new WeakMap());
+
+const IMPORT_RE = /@import\s+(?:url\(\s*(['"]?)([^'")\s]+)\1\s*\)|(['"])([^'"]+)\3)/g;
+
+/** The absolute URLs a CSS string `@import`s (resolved against the document's base URL). */
+export function importUrls(css: string, doc: Document): string[] {
+  const urls = new Set<string>();
+  for (const m of css.matchAll(IMPORT_RE)) {
+    const raw = m[2] ?? m[4];
+    if (!raw) continue;
+    try {
+      urls.add(new URL(raw, doc.baseURI).href);
+    } catch {
+      /* not a URL — the browser ignores that @import too */
+    }
+  }
+  return [...urls];
+}
+
+/** Use (link if needed) `href` in `doc`'s head. */
+function acquireImport(doc: Document, href: string): void {
+  const map = hoisted();
+  let links = map.get(doc);
+  if (!links) map.set(doc, (links = new Map()));
+  const held = links.get(href);
+  if (held) {
+    held.count++;
+    return;
+  }
+  const own = [...doc.querySelectorAll<HTMLLinkElement>('link[rel~="stylesheet"]')].some((l) => l.href === href);
+  if (own) return; // the page links it itself: nothing to add or remove
+  const link = doc.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = href;
+  link.setAttribute('data-km-custom-styles', '');
+  doc.head.append(link);
+  links.set(href, { link, count: 1 });
+}
+
+/** Stop using `href`; the last user removes the `<link>` core added. */
+function releaseImport(doc: Document, href: string): void {
+  const links = hoisted().get(doc);
+  const held = links?.get(href);
+  if (!held) return;
+  if (--held.count > 0) return;
+  held.link.remove();
+  links!.delete(href);
 }
 
 /** Re-run every live handle of `tag` (its page layer changed). */
@@ -149,6 +214,16 @@ export function createCustomStyles<Ctx = any>(
   const position = opts.position ?? 'last';
   let page: StyleSlot | null = createStyleSlot(root, { position, cssClass: `${cssClass}--page` });
   let instance: StyleSlot | null = createStyleSlot(root, { position, cssClass });
+  const doc = typeof ShadowRoot !== 'undefined' && root instanceof ShadowRoot && opts.shouldHoistImports !== false ? root.ownerDocument : null;
+  /** The `@import` URLs this handle holds in the document head. */
+  let imports: string[] = [];
+  const syncImports = (css: string): void => {
+    if (!doc?.head) return;
+    const next = importUrls(css, doc);
+    for (const href of next) if (!imports.includes(href)) acquireImport(doc, href);
+    for (const href of imports) if (!next.includes(href)) releaseImport(doc, href);
+    imports = next;
+  };
 
   const resolve = (source: CustomStylesSource<Ctx>, layer: 'page' | 'instance'): string | null => {
     if (typeof source.callback === 'function') {
@@ -180,10 +255,13 @@ export function createCustomStyles<Ctx = any>(
       page.set(pageCss);
       instance.set(instanceCss);
       order();
+      syncImports(`${pageCss ?? ''}
+${instanceCss ?? ''}`);
       if (pageCss) opts.onApply?.(pageCss, 'page');
       if (instanceCss) opts.onApply?.(instanceCss, 'instance');
     },
     destroy() {
+      syncImports('');
       page?.destroy();
       instance?.destroy();
       page = instance = null;

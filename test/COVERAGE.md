@@ -118,6 +118,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | window.components: tag keys only, non-enumerable logging / renderLoadingCallback | ✓ | `page.spec.ts` | `page-wide.html` |
 | Registry entry created before core loaded is adopted (same object, props kept) | ✓ | `page.spec.ts` | `page-wide.html` |
 | Custom CSS: page layer `window.components[tag].customStyles` (`@import` of a real file) / `.getCustomStylesCallback(ctx)` per instance, instance layer after it, live update + later instances, beats `@layer component` | ✓ | `custom-styles.spec.ts` | `custom-styles.html` |
+| Custom CSS `@import` also linked in the document head, so its `@font-face` registers (Chromium ignores it in a shadow root); removed with the last user | ✓ | `custom-styles.spec.ts` | `custom-styles.html` |
 | getInstances() connect order (add / move re-tracks last / remove); getRegisteredTags(); shouldAutoDefine:false + register() | ✓ | `page.spec.ts` | `page-wide.html` |
 | Logging: default warn; [TAG:CAT] #id labels; invalid attr routed to INIT (or CORE:ELEMENT without a bundle) | ✓ | `page.spec.ts` | `page-wide.html` |
 | Logging: page switch (CORE included), per instance, per tag, per category | ✓ | `page.spec.ts` | `page-wide.html` |

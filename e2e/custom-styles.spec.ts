@@ -31,6 +31,21 @@ test.describe('custom CSS (SPEC §12.8)', () => {
     await expect.poll(() => colors(page)).toEqual([GREEN, GREEN, GREEN]);
   });
 
+  test('an @import is also linked once in the document head, so its @font-face registers (fonts in shadow roots)', async ({ page }) => {
+    await open(page);
+    const hasFont = () => page.evaluate(() => [...document.fonts].some((f) => f.family.replace(/["']/g, '') === 'KmTestFont'));
+    expect(await hasFont()).toBe(false);
+    await page.evaluate(() => {
+      window.components!['fx-cs']!.customStyles = "@import url('/test/custom-styles-font.css');";
+    });
+    await expect.poll(() => page.locator('link[data-km-custom-styles]').count()).toBe(1);
+    await expect.poll(hasFont).toBe(true);
+    await page.evaluate(() => {
+      window.components!['fx-cs']!.customStyles = null;
+    });
+    await expect.poll(() => page.locator('link[data-km-custom-styles]').count()).toBe(0);
+  });
+
   test('the instance layer comes after the page layer, so an instance overrides it', async ({ page }) => {
     await open(page);
     await page.evaluate(() => {
