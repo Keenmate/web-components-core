@@ -1541,11 +1541,16 @@ right: 0; width: 100%; overflow: hidden` — the page doesn't move, and iOS Safa
 (which ignores `overflow: hidden` for touch scrolling) can't scroll it either. The
 last release restores the styles and calls `scrollTo({ …, behavior: 'instant' })`,
 so a page with `html { scroll-behavior: smooth }` doesn't animate the jump back.
+`<html>` also gets `overflow-x: hidden` while locked (rc20, its inline value saved in
+`saved.rootStyle` and restored): a page wider than a phone screen otherwise keeps the browser
+zoomed out to fit it, so a fullscreen sheet is drawn too small / under the system bar. A joiner
+that saved no `rootStyle` (an older copy, pure-css before its port) leaves `<html>` alone on
+release.
 
 **Cross-bundle state.** Every component bundles its own copy of core, so page-wide
 overlay state can't live in module variables:
 - the lock's count and snapshot live on `globalThis[Symbol.for('km-scroll-lock')]`
-  (`ScrollLockState`: `{ count, saved: { scrollX, scrollY, style, body? } | null }`) — a
+  (`ScrollLockState`: `{ count, saved: { scrollX, scrollY, style, body?, rootStyle? } | null }`) — a
   documented shape, so non-core code (pure-css) can join the same lock;
 - `ALL_GROUPS` (the `dismissAllOverlays()` wildcard of `km-overlay-activate`) is
   `Symbol.for('km-overlay-all-groups')`, so a dismiss from one component's copy

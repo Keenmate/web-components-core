@@ -33,6 +33,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A phone sheet over a page wider than the screen.** `lockBodyScroll()` pinned only `<body>`, so a
+  page that overflowed sideways kept the browser zoomed out to fit it, and a fullscreen sheet
+  (web-daterangepicker, web-commandpalette) was drawn too small or under the system bar;
+  web-multiselect clamped `<html>` itself. The lock now also sets `overflow-x: hidden` on `<html>`
+  and restores its inline value on the last release. `ScrollLockState.saved` gains an optional
+  `rootStyle` (*pure-css port affected*: fill it when joining the lock; a joiner without it leaves
+  `<html>` alone). `src/overlay/scroll-lock.ts`; e2e `scroll-lock.spec.ts`.
 - **A component's own properties set before it was defined are no longer lost.** `el.value = …`
   (web-multiselect, web-daterangepicker) or `el.items` / `el.columns` (web-grid) assigned before the
   component's script loaded stayed a plain property on the element, hiding the component's setter

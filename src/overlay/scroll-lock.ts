@@ -5,7 +5,10 @@
  * minus the scroll offset (the page looks unmoved) plus `overflow: hidden`; the last
  * release restores the styles and jumps back to the recorded position (instantly,
  * even under `scroll-behavior: smooth`). `overflow: hidden` alone is ignored by iOS
- * Safari for touch scrolling; a pinned body can't scroll anywhere.
+ * Safari for touch scrolling; a pinned body can't scroll anywhere. `<html>` also gets
+ * `overflow-x: hidden` while locked: a page wider than the phone screen would otherwise keep the
+ * browser zoomed out to fit it, and a fullscreen sheet would be drawn too small / under the
+ * system bar (sweep OV-2; web-multiselect did this on its own).
  *
  * Ref-counting makes it safe when several overlays (or several component instances)
  * are open at once — page scroll stays locked until the *last* one closes. The state
@@ -21,6 +24,8 @@ import { once } from '../dom/once.js';
 
 /** The body inline styles the lock writes (and restores). */
 const PINNED_PROPERTIES = ['position', 'top', 'left', 'right', 'width', 'overflow', 'padding-right'] as const;
+/** The `<html>` inline styles the lock writes (and restores). */
+const ROOT_PROPERTIES = ['overflow-x'] as const;
 
 /**
  * Shared lock state, `globalThis[Symbol.for('km-scroll-lock')]`. A documented shape:
@@ -42,6 +47,12 @@ export interface ScrollLockState {
      * own styles and the old one isn't left `position: fixed` (review V-19 #6).
      */
     body?: HTMLElement;
+    /**
+     * `<html>`'s inline value of each property the lock sets on it (`overflow-x`; `''` = none).
+     * Optional: a joiner that didn't fill it (an older copy, pure-css before its port) leaves
+     * `<html>` untouched on release.
+     */
+    rootStyle?: Record<string, string>;
   } | null;
 }
 
@@ -57,7 +68,10 @@ function pin(body: HTMLElement): void {
   const scrollY = view?.scrollY ?? 0;
   const style: Record<string, string> = {};
   for (const prop of PINNED_PROPERTIES) style[prop] = body.style.getPropertyValue(prop);
-  state().saved = { scrollX, scrollY, style, body };
+  const root = body.ownerDocument.documentElement;
+  const rootStyle: Record<string, string> = {};
+  for (const prop of ROOT_PROPERTIES) rootStyle[prop] = root.style.getPropertyValue(prop);
+  state().saved = { scrollX, scrollY, style, body, rootStyle };
 
   // Pinning removes the page scrollbar (desktop): pad the body by its width so the content
   // doesn't jump sideways while the lock holds.
@@ -73,6 +87,7 @@ function pin(body: HTMLElement): void {
   body.style.setProperty('right', '0');
   body.style.setProperty('width', '100%');
   body.style.setProperty('overflow', 'hidden');
+  root.style.setProperty('overflow-x', 'hidden');
 }
 
 function unpin(current: HTMLElement): void {
@@ -85,6 +100,14 @@ function unpin(current: HTMLElement): void {
     const value = saved.style[prop];
     if (value) body.style.setProperty(prop, value);
     else body.style.removeProperty(prop);
+  }
+  if (saved.rootStyle) {
+    const root = body.ownerDocument.documentElement;
+    for (const prop of ROOT_PROPERTIES) {
+      const value = saved.rootStyle[prop];
+      if (value) root.style.setProperty(prop, value);
+      else root.style.removeProperty(prop);
+    }
   }
   const view = current.ownerDocument.defaultView;
   try {

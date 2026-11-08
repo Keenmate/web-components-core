@@ -54,3 +54,20 @@ test('another copy of core holding the lock keeps the page pinned', async ({ pag
   });
   expect(result).toEqual({ pinnedAfterFirst: 'fixed', count: 0 });
 });
+
+test('a page wider than the viewport cannot be scrolled sideways while locked; <html> overflow-x comes back on release', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const wide = document.createElement('div');
+    wide.style.cssText = 'width: 3000px; height: 10px';
+    document.body.append(wide);
+    const release = (window as any).core.lockBodyScroll();
+    const locked = getComputedStyle(document.documentElement).overflowX;
+    window.scrollTo({ left: 500, behavior: 'instant' });
+    const xWhileLocked = window.scrollX;
+    release();
+    const after = document.documentElement.style.overflowX;
+    wide.remove();
+    return { locked, xWhileLocked, after };
+  });
+  expect(result).toEqual({ locked: 'hidden', xWhileLocked: 0, after: '' });
+});

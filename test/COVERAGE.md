@@ -235,6 +235,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | Pinned page keeps its position and doesn't scroll (wheel) | ✓ | `scroll-lock.spec.ts` | `scroll-lock.html` |
 | Release unpins and restores the scroll position | ✓ | `scroll-lock.spec.ts` | `scroll-lock.html` |
 | A lock held by another copy of core keeps the page pinned | ✓ | `scroll-lock.spec.ts` | `scroll-lock.html` |
+| A page wider than the viewport can't scroll sideways while locked; `<html>` `overflow-x` restored | ✓ | `scroll-lock.spec.ts` | `scroll-lock.html` |
 | The jump back is instant under `scroll-behavior: smooth` | unit | `scroll-lock.test.ts` | Chromium reports a smooth scroll's destination immediately |
 | iOS Safari touch scrolling blocked | ✗ | — | needs a real iOS device |
 

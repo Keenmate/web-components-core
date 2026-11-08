@@ -12,6 +12,7 @@ describe('lockBodyScroll', () => {
   afterEach(() => {
     __resetScrollLock();
     document.body.removeAttribute('style');
+    document.documentElement.removeAttribute('style');
     vi.restoreAllMocks();
   });
 
@@ -29,6 +30,29 @@ describe('lockBodyScroll', () => {
     expect(document.body.style.overflow).toBe('auto');
     expect(window.scrollTo).toHaveBeenCalledWith({ left: 0, top: 300, behavior: 'instant' });
     Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
+  });
+
+  it('clamps <html> overflow-x while locked (no zoomed-out page under a sheet) and restores its own value', () => {
+    const root = document.documentElement;
+    const release = lockBodyScroll();
+    expect(root.style.overflowX).toBe('hidden');
+    expect(shared().saved?.rootStyle).toEqual({ 'overflow-x': '' });
+    release();
+    expect(root.style.overflowX).toBe('');
+    root.style.overflowX = 'clip';
+    const again = lockBodyScroll();
+    expect(root.style.overflowX).toBe('hidden');
+    again();
+    expect(root.style.overflowX).toBe('clip');
+  });
+
+  it('a joiner that saved no rootStyle (older copy, pure-css) leaves <html> alone on release', () => {
+    const release = lockBodyScroll();
+    const root = document.documentElement;
+    root.style.overflowX = 'scroll'; // whatever the page has now
+    delete shared().saved!.rootStyle;
+    release();
+    expect(root.style.overflowX).toBe('scroll');
   });
 
   it('restores the body’s own inline position', () => {
