@@ -407,17 +407,41 @@ describe('dismiss + cleanup', () => {
     expect(active()).not.toBe(opener);
   });
 
-  it('scroll outside (document or the host shadow root) and window blur close', () => {
+  it('scroll: only a scroll that moves what the menu belongs to closes it (the popover rule); blur closes', () => {
+    // A point menu belongs to its host. jsdom has no layout: fake the host's position.
+    let top = 100;
+    host.getBoundingClientRect = () => ({ top, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: top, toJSON() {} }) as DOMRect;
     const a = open(basic);
-    const scroller = document.createElement('div');
-    shadow.append(scroller);
-    scroller.dispatchEvent(new Event('scroll')); // not composed — seen via the shadow root
+    const unrelated = document.createElement('div'); // a log panel auto-scrolling elsewhere
+    document.body.append(unrelated);
+    top = 50;
+    unrelated.dispatchEvent(new Event('scroll'));
+    expect(a.handle.isOpen).toBe(true);
+    levels()[0]!.dispatchEvent(new Event('scroll')); // its own list
+    expect(a.handle.isOpen).toBe(true);
+    window.dispatchEvent(new WheelEvent('wheel')); // a bare wheel moves nothing
+    expect(a.handle.isOpen).toBe(true);
+    document.dispatchEvent(new Event('scroll')); // the page scrolled and the host moved
     expect(a.onClose).toHaveBeenCalledWith('scroll');
+
     const b = open(basic);
-    levels()[0]!.dispatchEvent(new Event('scroll'));
+    document.dispatchEvent(new Event('scroll')); // a late scroll event: nothing moved since open
     expect(b.handle.isOpen).toBe(true);
     window.dispatchEvent(new Event('blur'));
     expect(b.onClose).toHaveBeenCalledWith('blur');
+  });
+
+  it('a scroll inside the host shadow root (not composed) is heard when it moves the anchor', () => {
+    const scroller = document.createElement('div');
+    shadow.append(scroller);
+    const inner = document.createElement('button');
+    scroller.append(inner);
+    let top = 100;
+    inner.getBoundingClientRect = () => ({ top, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: top, toJSON() {} }) as DOMRect;
+    const { onClose } = open(basic, { at: inner });
+    top = 40;
+    scroller.dispatchEvent(new Event('scroll'));
+    expect(onClose).toHaveBeenCalledWith('scroll');
   });
 
   it('another KM overlay opening closes it', () => {

@@ -1833,7 +1833,9 @@ root / element the levels are appended to; the stylesheet is adopted into its ro
 `runAction()` — a leaf closes the menu first, then runs; a `shouldCloseOnClick: false`
 item runs and its level re-renders when the returned promise settles),
 `onClose(reason)` (`'action' | 'escape' | 'tab' | 'outside-click' | 'scroll' | 'blur' |
-'overlay' | 'api'`), `renderItemCallback(item, el, ctx, resolved)` (fill-or-fall-through),
+'overlay' | 'api'`; `'scroll'` by the popover's rule — one shared `watchScrollClose()`: the page or a
+scroller around the `at` element / host, once it moved; never inside the menu, no bare wheel —
+rc20), `renderItemCallback(item, el, ctx, resolved)` (fill-or-fall-through),
 `renderMenuCallback(el, close)` (full custom content; core still positions + dismisses),
 `defaults` / `prepareItemCallback` (built-in state / rewrite, every level), `placement`,
 `offset`, `cssClass`, `shouldFocusFirst`, `returnFocusTo`,

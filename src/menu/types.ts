@@ -13,7 +13,8 @@ export interface MenuPoint {
  * - `'escape'` — Escape on the root menu
  * - `'tab'` — Tab / Shift+Tab (focus leaves the menu)
  * - `'outside-click'` — a pointer press outside every menu level
- * - `'scroll'` — a scroll / wheel outside the menu
+ * - `'scroll'` — a scroll that moved what the menu belongs to (its `at` element, else the host):
+ *   the page or a scroller around it, never one inside the menu or a bare wheel (the popover rule)
  * - `'blur'` — the window lost focus
  * - `'overlay'` — another KM overlay opened (`registerOverlay` coordination)
  * - `'api'` — `handle.close()`
@@ -81,7 +82,7 @@ export interface OpenMenuOptions<Ctx, A extends string = string> {
    */
   returnFocusTo?: HTMLElement | null;
   /**
-   * Close on an outside pointer press, a scroll / wheel outside the menu,
+   * Close on an outside pointer press, a scroll that moves what the menu belongs to,
    * window blur, and when another KM overlay opens. Default `true`; `false`
    * keeps it open until Escape / an item / `close()` (a debug or pinned menu).
    */

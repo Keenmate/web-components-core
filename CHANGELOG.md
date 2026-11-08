@@ -33,6 +33,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`openMenu()` closes on scroll by the same rule as `createPopover()`.** A menu closed on any
+  scroll anywhere (an unrelated log panel auto-scrolling, a late scroll event from before it
+  opened) and on any mouse wheel, even when nothing moved. It now uses the popover's rule, one
+  shared helper (`watchScrollClose()`, `src/positioning/scroll-close.ts`): only a scroll of the page
+  or of a scroller around what the menu belongs to (its `at` element, else the host), once that has
+  actually moved; never a scroll inside the menu, no bare-wheel close. Behaviour change for the
+  web-treeview, web-grid and web-editor menus. `src/menu/open-menu.ts`.
 - **`createPopover()` closes when its reference leaves the page.** A popover whose reference was
   removed while open (a virtualised row or cell re-rendered) stayed open at stale coordinates; core's
   own tooltip already closed in that case. It now closes at the next position update, with the new

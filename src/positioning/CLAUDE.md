@@ -14,7 +14,7 @@ shadow-scoped tooltip CSS/vars) and `createPopover()` are thin wrappers. `create
 keeps three things apart: OPEN (state, overlay tree, `visibleClass` + inline `visibility: hidden`
 until the first placement), MOUNTED (append / remove per open, or `shouldKeepMounted`) and
 ANCHORED (`setAnchored()` / `reanchor()`; un-anchoring restores the panel's own position / left /
-top); closes on scroll / resize optionally; `onClose(reason)` for every close. `anchor().destroy()` puts back the inline sizes it wrote (`createSizeWriter`). The big
+top); closes on scroll / resize optionally (the scroll rule is `watchScrollClose()` in `scroll-close.ts`, shared with `/menu`); `onClose(reason)` for every close. `anchor().destroy()` puts back the inline sizes it wrote (`createSizeWriter`). The big
 component panels don't use `createPopover()` yet: `docs/review/2026-11-06-createpopover-fit.md`. Decisions: follow-cursor is a
 tooltip option not a preset; the bespoke shadow-DOM platform was NOT ported (1.8
 handles it + the `platform` hatch — a component with a genuinely custom platform,

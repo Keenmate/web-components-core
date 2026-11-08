@@ -19,7 +19,7 @@ import { anchor } from './anchor.js';
 import type { AnchorHandle, AnchorOptions } from './types.js';
 import { registerOverlay, type OverlayDismissReason, type OverlayHandle } from '../overlay/active-overlay.js';
 import { coreLog } from '../logging/element-logger.js';
-import { composedParent } from '../dom/composed-tree.js';
+import { watchScrollClose } from './scroll-close.js';
 
 /** A DOM element or a floating-ui `VirtualElement` to anchor against. */
 type Reference = Parameters<typeof anchor>[1];
@@ -170,23 +170,6 @@ function isOn(rule: PopoverCloseRule | undefined, panel: HTMLElement): boolean {
   }
 }
 
-/**
- * The document plus every shadow root between it and `node` — where a scroll near `node` can
- * be heard (`scroll` doesn't cross a shadow boundary, so the document alone misses a scroller
- * inside a component).
- */
-function scrollRoots(node: Node | null): (Document | ShadowRoot)[] {
-  const roots: (Document | ShadowRoot)[] = [];
-  for (let n: Node | null = node; n; ) {
-    const root = n.getRootNode();
-    if (!(root instanceof ShadowRoot)) break;
-    roots.push(root);
-    n = root.host;
-  }
-  if (typeof document !== 'undefined') roots.push(document);
-  return roots;
-}
-
 export function createPopover(opts: PopoverOptions): PopoverHandle {
   const {
     reference: referenceOption,
@@ -320,49 +303,20 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
     }
   };
 
-  /** Where the reference was when the popover opened (viewport coordinates). */
-  let openedAt: { top: number; left: number } | undefined;
-  const referenceSpot = (): { top: number; left: number } => {
-    const rect = reference.getBoundingClientRect();
-    return { top: rect.top, left: rect.left };
-  };
-  /** Has the reference moved (≥ 1px) since the popover opened? */
-  const hasReferenceMoved = (): boolean => {
-    if (!openedAt) return true;
-    const now = referenceSpot();
-    return Math.abs(now.top - openedAt.top) >= 1 || Math.abs(now.left - openedAt.left) >= 1;
-  };
-
-  /** Is `target` the document, or a scroller that contains the reference (across shadow roots)? */
-  const isAroundReference = (target: EventTarget | null): boolean => {
-    if (!(target instanceof Element)) return true; // the document / window scrolled
-    const ref = referenceElement();
-    if (!ref) return false; // a virtual reference: only the page moves it
-    for (let n: Element | null = ref; n; n = composedParent(n)) if (n === target) return true;
-    return false;
-  };
-
   /** Scroll / resize listeners for the open popover; returns their removal. */
   const listen = (): (() => void) | undefined => {
     if (typeof window === 'undefined' || (!shouldCloseOnScroll && !shouldCloseOnResize)) return undefined;
     const removals: (() => void)[] = [];
     if (shouldCloseOnScroll) {
-      const onScroll = (event: Event): void => {
-        // A scroll inside the panel (its own list) is the user reading it, not leaving.
-        if (event.composedPath().includes(panel)) return;
-        // Only a scroll that moves the reference counts: the page, or a scroller around it — not
-        // an unrelated scroller elsewhere (a log panel auto-scrolling, a sidebar list).
-        if (!isAroundReference(event.target)) return;
-        // Only a scroll that actually MOVED the reference: a scroll event can arrive a frame late
-        // (a scroll that finished just before the click that opened the popover, a scroll-into-view
-        // before a click) — the reference is where it was at open, so nothing to close.
-        if (!hasReferenceMoved()) return;
-        if (isOn(shouldCloseOnScroll, panel)) closeWith('scroll');
-      };
-      for (const root of scrollRoots(referenceElement())) {
-        root.addEventListener('scroll', onScroll, { capture: true, passive: true });
-        removals.push(() => root.removeEventListener('scroll', onScroll, { capture: true }));
-      }
+      removals.push(
+        watchScrollClose({
+          reference,
+          isInside: (event) => event.composedPath().includes(panel), // its own list scrolling
+          onScroll: () => {
+            if (isOn(shouldCloseOnScroll, panel)) closeWith('scroll');
+          },
+        }),
+      );
     }
     if (shouldCloseOnResize) {
       const onResize = (): void => {
@@ -389,7 +343,6 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
       reference = resolveReference();
       show();
       if (isAnchored) attach();
-      openedAt = shouldCloseOnScroll ? referenceSpot() : undefined;
       stopListening = listen();
       if (isInOverlayTree) {
         overlay = registerOverlay(

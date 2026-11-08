@@ -15,6 +15,7 @@ import { coreLog } from '../logging/element-logger.js';
 import { callSafely } from '../logging/safe-call.js';
 import { registerOverlay, type OverlayHandle } from '../overlay/active-overlay.js';
 import { anchor } from '../positioning/anchor.js';
+import { watchScrollClose } from '../positioning/scroll-close.js';
 import type { AnchorHandle } from '../positioning/types.js';
 import { MENU_CSS } from './styles.js';
 import type { MenuCloseReason, MenuHandle, MenuPoint, OpenMenuOptions } from './types.js';
@@ -527,20 +528,22 @@ export function openMenu<Ctx, A extends string = string>(
     const onPointerDown = (e: Event) => {
       if (!isInside(e)) close('outside-click');
     };
-    const onScroll = (e: Event) => {
-      if (!isInside(e)) close('scroll');
-    };
     const onBlur = () => close('blur');
     // keydown in capture on the document: the menu is keyboard-modal while open,
     // whether focus is in it (submenu nav) or still on the opener (shortcuts, ↓).
     document.addEventListener('keydown', onKeydown, true);
-    const scrollRoot = styleRoot !== (document as unknown) ? styleRoot : null;
+    let stopScrollClose: (() => void) | undefined;
     if (shouldDismissOutside) {
       document.addEventListener('pointerdown', onPointerDown, true);
-      document.addEventListener('scroll', onScroll, true);
-      // A scroll inside a shadow root isn't composed — listen on the host's root too.
-      scrollRoot?.addEventListener('scroll', onScroll, true);
-      window.addEventListener('wheel', onScroll, { capture: true, passive: true });
+      // The popover's scroll rule (SPEC §12.2): only a scroll of the page or of a scroller around
+      // what the menu belongs to (its `at` element, else the host — a point menu moves with it),
+      // once that has actually moved; never a scroll inside the menu, never a bare wheel.
+      const hostEl = typeof ShadowRoot !== 'undefined' && host instanceof ShadowRoot ? host.host : (host as Element);
+      stopScrollClose = watchScrollClose({
+        reference: opts.at instanceof Element ? opts.at : hostEl,
+        isInside,
+        onScroll: () => close('scroll'),
+      });
       window.addEventListener('blur', onBlur);
       // In the page-wide overlay tree (SPEC §12.9): a menu opened from inside another
       // overlay (a context menu in a dropdown) is its child and doesn't dismiss it.
@@ -552,9 +555,7 @@ export function openMenu<Ctx, A extends string = string>(
       document.removeEventListener('keydown', onKeydown, true);
       if (!shouldDismissOutside) return;
       document.removeEventListener('pointerdown', onPointerDown, true);
-      document.removeEventListener('scroll', onScroll, true);
-      scrollRoot?.removeEventListener('scroll', onScroll, true);
-      window.removeEventListener('wheel', onScroll, { capture: true } as EventListenerOptions);
+      stopScrollClose?.();
       window.removeEventListener('blur', onBlur);
       overlay?.deactivate();
       overlay?.destroy();

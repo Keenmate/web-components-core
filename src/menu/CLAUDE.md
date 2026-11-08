@@ -6,7 +6,8 @@ dismiss and the WAI-ARIA keyboard. Open levels form a chain (root → submenu �
 open child per level); `collapseFrom(depth)` closes the tail and refocuses the owner if
 focus was inside. Keyboard = one capture `keydown` on `document` while open (works with
 focus in the menu or still on the opener; handled keys are consumed). Dismiss listeners
-(pointerdown / scroll / wheel / blur + `registerOverlay`) attach synchronously at open
+(pointerdown / blur / `registerOverlay` + the shared `watchScrollClose()` scroll rule from
+`src/positioning/scroll-close.ts`, the same as `createPopover()` — no bare wheel) attach synchronously at open
 and are all removed in `close()` — keep add/remove balanced (a test counts them). A leaf
 closes BEFORE `runAction` (focus is back on the opener when the action runs); keep-open
 items refresh their level after the returned promise settles. Items are `div`s, not
