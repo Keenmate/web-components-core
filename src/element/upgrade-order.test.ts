@@ -84,6 +84,28 @@ describe('input table check (E-16)', () => {
     expect(lines).toContain(`"label" has on: "rebuild"`);
     expect(lines).toContain(`configKey "controller" hides BlissElement's own "controller"`);
   });
+
+  it('warns when an input has the name of a getter / method, which it silently replaces (C-A3)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const tag = tagName();
+    class Shadowing extends BlissElement {
+      protected static override inputs: readonly InputDef[] = [
+        { configKey: 'items', converter: toText() },
+        { configKey: 'refresh', converter: toText() },
+        { configKey: 'label', attribute: 'label', converter: toText() },
+      ];
+      get items(): string {
+        return 'never runs';
+      }
+      refresh(): void {}
+    }
+    customElements.define(tag, Shadowing as unknown as CustomElementConstructor);
+    document.createElement(tag);
+    const lines = consoleLines(warn).join('\n');
+    expect(lines).toContain('"items" is also a getter/setter on Shadowing');
+    expect(lines).toContain('"refresh" is also a method on Shadowing');
+    expect(lines).not.toContain('"label" is also');
+  });
 });
 
 // Sweep C-A1 (2026-11-08): the component's own accessors (not inputs) assigned before upgrade.

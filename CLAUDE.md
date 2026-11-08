@@ -183,7 +183,8 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
   `shouldReflect: true` without an `attribute` / without `converter.toAttribute`, or a dead
   `default` (the converter answers a missing attribute with a different concrete value —
   `null` exempt), or `getLiveValue` on an `on: 'none'` row (the write never reaches the live
-  state; read-only state is a plain getter, not a row). Watch the console when authoring a table. `toBool(mode)` takes a REQUIRED
+  state; read-only state is a plain getter, not a row), or a `configKey` naming the component's own
+  getter / setter / method (the input accessor silently replaces it). Watch the console when authoring a table. `toBool(mode)` takes a REQUIRED
   mode; `'presence'` (any value → true) is for `disabled` / `readonly` only.
 - Removing an attribute is reactive: it resets that input to its `default`
   (absent == default), consistent with construction. `el.x = undefined` resets

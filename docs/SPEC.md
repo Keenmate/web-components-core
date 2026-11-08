@@ -351,7 +351,10 @@ converter answers a missing attribute with a concrete value other than the row's
 (`toBool('default-false')` + `default: true`, `toText()` + `default: 'Hello'`), which then
 never applies, because the converter's answer wins and `default` fills in only for
 `undefined`. A `null` answer is exempt — the null-clear "unset, the engine decides" sentinel,
-where `default` documents the engine's value. Removing an attribute is reactive — it resets
+where `default` documents the engine's value. Also a `configKey` that names the component's
+OWN getter / setter / method (rc20, sweep C-A3): the input accessor is installed on the
+instance and silently replaces it, so that member is dead code that looks live (web-grid had
+64) — live state goes in the row's `getLiveValue`. Removing an attribute is reactive — it resets
 that input to its `default` (absent == default). Assigning `el.x = undefined` does the same
 on the property path (since rc19): the absent value, and the input is no longer explicit.
 
@@ -878,7 +881,10 @@ is idempotent per logger name (won't double-wrap), assigns each category a stabl
 palette colour by index, and `enableLogging()` defaults to `debug`. *(Amended
 again in rc04: the `loglevel` npm dependency was replaced by a vendored native-ESM
 port, `src/logging/log-core.ts` — the CJS package broke `log.levels` under Node's
-ESM loader in consumers' vitest runs. Core has no logging dependency.)* Original
+ESM loader in consumers' vitest runs. Core has no logging dependency.)* **No timestamp
+prefix, on purpose:** every pre-core component logger printed `[HH:MM:SS.mmm]`; core doesn't —
+the browser console shows a time per message (Chrome / Edge "Show timestamps", Firefox likewise),
+and a prefix would only duplicate it. Components don't add one either (sweep A6, 2026-11-08). Original
 context and decision retained below.
 
 Context: all five components already use **loglevel +

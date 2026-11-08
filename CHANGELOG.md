@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Input-table check: an input named like the component's own getter / setter / method warns.**
+  The input's accessor is installed on the instance, so a class member of the same name never runs
+  (web-grid has 64 such dead getters / setters). The once-per-class table check now names it; live
+  state goes in the row's `getLiveValue`. `src/element/bliss-element.ts`.
+
 - **Custom CSS: an `@import`ed font works inside a shadow root.** Chromium ignores `@font-face`
   in a shadow root, so an icon font a page `@import`s through `customStyles` /
   `getCustomStylesCallback` (FontAwesome from a CDN) drew boxes. `createCustomStyles()` now also

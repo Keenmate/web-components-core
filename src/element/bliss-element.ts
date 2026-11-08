@@ -126,6 +126,17 @@ const COMPOSED_NATIVE_EVENT = /^(click|dblclick|auxclick|contextmenu|focus|blur|
 
 const Base = (typeof HTMLElement !== 'undefined' ? HTMLElement : (class {} as unknown)) as typeof HTMLElement;
 
+/** A getter / setter / method named `key` on `el`'s prototype chain below BlissElement, if any. */
+function subclassMember(el: object, key: string): 'getter/setter' | 'method' | undefined {
+  for (let proto = Object.getPrototypeOf(el); proto && proto !== BlissElement.prototype; proto = Object.getPrototypeOf(proto)) {
+    const d = Object.getOwnPropertyDescriptor(proto, key);
+    if (!d) continue;
+    if (d.get || d.set) return 'getter/setter';
+    if (typeof d.value === 'function') return 'method';
+  }
+  return undefined;
+}
+
 /** Constructors whose input table has already been sanity-checked (once per class). */
 const VALIDATED = new WeakSet<object>();
 
@@ -1717,6 +1728,15 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       // (CORE_PROPERTIES) are the documented exception: an input of that name owns it.
       if (CORE_MEMBERS.has(def.configKey) && !CORE_PROPERTY_BY_KEY.has(def.configKey)) {
         this.#warn(`invalid input table: configKey "${def.configKey}" hides BlissElement's own "${def.configKey}" — rename the input`);
+      }
+      // The same goes for the component's OWN class members: an accessor / method of that name on
+      // the subclass prototype chain is silently replaced by the input accessor (dead code that
+      // looks live — sweep C-A3). Live state belongs in the row's getLiveValue.
+      const shadowed = subclassMember(this, def.configKey);
+      if (shadowed) {
+        this.#warn(
+          `invalid input table: "${def.configKey}" is also a ${shadowed} on ${(ctor as { name?: string }).name || 'the component class'} — the input's accessor replaces it, so it never runs; drop it (live state goes in the row's getLiveValue)`,
+        );
       }
       if (def.getLiveValue !== undefined && typeof def.getLiveValue !== 'function') {
         this.#warn(`invalid input table: "${def.configKey}" has a getLiveValue that is not a function; the getter returns the stored value`);
