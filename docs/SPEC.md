@@ -1067,7 +1067,10 @@ createPopover(opts: { reference: Reference | (() => Reference); panel; shouldKee
   ...AnchorOptions }): PopoverHandle;   // shouldCloseOn*: boolean | (() => boolean), asked each time
 // PopoverHandle: { isOpen, isAnchored, open(), close(), update(), reanchor(), setAnchored(bool), destroy() }
 // open (state + overlay tree + visibleClass), mounted (shouldKeepMounted) and anchored (setAnchored) are separate.
-// onClose fires for every close; reason adds 'scroll' | 'resize' | 'api' to OverlayDismissReason.
+// onClose fires for every close; reason adds 'scroll' | 'resize' | 'reference-removed' | 'api' to OverlayDismissReason.
+// 'reference-removed' (rc20): the reference was in the page when anchored and left it while open
+// (a virtualised row re-rendered) — the panel goes with it, like createTooltip(); seen at the next
+// position update (autoUpdate's observers fire on the removal).
 // anchor() also takes fallbackPlacements; its destroy() puts back the inline sizes it wrote.
 // Fit study (who uses it, what the big panels still need): docs/review/2026-11-06-createpopover-fit.md
 ```

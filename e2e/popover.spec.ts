@@ -120,3 +120,21 @@ test('outside click is decided when the click ends: a page button driving the po
   await page.locator('#plain').click(); // an ordinary outside click
   expect(await page.evaluate(() => (window as any).clickPop.isOpen)).toBe(false);
 });
+
+test('a reference removed from the page while open takes the panel with it (a re-rendered row)', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const row = document.createElement('button');
+    row.textContent = 'row';
+    document.body.append(row);
+    const panel = document.createElement('div');
+    panel.textContent = 'row panel';
+    const reasons: string[] = [];
+    const pop = (window as any).createPopover({ reference: row, panel, onClose: (r: string) => reasons.push(r) });
+    pop.open();
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    row.remove();
+    for (let i = 0; i < 10 && pop.isOpen; i++) await new Promise((r) => requestAnimationFrame(() => r(null)));
+    return { isOpen: pop.isOpen, isMounted: panel.isConnected, reasons };
+  });
+  expect(result).toEqual({ isOpen: false, isMounted: false, reasons: ['reference-removed'] });
+});

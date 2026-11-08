@@ -32,10 +32,11 @@ const REVEAL_FALLBACK_MS = 200;
 
 /**
  * Why a popover closed: the overlay tree's reasons (`'overlay'`, `'parent'`, `'escape'`,
- * `'outside-click'`), a scroll outside the panel (`'scroll'`), a window resize (`'resize'`), or
- * `close()` / `destroy()` called in code (`'api'`).
+ * `'outside-click'`), a scroll outside the panel (`'scroll'`), a window resize (`'resize'`), the
+ * reference element removed from the page while open (`'reference-removed'` — a re-rendered row
+ * or cell; like a tooltip, the panel goes with it), or `close()` / `destroy()` called in code (`'api'`).
  */
-export type PopoverCloseReason = OverlayDismissReason | 'scroll' | 'resize' | 'api';
+export type PopoverCloseReason = OverlayDismissReason | 'scroll' | 'resize' | 'reference-removed' | 'api';
 
 /** `true` / `false`, or a function asked each time (return `false` to keep the popover open). */
 export type PopoverCloseRule = boolean | (() => boolean);
@@ -248,12 +249,24 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
       const attempt = ++revealAttempt;
       setTimeout(() => attempt === revealAttempt && reveal(), REVEAL_FALLBACK_MS);
     }
-    const { onPlaced } = anchorOptions;
+    const { onPlaced, beforeComputeCallback } = anchorOptions;
     const theme = themeSource();
+    /** Only a reference that was in the page at anchoring and left since counts as removed. */
+    const wasConnected = !!referenceElement()?.isConnected;
     handle = anchor(panel, reference, {
       ...anchorOptions,
       placement: anchorOptions.placement ?? 'bottom-start',
       ...(theme ? { inheritThemeFrom: theme } : {}),
+      // A reference removed from the page while open (a virtualised row re-rendered) takes the
+      // panel with it, instead of leaving it at stale coordinates — like createTooltip().
+      beforeComputeCallback() {
+        const ref = referenceElement();
+        if (isOpen && wasConnected && ref && !ref.isConnected) {
+          closeWith('reference-removed');
+          return;
+        }
+        beforeComputeCallback?.();
+      },
       onPlaced(placement) {
         if (isOpen) reveal();
         onPlaced?.(placement);

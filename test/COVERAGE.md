@@ -172,6 +172,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | createPopover: placement + offset + matchWidth exact | △ (exact only) | `popover.spec.ts` | `popover.html` |
 | createPopover: close() puts back anchor's inline sizes (maxHeight / matchWidth) | ✓ | `popover.spec.ts` | `popover.html` |
 | createPopover: ShadowRoot container, visibleClass after placement, close on a scroll inside a shadow root | ✓ | `popover.spec.ts` | `popover.html` |
+| createPopover: a reference removed while open closes it (`'reference-removed'`) | ✓ | `popover.spec.ts` | `popover.html` |
 | anchor(): fixed, resolved left/top, placement + offset; re-anchor | ✓ | `anchor.spec.ts` | `anchor.html` |
 
 ## 11. Null-clear contract

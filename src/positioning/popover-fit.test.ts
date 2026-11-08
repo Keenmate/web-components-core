@@ -443,3 +443,27 @@ describe('createPopover — fit additions', () => {
     });
   });
 });
+
+describe('createPopover — reference removed while open (sweep OV-5)', () => {
+  it('closes with "reference-removed" at the next position update, and the panel goes', () => {
+    const { reference, panel } = setup();
+    const reasons: string[] = [];
+    const popover = createPopover({ reference, panel, onClose: (r) => reasons.push(r) });
+    popover.open();
+    expect(panel.isConnected).toBe(true);
+    reference.remove(); // a virtualised row re-rendered
+    popover.update();
+    expect(popover.isOpen).toBe(false);
+    expect(panel.isConnected).toBe(false);
+    expect(reasons).toEqual(['reference-removed']);
+  });
+
+  it('the caller\'s own beforeComputeCallback still runs while the reference is there', () => {
+    const { reference, panel } = setup();
+    const calls = vi.fn();
+    const popover = createPopover({ reference, panel, beforeComputeCallback: calls });
+    popover.open();
+    expect(calls).toHaveBeenCalled();
+    popover.destroy();
+  });
+});

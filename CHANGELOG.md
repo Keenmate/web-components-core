@@ -33,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`createPopover()` closes when its reference leaves the page.** A popover whose reference was
+  removed while open (a virtualised row or cell re-rendered) stayed open at stale coordinates; core's
+  own tooltip already closed in that case. It now closes at the next position update, with the new
+  `onClose` reason `'reference-removed'` (`PopoverCloseReason`). A reference that was never in the page
+  doesn't count. `src/positioning/popover.ts`; e2e `popover.spec.ts`.
 - **A phone sheet over a page wider than the screen.** `lockBodyScroll()` pinned only `<body>`, so a
   page that overflowed sideways kept the browser zoomed out to fit it, and a fullscreen sheet
   (web-daterangepicker, web-commandpalette) was drawn too small or under the system bar;
