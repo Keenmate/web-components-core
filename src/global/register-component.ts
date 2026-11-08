@@ -88,6 +88,8 @@ export interface RegisteredComponent<T extends HTMLElement = HTMLElement> {
   customStyles?: string;
   /** Per-tag CSS computed per instance from the component's context (SPEC §12.8); beats `customStyles`. */
   getCustomStylesCallback?: CustomStylesCallback;
+  /** Link custom-CSS `@import`s in the page head for this tag (SPEC §12.8); beats the page-wide switch. */
+  shouldHoistImports?: boolean;
 }
 
 export interface RegisterComponentOptions {
@@ -116,6 +118,11 @@ export type ComponentsRegistry = Record<string, RegisteredComponent | undefined>
   renderLoadingCallback?: RenderLoaderCallback;
   /** Page-wide motion level (SPEC §12.16) for every component whose own `motion` is `auto`. Non-enumerable. */
   motion?: Motion;
+  /**
+   * Page-wide (SPEC §12.8): link custom-CSS `@import`s in the page head so their `@font-face`
+   * registers (default on). `false` when the page loads those fonts itself. Non-enumerable.
+   */
+  shouldHoistImports?: boolean;
 };
 
 declare global {

@@ -24,6 +24,8 @@
 import { coreLog } from '../logging/element-logger.js';
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { createStyleSlot, type StyleSlot } from './adopt-styles.js';
+import { publishPageSetting } from '../global/page-setting.js';
+import { watchRemoval } from '../element/removal-watch.js';
 
 /** Returns the CSS for one layer; `null` / `undefined` / `''` = none. */
 export type CustomStylesCallback<Ctx = any> = (ctx: Ctx) => string | null | undefined;
@@ -50,7 +52,8 @@ export interface CustomStylesOptions<Ctx = any> {
    * Also link each `@import` URL in the document `<head>`, so an imported `@font-face` (an
    * icon font) registers — Chromium ignores it inside a shadow root. Shared and ref-counted
    * across instances; a `<link>` the page already has is reused, never removed. Only when
-   * `root` is a ShadowRoot. Default `true`.
+   * `root` is a ShadowRoot. Default `true`. The page wins: `window.components[tag].shouldHoistImports`,
+   * else `window.components.shouldHoistImports` (a page that loads its fonts itself sets `false`).
    */
   shouldHoistImports?: boolean;
 }
@@ -66,15 +69,35 @@ export interface CustomStylesHandle {
 interface TagStyles {
   css?: string;
   callback?: CustomStylesCallback;
+  shouldHoistImports?: boolean;
 }
 
 interface PageStylesState {
   /** Per tag: the live handles, held weakly (an element dropped without destroy() is still collectable). */
   listeners: Map<string, Set<WeakRef<CustomStylesHandle>>>;
+  /** Page-wide `window.components.shouldHoistImports`; `undefined` = not set. */
+  shouldHoistImports?: boolean;
 }
 
 function state(): PageStylesState {
-  return sharedState(sharedStateKey('custom-styles'), () => ({ listeners: new Map() }));
+  return sharedState(sharedStateKey('custom-styles'), (): PageStylesState => ({ listeners: new Map() }));
+}
+
+const HOIST_KEY = 'shouldHoistImports';
+
+/** Publish `window.components.shouldHoistImports` (non-enumerable; adopts a value set before core loaded). */
+function publishHoistSetting(): void {
+  publishPageSetting(HOIST_KEY, {
+    get: () => state().shouldHoistImports,
+    set: (value: unknown) => {
+      if (value != null && typeof value !== 'boolean') {
+        coreLog(undefined, 'UI', 'THEME').warn('window.components.shouldHoistImports must be a boolean or null; keeping previous value', value);
+        return;
+      }
+      state().shouldHoistImports = (value as boolean | null) ?? undefined;
+      for (const tag of state().listeners.keys()) notifyTag(tag);
+    },
+  });
 }
 
 /** What core added to a document's head for `@import`s: statement key → element + how many handles use it. */
@@ -185,6 +208,7 @@ function notifyTag(tag: string): void {
 
 const CSS_KEY = 'customStyles';
 const CALLBACK_KEY = 'getCustomStylesCallback';
+const TAG_HOIST_KEY = 'shouldHoistImports';
 
 /**
  * Install `customStyles` / `getCustomStylesCallback` accessors on a
@@ -202,6 +226,7 @@ export function installTagStyleHooks(entry: object, tag: string): void {
   };
   const preCss = adopt(CSS_KEY);
   const preCallback = adopt(CALLBACK_KEY);
+  const preHoist = adopt(TAG_HOIST_KEY);
   const setCss = (value: unknown): void => {
     if (value != null && typeof value !== 'string') {
       coreLog(undefined, 'UI', 'THEME').warn(`${label}.customStyles must be a CSS string or null; keeping previous value`, value);
@@ -218,10 +243,21 @@ export function installTagStyleHooks(entry: object, tag: string): void {
     store.callback = (value as CustomStylesCallback | null) ?? undefined;
     notifyTag(tag);
   };
+  const setHoist = (value: unknown): void => {
+    if (value != null && typeof value !== 'boolean') {
+      coreLog(undefined, 'UI', 'THEME').warn(`${label}.shouldHoistImports must be a boolean or null; keeping previous value`, value);
+      return;
+    }
+    store.shouldHoistImports = (value as boolean | null) ?? undefined;
+    notifyTag(tag);
+  };
   Object.defineProperty(entry, CSS_KEY, { enumerable: true, configurable: true, get: () => store.css, set: setCss });
+  Object.defineProperty(entry, TAG_HOIST_KEY, { enumerable: true, configurable: true, get: () => store.shouldHoistImports, set: setHoist });
   Object.defineProperty(entry, CALLBACK_KEY, { enumerable: true, configurable: true, get: () => store.callback, set: setCallback });
   if (preCss.had) setCss(preCss.value);
   if (preCallback.had) setCallback(preCallback.value);
+  if (preHoist.had) setHoist(preHoist.value);
+  publishHoistSetting();
 }
 
 /** The tag's page layer (empty under SSR / before registration). */
@@ -235,6 +271,17 @@ function readTagStyles(tag: string): CustomStylesSource {
     css: typeof css === 'string' ? css : null,
     callback: typeof callback === 'function' ? (callback as CustomStylesCallback) : null,
   };
+}
+
+/** Is `@import` hoisting on for `tag`? The tag's page value, else the page-wide one, else the component's option. */
+function isHoistOn(tag: string, componentDefault: boolean): boolean {
+  if (typeof window === 'undefined') return false;
+  const entry = (window.components as Record<string, unknown> | undefined)?.[tag] as Record<string, unknown> | undefined;
+  const forTag = entry && typeof entry === 'object' ? entry[TAG_HOIST_KEY] : undefined;
+  if (typeof forTag === 'boolean') return forTag;
+  const forPage = state().shouldHoistImports;
+  if (typeof forPage === 'boolean') return forPage;
+  return componentDefault;
 }
 
 /**
@@ -254,12 +301,16 @@ export function createCustomStyles<Ctx = any>(
   const position = opts.position ?? 'last';
   let page: StyleSlot | null = createStyleSlot(root, { position, cssClass: `${cssClass}--page` });
   let instance: StyleSlot | null = createStyleSlot(root, { position, cssClass });
-  const doc = typeof ShadowRoot !== 'undefined' && root instanceof ShadowRoot && opts.shouldHoistImports !== false ? root.ownerDocument : null;
+  publishHoistSetting();
+  const doc = typeof ShadowRoot !== 'undefined' && root instanceof ShadowRoot ? root.ownerDocument : null;
+  /** Removed from the page (core's removal check): hold no imports until it returns. */
+  let isRemoved = false;
   /** The `@import` statements this handle holds in the document head. */
   let imports: string[] = [];
   /** Each layer is its own sheet: its leading `@import`s count, the union is held. */
   const syncImports = (layers: readonly (string | null)[]): void => {
     if (!doc?.head) return;
+    if (isRemoved || !isHoistOn(tag, opts.shouldHoistImports !== false)) layers = [];
     const next = [...new Map(layers.flatMap((css) => (css ? importStatements(css, doc) : [])).map((i) => [i.statement, i])).values()];
     const keys = next.map((i) => i.statement);
     for (const imp of next) if (!imports.includes(imp.statement)) acquireImport(doc, imp);
@@ -302,6 +353,7 @@ export function createCustomStyles<Ctx = any>(
       if (instanceCss) opts.onApply?.(instanceCss, 'instance');
     },
     destroy() {
+      unwatch();
       syncImports([]);
       page?.destroy();
       instance?.destroy();
@@ -309,6 +361,16 @@ export function createCustomStyles<Ctx = any>(
       state().listeners.get(tag)?.delete(ref);
     },
   };
+  const unwatch = watchRemoval(host, {
+    onRemoved() {
+      isRemoved = true;
+      handle.refresh();
+    },
+    onReturned() {
+      isRemoved = false;
+      handle.refresh();
+    },
+  });
   const ref = new WeakRef(handle);
   const listeners = state().listeners;
   if (!listeners.has(tag)) listeners.set(tag, new Set());

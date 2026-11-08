@@ -71,6 +71,7 @@ import type { InstanceLogger, LogLevelDesc } from '../logging/create-loggers.js'
 import { DEFAULT_ENABLED_LEVEL, LOG_LEVELS, isLogLevel, toLogLevelNumber } from '../logging/log-core.js';
 import { dispatch, type DispatchOptions } from './dispatch.js';
 import { withComponentContext, type ComponentContext, type EmitDetail } from './context.js';
+import { hasRemovalWatchers, notifyRemoval } from './removal-watch.js';
 import {
   normalizeEventDefs,
   withCoreEvents,
@@ -325,6 +326,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   #hasBuilt = false;
   /** {@link destroy} ran — the element is inert for good (SPEC §6.5). */
   #isDestroyed = false;
+  /** The removal check reported this element removed (core's removal watchers heard it); cleared on return. */
+  #isReportedRemoved = false;
   /** Cancels the pending post-disconnect removal check (see {@link removedCallback}); set only while one is scheduled. */
   #cancelRemovalCheck?: () => void;
   /** Unsubscribe from the environment observable; set only while connected AND `environmentChanged` is overridden. */
@@ -520,6 +523,10 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     // Reconnected before the removal check ran → a DOM move, not a removal.
     this.#cancelRemovalCheck?.();
     this.#cancelRemovalCheck = undefined;
+    if (this.#isReportedRemoved) {
+      this.#isReportedRemoved = false;
+      notifyRemoval(this, 'returned', (error) => coreLog(this, 'UI', 'ELEMENT').error('a removal watcher threw', error));
+    }
     // Motion (SPEC §12.16): presets in the root this element lives in; follow the page level.
     adoptMotionStyles(this);
     publishMotionHook(); // the page level goes on <html>, not on this host (closest wins)
@@ -671,11 +678,13 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * jsdom without `pretendToBeVisual`) falls back to a macrotask.
    */
   #scheduleRemovalCheck(): void {
-    if (this.removedCallback === BlissElement.prototype.removedCallback) return;
+    if (this.removedCallback === BlissElement.prototype.removedCallback && !hasRemovalWatchers(this)) return;
     this.#cancelRemovalCheck?.();
     const check = (): void => {
       this.#cancelRemovalCheck = undefined;
       if (this.isConnected) return;
+      this.#isReportedRemoved = true;
+      notifyRemoval(this, 'removed', (error) => coreLog(this, 'UI', 'ELEMENT').error('a removal watcher threw', error));
       this.removedCallback();
     };
     const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';

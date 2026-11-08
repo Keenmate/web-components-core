@@ -442,7 +442,13 @@ this.#customStyles.refresh();   // after the instance inputs change; destroy() i
 An `@import` in either layer is also linked once in the document `<head>`, because Chromium ignores
 `@font-face` inside a shadow root (an icon font would draw boxes). The link is shared by every
 instance, removed when the last one stops importing it, and a stylesheet the page already links is
-reused. The imported rules then also reach the page; `shouldHoistImports: false` opts out.
+reused, and an element removed from the page (not just moved) gives its links back. The imported
+rules then also reach the page. A page that loads those fonts itself turns it off:
+
+```js
+window.components.shouldHoistImports = false;                  // every component on the page
+window.components['web-treeview'].shouldHoistImports = true;    // one component type (wins)
+```
 
 ## Container scroll
 

@@ -16,7 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by every instance and removed when the last one stops importing it; a stylesheet the page links
   itself is reused, never removed. Only the imports the browser loads count (the leading ones,
   comments skipped); one with `layer()` / `supports()` / media goes in as a head `<style>` holding
-  the whole statement, so its conditions still apply. New option `shouldHoistImports` (default `true`; shadow roots
+  the whole statement, so its conditions still apply. An element removed from the page (not just
+  moved) gives its links back; re-attached, it takes them again. The page decides:
+  `window.components.shouldHoistImports = false` (page-wide, non-enumerable) or
+  `window.components[tag].shouldHoistImports` (one component type, wins) for a page that loads
+  those fonts itself. New option `shouldHoistImports` (default `true`; shadow roots
   only) — the imported rules also reach the page, `false` opts out. web-treeview hoisted its own
   links this way; with this it adopts `createCustomStyles()`. `src/dom/custom-styles.ts`; e2e
   `custom-styles.spec.ts`.

@@ -1245,13 +1245,20 @@ free functions taking a root + CSS strings, NOT `BlissElement` methods.
   its rules can't be read and copied) would draw boxes. Each `@import` URL of either layer is
   therefore ALSO linked in the document `<head>` (`<link rel="stylesheet"
   data-km-custom-styles>`), once per document: shared and ref-counted across every handle
-  (page state, all core copies), dropped when the last handle stops importing it (CSS change
-  or `destroy()`). A `<link>` the page already has for that URL is reused and never removed.
+  (page state, all core copies), dropped when the last handle stops importing it (CSS change,
+  `destroy()`, or the host REALLY removed — a BlissElement host reports it at `removedCallback`
+  timing through a core-internal removal watch, and a re-attached host takes its imports back;
+  a DOM move keeps them). A `<link>` the page already has for that URL is reused and never removed.
   Only the imports the browser really loads count (the leading ones of each layer, comments
   skipped); a plain one becomes a `<link>`, one with conditions (`layer()`, `supports()`, media)
   a head `<style>` holding the whole statement, so its layer / media still apply.
   Shadow roots only (a light-DOM root registers fonts itself). Trade-off: the imported sheet's
-  rules also reach the page — opt out per component with `shouldHoistImports: false`.
+  rules also reach the page. **The page decides** (CSP, or it loads those fonts itself):
+  `window.components['web-treeview'].shouldHoistImports` (per tag, enumerable like the tag's
+  `customStyles`), else the non-enumerable page-wide `window.components.shouldHoistImports`,
+  else the component's own `createCustomStyles` option (default `true`). Assigning either
+  re-syncs every live handle. CSP: the URL was already loaded by the shadow `@import` (same
+  `style-src`); a conditional import's head `<style>` is inline like every custom-CSS slot.
 
 The `?inline` import (Vite build concern) and the `@layer variables, component,
 overrides` order (CSS guidelines, invariants #6–#9) stay authoring rules — the

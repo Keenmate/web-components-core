@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { registerComponent } from '../global/register-component.js';
 import { createCustomStyles, type CustomStylesSource } from './custom-styles.js';
+import { BlissElement } from '../element/bliss-element.js';
 
 let seq = 0;
 /** A fresh registered tag per test (the registry and customElements are page-global). */
@@ -218,6 +219,48 @@ describe('createCustomStyles', () => {
       const handle = createCustomStyles(el, root, { getContext: () => ({}), getInstanceStyles: () => ({ css: '@import url(/fonts/inst.css);' }) });
       expect(hoisted()).toEqual([abs('/fonts/inst.css')]);
       handle.destroy();
+    });
+
+    it('the page decides: window.components.shouldHoistImports = false drops the links; the tag value beats it', () => {
+      const tag = registeredTag();
+      const { el, root } = host(tag);
+      const handle = createCustomStyles(el, root, { getContext: () => ({}), getInstanceStyles: () => ({ css: '@import url(/fonts/pg.css);' }) });
+      expect(hoisted()).toHaveLength(1);
+      window.components!.shouldHoistImports = false;
+      expect(hoisted()).toEqual([]);
+      window.components![tag]!.shouldHoistImports = true;
+      expect(hoisted()).toHaveLength(1);
+      window.components![tag]!.shouldHoistImports = undefined;
+      expect(hoisted()).toEqual([]);
+      window.components!.shouldHoistImports = undefined;
+      expect(hoisted()).toHaveLength(1);
+      expect(Object.keys(window.components!)).not.toContain('shouldHoistImports'); // page setting: non-enumerable
+      handle.destroy();
+    });
+
+    it('a BlissElement host releases its links when really removed and takes them back when re-attached', async () => {
+      const tag = `cs-bliss-${seq++}`;
+      class El extends BlissElement {}
+      customElements.define(tag, El);
+      const el = document.createElement(tag) as El;
+      document.body.append(el);
+      const root = el.attachShadow({ mode: 'open' });
+      const handle = createCustomStyles(el, root, { getContext: () => ({}), getInstanceStyles: () => ({ css: '@import url(/fonts/rm.css);' }) });
+      expect(hoisted()).toHaveLength(1);
+      const wait = () => new Promise((r) => setTimeout(r, 30));
+      // a move (detach + re-attach in one task) keeps them
+      el.remove();
+      document.body.append(el);
+      await wait();
+      expect(hoisted()).toHaveLength(1);
+      // a real removal releases them
+      el.remove();
+      await wait();
+      expect(hoisted()).toEqual([]);
+      document.body.append(el);
+      expect(hoisted()).toHaveLength(1);
+      handle.destroy();
+      expect(hoisted()).toEqual([]);
     });
   });
 });
