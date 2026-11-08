@@ -259,6 +259,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | ------- | :----: | ---- | ------- |
 | A popover opened from inside another keeps its parent open | ✓ | `overlay-tree.spec.ts` | `overlay-tree.html` |
 | Escape closes one level per press, focus returns to the opener | ✓ | `overlay-tree.spec.ts` | `overlay-tree.html` |
+| A click whose propagation a page handler stops still closes the chain | ✓ | `overlay-tree.spec.ts` | `overlay-tree.html` |
 | A press inside the outer panel closes only the inner one; outside both closes the chain | ✓ | `overlay-tree.spec.ts` | `overlay-tree.html` |
 | A press on the trigger toggles (no close-then-reopen) | ✓ | `overlay-tree.spec.ts` | `overlay-tree.html` |
 | Nested parent relation across shadow roots / copies of core, routing reasons, menu in the tree | unit | `active-overlay.test.ts`, `menu.test.ts` | — |

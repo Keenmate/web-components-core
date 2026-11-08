@@ -1538,7 +1538,7 @@ overrides it. The rules:
 
 **Step 2 — routing (since rc20 work, opt-in).** `registerOverlay(onDismiss, group, {
 getElement, shouldCloseOnEscape, shouldCloseOnOutsideClick })`: one page-wide `keydown` /
-`pointerdown` capture + `window` `click` listener set (installed once, by whichever copy needs
+`pointerdown` / `pointerup` capture + `window` `click` (capture and bubble) listener set (installed once, by whichever copy needs
 it first; the routing key is versioned, see below) routes
 - **Escape** to the DEEPEST open overlay that opts in — one level per press; focus returns
   to its trigger when it was inside the panel; the key is consumed;
@@ -1549,8 +1549,11 @@ it first; the routing key is versioned, see below) routes
   the rest close, deepest first. Not outside: the overlay's own trigger (it toggles it), its
   `getInsideElements`, and a click during which it was (re)activated or claimed
   (`handle.claimCurrentClick()`: a page button driving it through its API, e.g.
-  `scrollToIndex()`). A keyboard "click" (no press) and a cancelled press (`pointercancel`)
-  close nothing. Decided at `pointerdown` instead (rc18), a page "toggle" button closed the
+  `scrollToIndex()`). A click whose propagation a page handler stops (a tree's checkbox) never
+  reaches the bubble listener: a `window` capture listener saw it on the way down, and it is
+  decided once its task is done (rc20; rc19 missed it). A keyboard "click" (no press), a
+  cancelled press (`pointercancel`) and a press that never got its click (a drag released
+  elsewhere — forgotten after its `pointerup` task) close nothing. Decided at `pointerdown` instead (rc18), a page "toggle" button closed the
   overlay on the press and its click reopened it (createPopover fit study, B7).
   Mixed core copies: the click-time rule is stored as `outsideClickRule`, so an older copy's
   `pointerdown` router ignores it; this copy honours an older entry's `shouldCloseOnOutsideClick`

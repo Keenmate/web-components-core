@@ -394,6 +394,45 @@ describe('active-overlay routing (step 2)', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  it('a click whose propagation a page handler stops still closes, once its task is done', async () => {
+    const reasons: string[] = [];
+    openPanel({ name: 'dropdown', reasons });
+    const checkbox = document.createElement('input');
+    checkbox.addEventListener('click', (e) => e.stopPropagation());
+    document.body.append(checkbox);
+    press(checkbox);
+    expect(reasons).toEqual([]);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(reasons).toEqual(['dropdown:outside-click']);
+  });
+
+  it('a stopped click that re-activates the overlay (claims it) leaves it open', async () => {
+    const reasons: string[] = [];
+    const { handle } = openPanel({ name: 'dropdown', reasons });
+    const button = document.createElement('button');
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      handle.claimCurrentClick();
+    });
+    document.body.append(button);
+    press(button);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(reasons).toEqual([]);
+  });
+
+  it('a press that never gets its click (a drag) is forgotten: a later keyboard click closes nothing', async () => {
+    const reasons: string[] = [];
+    openPanel({ name: 'dropdown', reasons });
+    const outside = document.createElement('button');
+    document.body.append(outside);
+    outside.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, composed: true }));
+    outside.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, composed: true }));
+    await new Promise((r) => setTimeout(r, 0));
+    outside.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true })); // Enter on the button
+    await new Promise((r) => setTimeout(r, 0));
+    expect(reasons).toEqual([]);
+  });
+
   it('overlays that do not opt in are left alone by the router', () => {
     const dismiss = vi.fn();
     const el = document.createElement('div');

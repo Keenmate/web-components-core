@@ -50,3 +50,10 @@ test('a press on the outer trigger toggles it closed (not closed by the press, t
   await page.locator('#open-outer').click();
   await expect(page.locator('#outer')).toBeHidden();
 });
+
+test('a click whose propagation a page handler stops still closes the chain', async ({ page }) => {
+  await page.locator('#stopper-box').click();
+  await expect(page.locator('#inner')).toBeHidden();
+  await expect(page.locator('#outer')).toBeHidden();
+  await expect(page.locator('#stopper-box')).toBeChecked();
+});

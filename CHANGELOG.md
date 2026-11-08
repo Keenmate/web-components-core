@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Overlay tree: a click whose propagation a page handler stops closes overlays again.** rc19
+  decides an outside click on a `window` bubble listener, so a stopped click (web-treeview's node
+  checkbox, any app handler calling `stopPropagation()`) never reached it: an open popover stayed
+  open, and the recorded press lingered until a later keyboard "click" (Enter on a button) closed
+  it. The router now also sees the click on the way down (`window` capture) and decides a stopped
+  one once its task is done; a press that never got its click (a drag released elsewhere) is
+  forgotten after its `pointerup`. The routing key moved to `overlay-routing-v3`, so this copy's
+  router installs next to an rc19 one. `src/overlay/active-overlay.ts`; e2e
+  `overlay-tree.spec.ts`.
+
 ## [1.0.0-rc19] - 2026-11-08
 
 ### Added

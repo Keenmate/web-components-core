@@ -193,17 +193,24 @@ function isOn(value: boolean | (() => boolean) | undefined): boolean {
  * Escape / outside-click routing (step 2), installed ONCE per page by whichever copy of core
  * needs it first; it reads the shared registry, so overlays from every copy are routed. The key
  * is versioned: the click-time outside rule needs this copy's router even when an older copy
- * installed its `pointerdown` one (both handle Escape; the second sees `defaultPrevented`).
+ * installed its `pointerdown` one (both handle Escape; the second sees `defaultPrevented`); v3
+ * also decides a click whose propagation a page handler stopped (an rc19 router misses it).
  */
-const routing = (): { isInstalled: boolean } => sharedState(sharedStateKey('overlay-routing-v2'), () => ({ isInstalled: false }));
+const routing = (): { isInstalled: boolean } => sharedState(sharedStateKey('overlay-routing-v3'), () => ({ isInstalled: false }));
 
 /**
  * The click in progress: the overlays its press started outside of, and the overlays claimed
  * (re-activated or {@link OverlayHandle.claimCurrentClick}) since that press. Shared, so a
- * claim from any copy of core reaches the router.
+ * claim from any copy of core reaches the router. `clickPath` is the click's path while it is
+ * being dispatched (seen on the way down, not yet decided on the way up).
  */
-const pendingClick = (): { candidates: Set<unknown> | null; claimed: Set<unknown> } =>
-  sharedState(sharedStateKey('overlay-pending-click'), () => ({ candidates: null, claimed: new Set<unknown>() }));
+interface PendingClick {
+  candidates: Set<unknown> | null;
+  claimed: Set<unknown>;
+  clickPath?: readonly EventTarget[] | null;
+}
+const pendingClick = (): PendingClick =>
+  sharedState(sharedStateKey('overlay-pending-click'), (): PendingClick => ({ candidates: null, claimed: new Set<unknown>() }));
 
 /** Does the event's composed path contain `el`? */
 function pathContains(path: readonly EventTarget[], el: Element | null | undefined): boolean {
@@ -267,7 +274,36 @@ function outsideOf(path: readonly EventTarget[]): [unknown, OpenOverlay][] {
 function onRoutedPointerDown(event: PointerEvent): void {
   const pending = pendingClick();
   pending.claimed.clear();
+  pending.clickPath = null;
   pending.candidates = new Set(outsideOf(event.composedPath()).map(([source]) => source));
+}
+
+/**
+ * The press is over (the click, if any, runs in the same task): once that task is done, a press
+ * that never got its click — a drag, a release elsewhere — is forgotten, so a later keyboard
+ * "click" doesn't close what it started outside of.
+ */
+function onRoutedPointerUp(): void {
+  const pending = pendingClick();
+  const candidates = pending.candidates;
+  if (!candidates) return;
+  setTimeout(() => {
+    if (pending.candidates === candidates && !pending.clickPath) pending.candidates = null;
+  }, 0);
+}
+
+/**
+ * The click on its way down (`window`, capture): remember its path. If a page handler stops its
+ * propagation, the bubble listener never runs, so the click is decided once its task is done.
+ */
+function onRoutedClickCapture(event: MouseEvent): void {
+  const pending = pendingClick();
+  if (!pending.candidates) return;
+  const path = event.composedPath();
+  pending.clickPath = path;
+  setTimeout(() => {
+    if (pending.clickPath === path) decideClick(path);
+  }, 0);
 }
 
 /**
@@ -275,14 +311,19 @@ function onRoutedPointerDown(event: PointerEvent): void {
  * both started and ended outside of, unless claimed meanwhile.
  */
 function onRoutedClick(event: MouseEvent): void {
+  decideClick(event.composedPath());
+}
+
+function decideClick(path: readonly EventTarget[]): void {
   const pending = pendingClick();
   const candidates = pending.candidates;
   pending.candidates = null;
+  pending.clickPath = null;
   if (!candidates || candidates.size === 0) {
     pending.claimed.clear();
     return;
   }
-  const toClose = outsideOf(event.composedPath())
+  const toClose = outsideOf(path)
     .filter(([source, e]) => candidates.has(source) && !pending.claimed.has(source) && isOn(e.outsideClickRule ?? e.shouldCloseOnOutsideClick))
     .sort((a, b) => b[1].ancestors.length - a[1].ancestors.length);
   pending.claimed.clear();
@@ -293,6 +334,7 @@ function onRoutedClick(event: MouseEvent): void {
 function onRoutedPointerCancel(): void {
   const pending = pendingClick();
   pending.candidates = null;
+  pending.clickPath = null;
   pending.claimed.clear();
 }
 
@@ -302,7 +344,9 @@ function ensureRouting(): void {
   state.isInstalled = true;
   document.addEventListener('keydown', onRoutedKeydown, true);
   document.addEventListener('pointerdown', onRoutedPointerDown, true);
+  document.addEventListener('pointerup', onRoutedPointerUp, true);
   document.addEventListener('pointercancel', onRoutedPointerCancel, true);
+  window.addEventListener('click', onRoutedClickCapture, true);
   window.addEventListener('click', onRoutedClick);
 }
 
@@ -514,7 +558,9 @@ export function __resetOverlays(): void {
   if (route.isInstalled && hasDocument()) {
     document.removeEventListener('keydown', onRoutedKeydown, true);
     document.removeEventListener('pointerdown', onRoutedPointerDown, true);
+    document.removeEventListener('pointerup', onRoutedPointerUp, true);
     document.removeEventListener('pointercancel', onRoutedPointerCancel, true);
+    window.removeEventListener('click', onRoutedClickCapture, true);
     window.removeEventListener('click', onRoutedClick);
   }
   route.isInstalled = false;

@@ -13,8 +13,10 @@
     <p>Targeted by <code>e2e/overlay-tree.spec.ts</code>. Two nested popovers in the page-wide overlay tree
         (<code>shouldCloseOnEscape</code> / <code>shouldCloseOnOutsideClick</code>): Escape closes one level per press,
         a press inside the outer panel closes only the inner one, focus returns to the opener.</p>
+    <label id="stopper"><input type="checkbox" id="stopper-box" /> a checkbox whose click stops propagation</label>
     <button id="open-outer" type="button">Open outer</button>
     <p id="outside">outside</p>
+    <script>document.getElementById('stopper-box').addEventListener('click', (e) => e.stopPropagation());</script>
 
     <script type="module">
         import { createPopover } from '/src/positioning/index.ts';
