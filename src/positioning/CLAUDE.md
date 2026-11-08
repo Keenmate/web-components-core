@@ -6,7 +6,7 @@ primitive (`'fixed'` default; `offset→size→flip→shift` middleware;
 `matchWidth: 'min'|'exact'`; `lockPlacement: PlacementLock` → `'initial'` = `flip({ fallbackStrategy:
 'initialPlacement' })`, `'freeze'` = flip once then pin the resolved placement;
 `beforeComputeCallback` per-frame hook (publish reference width to a CSS var / clamp
-before measuring); `data-theme` inheritance for portaled layers per C-CS-10;
+before measuring); theme inheritance for portaled layers per C-CS-10 (`data-theme`, `data-bs-theme`, and core's own host mirrors `data-context-theme` / `data-motion`);
 optional `platform` escape hatch) returning `{ update, destroy }`.
 `createTooltip()` (hover/focus + delay + `shouldFollowCursor` via `VirtualElement`;
 `beforeShowCallback` to dismiss an overlapping tooltip; `ShadowRoot` container for

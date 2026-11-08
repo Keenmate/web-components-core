@@ -33,6 +33,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A portaled panel keeps the component's effective theme and motion level.** `anchor()`'s
+  `inheritThemeFrom` copied only a literal `data-theme` / `data-bs-theme` from an ancestor, so a
+  tooltip / popover / menu moved to `<body>` under a Tailwind `html.dark`, `setThemeMode('dark')` or
+  a `theme-source` got no scheme, and ignored the component's `motion`. It now also copies the
+  `data-context-theme` and `data-motion` core mirrors onto the host (restored on `destroy()`).
+  *pure-css port affected* (`anchor.ts`). Components style a portaled panel with
+  `[data-context-theme="dark"]`.
 - **`openMenu()` closes on scroll by the same rule as `createPopover()`.** A menu closed on any
   scroll anywhere (an unrelated log panel auto-scrolling, a late scroll event from before it
   opened) and on any mouse wheel, even when nothing moved. It now uses the popover's rule, one

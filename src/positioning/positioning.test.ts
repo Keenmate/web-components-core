@@ -222,6 +222,25 @@ describe('anchor', () => {
     expect(floating.getAttribute('data-theme')).toBe('dark');
   });
 
+  it('carries the host’s effective scheme (data-context-theme) and motion level (data-motion) to a portaled panel, restored on destroy', () => {
+    const host = document.createElement('div'); // a component host: core mirrors these onto it
+    host.setAttribute('data-context-theme', 'dark'); // e.g. a Tailwind <html class="dark">
+    host.setAttribute('data-motion', 'none');
+    document.body.append(host);
+    const reference = document.createElement('button');
+    host.attachShadow({ mode: 'open' }).append(reference);
+    const floating = document.createElement('div');
+    floating.setAttribute('data-motion', 'smooth'); // the panel's own value comes back
+    document.body.append(floating); // portaled
+
+    const handle = anchor(floating, reference, { inheritThemeFrom: reference });
+    expect(floating.getAttribute('data-context-theme')).toBe('dark');
+    expect(floating.getAttribute('data-motion')).toBe('none');
+    handle.destroy();
+    expect(floating.hasAttribute('data-context-theme')).toBe(false);
+    expect(floating.getAttribute('data-motion')).toBe('smooth');
+  });
+
   it('ignores a position that resolves after destroy()', async () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');

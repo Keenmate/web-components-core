@@ -28,8 +28,15 @@ import type { AnchorHandle, AnchorOptions, Placement } from './types.js';
 
 type Reference = Parameters<typeof computePosition>[0];
 
-/** The theme attributes a portaled layer inherits: pure-css / KeenMate's, and Bootstrap's. */
-const THEME_ATTRIBUTES = ['data-theme', 'data-bs-theme'] as const;
+/**
+ * The attributes a portaled layer inherits from the nearest element carrying each (self or
+ * ancestor, across shadow roots): the page's theme (pure-css / KeenMate's `data-theme`,
+ * Bootstrap's `data-bs-theme`), and what core itself mirrors onto a component host — the
+ * EFFECTIVE scheme `data-context-theme` (a Tailwind `.dark` class, `setThemeMode()`,
+ * `theme-source`; SPEC §12.10) and the motion level `data-motion` (SPEC §12.16). A panel moved
+ * to `<body>` would otherwise lose both.
+ */
+const THEME_ATTRIBUTES = ['data-theme', 'data-bs-theme', 'data-context-theme', 'data-motion'] as const;
 
 /**
  * Copy the nearest theme attributes from `source` onto `target` (self or ancestor, across

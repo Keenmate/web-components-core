@@ -991,7 +991,11 @@ Ships the proposed shape below: `anchor()` + `createTooltip()` +
 - **`data-theme` inheritance (C-CS-10)** → `anchor` copies the nearest
   `data-theme` (via `closest('[data-theme]')`) from `inheritThemeFrom` onto the
   floating element; the presets default `inheritThemeFrom` to the trigger /
-  reference, so portaled layers keep the theme automatically.
+  reference, so portaled layers keep the theme automatically. Since rc20 it also carries what core
+  itself mirrors onto a component host — the EFFECTIVE scheme `data-context-theme` (a Tailwind
+  `.dark` class, `setThemeMode()`, `theme-source`; §12.10) and the motion level `data-motion`
+  (§12.16) — so a panel moved to `<body>` styles like the component (`[data-context-theme="dark"]`)
+  and animates by its level; all four restored on `destroy()` (sweep A5).
 - **Width-matching** → one `matchWidth: 'min' | 'exact' | 'max' | false` (via
   `size()`), replacing the three per-component hacks. `'min'` floors the panel to
   the reference width (grows for wider content), `'exact'` pins it, `'max'` caps
@@ -1055,7 +1059,7 @@ anchor(floating: HTMLElement, reference: HTMLElement | VirtualElement, opts: {
   matchWidth?: 'min' | 'exact' | 'max' | false;   // via size(); default false
   lockPlacement?: 'initial' | 'freeze' | false;  // PlacementLock; default false
   shouldAutoUpdate?: boolean;         // default true
-  inheritThemeFrom?: HTMLElement;     // copy data-theme onto `floating` (C-CS-10)
+  inheritThemeFrom?: HTMLElement;     // copy data-theme / data-bs-theme / data-context-theme / data-motion onto `floating`
   onPlaced?(placement: Placement): void;
 }): { update(): void; destroy(): void };
 
