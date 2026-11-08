@@ -20,6 +20,18 @@ theme context, motion level, a shared scroll lock and overlay tree, container sc
 > **[`docs/SPEC.md`](docs/SPEC.md) is the source of truth** for design intent. This README is
 > the landing page; read the relevant SPEC section before changing behavior.
 
+## What's New in v1.0.0-rc19
+
+**[Release notes](release-notes/1.0.0-rc19.md)** cover the upgrade: `createPopover()` grows to carry a component's big dropdown (web-multiselect's now runs on it), outside clicks are decided when the click ends, and three renames.
+
+- **`createPopover()` — open, mounted and anchored kept apart** — A component-owned panel can stay mounted (`shouldKeepMounted`, open / close toggle `visibleClass`), open without being positioned (`isAnchored: false` / `setAnchored()` for a fullscreen sheet) and re-read its reference while open (`reanchor()`, `reference` as a function). The panel can live in a `ShadowRoot`, stays `visibility: hidden` until its first position, and `onClose(reason)` now fires for every close, including `close()` / `destroy()` (`'api'`).
+- **Close rules — scroll, resize and functions** — `shouldCloseOnScroll` closes like a native select: only a scroll of the page or a scroller around the reference, once the reference has actually moved (a scroll inside the panel or a late scroll event never counts). `shouldCloseOnResize`, every `shouldCloseOn*` as a function asked each time, `getInsideElements` and `returnFocusTo` complete the set; the overlay tree (`registerOverlay()`) takes the same options.
+- **Overlay tree — outside clicks decided when the click ends** — An overlay closes only when the click both started and ended outside it, after the page's own handlers ran (like the browser's popover light dismiss). A page button that drives an overlay through its API no longer closes it on the press for the click to reopen it; an API method can call `claimCurrentClick()`. A keyboard click and a cancelled touch close nothing.
+- **Page-wide custom CSS per component type** — `window.components[tag].customStyles` (or `getCustomStylesCallback(ctx)`) styles every instance of a component on the page, before each instance's own custom CSS. Components adopt it through `createCustomStyles()`.
+- **`theme-source="closest"` — follows a section themed later** — A section that gets `data-theme="dark"` after the component connected now reaches it; core re-resolves whenever an ancestor gains or loses a theme signal.
+- **`anchor()` — `fallbackPlacements`, sizes restored** — The placements flip tries, in order; `destroy()` puts back the `width` / `min-width` / `max-width` / `max-height` it wrote.
+- **Renames (BREAKING)** — `PointerType` → `PointerAccuracy` and `ExtractedType` → `ExtractedTypeAnnotation` (the rulebook's closed type-suffix set); `lockPlacement` is the named mode `PlacementLock` (`'initial' | 'freeze' | false`), so `true` becomes `'initial'`. No aliases.
+
 ## What's New in v1.0.0-rc18
 
 **[Release notes](release-notes/1.0.0-rc18.md)** cover the upgrade: the results of a full code review, with every API change in this one release so each component migrates once.
@@ -30,13 +42,6 @@ theme context, motion level, a shared scroll lock and overlay tree, container sc
 - **API — renames (BREAKING)** — Notification hooks are `on*` (`onClose`, `onPlaced`, `onDrift`, …); also `createMenuDivider()`, `openMenu({ labels: { loading } })`, `toEnum({ isNullable })`, the page hook `renderLoadingCallback`, and the default loader class `<prefix>__loader`.
 - **`input-rejected` — refused values are reported** — Every invalid attribute / property write fires `input-rejected` (`{ configKey, value, reason?, kept, … }`) before it returns, and `setAttributes()` returns the list, so a framework wrapper can surface the error instead of only a console warning.
 - **Converters — safer inputs** — Strict number parsing, `el.x = undefined` resets, `toText` accepts `''`, and a new `toCssLength()`. `wrapRanges()` escapes by default, with `highlightHtml()` for trusted labels.
-
-## What's New in v1.0.0-rc17
-
-**[Release notes](release-notes/1.0.0-rc17.md)** cover the upgrade: the motion level, plus one rename in the rc16 scroll API.
-
-- **`motion` — one motion level for every component** — `motion="auto | none | snappy | smooth"` on every component, `window.components.motion` page-wide, and `data-motion` on any element (a section, `<html>`) for everything inside, with or without base-css-variables. Components follow through the shared `--base-duration-*` / `--base-scroll-behavior` tokens; **the OS reduced-motion setting always wins**. Live demo: `examples-motion.html`.
-- **`scrollIntoContainer()` — `revealContainer` → `shouldRevealContainer` (BREAKING)** — The rc16 option follows the boolean naming rule; same behaviour.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the full list.
 
