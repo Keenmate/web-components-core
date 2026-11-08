@@ -123,9 +123,10 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    Order: defer → release → reinit → connect → ready.
    Latched — `defer` never re-holds after the first build.
 
-   **Disabled (SPEC §6.4):** every data-input component (the user enters / changes data — value,
-   selection, files, text, cells, tree checks / edits / moves; form-associated or not) has `isDisabled`;
-   native semantics (no interaction, not focusable), not read-only. Core implements `formDisabledCallback` once; a
+   **Disabled / readonly (SPEC §6.4):** every data-input component (the user enters / changes data —
+   value, selection, files, text, cells, tree checks / edits / moves; form-associated or not) has the pair
+   `isDisabled` + `isReadonly` (`toBool('presence')`, reflect), native semantics: disabled = no interaction,
+   not focusable; readonly = no data change but focusable / navigable / copyable. Core implements `formDisabledCallback` once; a
    component reads `this.isEffectivelyDisabled` (`isDisabled` input OR a disabled
    `<fieldset>`) in `reinit()` and applies flips in the `disabledChanged(isDisabled)`
    hook (leave `isDisabled` out of `update()`). `isDisabled` **must reflect** — the

@@ -534,14 +534,20 @@ owns the property.
 
 ### 6.4 Disabled state — the `isDisabled` input + `<fieldset disabled>`
 
-**Every data-input component has the `isDisabled` input** (attribute `disabled`,
-reflects): a component through which the user enters or changes data — a value or
-selection, files, text, cells, a tree's checks / edits / moves — whether or not it
-is form-associated (rule set 2026-11-08). A component that only shows or launches
-things (a command palette) has none. Disabled follows native form-control
-semantics: no interaction at all, not focusable, styled as disabled — not
-"read-only". Apply it from `isEffectivelyDisabled` in `reinit()` and
-`disabledChanged()`. A form-associated element (`static formAssociated = true`) can also
+**Every data-input component has the pair `isDisabled` + `isReadonly`** (attributes
+`disabled` / `readonly`, both `toBool('presence')`, both reflect): a component through
+which the user enters or changes data — a value or selection, files, text, cells, a
+tree's checks / edits / moves — whether or not it is form-associated (rule set
+2026-11-08). A component that only shows or launches things (a command palette) has
+neither. Both follow native form-control semantics:
+- **disabled** — no interaction at all, not focusable, styled as disabled, a
+  form-associated value is not submitted;
+- **readonly** — the data can't be changed, but the component stays focusable and
+  navigable (keyboard, scroll, expand / collapse, copy), the value shows normally and
+  a form-associated value IS submitted.
+Calls from code (`setSelected()`, `expandAll()`, …) still work under both. Apply
+disabled from `isEffectivelyDisabled` in `reinit()` and `disabledChanged()`; readonly
+is a plain `update` input. A form-associated element (`static formAssociated = true`) can also
 be disabled by an ancestor `<fieldset disabled>`, reported by the browser through
 `formDisabledCallback` — which **core implements once** (components don't):
 
