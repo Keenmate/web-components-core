@@ -170,6 +170,11 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
 
 - Web components build **on** core — do not re-implement observed-attribute,
   parse, or dispatch plumbing in a component.
+- Core hooks stay **`protected`** in a component (`reinit()`, `update()`, `connect()`,
+  `disconnect()`, `destroyCallback()`, the `*Changed()` hooks, …). Writing many inputs at
+  once is core's public `el.setAttributes(props)` / `el.batch()`, never a component's own
+  public `el.update(props)` (it skips parse/validation and `this.config`, so the next flush
+  restores the old values). Rulebook C-CA-14 checks it.
 - Reactivity is declared per input (`on: 'update' | 'reinit' | 'none'`) and
   enforced centrally. No input can be added that forgets to parse, validate, or
   react.

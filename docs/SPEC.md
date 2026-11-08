@@ -262,6 +262,9 @@ export abstract class BlissElement extends Base {
   setAttributes(values: Record<string, unknown>): void { /* … */ }
   batch(fn: () => void): void { /* … */ }
 
+  // Every hook below stays `protected` in a subclass (rulebook C-CA-14): a public override
+  // (`el.update(props)`) would skip parse/validation and this.config — writing many inputs at
+  // once is setAttributes() / batch() above.
   /** Full rebuild (reads this.config). Called on first connect and on any `on:'reinit'` change. */
   protected reinit(): void { /* opt-in, no-op by default */ }
   /** In-place patch of the changed `on:'update'` keys. Called only when no reinit key changed. */
