@@ -11,6 +11,7 @@
  * ```
  */
 import { blissInputsPlugin, type CemPlugin } from './plugin.js';
+import { stableOutputPlugin } from './stable-output.js';
 
 /** The subset of the analyzer config this preset sets (loosely typed — the analyzer accepts more). */
 export interface BlissAnalyzerConfig {
@@ -32,7 +33,7 @@ export interface BlissAnalyzerOptions {
   exclude?: string[];
   /** Output directory for `custom-elements.json`. Default: `'.'`. */
   outdir?: string;
-  /** Extra plugins to run AFTER {@link blissInputsPlugin}. */
+  /** Extra plugins to run AFTER {@link blissInputsPlugin} and {@link stableOutputPlugin}. */
   plugins?: CemPlugin[];
   /** Any other analyzer config keys, merged verbatim. */
   extra?: Record<string, unknown>;
@@ -41,14 +42,15 @@ export interface BlissAnalyzerOptions {
 /**
  * Build an analyzer config with the Bliss inputs plugin wired in. The plugin
  * runs first so downstream plugins see the table-derived attributes/members/
- * events already on each declaration.
+ * events already on each declaration; {@link stableOutputPlugin} runs next, so the
+ * output is the same on every checkout and every run (LF strings, modules by path).
  */
 export function blissAnalyzerConfig(options: BlissAnalyzerOptions = {}): BlissAnalyzerConfig {
   return {
     globs: options.globs ?? ['src/**/*.ts'],
     exclude: options.exclude ?? ['**/*.test.ts', '**/*.spec.ts', '**/*.d.ts'],
     outdir: options.outdir ?? '.',
-    plugins: [blissInputsPlugin(), ...(options.plugins ?? [])],
+    plugins: [blissInputsPlugin(), stableOutputPlugin(), ...(options.plugins ?? [])],
     ...(options.extra ?? {}),
   };
 }

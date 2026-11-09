@@ -9,6 +9,7 @@
 export { blissAnalyzerConfig, type BlissAnalyzerConfig, type BlissAnalyzerOptions } from './config.js';
 export { blissInputsPlugin, type CemPackageDoc, type CemPlugin } from './plugin.js';
 export { CORE_DECLARED_API, CORE_DECLARED_EVENTS, CORE_DECLARED_INPUTS, withCoreDeclared } from './core-declared.js';
+export { stabilizeManifest, stableOutputPlugin } from './stable-output.js';
 export { cssVariablesFromManifestPlugin, type CssVariablesPluginOptions } from './css-variables.js';
 export {
   extractBlissClass,

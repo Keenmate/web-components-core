@@ -7,7 +7,9 @@ events` tables (invisible to the stock analyzer). All extraction is in the pure,
 unit-tested `extractBlissClass(ts, node, sourceFile)`; the plugin is a thin
 analyze-then-`moduleLinkPhase`-merge wrapper. `blissAnalyzerConfig()` is the
 shared config preset (it analyzes `index.ts` — where `registerComponent()` runs; it excludes
-only tests / specs / declarations). Extracted data is keyed by module path + class name. The plugin also recognizes core's `registerComponent()`
+only tests / specs / declarations). The preset also runs `stableOutputPlugin()` (`stable-output.ts`)
+right after the inputs plugin: every manifest string folded to LF (a CRLF checkout) and the modules
+sorted by path (the analyzer's order varies by run), so two builds in a row leave `git status` clean. Extracted data is keyed by module path + class name. The plugin also recognizes core's `registerComponent()`
 (via `parseRegisterComponentCall` / `extractRegistrations`) as a custom-element
 definition — the stock analyzer only knows `customElements.define()` — so it sets
 `customElement`/`tagName` and adds the `custom-element-definition` export.
