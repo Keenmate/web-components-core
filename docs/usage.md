@@ -49,6 +49,21 @@ const INPUTS: readonly InputDef[] = [
 ];
 ```
 
+**Typing the properties (one line, every component).** Core installs each row's property on the
+instance at runtime, so TypeScript can't see it. Every component types them the same way — an
+interface with the element class's name, merged into the class (declaration merging), extending
+the component's element config type (the one its responsive rules already target):
+
+```ts
+export class WebTreeViewElement<T = any> extends BlissElement<TreeViewEvents> { /* … */ }
+// every input as a typed property: el.dropZoneMaxWidth, el.isDisabled, …
+export interface WebTreeViewElement<T = any> extends TreeViewElementConfig<T> {}
+```
+
+The config type lists exactly the input rows (`configKey` → value type), nothing else; the class
+declares no member of the same name (the input-table check warns, it would be dead). Rulebook
+C-CA-16 checks the merge exists.
+
 Each row declares **what a change triggers** via `on`:
 
 - `update` — patch in place (default)
