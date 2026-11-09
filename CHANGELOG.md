@@ -25,6 +25,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `custom-elements.json`, `web-types.json` and the VS Code data unchanged; web-treeview drops its local
   copy of this plugin. Also exported: `stabilizeManifest(manifest)`. `src/cem/stable-output.ts`.
 
+- **`scrollContainerToBox()` / `getScrollTopForBox()`: scroll to a row that isn't rendered.** A virtual
+  list's index jump (`scrollToIndex()`, PageUp / PageDown, a keyboard move past the window) can't use
+  `scrollIntoContainer(el)` — the row doesn't exist yet — so web-multiselect, web-treeview and web-grid
+  each had their own index → `scrollTop` math (start / center / end / nearest, clamping, a sticky-header
+  offset). The target is now a box in content coordinates (`{ top: index × rowHeight, height }`) with
+  the same block rules and `scroll-padding` as `scrollIntoContainer`, plus `insetTop` for a header
+  measured in JS; `behavior: 'auto'` sets `scrollTop` synchronously so the list can render the new window
+  right after; `getScrollTopForBox()` only computes (render the window first, then scroll).
+  `src/dom/scroll-container.ts`.
+
 - **`/cem`: shared input rows imported from a sibling module reach the manifest.** `static inputs =
   [...SATELLITE_INPUTS, …]` with the array imported from a relative module (`./satellite-base.js`) was
   only warned about, so web-dropzone's four satellites lost their four shared rows from

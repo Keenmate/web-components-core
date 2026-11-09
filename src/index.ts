@@ -63,8 +63,8 @@ export type { LoaderRenderContext, RenderLoaderCallback, RenderLoaderOptions } f
 // Container scroll (SPEC §12.15): scroll the one container around an element, never the page.
 export { deepActiveElement } from './dom/active-element.js';
 export { escapeHtml } from './dom/escape-html.js';
-export { findScrollContainer, scrollIntoContainer } from './dom/scroll-container.js';
-export type { FindScrollContainerOptions, ScrollAxis, ScrollIntoContainerOptions } from './dom/scroll-container.js';
+export { findScrollContainer, getScrollTopForBox, scrollContainerToBox, scrollIntoContainer } from './dom/scroll-container.js';
+export type { FindScrollContainerOptions, ScrollAxis, ScrollBox, ScrollContainerToBoxOptions, ScrollIntoContainerOptions } from './dom/scroll-container.js';
 export { extractConsumedCssVars, extractDeclaredCssVars, suggestCssVars, lintCssVars } from './dom/css-var-lint.js';
 export type { CssVarFinding } from './dom/css-var-lint.js';
 

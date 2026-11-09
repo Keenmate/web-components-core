@@ -229,3 +229,56 @@ export function scrollIntoContainer(el: Element, options: ScrollIntoContainerOpt
   }
   return container;
 }
+
+/** A target inside a scroll container, in its content coordinates (`scrollTop` space): a virtual-list row. */
+export interface ScrollBox {
+  /** Distance from the top of the scrolled content, px (`index × rowHeight`). */
+  top: number;
+  /** Height, px (`rowHeight`). */
+  height: number;
+}
+
+/** Options for {@link getScrollTopForBox} / {@link scrollContainerToBox}. */
+export interface ScrollContainerToBoxOptions {
+  /** `'nearest'` (default) moves only as far as needed — a fully visible box stays put; `'start'` / `'center'` / `'end'` align it. */
+  block?: ScrollLogicalPosition;
+  /** `'auto'` (default) sets `scrollTop` synchronously (a virtual list renders the new window right after); `'smooth'` animates. */
+  behavior?: ScrollBehavior;
+  /**
+   * Extra top inset in px on top of the container's `scroll-padding-top` — a sticky header measured
+   * in JS (a grid's `thead`). Prefer CSS `scroll-padding-top` when the height is known in CSS.
+   */
+  insetTop?: number;
+}
+
+/**
+ * The `scrollTop` that brings `box` into view in `container` by the same rules as
+ * {@link scrollIntoContainer} (`block`, the container's `scroll-padding`), clamped to the scroll
+ * range — or `null` when nothing has to move. For a target that isn't rendered: a virtual list's
+ * row by index (`{ top: index * rowHeight, height: rowHeight }`). Compute-only, for a caller that
+ * must prepare (render the window) before it scrolls; {@link scrollContainerToBox} also applies it.
+ */
+export function getScrollTopForBox(container: HTMLElement, box: ScrollBox, options: ScrollContainerToBoxOptions = {}): number | null {
+  const h = container.clientHeight;
+  const style = isAvailable() ? getComputedStyle(container) : null;
+  const padTop = (style ? px(style.scrollPaddingTop, h) : 0) + (options.insetTop ?? 0);
+  const padBottom = style ? px(style.scrollPaddingBottom, h) : 0;
+  const scrollTop = container.scrollTop;
+  const dy = axisDelta(options.block ?? 'nearest', box.top, box.top + box.height, scrollTop + padTop, scrollTop + h - padBottom);
+  const max = Math.max(0, container.scrollHeight - h);
+  const target = Math.max(0, Math.min(scrollTop + dy, max));
+  return Math.abs(target - scrollTop) >= MIN_DELTA ? target : null;
+}
+
+/**
+ * Scroll `container` so `box` (content coordinates) is in view — {@link scrollIntoContainer} for a
+ * target that isn't rendered, e.g. a virtual-list row by index. Returns the new `scrollTop`, or
+ * `null` when nothing moved. `behavior: 'auto'` sets `scrollTop` synchronously.
+ */
+export function scrollContainerToBox(container: HTMLElement, box: ScrollBox, options: ScrollContainerToBoxOptions = {}): number | null {
+  const target = getScrollTopForBox(container, box, options);
+  if (target === null) return null;
+  if ((options.behavior ?? 'auto') === 'auto') container.scrollTop = target;
+  else container.scrollTo({ top: target, behavior: options.behavior });
+  return target;
+}

@@ -2003,6 +2003,11 @@ hand-rolled the same workaround; web-daterangepicker still calls `scrollIntoView
 ```ts
 findScrollContainer(el, { stopAt?, axis?: 'y' | 'x' | 'both' }): HTMLElement | null
 scrollIntoContainer(el, { block?, inline?, behavior?, container?, shouldRevealContainer?, stopAt?, axis? }): HTMLElement | null
+// A target that isn't rendered (a virtual-list row by index): content coordinates, same block rules,
+// the container's scroll-padding (+ insetTop for a sticky header measured in JS), clamped. `behavior:
+// 'auto'` sets scrollTop synchronously (the list renders the new window right after). null = no move.
+getScrollTopForBox(container, { top, height }, { block?, insetTop? }): number | null
+scrollContainerToBox(container, { top, height }, { block?, behavior?, insetTop? }): number | null
 ```
 
 - **Find.** Walks the *flat* tree from `el`'s parent: a slotted node → its `assignedSlot`,

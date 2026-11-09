@@ -189,3 +189,26 @@ test('an element inside an iframe: its scroller is found and scrolled, the page 
   });
   expect(result).toEqual({ found: true, scrolled: true, scrollTop: 900, pageY: 0 });
 });
+
+test('scrollContainerToBox: a virtual-list row by index (not rendered), same block rules, synchronous', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const core = (window as any).core;
+    const box = document.createElement('div');
+    box.style.cssText = 'height:200px;overflow:auto;scroll-padding-top:10px';
+    const spacer = document.createElement('div');
+    spacer.style.height = '1000px'; // 50 rows × 20px, none rendered
+    box.append(spacer);
+    document.body.append(box);
+    const row = (i: number) => ({ top: i * 20, height: 20 });
+    const out = {
+      start: core.scrollContainerToBox(box, row(30), { block: 'start' }),
+      syncTop: box.scrollTop, // set before returning (a virtual list renders right after)
+      nearestVisible: core.scrollContainerToBox(box, row(31)),
+      center: core.getScrollTopForBox(box, row(10), { block: 'center' }),
+      clamped: core.getScrollTopForBox(box, row(49), { block: 'start' }),
+    };
+    box.remove();
+    return out;
+  });
+  expect(result).toEqual({ start: 590, syncTop: 590, nearestVisible: null, center: 105, clamped: 800 });
+});

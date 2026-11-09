@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { findScrollContainer, scrollIntoContainer } from './scroll-container.js';
+import { findScrollContainer, getScrollTopForBox, scrollContainerToBox, scrollIntoContainer } from './scroll-container.js';
 
 // jsdom has no layout: geometry is faked per element. scroll-padding / scroll-margin, borders
 // and real scrollbars are covered in the real browser (e2e/scroll.spec.ts).
@@ -247,5 +247,52 @@ describe('scrollIntoContainer', () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+// A virtual-list row by index (not rendered): the same block rules in content coordinates.
+describe('scrollContainerToBox / getScrollTopForBox', () => {
+  /** A 200px viewport over 1000px of content (rows of 20px), scrolled to `scrollTop`. */
+  function list(scrollTop = 0): HTMLDivElement {
+    const box = document.createElement('div');
+    document.body.appendChild(box);
+    geometry(box, { top: 0, height: 200, scrollHeight: 1000 });
+    box.scrollTop = scrollTop;
+    box.scrollTo = vi.fn() as unknown as typeof box.scrollTo;
+    return box;
+  }
+  const row = (index: number) => ({ top: index * 20, height: 20 });
+
+  it('start / center / end align the row; clamped to the scroll range', () => {
+    expect(getScrollTopForBox(list(), row(30), { block: 'start' })).toBe(600);
+    expect(getScrollTopForBox(list(), row(30), { block: 'center' })).toBe(510); // 600 + 10 − 100
+    expect(getScrollTopForBox(list(), row(30), { block: 'end' })).toBe(420); // 620 − 200
+    expect(getScrollTopForBox(list(), row(49), { block: 'start' })).toBe(800); // max = 1000 − 200
+    expect(getScrollTopForBox(list(300), row(0), { block: 'end' })).toBe(0); // −180 clamps to 0
+    expect(getScrollTopForBox(list(800), row(49), { block: 'start' })).toBeNull(); // already at the clamp: nothing moves
+  });
+
+  it('nearest: a visible row stays put; above → start edge, below → end edge', () => {
+    expect(getScrollTopForBox(list(100), row(6))).toBeNull(); // 120–140 inside 100–300
+    expect(getScrollTopForBox(list(100), row(2))).toBe(40);
+    expect(getScrollTopForBox(list(100), row(20))).toBe(220); // 420 − 200
+  });
+
+  it('honours scroll-padding-top and insetTop (a sticky header)', () => {
+    const box = list(100);
+    box.style.scrollPaddingTop = '10px';
+    expect(getScrollTopForBox(box, row(30), { block: 'start' })).toBe(590);
+    expect(getScrollTopForBox(box, row(30), { block: 'start', insetTop: 30 })).toBe(560);
+    expect(getScrollTopForBox(box, row(5), { insetTop: 30 })).toBe(60); // 100 is under the 40px inset → start edge
+  });
+
+  it('auto sets scrollTop synchronously; smooth calls scrollTo; nothing to move → null, no call', () => {
+    const box = list();
+    expect(scrollContainerToBox(box, row(30), { block: 'start' })).toBe(600);
+    expect(box.scrollTop).toBe(600);
+    expect(box.scrollTo).not.toHaveBeenCalled();
+    expect(scrollContainerToBox(box, row(10), { block: 'start', behavior: 'smooth' })).toBe(200);
+    expect(box.scrollTo).toHaveBeenCalledWith({ top: 200, behavior: 'smooth' });
+    expect(scrollContainerToBox(list(100), row(6))).toBeNull();
   });
 });

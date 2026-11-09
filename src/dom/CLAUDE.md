@@ -49,6 +49,11 @@ Never returns html/body/scrollingElement. Honours container `scroll-padding` + e
 No container → the page scrolls (window `scrollTo`, same alignment rules, the root's
 `scroll-padding`) — never `el.scrollIntoView()`, which would also scroll `overflow: hidden`
 wrappers; with `stopAt` and no container below it nothing scrolls; returns `null`. Uses `el.ownerDocument.defaultView` (iframe-safe). Limits: scaled
-containers, vertical writing modes, nested scrollers (innermost only). jsdom has no layout: the unit test
+containers, vertical writing modes, nested scrollers (innermost only).
+`getScrollTopForBox(container, { top, height }, { block, insetTop })` / `scrollContainerToBox(…, { behavior })`:
+the same block rules for a target that isn't rendered (a virtual-list row: `{ top: index × rowHeight,
+height: rowHeight }`), content coordinates, `scroll-padding-top` + `insetTop`, clamped; `'auto'` sets
+`scrollTop` synchronously; `null` = nothing moves. Every virtual list's index jump goes through it
+(web-multiselect, web-treeview, web-grid had three copies of this math). jsdom has no layout: the unit test
 fakes geometry; the real checks are `e2e/scroll.spec.ts` (`test/scroll.html`). Headless
 Chromium doesn't animate smooth scrolling — don't write tests that depend on a running glide.
