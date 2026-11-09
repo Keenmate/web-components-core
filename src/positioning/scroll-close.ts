@@ -81,6 +81,9 @@ export function watchScrollClose(opts: ScrollCloseOptions): () => void {
   let isSettling = canFocusScroll(element);
   const settle = (): void => {
     isSettling = false;
+    // The browser may have moved the page already and deliver the scroll event later (WebKit, or a
+    // throttled / faked rAF ending the window first): where the reference is now is the baseline.
+    startedAt = spot();
   };
   let cancelSettle = (): void => {};
   if (isSettling) {

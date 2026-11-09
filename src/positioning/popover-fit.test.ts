@@ -316,6 +316,19 @@ describe('createPopover — fit additions', () => {
       expect(pop.isOpen).toBe(false);
     });
 
+    it('a focus scroll whose event arrives after the opening window does not close it', async () => {
+      // WebKit under a fast (or faked) rAF: the window ends after the page moved but before the event.
+      const { reference, panel } = setup();
+      moveBy(reference, 2103);
+      reference.focus();
+      const pop = createPopover({ reference, panel, shouldCloseOnScroll: true });
+      pop.open();
+      moveBy(reference, -2103);
+      await settleOpen();
+      document.dispatchEvent(new Event('scroll'));
+      expect(pop.isOpen).toBe(true);
+    });
+
     it('a scroll right after opening closes it when the browser has no focus scroll to make (rc21 regression)', () => {
       // The reference is focused but fully visible (a clicked button): there is no opening window, so a
       // page that scrolls at once still closes the layer (web-treeview's info popover).
