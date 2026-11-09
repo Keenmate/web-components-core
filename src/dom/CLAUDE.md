@@ -26,6 +26,14 @@ Released on real removal too (`watchRemoval`, `src/element/removal-watch.ts`, dr
 BlissElement's removal check). Page decides: `window.components[tag].shouldHoistImports` >
 `window.components.shouldHoistImports` (non-enumerable) > the component option.
 
+## Persisted UI state (`src/dom/state-store.ts`, SPEC §12.17 — implemented)
+
+`createStateStore(host, { getKey, getLoadCallback?, getSaveCallback?, toContext? })` → `{ load, save, clear }`.
+The component's input rows are `storageKey` (`storage-key`, unset = off), `loadStateCallback`, `saveStateCallback`
+(rulebook C-CA-17). Default store `localStorage['km-state:<tag>:<key>']` (`stateStorageKey()`); `save(partial)` merges
+into the WHOLE state and the save callback gets all of it; cache per key, the key is read per call; never throws
+(callback / storage failures → the element's logger, state kept in memory). No `localStorage` in components.
+
 ## Loader (`src/dom/render-loader.ts`, SPEC §12.14 — implemented)
 
 `renderLoader(host, container, context, { label, prefix, renderLoadingCallback? })`

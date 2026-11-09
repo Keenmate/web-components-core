@@ -2107,3 +2107,34 @@ unit test compares them when the repo sits next to core).
 own `--<prefix>-transition-*` tokens) and scroll via `--<prefix>-scroll-behavior`; a hard-coded
 `transition: 0.2s` ignores the level. No per-component reduced-motion code is required any more
 (a component's own block stays harmless).
+
+### 12.17 Persisted UI state — IMPLEMENTED (`src/dom/state-store.ts`, main index)
+
+**The gap.** Components that keep what the user arranged did it four ways: web-dropzone (popover size:
+`storage-key`, `loadStateCallback` / `persistStateCallback`, `localStorage['dz-state:<key>']`), web-grid
+(column widths / order: plain properties `gridName` + `shouldPersistColumn*`, `localStorage['wg-<name>-state']`,
+no host store), web-commandpalette (favorites / recents: `usage-key`, `loadUsageCallback` /
+`saveUsageCallback`, its own localStorage code). Different names, key formats and callback shapes.
+
+**The rule (one way, rulebook C-CA-17).** A component that persists UI state has the input rows:
+
+| configKey | attribute | converter | |
+|---|---|---|---|
+| `storageKey` | `storage-key` | `toText({ isNullable: true })` | the key; unset / empty = persistence off |
+| `loadStateCallback` | — | `toFunction()` | `(ctx & { key }) => S \| null \| Promise<…>`; set → the host keeps the state |
+| `saveStateCallback` | — | `toFunction()` | `(ctx & { key, state: S })`, the WHOLE state each time |
+
+and one handle: `createStateStore(host, { getKey, getLoadCallback, getSaveCallback, toContext })` →
+`{ load(), save(partial), clear() }`. Default store `localStorage['km-state:<tag>:<storage-key>']`;
+`save()` merges the partial into the whole state; the key is read per call (a new key loads its own
+state); nothing throws (a failing callback / unavailable storage is logged via the element's logger and
+the component keeps working from memory). Each component documents its state shape `S`. No
+`localStorage` / `sessionStorage` in a component outside the store.
+
+A component whose persistence IS the feature (web-commandpalette's favorites / recents) may give
+`storageKey` a default and keep its own on/off switch (`usage-storage="none"`); its per-entry data API
+(`loadUsageCallback` / `saveUsageCallback`, one changed entry per call) stays a data feature, but its
+default localStorage goes through `createStateStore()`.
+
+Not UI state: data the page owns (web-treeview's `expandedPaths` / `selectedPaths` / `checkedPaths`
++ their change events) — the page saves those itself.

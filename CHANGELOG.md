@@ -25,6 +25,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `custom-elements.json`, `web-types.json` and the VS Code data unchanged; web-treeview drops its local
   copy of this plugin. Also exported: `stabilizeManifest(manifest)`. `src/cem/stable-output.ts`.
 
+- **Persisted UI state, one way: `createStateStore()` + `storage-key` / `loadStateCallback` /
+  `saveStateCallback`.** web-dropzone (popover size), web-grid (column widths / order) and
+  web-commandpalette (favorites / recents) each kept user-arranged state with their own names, key formats
+  and callback shapes, and grid couldn't store it anywhere but localStorage. SPEC §12.17 now gives one
+  rule: three input rows (`storageKey` / `storage-key`, unset = off; `loadStateCallback`;
+  `saveStateCallback` with the whole state) and one handle, `createStateStore(host, { getKey,
+  getLoadCallback, getSaveCallback, toContext })` → `{ load(), save(partial), clear() }`. Default store
+  `localStorage['km-state:<tag>:<key>']`; failures are logged, never thrown. Rulebook C-CA-17 checks it.
+  `src/dom/state-store.ts`.
+
 - **`scrollContainerToBox()` / `getScrollTopForBox()`: scroll to a row that isn't rendered.** A virtual
   list's index jump (`scrollToIndex()`, PageUp / PageDown, a keyboard move past the window) can't use
   `scrollIntoContainer(el)` — the row doesn't exist yet — so web-multiselect, web-treeview and web-grid

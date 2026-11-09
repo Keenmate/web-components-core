@@ -482,6 +482,36 @@ window.components.shouldHoistImports = false;                  // every componen
 window.components['web-treeview'].shouldHoistImports = true;    // one component type (wins)
 ```
 
+## Persisted UI state
+
+What the user arranged — a popover's size, column widths / order — survives a reload the same way in
+every component (SPEC §12.17, rulebook C-CA-17). Three input rows and one handle:
+
+```ts
+import { createStateStore, toFunction, toText, type LoadStateCallback, type SaveStateCallback } from '@keenmate/web-components-core';
+
+static inputs = [
+  // …
+  { configKey: 'storageKey', attribute: 'storage-key', converter: toText({ isNullable: true }), on: 'update' },
+  { configKey: 'loadStateCallback', converter: toFunction(), on: 'update' },
+  { configKey: 'saveStateCallback', converter: toFunction(), on: 'none' },
+];
+
+#state = createStateStore<MyState>(this, {
+  getKey: () => this.config.storageKey as string | null,
+  getLoadCallback: () => this.config.loadStateCallback as LoadStateCallback<MyState> | null,
+  getSaveCallback: () => this.config.saveStateCallback as SaveStateCallback<MyState> | null,
+  toContext: (data) => this.withContext(data),   // BlissElement: controller + element + extras
+});
+
+// when the user finishes arranging:  void this.#state.save({ popoverWidth, popoverHeight });
+// when the UI is built:             const saved = await this.#state.load();
+```
+
+The page decides where it lives: unset `storage-key` = off; set = `localStorage['km-state:<tag>:<key>']`;
+with `loadStateCallback` / `saveStateCallback` the host keeps it (per user, on the server) and gets the
+whole state on every save. No own `localStorage` code in a component.
+
 ## Container scroll
 
 `scrollIntoContainer()` brings an inner element (a row, an option, a day) into view by scrolling
@@ -636,7 +666,7 @@ explain the main ones; [SPEC](SPEC.md) has the design notes.
 | Element | `BlissElement`, `INPUT_REJECTED_EVENT` (`'input-rejected'`, a refused write), `define(tag, Class)` (define once), `dispatch(target, name, detail)` (the free event helper under `emit()`), `defaultEventProperty(name)` (`'node-select'` → `'onNodeSelect'`), `withComponentContext(detail, controller, element, extras?)` / `COMPONENT_CONTEXT_KEYS` (the non-enumerable `controller` / `element`); `normalizeEventDefs` is internal plumbing |
 | Before-callbacks | `runBeforeCallback` (async; `false` cancels, a value replaces), `runBeforeCallbackSync`, `runBeforeCallbackEager` (stays synchronous for a sync hook) |
 | Registration | `registerComponent(tag, Class, opts)` (`window.components[tag]`), `getInstances(tag)`, `getRegisteredTags()` — page-wide, across copies of core |
-| DOM | `adoptStyles(root, ...css)` / `createStyleSlot(root)` (style injection), `renderLoader(host, container, context, opts)` / `publishLoaderHook()` (loading states), `scrollIntoContainer` / `findScrollContainer` (container scroll), `scrollContainerToBox` / `getScrollTopForBox` (a virtual-list row by index), `deepActiveElement()` (the focused element inside shadow roots), `escapeHtml(text)` (also on `/search`), `createMicrotaskScheduler()` (coalesce a burst into one run), `resolveEnumAttribute(raw, values, fallback)` |
+| DOM | `adoptStyles(root, ...css)` / `createStyleSlot(root)` (style injection), `renderLoader(host, container, context, opts)` / `publishLoaderHook()` (loading states), `scrollIntoContainer` / `findScrollContainer` (container scroll), `scrollContainerToBox` / `getScrollTopForBox` (a virtual-list row by index), `createStateStore` (persisted UI state), `deepActiveElement()` (the focused element inside shadow roots), `escapeHtml(text)` (also on `/search`), `createMicrotaskScheduler()` (coalesce a burst into one run), `resolveEnumAttribute(raw, values, fallback)` |
 | CSS-variable lint | `extractConsumedCssVars`, `extractDeclaredCssVars`, `lintCssVars` (read vs declared `--prefix-*` names), `suggestCssVars` (likely target of a typo) |
 | Environment | `getEnvironment`, `observeEnvironment`, `observeViewport`, `observeElementSize`, `configureBreakpoints` / `BREAKPOINTS_CHANGE_EVENT`, `classifyDevice` / `TABLET_MIN_SHORT_SIDE` |
 | Theme | `getThemeContext`, `observeThemeContext`, `setThemeMode` / `getThemeMode` (force dark / light page-wide), `readThemeSignal(el)`, `resolveThemeSource(host, source)`, `THEME_CONTEXT_ATTRIBUTE`, `THEME_SOURCE_ATTRIBUTE` |

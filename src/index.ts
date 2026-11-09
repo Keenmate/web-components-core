@@ -56,6 +56,8 @@ export type { MicrotaskScheduler } from './dom/microtask-scheduler.js';
 export { adoptStyles, createStyleSlot } from './dom/adopt-styles.js';
 export type { StyleSlot, StyleSlotOptions } from './dom/adopt-styles.js';
 export { createCustomStyles } from './dom/custom-styles.js';
+export { createStateStore, stateStorageKey } from './dom/state-store.js';
+export type { LoadStateCallback, SaveStateCallback, StateStore, StateStoreOptions } from './dom/state-store.js';
 export type { CustomStylesCallback, CustomStylesHandle, CustomStylesOptions, CustomStylesSource } from './dom/custom-styles.js';
 // Shared loader (SPEC §12.14): instance renderLoadingCallback > window.components.renderLoadingCallback > <prefix>__loader span.
 export { renderLoader, publishLoaderHook } from './dom/render-loader.js';
