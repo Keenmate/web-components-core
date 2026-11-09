@@ -8,6 +8,7 @@
  */
 import { getMenuChildren, isMenuDivider, resolveMenuEntries } from '../actions/resolve.js';
 import type { MenuEntry, MenuItem, ResolvedActionItem } from '../actions/types.js';
+import { deepActiveElement } from '../dom/active-element.js';
 import { adoptStyles } from '../dom/adopt-styles.js';
 import { composedClosest } from '../dom/composed-tree.js';
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
@@ -59,13 +60,6 @@ function isThenable<T>(value: unknown): value is PromiseLike<T> {
  * the last one handles the keyboard, so one Escape closes one menu.
  */
 const openMenuStack = (): object[] => sharedState(sharedStateKey('open-menus'), () => [] as object[]);
-
-/** The focused element, descending into shadow roots. */
-function deepActiveElement(): Element | null {
-  let active: Element | null = document.activeElement;
-  while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
-  return active;
-}
 
 function addClasses(el: HTMLElement, classes: string | undefined): void {
   for (const c of (classes ?? '').split(/\s+/)) if (c) el.classList.add(c);

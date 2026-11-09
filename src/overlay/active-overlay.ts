@@ -47,6 +47,7 @@
  * SSR-safe: with no `document`, registration still works but activation is a no-op.
  */
 
+import { deepActiveElement } from '../dom/active-element.js';
 import { composedParent } from '../dom/composed-tree.js';
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { coreLog } from '../logging/element-logger.js';
@@ -348,13 +349,6 @@ function ensureRouting(): void {
   document.addEventListener('pointercancel', onRoutedPointerCancel, true);
   window.addEventListener('click', onRoutedClickCapture, true);
   window.addEventListener('click', onRoutedClick);
-}
-
-/** The focused element, descending into shadow roots. */
-function deepActiveElement(): Element | null {
-  let active: Element | null = hasDocument() ? document.activeElement : null;
-  while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
-  return active;
 }
 
 const openOverlays = (): Map<unknown, OpenOverlay> =>

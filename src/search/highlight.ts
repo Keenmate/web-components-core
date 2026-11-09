@@ -1,3 +1,4 @@
+import { escapeHtml } from '../dom/escape-html.js';
 import { findRegexMatches, findTextMatches } from './match.js';
 import { foldWithSourceMap } from './normalize.js';
 import type { ActiveSearchTerm, HighlightResult, SearchBehavior, SearchMatch, SearchRange } from './types.js';
@@ -41,12 +42,6 @@ export function findHighlightRanges(
   return { text: nfc, ranges };
 }
 
-/** Escape text for HTML (`&`, `<`, `>`, `"`, `'`) — element content and quoted attribute values. */
-export function escapeHtml(text: string): string {
-  return text.replace(/[&<>"']/g, (ch) => HTML_ESCAPES[ch]!);
-}
-
-const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 
 export interface WrapRangesOptions {
   /** Inserted before each range. Default `<mark>`. */

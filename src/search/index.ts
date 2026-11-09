@@ -9,7 +9,8 @@ export { normalizeSearchText } from './normalize.js';
 export { findTextMatches, matchesText, findRegexMatches, statelessRegex } from './match.js';
 export { NO_SEARCH_TERM, createRegexCompiler, prepareSearchTerm, matchesSearchTerm } from './term.js';
 export type { RegexCompiler, PrepareSearchTermOptions } from './term.js';
-export { escapeHtml, findHighlightRanges, highlightHtml, wrapRanges } from './highlight.js';
+export { escapeHtml } from '../dom/escape-html.js';
+export { findHighlightRanges, highlightHtml, wrapRanges } from './highlight.js';
 export type { WrapRangesOptions } from './highlight.js';
 export type {
   SearchBehavior,

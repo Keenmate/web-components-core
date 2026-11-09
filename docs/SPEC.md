@@ -1798,7 +1798,7 @@ and kana dakuten are part of the letter and stay; `case-insensitive` folds `ß` 
 **API** (`@keenmate/web-components-core/search`, not re-exported from the root):
 `normalizeSearchText`, `findTextMatches`, `matchesText`, `findRegexMatches`,
 `statelessRegex`, `NO_SEARCH_TERM`, `createRegexCompiler`, `prepareSearchTerm`,
-`matchesSearchTerm`, `findHighlightRanges`, `wrapRanges`, `highlightHtml`, `escapeHtml`; types `SearchBehavior`,
+`matchesSearchTerm`, `findHighlightRanges`, `wrapRanges`, `highlightHtml`, `escapeHtml` (the same function is also on the root index); types `SearchBehavior`,
 `SearchMatch`, `SearchTermContext`, `PreparedSearchTerm`, `SearchEntry`,
 `SearchCallbackContext`, `ActiveSearchTerm`, `SearchRange`, `HighlightResult`,
 `RegexCompiler`, `PrepareSearchTermOptions`, `WrapRangesOptions`. No dependencies.

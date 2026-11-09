@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`deepActiveElement()` and `escapeHtml()` on the main index.** `deepActiveElement()` answers the
+  focused element inside shadow roots (`document.activeElement` stops at the outermost host); core had
+  two private copies (`/menu`, the overlay router) and web-commandpalette a third. `escapeHtml()` was
+  exported only from `/search`, so web-commandpalette and web-daterangepicker imported the search module
+  just for it; it now lives in `src/dom/escape-html.ts`, exported from the index, and `/search` still
+  re-exports the same function. `src/dom/active-element.ts`, `src/dom/escape-html.ts`.
+
+- **`/cem`: deterministic manifest output.** `blissAnalyzerConfig()` now runs `stableOutputPlugin()`
+  right after the inputs plugin: every manifest string folded to LF (a Windows `core.autocrlf` checkout
+  put CRLF into JSDoc / row descriptions, so a build on another checkout rewrote the manifests) and the
+  modules sorted by path (the analyzer's order varied between runs). Two builds in a row now leave
+  `custom-elements.json`, `web-types.json` and the VS Code data unchanged; web-treeview drops its local
+  copy of this plugin. Also exported: `stabilizeManifest(manifest)`. `src/cem/stable-output.ts`.
+
 ### Fixed
 
 - **Scroll close ignores the scroll the browser makes while a layer opens.** WebKit fires `focus` — which
