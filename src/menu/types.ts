@@ -69,7 +69,7 @@ export interface OpenMenuOptions<Ctx, A extends string = string> {
   prepareItemCallback?(item: MenuItem<Ctx, A>): MenuItem<Ctx, A>;
   /** Root placement. Default `'bottom-start'`. */
   placement?: Placement;
-  /** Root offset from `at`. Default `0` for a point, `4` for an element. */
+  /** Root offset from `at`. Default `0` for a point; for an element, the page's `--base-dropdown-offset` (`4` when unset). */
   offset?: number | AnchorOffset;
   /** Extra classes on every menu level (root and submenus) — a component's scoping hook. */
   cssClass?: string;

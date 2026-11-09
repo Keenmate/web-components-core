@@ -1071,7 +1071,7 @@ a teardown that stops `autoUpdate`:
 anchor(floating: HTMLElement, reference: HTMLElement | VirtualElement, opts: {
   placement?: Placement;              // default 'bottom-start'
   strategy?: 'fixed' | 'absolute';    // default 'fixed'
-  offset?: number;                    // default 4
+  offset?: number;                    // default: --base-dropdown-offset on the reference (4 when unset)
   shouldFlip?: boolean;               // default true (skipped when lockPlacement holds)
   shift?: number | false;             // padding; default 8
   matchWidth?: 'min' | 'exact' | 'max' | false;   // via size(); default false

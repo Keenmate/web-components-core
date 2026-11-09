@@ -8,6 +8,9 @@ primitive (`'fixed'` default; `offset→size→flip→shift` middleware;
 `beforeComputeCallback` per-frame hook (publish reference width to a CSS var / clamp
 before measuring); theme inheritance for portaled layers per C-CS-10 (`data-theme`, `data-bs-theme`, and core's own host mirrors `data-context-theme` / `data-motion`);
 optional `platform` escape hatch) returning `{ update, destroy }`.
+Default `offset` (none given): the page token `--base-dropdown-offset` (base-css-variables 2.0.1+),
+read once per anchor on the reference element (else the panel) via `dropdown-offset.ts` — inherits, so a
+page / section / component host can override it; `4` when unset. Tooltips keep their own `8`; a point menu `0`.
 `createTooltip()` (hover/focus + delay + `shouldFollowCursor` via `VirtualElement`;
 `beforeShowCallback` to dismiss an overlapping tooltip; `ShadowRoot` container for
 shadow-scoped tooltip CSS/vars) and `createPopover()` are thin wrappers. `createPopover()`

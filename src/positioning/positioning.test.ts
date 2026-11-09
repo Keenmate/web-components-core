@@ -54,6 +54,25 @@ describe('anchor', () => {
     expect(vi.mocked(fui.shift)).toHaveBeenCalledWith({ padding: 8 });
   });
 
+  it('the default gap is the page token --base-dropdown-offset, read on the reference (inheritance: e2e)', () => {
+    const section = document.createElement('section');
+    const reference = document.createElement('button');
+    reference.style.setProperty('--base-dropdown-offset', '10px');
+    section.append(reference);
+    document.body.append(section);
+    try {
+      anchor(document.createElement('div'), reference);
+      expect(vi.mocked(fui.offset)).toHaveBeenLastCalledWith(10);
+      anchor(document.createElement('div'), reference, { offset: 2 }); // an explicit offset wins
+      expect(vi.mocked(fui.offset)).toHaveBeenLastCalledWith(2);
+      reference.style.setProperty('--base-dropdown-offset', 'nonsense');
+      anchor(document.createElement('div'), reference); // unreadable → 4
+      expect(vi.mocked(fui.offset)).toHaveBeenLastCalledWith(4);
+    } finally {
+      section.remove();
+    }
+  });
+
   it('reports computed coordinates via onComputed', async () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');

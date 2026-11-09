@@ -50,7 +50,9 @@ export interface AnchorOptions {
   /** Positioning strategy. Default `'fixed'` (portal-friendly, avoids ancestor clipping). */
   strategy?: Strategy;
   /**
-   * Gap between reference and floating, in px. Default `4`. The object form
+   * Gap between reference and floating, in px. Default: the page's `--base-dropdown-offset`
+   * (`@keenmate/base-css-variables`), read on the reference element (else the floating one) when
+   * the anchor is created; `4` when unset. The object form
    * (floating-ui `offset()` axes) also shifts along the edge: `crossAxis` /
    * `alignmentAxis` (e.g. a submenu nudged up to line up with its parent item).
    */

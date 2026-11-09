@@ -33,6 +33,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   package import still warns. `extractBlissClass()` / `extractBlissClasses()` take an optional
   `{ readModule }`. Found by the web-dropzone alignment. `src/cem/extract.ts`, `src/cem/plugin.ts`.
 
+- **One field → panel gap for every component: `--base-dropdown-offset`.** `anchor()` (and so
+  `createPopover()` and an `openMenu()` dropped from an element) now uses the page token
+  `--base-dropdown-offset` (`@keenmate/base-css-variables` 2.0.1, `4px`) as its default `offset`, read
+  on the reference element when the anchor is created. web-multiselect hard-coded 4px and the
+  web-daterangepicker calendar 8px, so one form had two gaps; components now pass no offset and every
+  panel opens at the same distance. The token inherits, so a page overrides it per section or per
+  component (`web-multiselect { --base-dropdown-offset: 6px }`). An explicit `offset` still wins;
+  tooltips keep 8, a point (right-click) menu 0. `src/positioning/dropdown-offset.ts`. *pure-css port
+  affected* (`$base-dropdown-offset`).
+
 ### Fixed
 
 - **Scroll close ignores the scroll the browser makes while a layer opens.** WebKit fires `focus` — which

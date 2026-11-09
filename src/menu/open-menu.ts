@@ -642,7 +642,8 @@ export function openMenu<Ctx, A extends string = string>(
     : at;
   rootLevel.position = anchor(rootLevel.el, reference, {
     placement: opts.placement ?? 'bottom-start',
-    offset: opts.offset ?? (isPoint(at) ? 0 : 4),
+    // A point menu sits at the cursor; one dropping from an element takes the page's field → panel gap.
+    offset: opts.offset ?? (isPoint(at) ? 0 : undefined),
     shift: 8,
     maxHeight: { padding: 8 },
     ...(opts.inheritThemeFrom ? { inheritThemeFrom: opts.inheritThemeFrom } : {}),

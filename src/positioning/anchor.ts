@@ -20,6 +20,7 @@ import {
   type Middleware,
   type Platform,
 } from '@floating-ui/dom';
+import { readDropdownOffset } from './dropdown-offset.js';
 import { composedClosest } from '../dom/composed-tree.js';
 import { coreLog } from '../logging/element-logger.js';
 import { callSafely } from '../logging/safe-call.js';
@@ -101,8 +102,13 @@ function createSizeWriter(floating: HTMLElement): { set(prop: SizeProperty, valu
  * Build the middleware stack in the canonical order: offset → size → flip → shift.
  * `flipEnabled` lets the caller drop `flip` after freezing (`lockPlacement: 'freeze'`).
  */
-function buildMiddleware(opts: AnchorOptions, flipEnabled: boolean, sizes: ReturnType<typeof createSizeWriter>): Middleware[] {
-  const middleware: Middleware[] = [offsetMiddleware(opts.offset ?? 4)];
+function buildMiddleware(
+  opts: AnchorOptions,
+  flipEnabled: boolean,
+  sizes: ReturnType<typeof createSizeWriter>,
+  defaultOffset: number,
+): Middleware[] {
+  const middleware: Middleware[] = [offsetMiddleware(opts.offset ?? defaultOffset)];
 
   if (opts.matchWidth) {
     const mode = opts.matchWidth;
@@ -190,7 +196,9 @@ export function anchor(
   let placement = opts.placement ?? 'bottom-start';
   let flipEnabled = opts.shouldFlip ?? true;
   const sizes = createSizeWriter(floating);
-  let middleware = buildMiddleware(opts, flipEnabled, sizes);
+  // No `offset` given: the page's field → panel gap (`--base-dropdown-offset`), read once where it opens.
+  const defaultOffset = opts.offset === undefined ? readDropdownOffset(reference instanceof Element ? reference : (reference as { contextElement?: Element }).contextElement ?? floating) : 0;
+  let middleware = buildMiddleware(opts, flipEnabled, sizes, defaultOffset);
   const freeze = opts.lockPlacement === 'freeze';
   let frozen = false;
 
@@ -226,7 +234,7 @@ export function anchor(
         frozen = true;
         placement = resolved;
         flipEnabled = false;
-        middleware = buildMiddleware(opts, false, sizes);
+        middleware = buildMiddleware(opts, false, sizes, defaultOffset);
       }
       // Each callback is isolated: one that throws is logged and the others still run.
       const { onPlaced, onComputed, onDrift } = opts;

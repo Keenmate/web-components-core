@@ -36,3 +36,18 @@ test('re-anchoring with another placement moves the box', async ({ page }) => {
     return Math.round(b.x - (r.x + r.width));
   }).toBe(12);
 });
+
+test('no offset given: the gap is --base-dropdown-offset, inherited from an ancestor (page / section / host)', async ({ page }) => {
+  const gap = async () => {
+    const r = (await page.locator('#ref').boundingBox())!;
+    const b = (await page.locator('.fx-float').boundingBox())!;
+    return Math.round(b.y - (r.y + r.height));
+  };
+  await page.evaluate(() => (window as any).rebuild({ placement: 'bottom' }));
+  await expect.poll(gap).toBe(4); // token unset → 4
+  await page.evaluate(() => {
+    document.documentElement.style.setProperty('--base-dropdown-offset', '14px');
+    (window as any).rebuild({ placement: 'bottom' });
+  });
+  await expect.poll(gap).toBe(14);
+});

@@ -559,10 +559,12 @@ describe('dismiss + cleanup', () => {
     winRemove.mockRestore();
   });
 
-  it('an element `at` anchors to it with a 4px gap', () => {
+  it('an element `at` leaves the gap to anchor() (the page token --base-dropdown-offset); a point sits at the cursor', () => {
     open(basic, { at: opener, placement: 'top-start' });
     expect(anchors[0]!.reference).toBe(opener);
-    expect(anchors[0]!.opts).toMatchObject({ placement: 'top-start', offset: 4 });
+    expect(anchors[0]!.opts).toMatchObject({ placement: 'top-start', offset: undefined });
+    open(basic);
+    expect(anchors.at(-1)!.opts).toMatchObject({ offset: 0 });
   });
 });
 
