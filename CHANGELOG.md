@@ -14,7 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   two private copies (`/menu`, the overlay router) and web-commandpalette a third. `escapeHtml()` was
   exported only from `/search`, so web-commandpalette and web-daterangepicker imported the search module
   just for it; it now lives in `src/dom/escape-html.ts`, exported from the index, and `/search` still
-  re-exports the same function. `src/dom/active-element.ts`, `src/dom/escape-html.ts`.
+  re-exports the same function. `escapeHtml()` now takes any value (`null` / `undefined` → `''`,
+  anything else through `String()`) — it threw on a number such as a badge count, so web-commandpalette
+  and web-dropzone kept their own wrappers. `src/dom/active-element.ts`, `src/dom/escape-html.ts`.
 
 - **`/cem`: deterministic manifest output.** `blissAnalyzerConfig()` now runs `stableOutputPlugin()`
   right after the inputs plugin: every manifest string folded to LF (a Windows `core.autocrlf` checkout

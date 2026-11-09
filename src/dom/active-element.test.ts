@@ -29,4 +29,11 @@ describe('deepActiveElement', () => {
     expect(escapeHtml).toBe(fromSearch);
     expect(escapeHtml(`<a href="x">'&'</a>`)).toBe('&lt;a href=&quot;x&quot;&gt;&#39;&amp;&#39;&lt;/a&gt;');
   });
+
+  it('escapeHtml takes any value: null / undefined → empty, numbers and others stringified', () => {
+    expect(escapeHtml(3)).toBe('3');
+    expect(escapeHtml(null)).toBe('');
+    expect(escapeHtml(undefined)).toBe('');
+    expect(escapeHtml(false)).toBe('false');
+  });
 });
