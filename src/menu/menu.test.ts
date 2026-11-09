@@ -444,6 +444,43 @@ describe('dismiss + cleanup', () => {
     expect(onClose).toHaveBeenCalledWith('scroll');
   });
 
+  it('a point menu belongs to the element under the point: a scroller inside the component that moves it closes the menu', () => {
+    // web-grid: right-click a cell, then the grid's own body scrolls — the host doesn't move, the cell does.
+    const body = document.createElement('div');
+    const cell = document.createElement('div');
+    body.append(cell);
+    shadow.append(body);
+    let top = 100;
+    cell.getBoundingClientRect = () => ({ top, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: top, toJSON() {} }) as DOMRect;
+    document.elementFromPoint = () => host;
+    shadow.elementFromPoint = () => cell;
+    try {
+      const { onClose } = open(basic);
+      top = 60;
+      body.dispatchEvent(new Event('scroll'));
+      expect(onClose).toHaveBeenCalledWith('scroll');
+    } finally {
+      delete (document as { elementFromPoint?: unknown }).elementFromPoint;
+      delete (shadow as { elementFromPoint?: unknown }).elementFromPoint;
+    }
+  });
+
+  it('a point off the host (another layer on top) falls back to the host', () => {
+    const other = document.createElement('div');
+    document.body.append(other);
+    document.elementFromPoint = () => other;
+    let top = 100;
+    host.getBoundingClientRect = () => ({ top, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: top, toJSON() {} }) as DOMRect;
+    try {
+      const { onClose } = open(basic);
+      top = 50;
+      document.dispatchEvent(new Event('scroll'));
+      expect(onClose).toHaveBeenCalledWith('scroll');
+    } finally {
+      delete (document as { elementFromPoint?: unknown }).elementFromPoint;
+    }
+  });
+
   it('another KM overlay opening closes it', () => {
     const { onClose } = open(basic);
     registerOverlay(() => {}).activate();

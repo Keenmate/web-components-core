@@ -10,7 +10,7 @@ import { getMenuChildren, isMenuDivider, resolveMenuEntries } from '../actions/r
 import type { MenuEntry, MenuItem, ResolvedActionItem } from '../actions/types.js';
 import { deepActiveElement } from '../dom/active-element.js';
 import { adoptStyles } from '../dom/adopt-styles.js';
-import { composedClosest } from '../dom/composed-tree.js';
+import { composedClosest, composedParent } from '../dom/composed-tree.js';
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { coreLog } from '../logging/element-logger.js';
 import { callSafely } from '../logging/safe-call.js';
@@ -60,6 +60,23 @@ function isThenable<T>(value: unknown): value is PromiseLike<T> {
  * the last one handles the keyboard, so one Escape closes one menu.
  */
 const openMenuStack = (): object[] => sharedState(sharedStateKey('open-menus'), () => [] as object[]);
+
+/**
+ * What a point menu belongs to: the deepest element under the point (through shadow roots), when
+ * it is the host or inside it — the clicked row / cell, so a scroller INSIDE the component that
+ * moves it closes the menu too. `null` (→ the host) without `elementFromPoint` or off the host.
+ */
+function elementAtPoint(point: MenuPoint, hostEl: Element): Element | null {
+  if (typeof document === 'undefined' || typeof document.elementFromPoint !== 'function') return null;
+  let el = document.elementFromPoint(point.x, point.y);
+  while (el?.shadowRoot) {
+    const inner = el.shadowRoot.elementFromPoint(point.x, point.y);
+    if (!inner || inner === el) break;
+    el = inner;
+  }
+  for (let n: Element | null = el; n; n = composedParent(n)) if (n === hostEl) return el;
+  return null;
+}
 
 function addClasses(el: HTMLElement, classes: string | undefined): void {
   for (const c of (classes ?? '').split(/\s+/)) if (c) el.classList.add(c);
@@ -530,11 +547,12 @@ export function openMenu<Ctx, A extends string = string>(
     if (shouldDismissOutside) {
       document.addEventListener('pointerdown', onPointerDown, true);
       // The popover's scroll rule (SPEC §12.2): only a scroll of the page or of a scroller around
-      // what the menu belongs to (its `at` element, else the host — a point menu moves with it),
+      // what the menu belongs to (its `at` element; for a point, the element under it inside the host — the
+      // clicked cell / row, so the component's own scroller counts — else the host),
       // once that has actually moved; never a scroll inside the menu, never a bare wheel.
       const hostEl = typeof ShadowRoot !== 'undefined' && host instanceof ShadowRoot ? host.host : (host as Element);
       stopScrollClose = watchScrollClose({
-        reference: opts.at instanceof Element ? opts.at : hostEl,
+        reference: opts.at instanceof Element ? opts.at : (elementAtPoint(opts.at, hostEl) ?? hostEl),
         isInside,
         onScroll: () => close('scroll'),
       });
