@@ -31,7 +31,7 @@ BlissElement's removal check). Page decides: `window.components[tag].shouldHoist
 `createStateStore(host, { getKey, getLoadCallback?, getSaveCallback?, toContext? })` → `{ load, save, clear }`.
 The component's input rows are `storageKey` (`storage-key`, unset = off), `loadStateCallback`, `saveStateCallback`
 (rulebook C-CA-17). Default store `localStorage['km-state:<tag>:<key>']` (`stateStorageKey()`); `save(partial)` merges
-into the WHOLE state and the save callback gets all of it; cache per key, the key is read per call; never throws
+into the WHOLE state and the save callback gets all of it; cache per key, the key is read per call; either callback set = host mode (no localStorage, a missing half is a no-op + one warning); never throws
 (callback / storage failures → the element's logger, state kept in memory). No `localStorage` in components.
 
 ## Loader (`src/dom/render-loader.ts`, SPEC §12.14 — implemented)

@@ -509,8 +509,8 @@ static inputs = [
 ```
 
 The page decides where it lives: unset `storage-key` = off; set = `localStorage['km-state:<tag>:<key>']`;
-with `loadStateCallback` / `saveStateCallback` the host keeps it (per user, on the server) and gets the
-whole state on every save. No own `localStorage` code in a component.
+with `loadStateCallback` / `saveStateCallback` the host keeps it (per user, in a database) and gets the
+whole state on every save — set both; either one alone already switches localStorage off (core warns). No own `localStorage` code in a component.
 
 ## Container scroll
 

@@ -70,6 +70,20 @@ describe('createStateStore', () => {
     warn.mockRestore();
   });
 
+  it('one callback alone still means the host keeps the state: no localStorage, a warning once', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const saved: unknown[] = [];
+    localStorage.setItem(stateStorageKey('web-thing', 'k'), JSON.stringify({ width: 99 }));
+    const store = createStateStore<S>(host(), { getKey: () => 'k', getSaveCallback: () => (ctx) => void saved.push(ctx.state) });
+    expect(await createStateStore<S>(host(), { getKey: () => 'k', getSaveCallback: () => () => {} }).load()).toBeNull(); // not the stale localStorage
+    await store.save({ width: 1 });
+    await store.save({ height: 2 });
+    expect(saved).toEqual([{ width: 1 }, { width: 1, height: 2 }]);
+    expect(JSON.parse(localStorage.getItem(stateStorageKey('web-thing', 'k'))!)).toEqual({ width: 99 }); // untouched
+    expect(warn.mock.calls.filter((c) => String(c.join(' ')).includes('saveStateCallback is set without loadStateCallback'))).toHaveLength(2); // once per store
+    warn.mockRestore();
+  });
+
   it('clear() removes the saved state', async () => {
     const store = createStateStore<S>(host(), { getKey: () => 'a' });
     await store.save({ width: 1 });

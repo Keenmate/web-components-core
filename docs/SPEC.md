@@ -2125,7 +2125,8 @@ no host store), web-commandpalette (favorites / recents: `usage-key`, `loadUsage
 | `saveStateCallback` | — | `toFunction()` | `(ctx & { key, state: S })`, the WHOLE state each time |
 
 and one handle: `createStateStore(host, { getKey, getLoadCallback, getSaveCallback, toContext })` →
-`{ load(), save(partial), clear() }`. Default store `localStorage['km-state:<tag>:<storage-key>']`;
+`{ load(), save(partial), clear() }`. Default store `localStorage['km-state:<tag>:<storage-key>']`; EITHER callback set → the host keeps the state and
+localStorage is never used (a missing half is a no-op, warned once — set both);
 `save()` merges the partial into the whole state; the key is read per call (a new key loads its own
 state); nothing throws (a failing callback / unavailable storage is logged via the element's logger and
 the component keeps working from memory). Each component documents its state shape `S`. No

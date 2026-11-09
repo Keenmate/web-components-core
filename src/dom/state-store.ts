@@ -55,10 +55,27 @@ export function createStateStore<S extends object>(host: HTMLElement, opts: Stat
     return typeof key === 'string' && key.length > 0 ? key : null;
   };
   const ctx = (data: { key: string; state?: S }) => (opts.toContext ? opts.toContext(data) : data);
+  /**
+   * Either callback set → the HOST keeps the state: localStorage is never used, also not for the
+   * missing half (a save-only host would otherwise write to the server and read an empty localStorage
+   * forever). The missing half is a no-op (`load` → null), warned once.
+   */
+  let hasWarnedHalf = false;
+  const hostCallbacks = () => {
+    const load = opts.getLoadCallback?.() ?? null;
+    const save = opts.getSaveCallback?.() ?? null;
+    if ((load || save) && !(load && save) && !hasWarnedHalf) {
+      hasWarnedHalf = true;
+      log().warn(`${load ? 'loadStateCallback' : 'saveStateCallback'} is set without ${load ? 'saveStateCallback' : 'loadStateCallback'}: the host keeps the state, so set both (localStorage is not used)`);
+    }
+    return load || save ? { load, save } : null;
+  };
 
   async function read(key: string): Promise<S | null> {
-    const load = opts.getLoadCallback?.();
-    if (load) {
+    const host = hostCallbacks();
+    if (host) {
+      const load = host.load;
+      if (!load) return null;
       try {
         return ((await load(ctx({ key }) as { key: string })) ?? null) as S | null;
       } catch (err) {
@@ -75,8 +92,10 @@ export function createStateStore<S extends object>(host: HTMLElement, opts: Stat
   }
 
   async function write(key: string, state: S): Promise<void> {
-    const save = opts.getSaveCallback?.();
-    if (save) {
+    const host = hostCallbacks();
+    if (host) {
+      const save = host.save;
+      if (!save) return;
       try {
         await save(ctx({ key, state }) as { key: string; state: S });
       } catch (err) {
@@ -112,7 +131,7 @@ export function createStateStore<S extends object>(host: HTMLElement, opts: Stat
       const key = currentKey();
       if (!key) return;
       cache = { key, state: null };
-      if (opts.getSaveCallback?.()) return write(key, {} as S);
+      if (hostCallbacks()) return write(key, {} as S);
       try {
         globalThis.localStorage?.removeItem(stateStorageKey(tag, key));
       } catch {

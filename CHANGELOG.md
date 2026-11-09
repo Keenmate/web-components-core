@@ -32,7 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rule: three input rows (`storageKey` / `storage-key`, unset = off; `loadStateCallback`;
   `saveStateCallback` with the whole state) and one handle, `createStateStore(host, { getKey,
   getLoadCallback, getSaveCallback, toContext })` → `{ load(), save(partial), clear() }`. Default store
-  `localStorage['km-state:<tag>:<key>']`; failures are logged, never thrown. Rulebook C-CA-17 checks it.
+  `localStorage['km-state:<tag>:<key>']`; either callback set → the host keeps it (a database) and
+  localStorage is never used (one alone warns: set both); failures are logged, never thrown. Rulebook
+  C-CA-17 checks it.
   `src/dom/state-store.ts`.
 
 - **`scrollContainerToBox()` / `getScrollTopForBox()`: scroll to a row that isn't rendered.** A virtual
