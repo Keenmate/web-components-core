@@ -134,3 +134,54 @@ describe('extractBlissClass — L-07', () => {
     expect(concat!.warnings).toEqual([expect.stringContaining('`Base.inputs.concat([])`')]);
   });
 });
+
+// web-dropzone rc21 validation CF-1: shared rows imported from a sibling module.
+describe('extractBlissClass — a table spread imported from a relative module', () => {
+  const files: Record<string, string> = {
+    'src/shared.ts': `
+      const BASE_ROW = { configKey: 'for', attribute: 'for', converter: toText() };
+      export const SHARED_INPUTS = [BASE_ROW, { configKey: 'customStyles', attribute: 'custom-styles', converter: toText() }];`,
+  };
+  const readModule = (from: string, specifier: string) => {
+    const path = `src/${specifier.replace(/^\.\//, '').replace(/\.js$/, '')}.ts`;
+    return files[path] === undefined ? undefined : ts.createSourceFile(path, files[path], ts.ScriptTarget.Latest, true);
+  };
+  const run = (source: string) => extractBlissClasses(ts, ts.createSourceFile('src/picker.ts', source, ts.ScriptTarget.Latest, true), { readModule });
+
+  it('reads the rows (aliased import too) in the order of the table', () => {
+    const [cls] = run(`
+      import { SHARED_INPUTS as S } from './shared.js';
+      class Picker extends BlissElement { static inputs = [...S, { configKey: 'accept', attribute: 'accept', converter: toText() }]; }`);
+    expect(cls!.attributes.map((a) => a.name)).toEqual(['for', 'custom-styles', 'accept']);
+    expect(cls!.warnings).toBeUndefined();
+  });
+
+  it('still warns for a package import or a module it cannot read', () => {
+    const [cls] = run(`
+      import { ROWS } from '@scope/pkg';
+      import { MISSING } from './missing.js';
+      class Picker extends BlissElement { static inputs = [...ROWS, ...MISSING]; }`);
+    expect(cls!.warnings).toEqual([expect.stringContaining('spreads `ROWS`'), expect.stringContaining('spreads `MISSING`')]);
+  });
+});
+
+describe('blissInputsPlugin — reads an imported table module from disk', () => {
+  it('resolves ./shared.js to shared.ts next to the importing file', async () => {
+    const { mkdtempSync, writeFileSync } = await import('node:fs' as string);
+    const { join } = await import('node:path' as string);
+    const { tmpdir } = await import('node:os' as string);
+    const dir = mkdtempSync(join(tmpdir(), 'bliss-cem-'));
+    writeFileSync(join(dir, 'shared.ts'), `export const SHARED = [{ configKey: 'for', attribute: 'for', converter: toText() }];`);
+    const path = join(dir, 'picker.ts');
+    const sf = ts.createSourceFile(path, `import { SHARED } from './shared.js';\nclass Picker extends BlissElement { static inputs = [...SHARED]; }`, ts.ScriptTarget.Latest, true);
+    const plugin = blissInputsPlugin();
+    const moduleDoc = { path: 'picker.ts', declarations: [{ kind: 'class', name: 'Picker' }] as Record<string, any>[] };
+    const visit = (node: ts.Node): void => {
+      plugin.analyzePhase!({ ts, node, moduleDoc, context: {} });
+      ts.forEachChild(node, visit);
+    };
+    visit(sf);
+    plugin.moduleLinkPhase!({ moduleDoc, context: {} });
+    expect(moduleDoc.declarations[0]!.attributes.map((a: { name: string }) => a.name)).toContain('for');
+  });
+});

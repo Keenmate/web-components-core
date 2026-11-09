@@ -29,9 +29,11 @@ members); the optional `description`/`deprecated` fields on each `InputDef` /
 `EventDef` row (or a leading comment) give the *prose*. Those doc fields are
 ignored at runtime. Keep `static inputs`/`static events` as literals (or a
 hoisted `const … as const`) — the extractor reads AST literals, not runtime
-values. It also flattens `...SHARED` spreads of a same-file const array, reads a row given as a
+values. It also flattens `...SHARED` spreads of a same-file const array — or of a const array
+imported by name from a RELATIVE module (the plugin reads it from disk via `ExtractOptions.readModule`;
+rows resolve in that module) — reads a row given as a
 same-file const object, `static get inputs() { return […] }` and `const X = class …`; anything
-else (a spread of an import / `Base.inputs`, `.concat()`) goes into `ExtractedClass.warnings`,
+else (a spread of a package import / `Base.inputs`, `.concat()`) goes into `ExtractedClass.warnings`,
 which the plugin prints as `[keenmate-bliss-inputs]` build warnings (review L-07). Rich prose goes in `description` as a **template literal** (multi-line
 markdown, bullet lists — preserved verbatim; the leading-comment fallback
 flattens to one line, so use the field for structured text, and no `${}`

@@ -53,6 +53,19 @@ export interface ExtractedEvent {
   deprecated?: string | boolean;
 }
 
+/**
+ * Reads a sibling module for a table spread imported from it (`import { SHARED } from './shared.js'`):
+ * given the importing file and the specifier, the parsed source file, or `undefined` when it can't
+ * be read. The CEM plugin passes a file-system reader; without one, imported spreads stay unread.
+ */
+export type ModuleReader = (fromFile: string, specifier: string) => SourceFile | undefined;
+
+/** Options for {@link extractBlissClass} / {@link extractBlissClasses}. */
+export interface ExtractOptions {
+  /** Resolve `...SHARED` spreads imported from a relative module. */
+  readModule?: ModuleReader;
+}
+
 export interface ExtractedClass {
   name: string;
   /** The class declares a `static inputs` table (not just `static events`). */
@@ -374,11 +387,50 @@ function resolveObjectLiteral(ts: TS, expr: Expression, sf: SourceFile): ObjectL
   return undefined;
 }
 
+/** A table entry and the file it is written in (a spread imported from a sibling module lives there). */
+interface TableEntry {
+  el: Expression;
+  sf: SourceFile;
+}
+
 /**
- * The entries of a table: array literal elements, with `...SHARED` spreads of a same-file
- * `const` array flattened in (nested up to a few levels). Anything that can't be read
- * statically — a spread of an import / `Base.inputs`, a `.concat()` — is reported in
- * `warnings` instead of being dropped silently (review L-07).
+ * A table array: an array literal, a same-file `const` array, or a `const` array a relative
+ * module exports and this file imports by name (`import { SHARED as S } from './shared.js'`).
+ */
+function resolveTableArray(
+  ts: TS,
+  expr: Expression,
+  sf: SourceFile,
+  opts: ExtractOptions,
+): { arr: TsNamespace.ArrayLiteralExpression; sf: SourceFile } | undefined {
+  const local = resolveArrayLiteral(ts, expr, sf);
+  if (local) return { arr: local, sf };
+  const e = unwrap(ts, expr);
+  if (!ts.isIdentifier(e) || !opts.readModule) return undefined;
+  for (const stmt of sf.statements) {
+    if (!ts.isImportDeclaration(stmt) || !ts.isStringLiteral(stmt.moduleSpecifier)) continue;
+    const specifier = stmt.moduleSpecifier.text;
+    if (!specifier.startsWith('.')) continue; // a package import isn't part of this analysis
+    const bindings = stmt.importClause?.namedBindings;
+    if (!bindings || !ts.isNamedImports(bindings)) continue;
+    for (const spec of bindings.elements) {
+      if (spec.name.text !== e.text) continue;
+      const target = opts.readModule(sf.fileName, specifier);
+      if (!target) return undefined;
+      const exported = (spec.propertyName ?? spec.name).text;
+      const arr = resolveArrayLiteral(ts, ts.factory.createIdentifier(exported), target);
+      return arr ? { arr, sf: target } : undefined;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The entries of a table: array literal elements, with `...SHARED` spreads flattened in (nested
+ * up to a few levels) — a same-file `const` array, or one imported from a relative module when a
+ * module reader is given. Anything that can't be read statically — a spread of a package import /
+ * `Base.inputs`, a `.concat()` — is reported in `warnings` instead of being dropped silently
+ * (review L-07).
  */
 function tableEntries(
   ts: TS,
@@ -386,27 +438,31 @@ function tableEntries(
   sf: SourceFile,
   label: string,
   warnings: string[],
+  opts: ExtractOptions,
   depth = 0,
-): Expression[] {
-  const arr = resolveArrayLiteral(ts, init, sf);
-  if (!arr) {
-    warnings.push(`${label} is \`${init.getText(sf)}\`, which isn't an array literal or a same-file const array; its rows are missing from the manifest`);
+): TableEntry[] {
+  const resolved = resolveTableArray(ts, init, sf, opts);
+  if (!resolved) {
+    warnings.push(`${label} is \`${init.getText(sf)}\`, which isn't an array literal or a const array the generator can read; its rows are missing from the manifest`);
     return [];
   }
-  const out: Expression[] = [];
-  for (const el of arr.elements) {
+  const out: TableEntry[] = [];
+  for (const el of resolved.arr.elements) {
     if (ts.isSpreadElement(el)) {
-      if (depth < 4 && resolveArrayLiteral(ts, el.expression, sf)) out.push(...tableEntries(ts, el.expression, sf, label, warnings, depth + 1));
-      else warnings.push(`${label} spreads \`${el.expression.getText(sf)}\`, which the manifest generator can't read (use a same-file const array); its rows are missing from the manifest`);
+      if (depth < 4 && resolveTableArray(ts, el.expression, resolved.sf, opts)) {
+        out.push(...tableEntries(ts, el.expression, resolved.sf, label, warnings, opts, depth + 1));
+      } else {
+        warnings.push(`${label} spreads \`${el.expression.getText(resolved.sf)}\`, which the manifest generator can't read (use a const array in this file or a relative module); its rows are missing from the manifest`);
+      }
       continue;
     }
-    out.push(el);
+    out.push({ el, sf: resolved.sf });
   }
   return out;
 }
 
 /** Extract manifest data for one class that declares `static inputs` and/or `static events`. */
-export function extractBlissClass(ts: TS, cls: ClassLike, sf: SourceFile): ExtractedClass | undefined {
+export function extractBlissClass(ts: TS, cls: ClassLike, sf: SourceFile, opts: ExtractOptions = {}): ExtractedClass | undefined {
   const name = classNameOf(ts, cls);
   if (!name) return undefined;
   const inputsInit = staticMember(ts, cls, 'inputs');
@@ -419,23 +475,23 @@ export function extractBlissClass(ts: TS, cls: ClassLike, sf: SourceFile): Extra
   const warnings: string[] = [];
 
   if (inputsInit) {
-    for (const el of tableEntries(ts, inputsInit, sf, `${name}: static inputs`, warnings)) {
-      const row = resolveObjectLiteral(ts, el, sf);
+    for (const { el, sf: rowSf } of tableEntries(ts, inputsInit, sf, `${name}: static inputs`, warnings, opts)) {
+      const row = resolveObjectLiteral(ts, el, rowSf);
       if (!row) {
-        warnings.push(`${name}: static inputs row \`${el.getText(sf)}\` isn't an object literal or a same-file const object; it is missing from the manifest`);
+        warnings.push(`${name}: static inputs row \`${el.getText(rowSf)}\` isn't an object literal or a same-file const object; it is missing from the manifest`);
         continue;
       }
-      const { attribute, member } = extractInput(ts, row, sf);
+      const { attribute, member } = extractInput(ts, row, rowSf);
       if (attribute) attributes.push(attribute);
       if (member) members.push(member);
     }
   }
 
   if (eventsInit) {
-    for (const el of tableEntries(ts, eventsInit, sf, `${name}: static events`, warnings)) {
-      const event = extractEvent(ts, unwrap(ts, el), sf);
+    for (const { el, sf: rowSf } of tableEntries(ts, eventsInit, sf, `${name}: static events`, warnings, opts)) {
+      const event = extractEvent(ts, unwrap(ts, el), rowSf);
       if (event) events.push(event);
-      else warnings.push(`${name}: static events entry \`${el.getText(sf)}\` can't be read; it is missing from the manifest`);
+      else warnings.push(`${name}: static events entry \`${el.getText(rowSf)}\` can't be read; it is missing from the manifest`);
     }
   }
 
@@ -473,11 +529,11 @@ export function extractRegistrations(ts: TS, sf: SourceFile): ExtractedRegistrat
 }
 
 /** Extract every table-driven component class in a source file. */
-export function extractBlissClasses(ts: TS, sf: SourceFile): ExtractedClass[] {
+export function extractBlissClasses(ts: TS, sf: SourceFile, opts: ExtractOptions = {}): ExtractedClass[] {
   const out: ExtractedClass[] = [];
   const visit = (node: Node): void => {
     if (ts.isClassDeclaration(node) || ts.isClassExpression(node)) {
-      const meta = extractBlissClass(ts, node, sf);
+      const meta = extractBlissClass(ts, node, sf, opts);
       if (meta) out.push(meta);
     }
     ts.forEachChild(node, visit);

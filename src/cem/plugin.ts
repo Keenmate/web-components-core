@@ -12,7 +12,9 @@
  * dependency on it — the types below are structural and intentionally loose to
  * avoid a hard dependency on the analyzer's internal types.
  */
-import { extractBlissClass, parseRegisterComponentCall, type ExtractedClass } from './extract.js';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { extractBlissClass, parseRegisterComponentCall, type ExtractedClass, type ModuleReader } from './extract.js';
 import { withCoreDeclared } from './core-declared.js';
 
 /** Minimal shape of a CEM class-like declaration this plugin augments. */
@@ -60,6 +62,31 @@ export interface CemPackageDoc {
   [key: string]: unknown;
 }
 
+/**
+ * Reads a relative module from disk for a table spread imported from it (`./shared.js` →
+ * `shared.ts`, `./shared` → `shared.ts` / `shared/index.ts`), parsed once per path.
+ */
+function moduleReader(ts: typeof import('typescript')): ModuleReader {
+  const cache = new Map<string, import('typescript').SourceFile | undefined>();
+  return (fromFile, specifier) => {
+    const base = resolve(dirname(fromFile), specifier);
+    const stem = base.replace(/\.(js|mjs|ts|mts)$/, '');
+    for (const path of [`${stem}.ts`, `${stem}.mts`, `${stem}/index.ts`, base]) {
+      if (cache.has(path)) return cache.get(path);
+      let text: string;
+      try {
+        text = readFileSync(path, 'utf8');
+      } catch {
+        continue;
+      }
+      const sf = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true);
+      cache.set(path, sf);
+      return sf;
+    }
+    return undefined;
+  };
+}
+
 /** Merge an attribute/member/event by `name`, extracted data winning on conflicts. */
 function mergeByName<T extends { name?: string }>(existing: unknown[] | undefined, incoming: T[]): T[] {
   const out = [...((existing ?? []) as T[])];
@@ -84,6 +111,8 @@ export function blissInputsPlugin(): CemPlugin {
   // className → tag name from a `registerComponent()` call (core §12.3), which
   // the stock analyzer does not recognize as a custom-element definition.
   const registrations = new Map<string, string>();
+  /** One reader per run, so a shared module is parsed once. */
+  let readModule: ModuleReader | undefined;
 
   return {
     name: 'keenmate-bliss-inputs',
@@ -94,7 +123,7 @@ export function blissInputsPlugin(): CemPlugin {
       const reg = parseRegisterComponentCall(tsApi, n);
       if (reg) registrations.set(reg.className, reg.tagName);
       if (!tsApi.isClassDeclaration(n) && !tsApi.isClassExpression(n)) return;
-      const meta = extractBlissClass(tsApi, n, n.getSourceFile());
+      const meta = extractBlissClass(tsApi, n, n.getSourceFile(), { readModule: (readModule ??= moduleReader(tsApi)) });
       // Build-time tooling (not the runtime "no console" rule): say what was left out.
       for (const warning of meta?.warnings ?? []) console.warn(`[keenmate-bliss-inputs] ${moduleDoc.path ?? ''}: ${warning}`);
       // Core-declared inputs / events (defer, theme-source, responsive, ready) are

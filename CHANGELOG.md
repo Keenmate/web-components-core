@@ -25,6 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `custom-elements.json`, `web-types.json` and the VS Code data unchanged; web-treeview drops its local
   copy of this plugin. Also exported: `stabilizeManifest(manifest)`. `src/cem/stable-output.ts`.
 
+- **`/cem`: shared input rows imported from a sibling module reach the manifest.** `static inputs =
+  [...SATELLITE_INPUTS, …]` with the array imported from a relative module (`./satellite-base.js`) was
+  only warned about, so web-dropzone's four satellites lost their four shared rows from
+  `custom-elements.json`, web-types and the VS Code data. The plugin now reads the imported module
+  (`.js` → `.ts`, `/index.ts`) and takes its exported `const` array; rows resolve in that module. A
+  package import still warns. `extractBlissClass()` / `extractBlissClasses()` take an optional
+  `{ readModule }`. Found by the web-dropzone alignment. `src/cem/extract.ts`, `src/cem/plugin.ts`.
+
 ### Fixed
 
 - **Scroll close ignores the scroll the browser makes while a layer opens.** WebKit fires `focus` — which
