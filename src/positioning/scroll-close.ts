@@ -6,12 +6,15 @@
  *     a log panel auto-scrolling, a sidebar list — doesn't count);
  *   - only once the reference has actually moved (≥ 1px) since the watch started: a scroll event
  *     can arrive a frame late (a scroll that finished just before the click that opened it);
- *   - never a scroll the browser makes as part of opening: for the first two frames after the
- *     watch starts, a scroll moves the baseline instead of closing (WebKit fires `focus` — which
- *     opens a focus-triggered popover — BEFORE it scrolls the focused input into view).
+ *   - never a scroll the browser makes as part of opening: WebKit fires `focus` — which opens a
+ *     focus-triggered popover — BEFORE it scrolls the focused input into view. Only when the focused
+ *     element is the reference (or inside it) and is not fully visible at the start, a scroll in the
+ *     first two frames moves the baseline instead of closing. Otherwise there is no such window: a
+ *     real scroll right after opening (a page scrolling, the user) closes as usual.
  * `scroll` doesn't cross a shadow boundary, so it listens on the document and on every shadow
  * root between it and the reference.
  */
+import { deepActiveElement } from '../dom/active-element.js';
 import { composedParent } from '../dom/composed-tree.js';
 
 type Rectish = { getBoundingClientRect(): DOMRect | { top: number; left: number } };
@@ -38,6 +41,32 @@ export function scrollRoots(node: Node | null): (Document | ShadowRoot)[] {
   return roots;
 }
 
+/** Is `el` fully inside the viewport and every clipping (non-`visible` overflow) ancestor? */
+function isFullyVisible(el: Element): boolean {
+  const rect = el.getBoundingClientRect();
+  const inside = (top: number, left: number, bottom: number, right: number): boolean =>
+    rect.top >= top && rect.left >= left && rect.bottom <= bottom && rect.right <= right;
+  if (!inside(0, 0, window.innerHeight, window.innerWidth)) return false;
+  for (let n = composedParent(el); n && n !== document.documentElement && n !== document.body; n = composedParent(n)) {
+    const style = getComputedStyle(n);
+    if (style.overflowX === 'visible' && style.overflowY === 'visible') continue;
+    const clip = n.getBoundingClientRect();
+    if (!inside(clip.top, clip.left, clip.bottom, clip.right)) return false;
+  }
+  return true;
+}
+
+/**
+ * Can the browser still scroll as part of this open? Only its scroll-into-view of a focused
+ * element the layer belongs to, and only when that element isn't fully in view yet.
+ */
+function canFocusScroll(element: Element | null): boolean {
+  if (!element) return false;
+  const focused = deepActiveElement();
+  if (!focused || (focused !== element && !element.contains(focused))) return false;
+  return !isFullyVisible(focused);
+}
+
 /** Start watching; returns the stop. SSR-safe (no document → a no-op stop). */
 export function watchScrollClose(opts: ScrollCloseOptions): () => void {
   if (typeof document === 'undefined') return () => {};
@@ -48,21 +77,21 @@ export function watchScrollClose(opts: ScrollCloseOptions): () => void {
     return { top: rect.top, left: rect.left };
   };
   let startedAt = spot();
-  /** The opening frames: scrolls re-baseline instead of closing (see the file comment). */
-  let isSettling = true;
+  /** The opening frames of a focus-opened layer: scrolls re-baseline instead of closing (see the file comment). */
+  let isSettling = canFocusScroll(element);
   const settle = (): void => {
-    if (!isSettling) return;
     isSettling = false;
-    startedAt = spot();
   };
-  const raf = typeof requestAnimationFrame === 'function' && document.visibilityState !== 'hidden' ? requestAnimationFrame : null;
-  let cancelSettle: () => void;
-  if (raf) {
-    let id = raf(() => (id = raf(settle)));
-    cancelSettle = () => cancelAnimationFrame(id);
-  } else {
-    const id = setTimeout(settle, 50);
-    cancelSettle = () => clearTimeout(id);
+  let cancelSettle = (): void => {};
+  if (isSettling) {
+    const raf = typeof requestAnimationFrame === 'function' && document.visibilityState !== 'hidden' ? requestAnimationFrame : null;
+    if (raf) {
+      let id = raf(() => (id = raf(settle)));
+      cancelSettle = () => cancelAnimationFrame(id);
+    } else {
+      const id = setTimeout(settle, 50);
+      cancelSettle = () => clearTimeout(id);
+    }
   }
   const hasMoved = (): boolean => {
     const now = spot();

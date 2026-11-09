@@ -22,8 +22,6 @@ const ctx: Ctx = { name: 'node' };
 
 let host: HTMLElement;
 let shadow: ShadowRoot;
-/** Past watchScrollClose's opening frames (jsdom: no rAF → its 50 ms fallback). */
-const settleOpen = () => new Promise((r) => setTimeout(r, 60));
 let opener: HTMLButtonElement;
 
 beforeEach(() => {
@@ -414,7 +412,6 @@ describe('dismiss + cleanup', () => {
     let top = 100;
     host.getBoundingClientRect = () => ({ top, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: top, toJSON() {} }) as DOMRect;
     const a = open(basic);
-    await settleOpen(); // the opening frames re-baseline instead of closing
     const unrelated = document.createElement('div'); // a log panel auto-scrolling elsewhere
     document.body.append(unrelated);
     top = 50;
@@ -442,7 +439,6 @@ describe('dismiss + cleanup', () => {
     let top = 100;
     inner.getBoundingClientRect = () => ({ top, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: top, toJSON() {} }) as DOMRect;
     const { onClose } = open(basic, { at: inner });
-    await settleOpen(); // the opening frames re-baseline instead of closing
     top = 40;
     scroller.dispatchEvent(new Event('scroll'));
     expect(onClose).toHaveBeenCalledWith('scroll');

@@ -246,7 +246,6 @@ describe('createPopover — fit additions', () => {
       const onClose = vi.fn();
       const pop = createPopover({ reference, panel, shouldCloseOnScroll: true, onClose });
       pop.open();
-      await settleOpen(); // the opening frames re-baseline instead of closing
       const list = document.createElement('div');
       panel.append(list);
       moveBy(reference, -40);
@@ -265,7 +264,6 @@ describe('createPopover — fit additions', () => {
       document.body.append(wrapper, logPanel);
       const pop = createPopover({ reference, panel: document.createElement('div'), shouldCloseOnScroll: true });
       pop.open();
-      await settleOpen(); // the opening frames re-baseline instead of closing
       moveBy(reference, -40);
       logPanel.dispatchEvent(new Event('scroll'));
       expect(pop.isOpen).toBe(true);
@@ -283,7 +281,6 @@ describe('createPopover — fit additions', () => {
       root.append(body);
       const pop = createPopover({ reference, panel: document.createElement('div'), shouldCloseOnScroll: true });
       pop.open();
-      await settleOpen(); // the opening frames re-baseline instead of closing
       moveBy(reference, -40);
       body.dispatchEvent(new Event('scroll')); // doesn't bubble, doesn't leave the shadow root
       expect(pop.isOpen).toBe(false);
@@ -295,7 +292,6 @@ describe('createPopover — fit additions', () => {
       const { reference, panel } = setup();
       const pop = createPopover({ reference, panel, shouldCloseOnScroll: true });
       pop.open();
-      await settleOpen(); // the opening frames re-baseline instead of closing
       document.dispatchEvent(new Event('scroll'));
       expect(pop.isOpen).toBe(true);
       moveBy(reference, 1);
@@ -305,6 +301,8 @@ describe('createPopover — fit additions', () => {
 
     it('a scroll the browser makes while opening (WebKit: focus opens, THEN scrolls the input into view) does not close it', async () => {
       const { reference, panel } = setup();
+      moveBy(reference, 2103); // below the fold
+      reference.focus(); // focus opens the layer before the browser scrolls the input into view
       const pop = createPopover({ reference, panel, shouldCloseOnScroll: true });
       pop.open();
       moveBy(reference, -2103); // WebKit's scroll-into-view of the focused input, a frame after open
@@ -314,6 +312,28 @@ describe('createPopover — fit additions', () => {
       document.dispatchEvent(new Event('scroll')); // the new place is the baseline
       expect(pop.isOpen).toBe(true);
       moveBy(reference, -40); // the user scrolls afterwards
+      document.dispatchEvent(new Event('scroll'));
+      expect(pop.isOpen).toBe(false);
+    });
+
+    it('a scroll right after opening closes it when the browser has no focus scroll to make (rc21 regression)', () => {
+      // The reference is focused but fully visible (a clicked button): there is no opening window, so a
+      // page that scrolls at once still closes the layer (web-treeview's info popover).
+      const { reference, panel } = setup();
+      reference.focus();
+      const pop = createPopover({ reference, panel, shouldCloseOnScroll: true });
+      pop.open();
+      moveBy(reference, -40);
+      document.dispatchEvent(new Event('scroll'));
+      expect(pop.isOpen).toBe(false);
+    });
+
+    it('an off-screen reference that is not focused gets no opening window either', () => {
+      const { reference, panel } = setup();
+      moveBy(reference, 2103);
+      const pop = createPopover({ reference, panel, shouldCloseOnScroll: true });
+      pop.open();
+      moveBy(reference, -2103);
       document.dispatchEvent(new Event('scroll'));
       expect(pop.isOpen).toBe(false);
     });

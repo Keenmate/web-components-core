@@ -29,8 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   opens a focus-triggered popover — before it scrolls the focused input into view, a frame later; the
   shared scroll rule (`watchScrollClose()`, used by `createPopover()` and `openMenu()`) saw the reference
   move after open and closed web-daterangepicker's calendar at once. For the first two frames after the
-  layer opens (50 ms without `requestAnimationFrame`), a scroll now moves the baseline instead of closing.
-  Found by the web-daterangepicker alignment (its C-1). `src/positioning/scroll-close.ts`.
+  layer opens (50 ms without `requestAnimationFrame`), a scroll now moves the baseline instead of closing —
+  only when the browser can still make that scroll: the focused element is the reference (or inside it)
+  and isn't fully visible yet. Any other open (a clicked button, a menu) has no such window, so a scroll
+  right after opening still closes it (web-treeview's info popover). Found by the web-daterangepicker
+  alignment (its C-1). `src/positioning/scroll-close.ts`.
 
 ## [1.0.0-rc20] - 2026-11-08
 
