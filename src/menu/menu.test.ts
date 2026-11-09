@@ -465,6 +465,21 @@ describe('dismiss + cleanup', () => {
     }
   });
 
+  it('a point without numbers (a synthetic contextmenu Event) still opens a fully wired menu', () => {
+    document.elementFromPoint = (x: number, y: number) => {
+      if (!Number.isFinite(x) || !Number.isFinite(y)) throw new TypeError('non-finite');
+      return host;
+    };
+    try {
+      const { handle, onClose } = open(basic, { at: { x: NaN, y: NaN } });
+      expect(handle.isOpen).toBe(true);
+      key('Escape');
+      expect(onClose).toHaveBeenCalledWith('escape');
+    } finally {
+      delete (document as { elementFromPoint?: unknown }).elementFromPoint;
+    }
+  });
+
   it('a point off the host (another layer on top) falls back to the host', () => {
     const other = document.createElement('div');
     document.body.append(other);

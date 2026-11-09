@@ -48,8 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A context menu closes when the component's own scroller moves what was clicked.** A point menu
   (`openMenu({ at: { x, y } })`) watched only scrollers around its host, so scrolling web-grid's body (or
   web-treeview's) left the menu open at stale coordinates over another cell. The menu now belongs to the
-  deepest element under the point inside the host (through shadow roots), falling back to the host. Found
-  by the web-grid alignment (its C-1). `src/menu/open-menu.ts`.
+  deepest element under the point inside the host (through shadow roots), falling back to the host (also
+  for a point without finite coordinates, where `elementFromPoint` throws). Found by the web-grid
+  alignment (its C-1, C-2). `src/menu/open-menu.ts`.
 
 - **Scroll close: a 1px correction scroll no longer closes a layer.** Firefox scrolls a Tab-focused field
   into view and then corrects the position by 1px 10–25 ms later; the shared rule counted any move of

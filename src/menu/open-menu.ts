@@ -68,6 +68,7 @@ const openMenuStack = (): object[] => sharedState(sharedStateKey('open-menus'), 
  */
 function elementAtPoint(point: MenuPoint, hostEl: Element): Element | null {
   if (typeof document === 'undefined' || typeof document.elementFromPoint !== 'function') return null;
+  if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return null; // elementFromPoint throws on NaN
   let el = document.elementFromPoint(point.x, point.y);
   while (el?.shadowRoot) {
     const inner = el.shadowRoot.elementFromPoint(point.x, point.y);
