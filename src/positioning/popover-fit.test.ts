@@ -294,7 +294,20 @@ describe('createPopover — fit additions', () => {
       pop.open();
       document.dispatchEvent(new Event('scroll'));
       expect(pop.isOpen).toBe(true);
-      moveBy(reference, 1);
+      moveBy(reference, 3);
+      document.dispatchEvent(new Event('scroll'));
+      expect(pop.isOpen).toBe(false);
+    });
+
+    it('a 1px correction scroll does not close it; moves add up to a real scroll', () => {
+      // Firefox: scroll-into-view of the Tab-focused field, then a 1px correction 10–25 ms later.
+      const { reference, panel } = setup();
+      const pop = createPopover({ reference, panel, shouldCloseOnScroll: true });
+      pop.open();
+      moveBy(reference, -1);
+      document.dispatchEvent(new Event('scroll'));
+      expect(pop.isOpen).toBe(true);
+      moveBy(reference, -2); // 3px from where it opened
       document.dispatchEvent(new Event('scroll'));
       expect(pop.isOpen).toBe(false);
     });

@@ -37,6 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   right after opening still closes it (web-treeview's info popover). Found by the web-daterangepicker
   alignment (its C-1). `src/positioning/scroll-close.ts`.
 
+- **Scroll close: a 1px correction scroll no longer closes a layer.** Firefox scrolls a Tab-focused field
+  into view and then corrects the position by 1px 10–25 ms later; the shared rule counted any move of
+  ≥ 1px, so Tab into a web-multiselect below the fold closed its dropdown at once (rc20 too). The
+  reference now has to move ≥ 3px from where the layer opened; a real scroll is far larger and small
+  moves still add up. Found by the web-multiselect rc21 validation. `src/positioning/scroll-close.ts`.
+
 ## [1.0.0-rc20] - 2026-11-08
 
 ### Added

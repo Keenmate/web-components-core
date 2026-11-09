@@ -4,7 +4,7 @@
  *   - never a scroll inside the layer itself (its own list);
  *   - only a scroll of the page or of a scroller AROUND the reference (an unrelated scroller —
  *     a log panel auto-scrolling, a sidebar list — doesn't count);
- *   - only once the reference has actually moved (≥ 1px) since the watch started: a scroll event
+ *   - only once the reference has actually moved (≥ 3px) since the watch started: a scroll event
  *     can arrive a frame late (a scroll that finished just before the click that opened it);
  *   - never a scroll the browser makes as part of opening: WebKit fires `focus` — which opens a
  *     focus-triggered popover — BEFORE it scrolls the focused input into view. Only when the focused
@@ -40,6 +40,14 @@ export function scrollRoots(node: Node | null): (Document | ShadowRoot)[] {
   if (typeof document !== 'undefined') roots.push(document);
   return roots;
 }
+
+/**
+ * How far (CSS px) the reference must move to count as scrolled away. Under it is the browser
+ * rounding a position: Firefox follows its scroll-into-view of a focused field with a 1px
+ * correction scroll 10–25 ms later, which closed a Tab-opened dropdown. A user scroll is far larger
+ * (and adds up — the baseline doesn't move).
+ */
+const MIN_MOVE = 3;
 
 /** Is `el` fully inside the viewport and every clipping (non-`visible` overflow) ancestor? */
 function isFullyVisible(el: Element): boolean {
@@ -98,7 +106,7 @@ export function watchScrollClose(opts: ScrollCloseOptions): () => void {
   }
   const hasMoved = (): boolean => {
     const now = spot();
-    return Math.abs(now.top - startedAt.top) >= 1 || Math.abs(now.left - startedAt.left) >= 1;
+    return Math.abs(now.top - startedAt.top) >= MIN_MOVE || Math.abs(now.left - startedAt.left) >= MIN_MOVE;
   };
   /** The document / window, or a scroller that contains the reference (across shadow roots). */
   const isAroundReference = (target: EventTarget | null): boolean => {
