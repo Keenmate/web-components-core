@@ -7,11 +7,15 @@
  * own state shape.
  */
 import { coreLog } from '../logging/element-logger.js';
+import type { ComponentContext } from '../element/context.js';
 
-/** `loadStateCallback(ctx)` — the saved state for `ctx.key`, or `null` / `undefined`. May be async. */
-export type LoadStateCallback<S> = (ctx: { key: string }) => S | null | undefined | Promise<S | null | undefined>;
+/**
+ * `loadStateCallback(ctx)` — the saved state for `ctx.key`, or `null` / `undefined`. May be async.
+ * `ctx` carries the component context (`controller`, `element`) when the component wraps it (`toContext`).
+ */
+export type LoadStateCallback<S, C extends object = Partial<ComponentContext>> = (ctx: { key: string } & C) => S | null | undefined | Promise<S | null | undefined>;
 /** `saveStateCallback(ctx)` — store `ctx.state` (the whole state) for `ctx.key`. May be async. */
-export type SaveStateCallback<S> = (ctx: { key: string; state: S }) => void | Promise<void>;
+export type SaveStateCallback<S, C extends object = Partial<ComponentContext>> = (ctx: { key: string; state: S } & C) => void | Promise<void>;
 
 export interface StateStoreOptions<S> {
   /** The current `storageKey`; empty / `null` = persistence off. Read on every call. */
@@ -49,7 +53,13 @@ export function stateStorageKey(tag: string, key: string): string {
 export function createStateStore<S extends object>(host: HTMLElement, opts: StateStoreOptions<S>): StateStore<S> {
   const tag = host.localName;
   const log = () => coreLog(host, 'DATA', 'ELEMENT');
-  let cache: { key: string; state: S | null } | null = null;
+  /**
+   * The last loaded / saved state, per key AND store (the host's callbacks, or localStorage): a page
+   * that sets `loadStateCallback` after the first load, or removes it again, reads from the new store.
+   */
+  let cache: { key: string; source: 'host' | 'local'; state: S | null } | null = null;
+  const sourceOf = (): 'host' | 'local' => (opts.getLoadCallback?.() || opts.getSaveCallback?.() ? 'host' : 'local');
+  const cached = (key: string): boolean => cache?.key === key && cache.source === sourceOf();
   const currentKey = (): string | null => {
     const key = opts.getKey();
     return typeof key === 'string' && key.length > 0 ? key : null;
@@ -114,23 +124,23 @@ export function createStateStore<S extends object>(host: HTMLElement, opts: Stat
     async load() {
       const key = currentKey();
       if (!key) return null;
-      if (cache?.key === key) return cache.state;
+      if (cached(key)) return cache!.state;
       const state = await read(key);
-      cache = { key, state };
+      cache = { key, source: sourceOf(), state };
       return state;
     },
     async save(partial) {
       const key = currentKey();
       if (!key) return;
-      const current = cache?.key === key ? cache.state : await read(key);
+      const current = cached(key) ? cache!.state : await read(key);
       const next = { ...(current ?? {}), ...partial } as S;
-      cache = { key, state: next };
+      cache = { key, source: sourceOf(), state: next };
       await write(key, next);
     },
     async clear() {
       const key = currentKey();
       if (!key) return;
-      cache = { key, state: null };
+      cache = { key, source: sourceOf(), state: null };
       if (hostCallbacks()) return write(key, {} as S);
       try {
         globalThis.localStorage?.removeItem(stateStorageKey(tag, key));

@@ -2125,7 +2125,8 @@ no host store), web-commandpalette (favorites / recents: `usage-key`, `loadUsage
 | `saveStateCallback` | — | `toFunction()` | `(ctx & { key, state: S })`, the WHOLE state each time |
 
 and one handle: `createStateStore(host, { getKey, getLoadCallback, getSaveCallback, toContext })` →
-`{ load(), save(partial), clear() }`. Default store `localStorage['km-state:<tag>:<storage-key>']`; EITHER callback set → the host keeps the state and
+`{ load(), save(partial), clear() }`. Default store `localStorage['km-state:<tag>:<storage-key>']`; the cache is per key and store (setting / removing a callback later
+reads from the new store); EITHER callback set → the host keeps the state and
 localStorage is never used (a missing half is a no-op, warned once — set both);
 `save()` merges the partial into the whole state; the key is read per call (a new key loads its own
 state); nothing throws (a failing callback / unavailable storage is logged via the element's logger and
@@ -2133,9 +2134,9 @@ the component keeps working from memory). Each component documents its state sha
 `localStorage` / `sessionStorage` in a component outside the store.
 
 A component whose persistence IS the feature (web-commandpalette's favorites / recents) may give
-`storageKey` a default and keep its own on/off switch (`usage-storage="none"`); its per-entry data API
-(`loadUsageCallback` / `saveUsageCallback`, one changed entry per call) stays a data feature, but its
-default localStorage goes through `createStateStore()`.
+`storageKey` a default and keep its own on/off switch (`usage-storage="none"`). It has the three rows like
+every other one (its state: `{ entries }`); its per-entry data API (`loadUsageCallback` /
+`saveUsageCallback`, one changed entry per call) stays as a data feature and wins when set.
 
 Not UI state: data the page owns (web-treeview's `expandedPaths` / `selectedPaths` / `checkedPaths`
 + their change events) — the page saves those itself.

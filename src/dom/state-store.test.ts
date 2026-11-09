@@ -84,6 +84,17 @@ describe('createStateStore', () => {
     warn.mockRestore();
   });
 
+  it('the cache is per key AND source: a load callback set after the first load is asked', async () => {
+    localStorage.setItem(stateStorageKey('web-thing', 'k'), JSON.stringify({ width: 1 }));
+    let load: (() => S) | null = null;
+    const store = createStateStore<S>(host(), { getKey: () => 'k', getLoadCallback: () => load, getSaveCallback: () => (load ? () => {} : null) });
+    expect(await store.load()).toEqual({ width: 1 }); // localStorage
+    load = () => ({ width: 2 });
+    expect(await store.load()).toEqual({ width: 2 }); // the host now
+    load = null;
+    expect(await store.load()).toEqual({ width: 1 }); // back to localStorage
+  });
+
   it('clear() removes the saved state', async () => {
     const store = createStateStore<S>(host(), { getKey: () => 'a' });
     await store.save({ width: 1 });
