@@ -23,6 +23,8 @@ import { __resetOverlays } from '../overlay/active-overlay.js';
 
 /** Let the mocked computePosition resolve (onPlaced runs in its `.then`). */
 const settle = () => new Promise((r) => setTimeout(r, 0));
+/** Past watchScrollClose's opening frames (jsdom: no rAF → its 50 ms fallback). */
+const settleOpen = () => new Promise((r) => setTimeout(r, 60));
 /** jsdom has no PointerEvent; the overlay router only reads composedPath(). */
 /** A full click: the press records, the click (after page handlers) decides. */
 const press = (target: EventTarget, onClick?: () => void) => {
@@ -239,11 +241,12 @@ describe('createPopover — fit additions', () => {
       el.getBoundingClientRect = () => ({ top, left: 0, right: 0, bottom: top, width: 0, height: 0, x: 0, y: top, toJSON() {} }) as DOMRect;
     };
 
-    it('a page scroll closes it; a scroll inside the panel does not', () => {
+    it('a page scroll closes it; a scroll inside the panel does not', async () => {
       const { reference, panel } = setup();
       const onClose = vi.fn();
       const pop = createPopover({ reference, panel, shouldCloseOnScroll: true, onClose });
       pop.open();
+      await settleOpen(); // the opening frames re-baseline instead of closing
       const list = document.createElement('div');
       panel.append(list);
       moveBy(reference, -40);
@@ -254,7 +257,7 @@ describe('createPopover — fit additions', () => {
       expect(onClose).toHaveBeenCalledWith('scroll');
     });
 
-    it('an unrelated scroller elsewhere does not close it; one around the reference does', () => {
+    it('an unrelated scroller elsewhere does not close it; one around the reference does', async () => {
       const wrapper = document.createElement('div');
       const reference = document.createElement('button');
       wrapper.append(reference);
@@ -262,6 +265,7 @@ describe('createPopover — fit additions', () => {
       document.body.append(wrapper, logPanel);
       const pop = createPopover({ reference, panel: document.createElement('div'), shouldCloseOnScroll: true });
       pop.open();
+      await settleOpen(); // the opening frames re-baseline instead of closing
       moveBy(reference, -40);
       logPanel.dispatchEvent(new Event('scroll'));
       expect(pop.isOpen).toBe(true);
@@ -269,7 +273,7 @@ describe('createPopover — fit additions', () => {
       expect(pop.isOpen).toBe(false);
     });
 
-    it('hears a scroller inside the shadow root around the reference', () => {
+    it('hears a scroller inside the shadow root around the reference', async () => {
       const host = document.createElement('div');
       document.body.append(host);
       const root = host.attachShadow({ mode: 'open' });
@@ -279,20 +283,37 @@ describe('createPopover — fit additions', () => {
       root.append(body);
       const pop = createPopover({ reference, panel: document.createElement('div'), shouldCloseOnScroll: true });
       pop.open();
+      await settleOpen(); // the opening frames re-baseline instead of closing
       moveBy(reference, -40);
       body.dispatchEvent(new Event('scroll')); // doesn't bubble, doesn't leave the shadow root
       expect(pop.isOpen).toBe(false);
     });
 
-    it('a late scroll event that did not move the reference does not close it', () => {
+    it('a late scroll event that did not move the reference does not close it', async () => {
       // A scroll-into-view (or a wheel scroll) that ended just before the click that opened the
       // popover delivers its event a frame later: the reference is where it was at open.
       const { reference, panel } = setup();
       const pop = createPopover({ reference, panel, shouldCloseOnScroll: true });
       pop.open();
+      await settleOpen(); // the opening frames re-baseline instead of closing
       document.dispatchEvent(new Event('scroll'));
       expect(pop.isOpen).toBe(true);
       moveBy(reference, 1);
+      document.dispatchEvent(new Event('scroll'));
+      expect(pop.isOpen).toBe(false);
+    });
+
+    it('a scroll the browser makes while opening (WebKit: focus opens, THEN scrolls the input into view) does not close it', async () => {
+      const { reference, panel } = setup();
+      const pop = createPopover({ reference, panel, shouldCloseOnScroll: true });
+      pop.open();
+      moveBy(reference, -2103); // WebKit's scroll-into-view of the focused input, a frame after open
+      document.dispatchEvent(new Event('scroll'));
+      expect(pop.isOpen).toBe(true);
+      await settleOpen();
+      document.dispatchEvent(new Event('scroll')); // the new place is the baseline
+      expect(pop.isOpen).toBe(true);
+      moveBy(reference, -40); // the user scrolls afterwards
       document.dispatchEvent(new Event('scroll'));
       expect(pop.isOpen).toBe(false);
     });

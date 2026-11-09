@@ -22,6 +22,8 @@ const ctx: Ctx = { name: 'node' };
 
 let host: HTMLElement;
 let shadow: ShadowRoot;
+/** Past watchScrollClose's opening frames (jsdom: no rAF → its 50 ms fallback). */
+const settleOpen = () => new Promise((r) => setTimeout(r, 60));
 let opener: HTMLButtonElement;
 
 beforeEach(() => {
@@ -407,11 +409,12 @@ describe('dismiss + cleanup', () => {
     expect(active()).not.toBe(opener);
   });
 
-  it('scroll: only a scroll that moves what the menu belongs to closes it (the popover rule); blur closes', () => {
+  it('scroll: only a scroll that moves what the menu belongs to closes it (the popover rule); blur closes', async () => {
     // A point menu belongs to its host. jsdom has no layout: fake the host's position.
     let top = 100;
     host.getBoundingClientRect = () => ({ top, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: top, toJSON() {} }) as DOMRect;
     const a = open(basic);
+    await settleOpen(); // the opening frames re-baseline instead of closing
     const unrelated = document.createElement('div'); // a log panel auto-scrolling elsewhere
     document.body.append(unrelated);
     top = 50;
@@ -431,7 +434,7 @@ describe('dismiss + cleanup', () => {
     expect(b.onClose).toHaveBeenCalledWith('blur');
   });
 
-  it('a scroll inside the host shadow root (not composed) is heard when it moves the anchor', () => {
+  it('a scroll inside the host shadow root (not composed) is heard when it moves the anchor', async () => {
     const scroller = document.createElement('div');
     shadow.append(scroller);
     const inner = document.createElement('button');
@@ -439,6 +442,7 @@ describe('dismiss + cleanup', () => {
     let top = 100;
     inner.getBoundingClientRect = () => ({ top, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: top, toJSON() {} }) as DOMRect;
     const { onClose } = open(basic, { at: inner });
+    await settleOpen(); // the opening frames re-baseline instead of closing
     top = 40;
     scroller.dispatchEvent(new Event('scroll'));
     expect(onClose).toHaveBeenCalledWith('scroll');

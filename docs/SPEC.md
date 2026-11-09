@@ -1090,6 +1090,8 @@ createPopover(opts: { reference: Reference | (() => Reference); panel; shouldKee
 // PopoverHandle: { isOpen, isAnchored, open(), close(), update(), reanchor(), setAnchored(bool), destroy() }
 // open (state + overlay tree + visibleClass), mounted (shouldKeepMounted) and anchored (setAnchored) are separate.
 // onClose fires for every close; reason adds 'scroll' | 'resize' | 'reference-removed' | 'api' to OverlayDismissReason.
+// Scroll close (shared watchScrollClose, also /menu): the first two frames after open only re-baseline
+// (WebKit scrolls a focused input into view AFTER the focus that opened the layer) — rc21.
 // 'reference-removed' (rc20): the reference was in the page when anchored and left it while open
 // (a virtualised row re-rendered) — the panel goes with it, like createTooltip(); seen at the next
 // position update (autoUpdate's observers fire on the removal).
