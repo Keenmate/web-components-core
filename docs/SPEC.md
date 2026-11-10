@@ -544,7 +544,10 @@ neither. Both follow native form-control semantics:
   form-associated value is not submitted;
 - **readonly** — the data can't be changed, but the component stays focusable and
   navigable (keyboard, scroll, expand / collapse, copy), the value shows normally and
-  a form-associated value IS submitted.
+  a form-associated value IS submitted. For a text surface (an editor, a code view) the
+  minimum is focusable + select (mouse and select-all) + copy; a caret that moves with the
+  arrow keys is optional, not required (decided 2026-11-10 — keeping a surface editable
+  and blocking every edit is fragile).
 Calls from code (`setSelected()`, `expandAll()`, …) still work under both. Apply
 disabled from `isEffectivelyDisabled` in `reinit()` and `disabledChanged()`; readonly
 is a plain `update` input. A form-associated element (`static formAssociated = true`) can also
