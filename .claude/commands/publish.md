@@ -100,15 +100,14 @@ If `WIP_VERSION` ≠ `NEW_VERSION` (e.g. the WIP is `X.Y.Z-rcN` but the user ask
   - Show the user the proposed draft as plain markdown in your reply. Ask whether to (a) insert as-is, (b) edit, or (c) abort so they can write it themselves.
   - Only proceed past step 1 once the user approves the draft (or supplies their own). On approval, insert the section directly above the current top `## What's New in vX.Y.Z` heading in `./README.md`, then continue.
   - Do not silently insert the draft without confirmation — release highlights are a writing call and the user owns the voice.
+- Confirm `./release-notes/NEW_VERSION.md` exists. Every npm publish ships one — rc and final alike. If it's missing, draft it and present it to the user for approval before continuing, exactly as for What's New:
+  - **Follow the canonical template** in the BlissFramework component guidelines (`web-components/release-notes.md` → "The template"); `release-notes.checks.sh` (C-RN-1 … C-RN-9) enforces the shape. Header (title, `**Released:**` status line, baseline paragraph, absolute CHANGELOG link) → Contents → Requirements → Upgrade checklist (`- [ ]` items grouped by audience, each linking its details) → Breaking changes → Behaviour changes → New features → New API → Visible changes without a migration → Fixes → Internal; drop empty optional sections.
+  - **Baseline:** the last version on npm (`npm view @keenmate/web-components-core versions`) — except for `release` (a final after rcs), whose notes are a **consolidated guide from the previous final**, written fresh, linking the rc notes. Fold in any version that never reached npm and say so.
+  - Draft from the CHANGELOG sections between the baseline and `NEW_VERSION`: every Removed / breaking Changed entry gets a Breaking-changes `###` **and** an Upgrade-checklist item.
+  - Show the draft, ask (a) insert as-is, (b) edit, or (c) abort; write the file only on approval.
 
 Repo-specific sanity checks:
 
-- **Release notes.** Confirm `./release-notes/NEW_VERSION.md` exists (no `v` in the file name). If it's missing, draft it and present it for approval the same way as the What's New draft. Read the newest file in `./release-notes/` (and `../web-multiselect/release-notes/`) first and keep their shape:
-  - `# Web Components Core NEW_VERSION — Release Notes`, then `**Released:** YYYY-MM-DD · **Pre-release** (`npm install @keenmate/web-components-core@rc`)` (a final release: `**Stable**`, no `@rc`).
-  - An intro paragraph: what the release is about and whether upgrading needs any action, then a link to the CHANGELOG section as the exhaustive list.
-  - `---`-separated sections with a numbered **Contents**, those that apply, in this order: Requirements (table) · Upgrade checklist (`- [ ]` items grouped by audience, each linking to its detail section) · Breaking changes (before → after tables) · New features · Visible changes without a migration · Fixes · Examples and docs.
-  - Cover everything since the previous **published** version, not just the last rc. Paraphrase from the CHANGELOG and verify against the source; don't invent behaviour.
-  - Open the new What's New section with a one-line lede linking it: `**[Release notes](release-notes/NEW_VERSION.md)** …`.
 - **Consumers.** Core is bundled by every component; each `### Changed — BREAKING` entry needs a matching upgrade-checklist item in the release notes.
 
 ### 2. Bump version (if needed) [canonical]
@@ -136,11 +135,15 @@ In `./README.md`:
 
 For `rc` arg this is normally a no-op on the heading itself — only trims if someone left an extra-old section behind.
 
+Each What's New section opens with its upgrade-guide line (`Upgrade guide: the [NEW_VERSION release notes](release-notes/NEW_VERSION.md); …`); add it if missing. When a section is trimmed, move its release-notes link to the front of the `Earlier releases:` line below the retained sections.
+
 ### 5. Validate README reflects the release [canonical]
 
 Read both the finalized CHANGELOG section and the matching `What's New in vNEW_VERSION` section. Every **Added** or **Changed** bullet in the CHANGELOG that represents a user-facing feature or behavior change should have a corresponding hit in the What's New section (paraphrased, not verbatim). Pure internal refactors and `Fixed`-only entries don't need coverage, though headline bug fixes worth advertising (e.g. "X used to silently fail; now works") are worth a bullet.
 
 If you find a significant CHANGELOG entry that isn't reflected in What's New, add a bullet for it. If the section ends up with more than ~8 bullets after this pass, condense — What's New should be scannable, not exhaustive.
+
+Then validate `./release-notes/NEW_VERSION.md` against the same CHANGELOG sections (C-RN-12): every breaking change has an Upgrade-checklist item, the Requirements table matches the `@keenmate/*` dependencies in `package.json` (C-RN-10), and `release-notes.checks.sh` passes. Fix the notes, or ask the user, before continuing.
 
 ### 6. Validate CHANGELOG entries match recent work [canonical]
 
@@ -187,6 +190,7 @@ Run `npm pack --dry-run` (or `make publish-dry`, which also cleans and builds fi
 
 - `dist/` (JS + `.d.ts` for every subpath above)
 - `component-variables.manifest.json`
+- `release-notes/` (the upgrade guide for every published version)
 - `docs/usage.md`, `docs/theming.md`, `docs/examples.md`, `docs/accessibility.md`, `docs/reactivity-and-batching.md`
 - `release-notes/NEW_VERSION.md`
 - `README.md`
@@ -236,8 +240,9 @@ Report back with:
     npm login          # if not already logged in
     npm publish
     ```
-    Or `make publish`. No `--tag` needed — it correctly lands as `latest`.
+    No `--tag` needed — it correctly lands as `latest`.
 - A reminder that the CHANGELOG `[PUBLISHED]` tag is now in place — if `npm publish` fails, the user should revert both the tag (CHANGELOG heading) and the version bump (`package.json`) before retrying, since the registry will refuse to re-publish the same version.
+- `make publish-rc` / `make publish` run the same `npm publish` after the release gates (`kmwc check-release`: the version fits the dist-tag and isn't on npm yet).
 
 ## Things not to do [canonical]
 
