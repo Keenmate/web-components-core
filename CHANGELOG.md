@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`createCustomStyles({ getOwner })` — a managed child takes its owner's custom CSS.** An element
+  a component mounts and owns (web-dropzone's bulk-mode satellites) names its owner; the owner's
+  page and instance layers — as the owner's own handle resolved them — land between the child's
+  own: child page → owner page → owner instance → child instance (slots `<cssClass>--owner-page`,
+  `<cssClass>--owner`). A page write for either tag or the owner's `refresh()` refreshes the child;
+  `@import` hoisting covers the added layers. No owner, a throwing `getOwner` (logged), an owner
+  destroyed or really removed from the page = no owner layers (today's behaviour). Additive option.
+  `src/dom/custom-styles.ts`, SPEC §12.8.
+
 ### Fixed
 
 - **`anchor()` / `createPopover()` / `/menu` `inheritThemeFrom` — no mixed theme on a portaled panel.**
@@ -22,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **SPEC §6.4 — readonly text surfaces:** focus + select + copy is the minimum; a moving caret is
   optional.
+- **SPEC §6.4 / §11.4 — store / satellite rules:** only a satellite that is itself a data-input
+  surface (dropzone's picker) gets `isDisabled` + `isReadonly`, the others follow the bound store;
+  satellite events are declared in the satellite's `static events` and sent through `emit()` (the
+  `on*` twin and the CEM entry come free), their `controller` is the bound store's; satellites take
+  the owner's custom CSS (§12.8). `docs/usage.md` shows the `getOwner` adoption.
 
 ## [1.0.0-rc21] - 2026-11-10
 

@@ -539,7 +539,10 @@ owns the property.
 which the user enters or changes data — a value or selection, files, text, cells, a
 tree's checks / edits / moves — whether or not it is form-associated (rule set
 2026-11-08). A component that only shows or launches things (a command palette) has
-neither. Both follow native form-control semantics:
+neither. On a store / satellite component (§11.4, decided 2026-11-10, Q26) only a
+satellite that is itself a data-input surface (web-dropzone's picker) gets the pair; the
+other satellites (summary, queue) have neither and follow the bound store's state. Both
+follow native form-control semantics:
 - **disabled** — no interaction at all, not focusable, styled as disabled, a
   form-associated value is not submitted;
 - **readonly** — the data can't be changed, but the component stays focusable and
@@ -863,7 +866,16 @@ consumer-facing attribute/event changes.
    explicit value falls back to the mode default, exactly like an absent
    attribute — consistent with every other converter.
 4. **Store/satellite pattern** — DEFERRED: stays dropzone-local until a second
-   component needs it (recommended).
+   component needs it (recommended). The topology stays local; these rules for it are
+   decided (2026-11-10):
+   - **Disabled / readonly (Q26):** only a satellite that is itself a data-input surface
+     (dropzone's picker) gets the `isDisabled` + `isReadonly` pair (§6.4); the other
+     satellites have neither and follow the bound store's state.
+   - **Events (Q25):** a satellite declares its events in its own `static events` and sends
+     them through `emit()` (§12.5), so the `on<Name>` twin and the CEM entry come free; the
+     event's `controller` is the bound store's.
+   - **Custom CSS (Q24):** a managed satellite takes its owner's custom-style layers through
+     `createCustomStyles({ getOwner })` (§12.8).
 5. **Derived / fallback defaults → stay in `reinit()`.** RESOLVED (by design):
    `InputDef.default` is a static literal on purpose. A value whose "when absent"
    is *computed from other inputs* (e.g. `searchValueMember` falling back to
@@ -1267,7 +1279,7 @@ free functions taking a root + CSS strings, NOT `BlissElement` methods.
   the mechanism; the `customStylesCallback` input row stays in each component's
   table (a `toFunction()` returning a CSS string).
 - **`createCustomStyles(host, root, { getContext, getInstanceStyles, cssClass?,
-  position?, onApply?, shouldHoistImports? })`** → `{ refresh, destroy }` — the whole custom-CSS story on
+  position?, onApply?, shouldHoistImports?, getOwner? })`** → `{ refresh, destroy }` — the whole custom-CSS story on
   top of two style slots: the **page layer** for the host's tag
   (`window.components[tag].getCustomStylesCallback(ctx)`, else
   `window.components[tag].customStyles`) and, after it, the **instance layer**
@@ -1306,6 +1318,23 @@ free functions taking a root + CSS strings, NOT `BlissElement` methods.
   else the component's own `createCustomStyles` option (default `true`). Assigning either
   re-syncs every live handle. CSP: the URL was already loaded by the shadow `@import` (same
   `style-src`); a conditional import's head `<style>` is inline like every custom-CSS slot.
+  **Managed children (`getOwner`, decided 2026-11-10, Q24):** an element a component mounts
+  and owns (web-dropzone's bulk-mode satellites — picker / summary / queue bound to one store)
+  also takes its OWNER's layers. The child's handle gets `getOwner: () => HTMLElement | null`
+  and two more slots (`<cssClass>--owner-page`, `<cssClass>--owner`); the order in the child's
+  root is **child page → owner page → owner instance → child instance** — the owner's layers
+  come after the child's own page layer, the child's own instance CSS stays the most specific.
+  The owner's CSS is the CSS the owner's OWN live handle last wrote (page state keeps host →
+  resolved layers, weakly), not re-resolved by the child: the owner's callbacks run once, with
+  the owner's context, and the child shows exactly what the owner shows. Live: a page write for
+  either tag, and the owner's `refresh()` (its instance CSS changed), refresh the child — also
+  when the owner's handle is created after the child's. `getOwner` is read on every refresh (a
+  re-bind calls the child's `refresh()`); `null`, a throw (logged, THEME), the host itself, an
+  owner without a live handle (none yet / `destroy()`ed) or an owner really removed from the
+  page (the removal watch above) = no owner layers, i.e. today's behaviour. `@import` hoisting
+  counts the owner layers like the child's own (under the child's hoisting setting). `onApply`
+  sees only the child's own layers (the owner's `onApply` saw its CSS). Only the direct owner's
+  own two layers — not the owner's owner.
 
 The `?inline` import (Vite build concern) and the `@layer variables, component,
 overrides` order (CSS guidelines, invariants #6–#9) stay authoring rules — the

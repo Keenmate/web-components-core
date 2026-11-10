@@ -20,6 +20,11 @@
  * once in the document `<head>` (`shouldHoistImports`, default on; shadow roots only),
  * shared by every instance and removed when the last one stops using it. The imported
  * sheet's rules then also reach the page.
+ *
+ * Managed children (`getOwner`): an element a component mounts and owns (web-dropzone's
+ * bulk-mode satellites) also takes its OWNER's two layers, between its own:
+ * child page → owner page → owner instance → child instance. The owner's CSS is read from
+ * the owner's own live handle (what the owner itself shows), not re-resolved here.
  */
 import { coreLog } from '../logging/element-logger.js';
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
@@ -56,6 +61,18 @@ export interface CustomStylesOptions<Ctx = any> {
    * else `window.components.shouldHoistImports` (a page that loads its fonts itself sets `false`).
    */
   shouldHoistImports?: boolean;
+  /**
+   * A managed child: the element that mounts and owns this one (a store component for its
+   * satellites). The owner's page and instance layers — as the owner's own handle resolved
+   * them — are written between this element's page and instance layers: child page → owner
+   * page → owner instance → child instance. Read on every refresh; `null`, a throw (logged),
+   * the host itself, an owner without a live `createCustomStyles` handle (none yet /
+   * destroyed) or an owner removed from the page = no owner layers. A page write for the
+   * owner's tag and the owner's `refresh()` refresh this handle too (also when the owner's
+   * handle is created after this one). Call `refresh()` when the binding itself changes.
+   * `onApply` doesn't see the owner layers (the owner's own `onApply` did).
+   */
+  getOwner?: () => HTMLElement | null | undefined;
 }
 
 /** The handle a component keeps (see {@link createCustomStyles}). */
@@ -81,6 +98,18 @@ interface PageStylesState {
   warnedTags?: Set<string>;
   /** Page-wide `window.components.shouldHoistImports`; `undefined` = not set. */
   shouldHoistImports?: boolean;
+  /** Per host: the layers its live handle last wrote — what a managed child of it reads. */
+  layers?: WeakMap<Element, OwnerLayers>;
+  /** Per owner host: its managed children's handles (registered even before the owner has a handle). */
+  dependents?: WeakMap<Element, Set<WeakRef<CustomStylesHandle>>>;
+}
+
+/** An owner's resolved layers, as its own handle wrote them. */
+interface OwnerLayers {
+  page: string | null;
+  instance: string | null;
+  /** Really removed from the page (core's removal check) — its children drop its layers. */
+  isRemoved: boolean;
 }
 
 function state(): PageStylesState {
@@ -225,7 +254,16 @@ function checkLiveInstances(tag: string): void {
 
 /** Re-run every live handle of `tag` (its page layer changed). */
 function notifyTag(tag: string): void {
-  const refs = state().listeners.get(tag);
+  refreshAll(state().listeners.get(tag));
+}
+
+/** The managed children of `owner` re-read its layers. */
+function notifyDependents(owner: Element): void {
+  refreshAll(state().dependents?.get(owner));
+}
+
+/** Re-run the live handles in `refs`, pruning collected ones. */
+function refreshAll(refs: Set<WeakRef<CustomStylesHandle>> | undefined): void {
   if (!refs) return;
   for (const ref of [...refs]) {
     const handle = ref.deref();
@@ -322,7 +360,8 @@ function isHoistOn(tag: string, componentDefault: boolean): boolean {
  * (`window.components[tag].getCustomStylesCallback` / `.customStyles`) and the
  * instance layer from `getInstanceStyles()`, each in its own `<style>` slot in
  * `root`, page first. Writes both now; follows page changes until `destroy()`.
- * A throwing callback is logged and leaves that layer empty.
+ * A throwing callback is logged and leaves that layer empty. With `getOwner` (a managed
+ * child) the owner's two layers sit between them — see {@link CustomStylesOptions.getOwner}.
  */
 export function createCustomStyles<Ctx = any>(
   host: HTMLElement,
@@ -334,6 +373,15 @@ export function createCustomStyles<Ctx = any>(
   const position = opts.position ?? 'last';
   let page: StyleSlot | null = createStyleSlot(root, { position, cssClass: `${cssClass}--page` });
   let instance: StyleSlot | null = createStyleSlot(root, { position, cssClass });
+  /** The owner's layers (managed child only), between the page and the instance slot. */
+  let ownerPage: StyleSlot | null = opts.getOwner ? createStyleSlot(root, { position, cssClass: `${cssClass}--owner-page` }) : null;
+  let ownerInstance: StyleSlot | null = opts.getOwner ? createStyleSlot(root, { position, cssClass: `${cssClass}--owner` }) : null;
+  /** The owner this handle follows (registered as its dependent). */
+  let boundOwner: Element | null = null;
+  /** Re-entry guard: an owner ↔ child cycle must not recurse. */
+  let isRefreshing = false;
+  /** What this handle exposes to its own managed children. */
+  const exposed: OwnerLayers = { page: null, instance: null, isRemoved: false };
   publishHoistSetting();
   const doc = typeof ShadowRoot !== 'undefined' && root instanceof ShadowRoot ? root.ownerDocument : null;
   /** Removed from the page (core's removal check): hold no imports until it returns. */
@@ -364,37 +412,85 @@ export function createCustomStyles<Ctx = any>(
     return source.css || null;
   };
 
-  /** The page `<style>` must precede the instance one, whichever was inserted first. */
+  /** The slots in cascade order (page → owner page → owner instance → instance), whichever was inserted first. */
   const order = (): void => {
-    const pageEl = page?.element;
-    const instanceEl = instance?.element;
-    if (pageEl && instanceEl && pageEl.compareDocumentPosition(instanceEl) & Node.DOCUMENT_POSITION_PRECEDING) {
-      instanceEl.before(pageEl);
+    const els = [page, ownerPage, ownerInstance, instance].map((slot) => slot?.element).filter((el): el is HTMLStyleElement => !!el);
+    // back to front: each element is moved before its successor when it sits after it
+    for (let i = els.length - 2; i >= 0; i--) {
+      const el = els[i]!;
+      const next = els[i + 1]!;
+      if (el.compareDocumentPosition(next) & Node.DOCUMENT_POSITION_PRECEDING) next.before(el);
     }
+  };
+
+  /** Follow `owner`'s refreshes (and stop following the previous one). */
+  const bindOwner = (owner: Element | null): void => {
+    if (owner === boundOwner) return;
+    if (boundOwner) state().dependents?.get(boundOwner)?.delete(ref);
+    boundOwner = owner;
+    if (!owner) return;
+    const dependents = (state().dependents ??= new WeakMap());
+    let set = dependents.get(owner);
+    if (!set) dependents.set(owner, (set = new Set()));
+    set.add(ref);
+  };
+
+  /** The owner's current layers (following the owner), or none. */
+  const readOwner = (): { page: string | null; instance: string | null } => {
+    if (!opts.getOwner) return { page: null, instance: null };
+    let owner: HTMLElement | null | undefined = null;
+    try {
+      owner = opts.getOwner();
+    } catch (error) {
+      coreLog(host, 'UI', 'THEME').warn('getOwner threw; no owner custom styles applied', error);
+    }
+    if (!owner || typeof owner !== 'object' || owner === host) owner = null;
+    bindOwner(owner);
+    const layers = owner ? state().layers?.get(owner) : undefined;
+    if (!layers || layers.isRemoved) return { page: null, instance: null };
+    return { page: layers.page, instance: layers.instance };
   };
 
   const handle: CustomStylesHandle = {
     refresh() {
-      if (!page || !instance) return;
-      const pageCss = resolve(readTagStyles(tag), 'page');
-      const instanceCss = resolve(opts.getInstanceStyles(), 'instance');
-      page.set(pageCss);
-      instance.set(instanceCss);
-      order();
-      syncImports([pageCss, instanceCss]);
-      if (pageCss) opts.onApply?.(pageCss, 'page');
-      if (instanceCss) opts.onApply?.(instanceCss, 'instance');
+      if (!page || !instance || isRefreshing) return;
+      isRefreshing = true;
+      try {
+        const pageCss = resolve(readTagStyles(tag), 'page');
+        const instanceCss = resolve(opts.getInstanceStyles(), 'instance');
+        const owner = readOwner();
+        page.set(pageCss);
+        ownerPage?.set(owner.page);
+        ownerInstance?.set(owner.instance);
+        instance.set(instanceCss);
+        order();
+        syncImports([pageCss, owner.page, owner.instance, instanceCss]);
+        exposed.page = pageCss;
+        exposed.instance = instanceCss;
+        exposed.isRemoved = isRemoved;
+        if (pageCss) opts.onApply?.(pageCss, 'page');
+        if (instanceCss) opts.onApply?.(instanceCss, 'instance');
+        notifyDependents(host); // inside the guard: a child that (wrongly) owns its owner can't loop
+      } finally {
+        isRefreshing = false;
+      }
     },
     destroy() {
+      if (!page) return;
       unwatch();
       syncImports([]);
-      page?.destroy();
-      instance?.destroy();
-      page = instance = null;
+      for (const slot of [page, ownerPage, ownerInstance, instance]) slot?.destroy();
+      page = instance = ownerPage = ownerInstance = null;
       state().listeners.get(tag)?.delete(ref);
+      bindOwner(null);
+      if (state().layers?.get(host) === exposed) {
+        state().layers!.delete(host);
+        notifyDependents(host);
+      }
     },
   };
   (state().hosts ??= new WeakSet()).add(host);
+  (state().layers ??= new WeakMap()).set(host, exposed);
   const unwatch = watchRemoval(host, {
     onRemoved() {
       isRemoved = true;

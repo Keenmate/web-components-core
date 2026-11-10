@@ -12,7 +12,7 @@ rules (`@layer` order, `?inline`) stay CSS-guideline, not code — but the compo
 own CSS MUST be in `@layer component`, or custom CSS (a `<style>`) loses to it (adopted
 sheets cascade after every `<style>`).
 
-`createCustomStyles(host, root, { getContext, getInstanceStyles, cssClass?, position?,
+`createCustomStyles(host, root, { getContext, getInstanceStyles, cssClass?, position?, getOwner?,
 onApply? })` (`src/dom/custom-styles.ts`) → `{ refresh, destroy }`: two slots, page layer
 (`window.components[tag].getCustomStylesCallback` > `.customStyles`, accessors installed by
 `registerComponent()`) before the instance layer (callback > CSS). Page writes refresh every
@@ -25,6 +25,13 @@ a conditional one (`layer()` / `supports()` / media) is a head `<style>` with th
 Released on real removal too (`watchRemoval`, `src/element/removal-watch.ts`, driven by
 BlissElement's removal check). Page decides: `window.components[tag].shouldHoistImports` >
 `window.components.shouldHoistImports` (non-enumerable) > the component option.
+Managed child (`getOwner?: () => HTMLElement | null`, SPEC §12.8, Q24): two more slots
+(`--owner-page`, `--owner`); order child page → owner page → owner instance → child instance.
+The owner's CSS = what the owner's own live handle last wrote (shared state `layers`: host →
+resolved layers; `dependents`: owner host → child handles, WeakRefs, registered even before the
+owner has a handle). Owner `refresh()` / page write for either tag → child refreshes; owner
+destroyed / really removed / `getOwner` null or throwing / self → no owner layers. Refresh is
+re-entry-guarded (an owner ↔ child cycle can't loop). `onApply` gets only the child's own layers.
 
 ## Persisted UI state (`src/dom/state-store.ts`, SPEC §12.17 — implemented)
 

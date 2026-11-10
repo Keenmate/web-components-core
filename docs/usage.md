@@ -482,6 +482,21 @@ window.components.shouldHoistImports = false;                  // every componen
 window.components['web-treeview'].shouldHoistImports = true;    // one component type (wins)
 ```
 
+A **managed child** — an element a component mounts and owns (web-dropzone's satellites bound to
+one store) — also takes its owner's custom CSS. Its handle names the owner; the owner's layers land
+between the child's own (child page → owner page → owner instance → child instance) and follow the
+owner's `refresh()` and page writes for either tag:
+
+```ts
+this.#customStyles = createCustomStyles(this, this.shadowRoot!, {
+  cssClass: 'dz-custom-styles',
+  getContext: () => this.withContext({}),
+  getInstanceStyles: () => ({ css: this.config.customStyles, callback: this.config.getCustomStylesCallback }),
+  getOwner: () => this.#store?.host ?? null,   // read per refresh; null = no owner layers
+});
+// re-bound to another store → this.#customStyles.refresh()
+```
+
 ## Persisted UI state
 
 What the user arranged — a popover's size, column widths / order — survives a reload the same way in

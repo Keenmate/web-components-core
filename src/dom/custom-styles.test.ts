@@ -171,6 +171,161 @@ describe('createCustomStyles', () => {
     expect(styles(root)).toEqual([]);
   });
 
+  describe('managed child (getOwner): the owner layers sit between the child own layers', () => {
+    const plain = (instance: string | null) => ({ getContext: () => ({}), getInstanceStyles: () => ({ css: instance }) });
+
+    it('order: child page → owner page → owner instance → child instance', () => {
+      const ownerTag = registeredTag({ customStyles: '.owner-page {}' });
+      const childTag = registeredTag({ customStyles: '.child-page {}' });
+      const owner = host(ownerTag);
+      const child = host(childTag);
+      createCustomStyles(owner.el, owner.root, { cssClass: 'o', ...plain('.owner-inst {}') });
+      createCustomStyles(child.el, child.root, { cssClass: 'c', ...plain('.child-inst {}'), getOwner: () => owner.el });
+      expect(styles(child.root)).toEqual(['c--page: .child-page {}', 'c--owner-page: .owner-page {}', 'c--owner: .owner-inst {}', 'c: .child-inst {}']);
+      expect(styles(owner.root)).toEqual(['o--page: .owner-page {}', 'o: .owner-inst {}']); // the owner is unchanged
+    });
+
+    it("position 'first' keeps the four slots in order at the top", () => {
+      const ownerTag = registeredTag({ customStyles: '.op {}' });
+      const childTag = registeredTag({ customStyles: '.cp {}' });
+      const owner = host(ownerTag);
+      const child = host(childTag);
+      child.root.append(document.createElement('div'));
+      createCustomStyles(owner.el, owner.root, { cssClass: 'o', ...plain('.oi {}') });
+      createCustomStyles(child.el, child.root, { cssClass: 'c', position: 'first', ...plain('.ci {}'), getOwner: () => owner.el });
+      expect([...child.root.children].map((n) => n.className || n.localName)).toEqual(['c--page', 'c--owner-page', 'c--owner', 'c', 'div']);
+    });
+
+    it('live: a page write for either tag, the owner refresh(), and an owner handle created after the child', () => {
+      const ownerTag = registeredTag();
+      const childTag = registeredTag();
+      const owner = host(ownerTag);
+      const child = host(childTag);
+      createCustomStyles(child.el, child.root, { cssClass: 'c', ...plain(null), getOwner: () => owner.el });
+      expect(styles(child.root)).toEqual([]);
+
+      let ownerCss = '.oi-1 {}';
+      const ownerHandle = createCustomStyles(owner.el, owner.root, { cssClass: 'o', getContext: () => ({}), getInstanceStyles: () => ({ css: ownerCss }) });
+      expect(styles(child.root)).toEqual(['c--owner: .oi-1 {}']);
+
+      ownerCss = '.oi-2 {}';
+      ownerHandle.refresh();
+      expect(styles(child.root)).toEqual(['c--owner: .oi-2 {}']);
+
+      window.components![ownerTag]!.customStyles = '.op {}';
+      expect(styles(child.root)).toEqual(['c--owner-page: .op {}', 'c--owner: .oi-2 {}']);
+
+      window.components![childTag]!.customStyles = '.cp {}';
+      expect(styles(child.root)).toEqual(['c--page: .cp {}', 'c--owner-page: .op {}', 'c--owner: .oi-2 {}']);
+    });
+
+    it("the owner page callback runs with the owner's context (the child shows what the owner shows)", () => {
+      const ownerTag = registeredTag();
+      const childTag = registeredTag();
+      const owner = host(ownerTag);
+      const child = host(childTag);
+      window.components![ownerTag]!.getCustomStylesCallback = (ctx: { who: string }) => `.by-${ctx.who} {}`;
+      createCustomStyles(owner.el, owner.root, { cssClass: 'o', getContext: () => ({ who: 'owner' }), getInstanceStyles: () => ({}) });
+      createCustomStyles(child.el, child.root, { cssClass: 'c', getContext: () => ({ who: 'child' }), getInstanceStyles: () => ({}), getOwner: () => owner.el });
+      expect(styles(child.root)).toEqual(['c--owner-page: .by-owner {}']);
+    });
+
+    it('no owner / the owner unbound / destroyed / removed from the page = no owner layers', async () => {
+      const ownerTag = `cs-owner-${seq++}`;
+      class Owner extends BlissElement {}
+      registerComponent(ownerTag, Owner, { config: { name: 'x', version: '0.0.0' } });
+      const childTag = registeredTag();
+      const ownerEl = document.createElement(ownerTag) as Owner;
+      document.body.append(ownerEl);
+      const ownerRoot = ownerEl.attachShadow({ mode: 'open' });
+      const child = host(childTag);
+      let bound: HTMLElement | null = null;
+      const childHandle = createCustomStyles(child.el, child.root, { cssClass: 'c', ...plain('.ci {}'), getOwner: () => bound });
+      const ownerHandle = createCustomStyles(ownerEl, ownerRoot, { cssClass: 'o', ...plain('.oi {}') });
+      expect(styles(child.root)).toEqual(['c: .ci {}']); // no owner
+
+      bound = ownerEl;
+      childHandle.refresh();
+      expect(styles(child.root)).toEqual(['c--owner: .oi {}', 'c: .ci {}']);
+
+      // really removed from the page → dropped; re-attached → back
+      ownerEl.remove();
+      await new Promise((r) => setTimeout(r, 30));
+      expect(styles(child.root)).toEqual(['c: .ci {}']);
+      document.body.append(ownerEl);
+      expect(styles(child.root)).toEqual(['c--owner: .oi {}', 'c: .ci {}']);
+
+      // destroyed → dropped
+      ownerHandle.destroy();
+      expect(styles(child.root)).toEqual(['c: .ci {}']);
+
+      // unbound → dropped
+      const again = createCustomStyles(ownerEl, ownerRoot, { cssClass: 'o', ...plain('.oi2 {}') });
+      expect(styles(child.root)).toEqual(['c--owner: .oi2 {}', 'c: .ci {}']);
+      bound = null;
+      childHandle.refresh();
+      expect(styles(child.root)).toEqual(['c: .ci {}']);
+      again.refresh(); // no longer followed
+      expect(styles(child.root)).toEqual(['c: .ci {}']);
+    });
+
+    it('a throwing getOwner is logged and applies no owner layers; the host itself is not its own owner', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const ownerTag = registeredTag({ customStyles: '.op {}' });
+      const owner = host(ownerTag);
+      createCustomStyles(owner.el, owner.root, { cssClass: 'o', ...plain(null) });
+      const child = host(registeredTag());
+      createCustomStyles(child.el, child.root, {
+        cssClass: 'c',
+        ...plain('.ci {}'),
+        getOwner: () => {
+          throw new Error('boom');
+        },
+      });
+      expect(styles(child.root)).toEqual(['c: .ci {}']);
+      expect(warn.mock.calls.some((c) => c.join(' ').includes('getOwner threw'))).toBe(true);
+
+      const self = host(registeredTag());
+      createCustomStyles(self.el, self.root, { cssClass: 's', ...plain('.si {}'), getOwner: () => self.el });
+      expect(styles(self.root)).toEqual(['s: .si {}']);
+      warn.mockRestore();
+    });
+
+    it('an owner ↔ child cycle does not loop', () => {
+      const a = host(registeredTag());
+      const b = host(registeredTag());
+      const ha = createCustomStyles(a.el, a.root, { cssClass: 'a', ...plain('.a {}'), getOwner: () => b.el });
+      createCustomStyles(b.el, b.root, { cssClass: 'b', ...plain('.b {}'), getOwner: () => a.el });
+      ha.refresh();
+      expect(styles(b.root)).toEqual(['b--owner: .a {}', 'b: .b {}']);
+      expect(styles(a.root)).toEqual(['a--owner: .b {}', 'a: .a {}']);
+    });
+
+    it('@import hoisting covers the owner layers; destroying the child releases them', () => {
+      const hoisted = () => [...document.head.querySelectorAll<HTMLLinkElement>('link[data-km-custom-styles]')].map((l) => l.getAttribute('href'));
+      const abs = (path: string) => new URL(path, document.baseURI).href;
+      const ownerTag = registeredTag({ customStyles: '@import url(/fonts/own-page.css);' });
+      const owner = host(ownerTag);
+      const ownerHandle = createCustomStyles(owner.el, owner.root, { ...plain('@import url(/fonts/own-inst.css);'), shouldHoistImports: false });
+      expect(hoisted()).toEqual([]); // the owner opted out itself
+      const child = host(registeredTag());
+      const childHandle = createCustomStyles(child.el, child.root, { ...plain(null), getOwner: () => owner.el });
+      expect(hoisted()).toEqual([abs('/fonts/own-page.css'), abs('/fonts/own-inst.css')]);
+      childHandle.destroy();
+      expect(hoisted()).toEqual([]);
+      ownerHandle.destroy();
+    });
+
+    it('onApply sees only the child own layers', () => {
+      const owner = host(registeredTag({ customStyles: '.op {}' }));
+      createCustomStyles(owner.el, owner.root, plain('.oi {}'));
+      const child = host(registeredTag());
+      const applied: string[] = [];
+      createCustomStyles(child.el, child.root, { ...plain('.ci {}'), getOwner: () => owner.el, onApply: (css, layer) => applied.push(`${layer}: ${css}`) });
+      expect(applied).toEqual(['instance: .ci {}']);
+    });
+  });
+
   describe('@import links in the document head (fonts)', () => {
     const hoisted = () => [...document.head.querySelectorAll<HTMLLinkElement>('link[data-km-custom-styles]')].map((l) => l.getAttribute('href'));
     const hoistedStyles = () => [...document.head.querySelectorAll('style[data-km-custom-styles]')].map((s) => s.textContent);
