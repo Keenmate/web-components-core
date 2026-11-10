@@ -125,7 +125,7 @@ window.components['core-demo-pg-early'].register();  // customElements.define no
                     <div class="log-panel" id="pg02-log"></div>
                 </div>
             </div>
-            <div class="code-block"><pre>const pgLogging = createLoggers('PGDEMO');          // INIT / DATA / UI, each at 'warn'
+            <div class="code-block" data-kmwc-snippet><pre>const pgLogging = createLoggers('PGDEMO');          // INIT / DATA / UI, each at 'warn'
 class CoreDemoPg extends BlissElement {
   logSample() {
     this.log.INIT.debug('debug line (INIT)');       // [PGDEMO:INIT] #demo-pg-a debug line (INIT)
@@ -359,12 +359,11 @@ window.components['core-demo-pg'].customStyles = null;                    // cle
     <script type="module" src="examples-page-card.ts"></script>
 
     <script type="module">
-        import { getRegisteredTags, getInstances, coreLogging, LOG_LEVELS } from '/src/index.ts';
+        import { getRegisteredTags, getInstances, coreLogging, escapeHtml, LOG_LEVELS } from '/src/index.ts';
         import { pgLogging } from '/examples-page-card.ts';
         await customElements.whenDefined('core-demo-pg');
 
         const $ = (id) => document.getElementById(id);
-        const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
         /** One log line; `tone` is a kit log-line tone (ok / info / warn / err / muted / action). */
         const log = (panel, text, tone = '') => {
             const line = document.createElement('div');
@@ -409,12 +408,12 @@ window.components['core-demo-pg'].customStyles = null;                    // cle
             const earlyEntry = reg['core-demo-pg-early'];
             const ids = (list) => '[' + list.map((e) => '#' + e.id).join(', ') + ']';
             $('pg01-readout').innerHTML = [
-                `<b>Object.keys(window.components)</b> ${esc(JSON.stringify(Object.keys(reg)))}`,
+                `<b>Object.keys(window.components)</b> ${escapeHtml(JSON.stringify(Object.keys(reg)))}`,
                 `<b>'logging' in</b> ${'logging' in reg} · <b>'renderLoadingCallback' in</b> ${'renderLoadingCallback' in reg}  (non-enumerable)`,
-                `<b>getRegisteredTags()</b> ${esc(JSON.stringify(getRegisteredTags()))}`,
-                `<b>['core-demo-pg'].version()</b> ${esc(entry.version())} · <b>config.name</b> ${esc(entry.config.name)} · <b>logging</b> ${entry.logging ? 'controls' : 'none'}`,
+                `<b>getRegisteredTags()</b> ${escapeHtml(JSON.stringify(getRegisteredTags()))}`,
+                `<b>['core-demo-pg'].version()</b> ${escapeHtml(entry.version())} · <b>config.name</b> ${escapeHtml(entry.config.name)} · <b>logging</b> ${entry.logging ? 'controls' : 'none'}`,
                 `<b>['core-demo-pg'].getInstances()</b> ${ids(entry.getInstances())}`,
-                `<b>early entry adopted</b> ${earlyEntry === window.__pgEarlyEntry} · <b>.note</b> ${esc(JSON.stringify(earlyEntry.note))} · <b>logging</b> ${earlyEntry.logging ? 'controls' : 'none'}`,
+                `<b>early entry adopted</b> ${earlyEntry === window.__pgEarlyEntry} · <b>.note</b> ${escapeHtml(JSON.stringify(earlyEntry.note))} · <b>logging</b> ${earlyEntry.logging ? 'controls' : 'none'}`,
                 `<b>customElements.get('core-demo-pg-early')</b> ${customElements.get('core-demo-pg-early') ? 'defined' : 'undefined'} · <b>getInstances('core-demo-pg-early')</b> ${ids(getInstances('core-demo-pg-early'))}`,
             ].join('\n');
         }
@@ -452,7 +451,7 @@ window.components['core-demo-pg'].customStyles = null;                    // cle
                 `<b>PGDEMO</b> ${pg}`,
                 `<b>CORE</b>   ${core}`,
                 `<b>A.isLoggingEnabled</b> ${elA.isLoggingEnabled} · <b>B.isLoggingEnabled</b> ${elB.isLoggingEnabled}`,
-                `<b>logging.getCategories()</b> ${esc(JSON.stringify(reg.logging.getCategories()))}`,
+                `<b>logging.getCategories()</b> ${escapeHtml(JSON.stringify(reg.logging.getCategories()))}`,
             ].join('\n');
         }
         const act2 = (id, text, fn) => $(id).addEventListener('click', () => {
@@ -533,8 +532,8 @@ window.components['core-demo-pg'].customStyles = null;                    // cle
         function render3() {
             const line = (el) => {
                 const s = el.statusElement;
-                return `#${el.id.padEnd(15)} <b>isLoading</b> ${el.isLoading} · <b>drawn by</b> ${esc(drawnBy(el))} · `
-                    + `<b>role</b> ${esc(JSON.stringify(s?.getAttribute('role')))} · <b>aria-label</b> ${esc(JSON.stringify(s?.getAttribute('aria-label')))} · <b>children</b> ${s?.childNodes.length}`;
+                return `#${el.id.padEnd(15)} <b>isLoading</b> ${el.isLoading} · <b>drawn by</b> ${escapeHtml(drawnBy(el))} · `
+                    + `<b>role</b> ${escapeHtml(JSON.stringify(s?.getAttribute('role')))} · <b>aria-label</b> ${escapeHtml(JSON.stringify(s?.getAttribute('aria-label')))} · <b>children</b> ${s?.childNodes.length}`;
             };
             $('pg03-readout').innerHTML = [
                 line(loadA), line(loadB),
@@ -578,11 +577,11 @@ window.components['core-demo-pg'].customStyles = null;                    // cle
         const styleLine = (el, name) => {
             const root = el.shadowRoot;
             const card = root?.querySelector('.pg');
-            if (!card) return `<b>${esc(name)}</b> (not upgraded)`;
+            if (!card) return `<b>${escapeHtml(name)}</b> (not upgraded)`;
             const cs = getComputedStyle(card);
             const slots = [...root.querySelectorAll('style')].map((st) => `${st.className}: ${st.textContent.trim()}`);
-            return `<b>${esc(name)}</b> border ${esc(`${cs.borderTopStyle} ${cs.borderTopWidth} ${cs.borderTopColor}`)} · background ${esc(cs.backgroundColor)}`
-                + `\n   style slots: ${esc(slots.length ? slots.join(' | ') : '(none)')}`;
+            return `<b>${escapeHtml(name)}</b> border ${escapeHtml(`${cs.borderTopStyle} ${cs.borderTopWidth} ${cs.borderTopColor}`)} · background ${escapeHtml(cs.backgroundColor)}`
+                + `\n   style slots: ${escapeHtml(slots.length ? slots.join(' | ') : '(none)')}`;
         };
         async function render4() {
             await Promise.all([elC.whenSettled(), elD.whenSettled()]);
@@ -614,9 +613,9 @@ window.components['core-demo-pg'].customStyles = null;                    // cle
             const page = pgEntry.customStyles;
             const cb = pgEntry.getCustomStylesCallback;
             $('pg05-readout').innerHTML = [
-                `<b>window.components['core-demo-pg'].customStyles</b> ${esc(JSON.stringify(page ?? null))}`,
+                `<b>window.components['core-demo-pg'].customStyles</b> ${escapeHtml(JSON.stringify(page ?? null))}`,
                 `<b>… .getCustomStylesCallback</b> ${cb ? 'set' : 'null'}`,
-                `<b>window.components['core-demo-pg-late'].customStyles</b> ${esc(JSON.stringify(reg['core-demo-pg-late'].customStyles ?? null))}`,
+                `<b>window.components['core-demo-pg-late'].customStyles</b> ${escapeHtml(JSON.stringify(reg['core-demo-pg-late'].customStyles ?? null))}`,
                 ...cards.map((el) => styleLine(el, `#${el.id}${el.tone ? ` (tone: ${el.tone})` : ''}`)),
             ].join('\n');
         }

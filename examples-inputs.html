@@ -392,11 +392,12 @@ el.items;                           // getter: the component's live rows (user-a
     <script type="module" src="examples-whensettled-anim.ts"></script>
 
     <script type="module">
+        import { escapeHtml } from '/src/index.ts';
+
         await customElements.whenDefined('core-demo-presets');
 
         // ── shared helpers ───────────────────────────────────────────────────
         const $ = (id) => document.getElementById(id);
-        const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
         const fmt = (v) => {
             if (typeof v === 'function') return 'ƒ (callback)';
             if (v === undefined) return 'undefined';
@@ -455,7 +456,7 @@ el.items;                           // getter: the component's live rows (user-a
             const tr = document.createElement('tr');
             tr.dataset.key = def.key;
             let control;
-            if (def.control === 'text') control = `<input type="text" class="in-value w-md" value="${esc(def.value)}">`;
+            if (def.control === 'text') control = `<input type="text" class="in-value w-md" value="${escapeHtml(def.value)}">`;
             else if (def.control === 'select') control = `<select class="in-value w-md">${def.options.map((o) => `<option>${o}</option>`).join('')}</select>`;
             else control = '';
             const buttons = def.control === 'callback'
@@ -463,7 +464,7 @@ el.items;                           // getter: the component's live rows (user-a
                 : `<button data-act="attr">setAttribute</button> <button data-act="prop">el.${def.key} =</button> <button data-act="remove">removeAttribute</button>`;
             tr.innerHTML = `<td><code>${def.key}</code>${def.note ? ` <small>(${def.note})</small>` : ''}</td>
                 <td>${def.attr ? `<code>${def.attr}</code>` : '<em>property-only</em>'}</td>
-                <td><code>${esc(def.conv)}</code></td>
+                <td><code>${escapeHtml(def.conv)}</code></td>
                 <td>${control} ${buttons}</td>
                 <td class="prop"></td><td class="attr"></td>`;
             rows1.appendChild(tr);
@@ -473,8 +474,8 @@ el.items;                           // getter: the component's live rows (user-a
                 const def = INPUTS.find((d) => d.key === tr.dataset.key);
                 const p = tr.querySelector('.prop');
                 const a = tr.querySelector('.attr');
-                p.innerHTML = `<code>${esc(fmt(el1[def.key]))}</code>`;
-                a.innerHTML = def.attr ? `<code>${esc(fmtAttr(el1.getAttribute(def.attr)))}</code>` : '—';
+                p.innerHTML = `<code>${escapeHtml(fmt(el1[def.key]))}</code>`;
+                a.innerHTML = def.attr ? `<code>${escapeHtml(fmtAttr(el1.getAttribute(def.attr)))}</code>` : '—';
                 tr.classList.toggle('is-highlight', def.key === changedKey);
             }
         };
@@ -499,8 +500,8 @@ el.items;                           // getter: the component's live rows (user-a
             }
             await el1.whenSettled();
             render1(def.key);
-            log(log1, `<code>${esc(op)}</code> → el.${def.key} = <strong>${esc(fmt(el1[def.key]))}</strong>`
-                + (def.attr ? ` · attribute ${esc(fmtAttr(el1.getAttribute(def.attr)))}` : ''));
+            log(log1, `<code>${escapeHtml(op)}</code> → el.${def.key} = <strong>${escapeHtml(fmt(el1[def.key]))}</strong>`
+                + (def.attr ? ` · attribute ${escapeHtml(fmtAttr(el1.getAttribute(def.attr)))}` : ''));
         });
         await el1.whenSettled();
         render1();
@@ -540,12 +541,12 @@ el.items;                           // getter: the component's live rows (user-a
             lastReturn2 = null;
             const warnings = captureWarnings(op.run);
             await el2.whenSettled();
-            log(log2, `› <code>${esc(op.code)}</code>`, 'action');
-            for (const w of warnings) log(log2, `  ⚠ ${esc(w)}`, 'warn');
-            for (const r of rejected2) log(log2, `  ◆ input-rejected ${esc(fmtRejection(r))}`, 'info');
+            log(log2, `› <code>${escapeHtml(op.code)}</code>`, 'action');
+            for (const w of warnings) log(log2, `  ⚠ ${escapeHtml(w)}`, 'warn');
+            for (const r of rejected2) log(log2, `  ◆ input-rejected ${escapeHtml(fmtRejection(r))}`, 'info');
             if (lastReturn2) log(log2, `  ↩ returned [${lastReturn2.map((r) => `'${r.configKey}'`).join(', ')}]`, 'info');
             if (!warnings.length) log(log2, '  ✓ accepted (no warning, no event)', 'ok');
-            log(log2, `  el.${op.key}: ${esc(fmt(before))} → <strong>${esc(fmt(el2[op.key]))}</strong> · attribute ${esc(fmtAttr(el2.getAttribute(op.attr)))}`, 'muted');
+            log(log2, `  el.${op.key}: ${escapeHtml(fmt(before))} → <strong>${escapeHtml(fmt(el2[op.key]))}</strong> · attribute ${escapeHtml(fmtAttr(el2.getAttribute(op.attr)))}`, 'muted');
         });
 
         // ── IN03 · update vs reinit ──────────────────────────────────────────
@@ -555,10 +556,10 @@ el.items;                           // getter: the component's live rows (user-a
             $('in03-reinits').textContent = `reinit() × ${el3.reinitCount}`;
             $('in03-updates').textContent = `update() × ${el3.updateCount}`;
         };
-        el3.addEventListener('hook', (e) => log(log3, `◆ ${esc(describeHook(e.detail))}`, 'info'));
+        el3.addEventListener('hook', (e) => log(log3, `◆ ${escapeHtml(describeHook(e.detail))}`, 'info'));
         log(log3, `◆ reinit()  <span class="muted">— first connect is always a full build</span>`, 'info');
         const run3 = async (code, fn) => {
-            log(log3, `› <code>${esc(code)}</code>`, 'action');
+            log(log3, `› <code>${escapeHtml(code)}</code>`, 'action');
             const calls = await recordHooks(el3, async () => { fn(); await el3.whenSettled(); });
             if (!calls.length) log(log3, '  (no hook — stored only)', 'muted');
             counters3();
@@ -593,9 +594,9 @@ el.items;                           // getter: the component's live rows (user-a
         const ACCENTS = ['blue', 'green', 'red'];
         const nextAccent = () => ACCENTS[(ACCENTS.indexOf(el4.accent) + 1) % 3];
         let n4 = 0;
-        const head4 = (title) => log(log4, `<strong>${esc(title)}</strong>`, 'action');
+        const head4 = (title) => log(log4, `<strong>${escapeHtml(title)}</strong>`, 'action');
         const hooks4 = (calls, prefix = '  ') => {
-            for (const c of calls) log(log4, `${prefix}◆ ${esc(describeHook(c))}`, 'info');
+            for (const c of calls) log(log4, `${prefix}◆ ${escapeHtml(describeHook(c))}`, 'info');
         };
         $('in04-loose').addEventListener('click', async () => {
             n4 += 1;
@@ -644,9 +645,9 @@ el.items;                           // getter: the component's live rows (user-a
             head4('el.layout = …; await el.whenSettled()');
             const layout = el4.layout === 'list' ? 'grid' : 'list';
             el4.layout = layout;
-            log(log4, `  rendered layout right after the write: ${esc(el4.readRenderedWithoutFlush().layout)}`);
+            log(log4, `  rendered layout right after the write: ${escapeHtml(el4.readRenderedWithoutFlush().layout)}`);
             await el4.whenSettled();
-            log(log4, `  after await whenSettled(): ${esc(el4.readRenderedWithoutFlush().layout)}`, 'ok');
+            log(log4, `  after await whenSettled(): ${escapeHtml(el4.readRenderedWithoutFlush().layout)}`, 'ok');
         });
         $('in04-flush').addEventListener('click', () => {
             head4('el.pageSize = …; el.method()');
@@ -685,11 +686,11 @@ el.items;                           // getter: the component's live rows (user-a
                 ['el.hasGridLines', fmt(el5.hasGridLines), fmtAttr(el5.getAttribute('grid-lines'))],
             ];
             $('in05-state').innerHTML = '<tr><th>read</th><th>value</th><th>attribute</th></tr>'
-                + rows.map(([k, v, a]) => `<tr data-read="${esc(k)}"><td><code>${esc(k)}</code></td><td><code>${esc(v)}</code></td><td><code>${esc(a)}</code></td></tr>`).join('');
+                + rows.map(([k, v, a]) => `<tr data-read="${escapeHtml(k)}"><td><code>${escapeHtml(k)}</code></td><td><code>${escapeHtml(v)}</code></td><td><code>${escapeHtml(a)}</code></td></tr>`).join('');
         };
-        el5.addEventListener('hook', (e) => log(log5, `◆ ${esc(describeHook(e.detail))}`, 'info'));
+        el5.addEventListener('hook', (e) => log(log5, `◆ ${escapeHtml(describeHook(e.detail))}`, 'info'));
         $('in05-mode').addEventListener('change', async (e) => {
-            log(log5, `› <code>el.mode = '${esc(e.target.value)}'</code>`, 'action');
+            log(log5, `› <code>el.mode = '${escapeHtml(e.target.value)}'</code>`, 'action');
             el5.mode = e.target.value;
             await el5.whenSettled();
             state5();
@@ -712,19 +713,19 @@ el.items;                           // getter: the component's live rows (user-a
                 ['this.config.items (assigned)', fmt(el6.assignedItems)],
             ];
             $('in06-state').innerHTML = '<tr><th>read</th><th>value</th></tr>'
-                + rows.map(([k, v]) => `<tr data-read="${esc(k)}"><td><code>${esc(k)}</code></td><td><code>${esc(v)}</code></td></tr>`).join('');
+                + rows.map(([k, v]) => `<tr data-read="${escapeHtml(k)}"><td><code>${escapeHtml(k)}</code></td><td><code>${escapeHtml(v)}</code></td></tr>`).join('');
         };
         $('in06-assign').addEventListener('click', async () => {
             log(log6, "› <code>el.items = ['Alpha', 'Beta']</code>", 'action');
             el6.items = ['Alpha', 'Beta'];
             await el6.whenSettled();
-            log(log6, `  el.items → ${esc(fmt(el6.items))}, this.config.items → ${esc(fmt(el6.assignedItems))} (the same)`, 'ok');
+            log(log6, `  el.items → ${escapeHtml(fmt(el6.items))}, this.config.items → ${escapeHtml(fmt(el6.assignedItems))} (the same)`, 'ok');
             state6();
         });
         $('in06-staged').addEventListener('click', async () => {
             log(log6, "› <code>el.items = ['Fresh']; el.items</code>", 'action');
             el6.items = ['Fresh'];
-            log(log6, `  read while staged → ${esc(fmt(el6.items))} (what you just assigned)`, 'ok');
+            log(log6, `  read while staged → ${escapeHtml(fmt(el6.items))} (what you just assigned)`, 'ok');
             await el6.whenSettled();
             state6();
         });

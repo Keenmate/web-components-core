@@ -16,11 +16,8 @@
  *
  * Demo-only — not part of the published package (`files` ships `dist/` only).
  */
-import { BlissElement, define, toBool, toEnum, toFunction, toInt, toList, toObjectArray, toText } from './src/index.js';
+import { BlissElement, define, escapeHtml, toBool, toEnum, toFunction, toInt, toList, toObjectArray, toText } from './src/index.js';
 import type { InputDef } from './src/index.js';
-
-const esc = (s: unknown): string =>
-  String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 /** What a hook call looked like — the `hook` event detail. */
 export interface HookCall {
@@ -83,10 +80,10 @@ export class CoreDemoInputs extends BlissElement {
         .count span { color: var(--kmwc-main-bg, #fff); font-size: .8em; padding: 0 .35em; }
         .tag { font-size: .75em; opacity: .8; }
       </style>
-      <span class="chip ${esc(c.tone)}${c.isCompact ? ' compact' : ''}" part="chip">
-        <span class="label">${esc(text)}</span>
-        <span class="count"><span>${esc(c.count)}</span></span>
-        ${c.tags.map((t) => `<span class="tag">#${esc(t)}</span>`).join('')}
+      <span class="chip ${escapeHtml(c.tone)}${c.isCompact ? ' compact' : ''}" part="chip">
+        <span class="label">${escapeHtml(text)}</span>
+        <span class="count"><span>${escapeHtml(c.count)}</span></span>
+        ${c.tags.map((t) => `<span class="tag">#${escapeHtml(t)}</span>`).join('')}
       </span>`;
   }
 
@@ -286,7 +283,7 @@ export class CoreDemoPresets extends BlissElement<HookEvents> {
     const table = this.#root?.querySelector('table');
     if (!table) return;
     table.className = this.config.hasGridLines ? 'lines' : '';
-    table.tBodies[0]!.innerHTML = (this.#liveItems ?? []).map((t) => `<tr><td>${esc(t)}</td></tr>`).join('') ||
+    table.tBodies[0]!.innerHTML = (this.#liveItems ?? []).map((t) => `<tr><td>${escapeHtml(t)}</td></tr>`).join('') ||
       '<tr><td><em>no rows</em></td></tr>';
   }
 }

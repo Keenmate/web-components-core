@@ -184,7 +184,7 @@ if (updates.y !== undefined) this._y = updates.y ?? DEFAULT;// defaulted: null �
             const isDefault = info.appliedClass === 'nc-focus-default';
             const custom = card.getAttribute('focused-node-class');
             if (custom === null && isDefault) { cVerdict.className = 'note success'; cVerdict.textContent = '✅ cleared → reverted to the built-in default'; }
-            else if (custom === null && !isDefault) { cVerdict.className = 'note error'; cVerdict.textContent = '🐛 cleared, but the stale custom class is still applied (strip mode)'; }
+            else if (custom === null && !isDefault) { cVerdict.className = 'note danger'; cVerdict.textContent = '🐛 cleared, but the stale custom class is still applied (strip mode)'; }
             else { cVerdict.className = 'note success'; cVerdict.textContent = `✅ custom class "${info.appliedClass}" applied`; }
         };
         for (const r of document.querySelectorAll('input[name="mode"]')) {

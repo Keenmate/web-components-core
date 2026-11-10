@@ -335,15 +335,14 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
     <script type="module">
         import {
             getEnvironment, observeEnvironment, observeViewport, classifyDevice, configureBreakpoints,
-            TABLET_MIN_SHORT_SIDE, resolvePresentation,
+            TABLET_MIN_SHORT_SIDE, resolvePresentation, escapeHtml,
         } from '/src/index.ts';
         import '/examples-responsive-card.ts';
 
         const $ = (id) => document.getElementById(id);
-        const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
         const time = () => new Date().toLocaleTimeString();
         const logTo = (el, line) => { el.textContent = `${time()}  ${line}\n` + el.textContent; };
-        const show = (v) => (v === undefined ? '—' : esc(JSON.stringify(v)));
+        const show = (v) => (v === undefined ? '—' : escapeHtml(JSON.stringify(v)));
 
         // ── RS01 · environment ──────────────────────────────────────────────
         // The breakpoint lines the demo knows about (core does not expose them):
@@ -435,7 +434,7 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
         function renderPresentation() {
             const mode = $('rp-mode').value;
             const map = currentMap();
-            $('rp-call').innerHTML = `resolvePresentation(<b>'${mode}'</b>, env, <b>${esc(JSON.stringify(map))}</b>)`;
+            $('rp-call').innerHTML = `resolvePresentation(<b>'${mode}'</b>, env, <b>${escapeHtml(JSON.stringify(map))}</b>)`;
             const rows = [['Live (this window)', getEnvironment()], ...SIMS.map((s) => [s[0], simEnv(s)])];
             $('rp-table').tBodies[0].innerHTML = rows.map(([name, env]) =>
                 `<tr data-env="${name}"><td>${name}</td><td><code>${classifyDevice(env)}</code></td>`
@@ -588,7 +587,7 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
             $('cb-out').innerHTML = [
                 `viewportWidth: <b id="cb-width">${env.viewportWidth}</b> (breakpoint ${env.breakpoint})`,
                 `callback runs: <span class="pill" id="cb-runs">${cbRuns}</span> · update() calls: <span class="pill" id="cb-updates">${cbCard.updateCount ?? 0}</span>`,
-                `last branch: <b id="cb-branch">${esc(cbBranch)}</b>`,
+                `last branch: <b id="cb-branch">${escapeHtml(cbBranch)}</b>`,
                 `effective: isCompact <b id="cb-compact-val">${cbCard.isCompact}</b> · cols <b id="cb-cols-val">${cbCard.cols}</b>`,
             ].join('<br>');
         }

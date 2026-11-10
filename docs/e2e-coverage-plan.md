@@ -1,5 +1,7 @@
 # E2E coverage plan — all core-based components
 
+<!-- kmwc-other-ports: a dated plan — the ports other repos (and temporary configs) used at the time -->
+
 Status: **planned 2026-10-24** from a cold audit of every component suite (one agent per repo).
 Template: **web-multiselect** (`e2e/fixtures.ts`, one minimal fixture page per spec,
 `test/COVERAGE.md`, `test/NOTES.md`, `test/unit/`). Work is split into self-contained work

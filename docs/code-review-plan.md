@@ -1,5 +1,7 @@
 # Code review → rc15 — plan and status
 
+<!-- kmwc-other-ports: a dated plan — the ports other repos (and temporary configs) used at the time -->
+
 Working plan for the October 2026 review of `@keenmate/web-components-core` and the
 follow-up migration of the components. Last updated 2026-10-23.
 

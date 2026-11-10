@@ -16,6 +16,7 @@
  *
  * Demo-only — not part of the published package.
  */
+import { mapToEscapedHtml } from '@keenmate/web-components-devkit/examples';
 
 type LaneKind = 'without' | 'with';
 
@@ -189,9 +190,6 @@ const STEPS: { say: string; without: LaneState; with: LaneState }[] = (() => {
 
 const BASE_DELAY = 1100; // ms per step at 1×
 
-const esc = (s: string): string =>
-  s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-
 const bars = (n: number): string =>
   Array.from({ length: 11 }, (_, i) =>
     `<span class="anim-bar${i === 10 ? ' anim-bar--new' : ''}${i < n ? ' is-on' : ''}"></span>`,
@@ -199,7 +197,7 @@ const bars = (n: number): string =>
 
 function laneMarkup(kind: LaneKind): string {
   const title = kind === 'without' ? 'Without <code>whenSettled()</code>' : 'With <code>await el.whenSettled()</code>';
-  const code = CODE[kind].map((l, i) => `<span class="anim-line" data-line="${i}">${esc(l)}</span>`).join('');
+  const code = CODE[kind].map((l, i) => `<span class="anim-line" data-line="${i}">${mapToEscapedHtml(l)}</span>`).join('');
   return `
     <section class="anim-lane anim-lane--${kind}" data-lane="${kind}">
       <h3 class="anim-lane-title">${title}</h3>
@@ -252,7 +250,7 @@ function renderLane(lane: HTMLElement, s: LaneState): void {
 
   const queue = lane.querySelector<HTMLElement>('.anim-queue')!;
   queue.innerHTML = s.queue.length
-    ? s.queue.map((t) => `<span class="anim-token is-${t.state}">${esc(t.label)}${t.state === 'done' ? ' ✓' : ''}</span>`).join('')
+    ? s.queue.map((t) => `<span class="anim-token is-${t.state}">${mapToEscapedHtml(t.label)}${t.state === 'done' ? ' ✓' : ''}</span>`).join('')
     : '<small class="muted">empty</small>';
 
   const comp = lane.querySelector<HTMLElement>('.anim-comp')!;

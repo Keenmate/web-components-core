@@ -60,7 +60,7 @@
                     <div class="log-panel" id="fo01-log"></div>
                 </div>
             </div>
-            <div class="code-block"><pre>class CoreDemoField extends BlissElement {
+            <div class="code-block" data-kmwc-snippet><pre>class CoreDemoField extends BlissElement {
   static formAssociated = true;               // el.form, formDisabledCallback, validity API
   reinit() {
     this.#hidden ??= Object.assign(document.createElement('input'), { type: 'hidden' });
@@ -250,12 +250,11 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
     <script type="module" src="examples-forms-card.ts"></script>
 
     <script type="module">
-        import { BlissElement, define, toBool } from '/src/index.ts';
+        import { BlissElement, define, escapeHtml, toBool } from '/src/index.ts';
         await customElements.whenDefined('core-demo-field');
         await customElements.whenDefined('core-demo-plain');
 
         const $ = (id) => document.getElementById(id);
-        const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
         /** One log line; `tone` is a kit log-line tone (ok / info / warn / err / muted / action). */
         const log = (panel, text, tone = '') => {
             const line = document.createElement('div');
@@ -288,7 +287,7 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
             const outEl = $('demo-fo01-out');
             const panel = $('fo01-log');
             const line = (el) => `${el.id.padEnd(16)} <b>form</b> ${el.form ? '#' + el.form.id : 'null'} · <b>closest('form')</b> ${el.closest('form') ? '#' + el.closest('form').id : 'null'}`
-                + (el.hiddenInput ? ` · <b>hidden</b> name="${esc(el.hiddenInput.name)}" value="${esc(el.hiddenInput.value)}"` : '');
+                + (el.hiddenInput ? ` · <b>hidden</b> name="${escapeHtml(el.hiddenInput.name)}" value="${escapeHtml(el.hiddenInput.value)}"` : '');
             const render = () => {
                 $('fo01-readout').innerHTML = [inEl, outEl].map(line).join('\n');
             };
@@ -376,9 +375,9 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
             const v = (x) => (x === undefined ? 'undefined' : JSON.stringify(x));
             const readout = (f) => [
                 `<b>validity.valid</b> ${v(f.validity?.valid)} · <b>customError</b> ${v(f.validity?.customError)}`,
-                `<b>validationMessage</b> ${esc(JSON.stringify(f.validationMessage))}`,
+                `<b>validationMessage</b> ${escapeHtml(JSON.stringify(f.validationMessage))}`,
                 `<b>willValidate</b> ${f.willValidate} · <b>:invalid</b> ${f.matches(':invalid')}`,
-                f.hiddenInput ? `<b>hidden value</b> ${esc(JSON.stringify(f.hiddenInput.value))}` : `<b>checkValidity()</b> ${f.checkValidity()} · <b>reportValidity()</b> ${f.reportValidity()}`,
+                f.hiddenInput ? `<b>hidden value</b> ${escapeHtml(JSON.stringify(f.hiddenInput.value))}` : `<b>checkValidity()</b> ${f.checkValidity()} · <b>reportValidity()</b> ${f.reportValidity()}`,
                 // Not form-associated: el.form is null even inside a <form> (closest('form') still finds it).
                 f.hiddenInput ? null : `<b>form</b> ${v(f.form)} · <b>closest('form')</b> #${f.closest('form')?.id}`,
             ].filter(Boolean).join('\n');
