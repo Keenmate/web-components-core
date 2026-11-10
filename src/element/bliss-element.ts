@@ -8,7 +8,7 @@
  * {@link connect}/{@link disconnect} start and stop live resources on every
  * connect/disconnect — a plain DOM move re-activates without rebuilding.
  * The input table is OPT-IN: a subclass without `static inputs` still gets the
- * SSR base plus `emit` / the lifecycle (every KeenMate component has a table today).
+ * SSR base plus `emit` / the lifecycle (every Keenmate component has a table today).
  * See docs/SPEC.md §6.
  */
 import { resolveFromAttribute, resolveFromProperty, type Resolved } from '../inputs/apply.js';

@@ -46,7 +46,7 @@ export interface PgContext {
 
 /**
  * Static, shared CSS — ONE CSSStyleSheet for every instance (adoptStyles caches it per string).
- * In `@layer component` (the KeenMate authoring rule): adopted sheets cascade after every
+ * In `@layer component` (the Keenmate authoring rule): adopted sheets cascade after every
  * `<style>`, so un-layered custom CSS only wins because this is layered.
  */
 const SHARED_CSS = `@layer component {

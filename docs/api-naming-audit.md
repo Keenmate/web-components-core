@@ -1,6 +1,6 @@
 # Public API naming audit (2026-10-27)
 
-Read-only audit of the public API names across the KeenMate web components, for the v2
+Read-only audit of the public API names across the Keenmate web components, for the v2
 unification (breaking renames allowed, no aliases). Abbreviations: **ms** multiselect, **drp**
 daterangepicker, **tv** web-treeview, **svtv** svelte-treeview, **grid**, **dz** dropzone,
 **ed** editor, **cp** commandpalette, **core**. Rulebook:

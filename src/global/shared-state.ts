@@ -1,7 +1,7 @@
 /**
  * Page-wide state shared by every copy of core on the page.
  *
- * Each KeenMate component bundles its own copy of core, so a module-level variable
+ * Each Keenmate component bundles its own copy of core, so a module-level variable
  * exists once PER COPY: two components would each keep their own registry, lock
  * count or cache and silently disagree. State that must be one per page lives on
  * `globalThis` under a `Symbol.for(key)` — the realm-wide symbol registry gives

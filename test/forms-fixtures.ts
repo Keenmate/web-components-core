@@ -2,7 +2,7 @@
  * Minimal BlissElements for test/forms.html (e2e/forms.spec.ts — SPEC §6.4 / §6.6).
  *
  *   - <fx-field>  form-associated quantity field. Submits through a LIGHT-DOM hidden
- *                 <input name> (KeenMate convention; never setFormValue). A value that
+ *                 <input name> (Keenmate convention; never setFormValue). A value that
  *                 isn't a whole number → setFormatError(err, undefined, inner input) and
  *                 the hidden input submits ''. Its own formResetCallback (core has none)
  *                 returns to the `value` attribute. Hook calls land in `hooks`.

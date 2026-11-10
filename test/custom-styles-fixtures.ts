@@ -1,6 +1,6 @@
 /**
  * <fx-cs> for test/custom-styles.html (e2e/custom-styles.spec.ts — SPEC §12.8 custom CSS).
- * Its own CSS sits in `@layer component` (the KeenMate authoring rule), adopted as a shared
+ * Its own CSS sits in `@layer component` (the Keenmate authoring rule), adopted as a shared
  * sheet; custom CSS goes through createCustomStyles(): the page layer
  * (window.components['fx-cs'].customStyles / .getCustomStylesCallback) then the instance layer
  * (custom-styles attribute / getCustomStylesCallback property).

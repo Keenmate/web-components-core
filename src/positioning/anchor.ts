@@ -31,7 +31,7 @@ type Reference = Parameters<typeof computePosition>[0];
 
 /**
  * The attributes a portaled layer inherits from the nearest element carrying each (self or
- * ancestor, across shadow roots): the page's theme (pure-css / KeenMate's `data-theme`,
+ * ancestor, across shadow roots): the page's theme (pure-css / Keenmate's `data-theme`,
  * Bootstrap's `data-bs-theme`), and what core itself mirrors onto a component host — the
  * EFFECTIVE scheme `data-context-theme` (a Tailwind `.dark` class, `setThemeMode()`,
  * `theme-source`; SPEC §12.10) and the motion level `data-motion` (SPEC §12.16). A panel moved

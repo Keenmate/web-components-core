@@ -1,6 +1,6 @@
 /**
  * `<core-demo-motion>` — a stand-in for a component that animates through the shared speed tokens,
- * the way every KeenMate component does (`--<prefix>-transition-*: var(--base-duration-*, …)`).
+ * the way every Keenmate component does (`--<prefix>-transition-*: var(--base-duration-*, …)`).
  * A knob slides across a track; `toggle()` moves it. `durations` reads the speed it actually
  * runs at (computed), so the page can show the effect of `motion` / `data-motion` / the OS setting.
  *

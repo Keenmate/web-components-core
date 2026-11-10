@@ -1,5 +1,5 @@
 /**
- * A CEM analyzer plugin that reads a KeenMate `component-variables.manifest.json`
+ * A CEM analyzer plugin that reads a Keenmate `component-variables.manifest.json`
  * and injects its variables into every custom-element declaration as
  * `cssProperties` (SPEC §12.4). The editor-integration generators
  * (`custom-element-vs-code-integration` / `custom-element-jet-brains-integration`)

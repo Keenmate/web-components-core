@@ -1874,7 +1874,7 @@ label and shortcut are text. Items are `div[role=menuitem][tabindex=-1]` (not bu
 no native Space/Enter click to double-fire). The keyboard is a capture `keydown` on the
 document while open, so the menu is keyboard-modal whether focus is in it or still on
 the opener; handled keys are consumed. Arrow keys / Home / End skip dividers and disabled
-items (by design, review A-21: the MUI / Radix / React Aria default; the KeenMate components
+items (by design, review A-21: the MUI / Radix / React Aria default; the Keenmate components
 all skip). Hover focuses items (roving focus follows the
 pointer). Focus returns to `returnFocusTo` only when the menu held focus and the close
 wasn't pointer-away (outside press / scroll / blur / overlay). An item that defines

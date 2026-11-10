@@ -3,7 +3,7 @@
  * SPEC §6.4 disabled state, §6.6 form validity).
  *
  *   - `<core-demo-field>`  a form-associated quantity field (`static formAssociated = true`).
- *                          It follows the KeenMate submission convention: the value is
+ *                          It follows the Keenmate submission convention: the value is
  *                          submitted by a LIGHT-DOM hidden `<input name>` the component
  *                          renders as its own child — the host never calls
  *                          `internals.setFormValue()`. Form association is kept for
@@ -105,7 +105,7 @@ export class CoreDemoField extends BlissElement<FieldEvents> {
       this.emit('change', { value: this.#input!.value });
     });
 
-    // Light-DOM hidden input: THIS is what the form submits (KeenMate convention).
+    // Light-DOM hidden input: THIS is what the form submits (Keenmate convention).
     if (!this.#hidden) {
       this.#hidden = document.createElement('input');
       this.#hidden.type = 'hidden';

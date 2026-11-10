@@ -40,7 +40,7 @@ import graph. The logging engine is a vendored port of `loglevel`
 
 ## Why this package exists
 
-Five shipping KeenMate web components (`web-multiselect`,
+Five shipping Keenmate web components (`web-multiselect`,
 `web-daterangepicker`, `web-treeview`, `web-dropzone`, `web-grid`) each
 re-implement the same custom-element plumbing and have drifted into four
 different "attribute table" dialects plus private copies of the base wiring.
@@ -83,7 +83,7 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    both non-enumerable, + `eventContext()` extras), calls the `on<Name>` twin
    **with the detail**, then dispatches the same object (SPEC §12.5). The input table is
    **opt-in** (a class without `static inputs` gets only the SSR base + `emit`). Every
-   KeenMate component has one today; `web-grid` uses it for its scalar/enum flags and
+   Keenmate component has one today; `web-grid` uses it for its scalar/enum flags and
    keeps `columns` / `items` / callbacks as plain properties.
 
    A coalesced batch drives one of two subclass hooks (both no-op by default):

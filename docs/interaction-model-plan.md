@@ -1,6 +1,6 @@
 # Unified interaction model — plan
 
-Started 2026-10-23. Goal: every KeenMate component exposes action items (buttons, toolbars,
+Started 2026-10-23. Goal: every Keenmate component exposes action items (buttons, toolbars,
 menus), callback contexts and events in **one shape**, defined and checked by core. Breaking
 changes are accepted; they ship together with the rc15 renames (see `code-review-plan.md`).
 

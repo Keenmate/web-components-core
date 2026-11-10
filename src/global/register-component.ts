@@ -1,5 +1,5 @@
 /**
- * `registerComponent` — the one place a KeenMate component publishes itself to
+ * `registerComponent` — the one place a Keenmate component publishes itself to
  * the `window.components` global (SPEC §12.3). It replaces the block every
  * shipping component copy-pasted (and drifted): it defines the custom element,
  * exposes build metadata + logging controls, and wires `getInstances()` to the
@@ -127,7 +127,7 @@ export type ComponentsRegistry = Record<string, RegisteredComponent | undefined>
 
 declare global {
   interface Window {
-    /** Registry of KeenMate web components, keyed by tag name (+ the non-enumerable `logging` switch). */
+    /** Registry of Keenmate web components, keyed by tag name (+ the non-enumerable `logging` switch). */
     components?: ComponentsRegistry;
   }
 }

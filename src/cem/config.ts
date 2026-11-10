@@ -1,6 +1,6 @@
 /**
  * Shared `custom-elements-manifest` analyzer config preset (SPEC §12.4). Every
- * KeenMate component's `custom-elements-manifest.config.js` extends this so the
+ * Keenmate component's `custom-elements-manifest.config.js` extends this so the
  * globs, excludes, and — crucially — the {@link blissInputsPlugin} are declared
  * once instead of copy-pasted five ways.
  *
