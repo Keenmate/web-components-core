@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`anchor()` / `createPopover()` / `/menu` `inheritThemeFrom` — no mixed theme on a portaled panel.**
+  Each theme attribute was copied from its own nearest carrier, so a section's
+  `data-theme="dark"` above a component host landed on the panel next to the host's
+  `data-context-theme="light"` — the panel's per-instance rules won and it rendered dark beside a
+  light component. Above the nearest host carrying `data-context-theme` (core already folded the
+  page / section signal into it), `data-theme` / `data-bs-theme` are no longer copied; the host's
+  own `data-theme` still is. Without such a host the nearest carrier is copied as before.
+  pure-css port affected.
+
+### Docs
+
+- **SPEC §6.4 — readonly text surfaces:** focus + select + copy is the minimum; a moving caret is
+  optional.
+
 ## [1.0.0-rc21] - 2026-11-10
 
 ### Added

@@ -17,3 +17,11 @@ export function composedClosest(el: Element, selector: string): Element | null {
   }
   return null;
 }
+
+/** Whether `el` is `ancestor` itself or inside it in the composed tree (across shadow roots). */
+export function isAtOrBelow(el: Element, ancestor: Element): boolean {
+  for (let node: Element | null = el; node; node = composedParent(node)) {
+    if (node === ancestor) return true;
+  }
+  return false;
+}

@@ -260,6 +260,38 @@ describe('anchor', () => {
     expect(floating.getAttribute('data-motion')).toBe('smooth');
   });
 
+  it('does not copy a section’s data-theme from above a host whose scheme core resolved (no mixed theme)', () => {
+    const section = document.createElement('div');
+    section.setAttribute('data-theme', 'dark');
+    section.setAttribute('data-bs-theme', 'dark');
+    const host = document.createElement('div');
+    host.setAttribute('data-context-theme', 'light'); // core: the page signal says light
+    section.append(host);
+    document.body.append(section);
+    const reference = document.createElement('button');
+    host.attachShadow({ mode: 'open' }).append(reference);
+    const floating = document.createElement('div');
+
+    anchor(floating, reference, { inheritThemeFrom: reference });
+    expect(floating.getAttribute('data-context-theme')).toBe('light');
+    expect(floating.hasAttribute('data-theme')).toBe(false);
+    expect(floating.hasAttribute('data-bs-theme')).toBe(false);
+  });
+
+  it('copies the host’s own data-theme next to its context (the per-instance switch)', () => {
+    const host = document.createElement('div');
+    host.setAttribute('data-context-theme', 'light');
+    host.setAttribute('data-theme', 'dark');
+    document.body.append(host);
+    const reference = document.createElement('button');
+    host.attachShadow({ mode: 'open' }).append(reference);
+    const floating = document.createElement('div');
+
+    anchor(floating, reference, { inheritThemeFrom: host });
+    expect(floating.getAttribute('data-theme')).toBe('dark');
+    expect(floating.getAttribute('data-context-theme')).toBe('light');
+  });
+
   it('ignores a position that resolves after destroy()', async () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
