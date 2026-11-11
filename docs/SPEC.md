@@ -1892,14 +1892,46 @@ root / element the levels are appended to; the stylesheet is adopted into its ro
 `runAction()` — a leaf closes the menu first, then runs; a `shouldCloseOnClick: false`
 item runs and its level re-renders when the returned promise settles),
 `onClose(reason)` (`'action' | 'escape' | 'tab' | 'outside-click' | 'scroll' | 'blur' |
-'overlay' | 'api'`; `'scroll'` by the popover's rule — one shared `watchScrollClose()`: the page or a
+'overlay' | 'api' | 'empty' | 'back' | 'close-button'` — the last two from the phone sheet; `'scroll'` by the popover's rule — one shared `watchScrollClose()`: the page or a
 scroller around the `at` element / host, once it moved; never inside the menu, no bare wheel —
 rc20), `renderItemCallback(item, el, ctx, resolved)` (fill-or-fall-through),
 `renderMenuCallback(el, close)` (full custom content; core still positions + dismisses),
 `defaults` / `prepareItemCallback` (built-in state / rewrite, every level), `placement`,
 `offset`, `cssClass`, `shouldFocusFirst`, `returnFocusTo`,
 `shouldCloseOnOutsideInteraction` (default `true`), `overlayGroup`, `labels` (`{ loading }`),
-`inheritThemeFrom`. No visible item → nothing rendered, a closed handle, no `onClose`.
+`inheritThemeFrom`, `presentation` (`'auto' | 'floating' | 'sheet'`, default `'auto'`),
+`title`, `labels.back` / `labels.close`. No visible item → nothing rendered, a closed handle, no `onClose`.
+
+**Phone: the bottom sheet (decided 2026-11-11).** Every component's context / column menu
+gets the phone presentation from core, so the phone rule is ONE rule: `presentation: 'auto'`
+calls `resolvePresentation('auto', getEnvironment())` (§12.9 — the device class, never a width
+literal) and `fullscreen` (a phone) → the sheet; tablet / desktop keep the floating menu
+unchanged. Resolved once at open (a rotation doesn't swap an open menu). `'floating'` is the
+per-component / per-call opt-out, `'sheet'` forces it. The sheet:
+- **DOM.** `.km-menu-sheet-backdrop` + `.km-menu-sheet` (`role=dialog`, `aria-modal`,
+  `aria-label` = `title`) appended to `host`: a header `__header` (`__title`, `__close` button,
+  `aria-label` = `labels.close`) and the menu levels (`.km-menu.km-menu--sheet`). Never anchored
+  (no `anchor()`), full width at the bottom, `max-height: 85dvh`, safe-area padding on the
+  three free edges, rows ≥ `--base-touch-target-min` (44px). `inheritThemeFrom` is copied onto the
+  backdrop, the sheet and every level. `cssClass` stays on the levels only.
+- **Drill-in.** A submenu level is appended into the sheet and the other levels are `hidden`
+  (only the deepest shows); its first row is a Back row (`.km-menu__item--back`, `role=menuitem`,
+  `labels.back`) that goes up one level and refocuses the item that opened it (as ← / Escape do).
+  The header shows the deepest level's name (`title`, else the opening item's text). Tap / click /
+  Enter / → drill in; hover never does. Focus moves into the new level (its Back row, or its
+  first item when the keyboard opened it).
+- **Focus.** On open focus moves into the sheet (the root level, or its first item with
+  `shouldFocusFirst`); on close it returns to `returnFocusTo` — also for a backdrop tap
+  (the sheet is modal; the backdrop's `mousedown` is prevented so focus never leaves).
+- **Dismiss.** The backdrop closes on `click` (its `pointerdown` doesn't, so the tap can't click
+  through to the page) — reason `'outside-click'`; the close button → `'close-button'`; Escape /
+  Tab / blur / overlay / action as before; no scroll close (page scroll is locked by
+  `lockBodyScroll()` for the sheet's lifetime).
+- **Phone Back.** While open the sheet holds ONE history entry (`pushState`, same URL — the
+  web-multiselect / web-grid pattern; `src/menu/back-entry.ts`, page-wide state): Back in a
+  submenu goes up one level and re-arms the entry; at the root it closes with `'back'`. Closed any
+  other way, the entry is given back with `history.back()` one task later (a sheet opened right
+  after adopts it instead).
 
 **Decisions.** Icons are inserted as HTML (developer-supplied, like action buttons);
 label and shortcut are text. Items are `div[role=menuitem][tabindex=-1]` (not buttons —

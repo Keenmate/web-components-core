@@ -157,6 +157,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | Menu keyboard: Shift+F10, Home/End/arrows skip disabled + wrap, → / ← submenu, shortcut key, Tab closes, focus return | ✓ | `menu.spec.ts` | `menu.html` |
 | Dropdown from a button: keyboard activation focuses first item; hidden item omitted | ✓ | `menu.spec.ts` | `menu.html` |
 | Menu theming: page --km-menu-* + per-instance --_km-menu-* layer | ✓ | `menu.spec.ts` | `menu.html` |
+| Phone bottom sheet (`presentation: 'auto'`, touch 390x844): full width at the bottom, header, 44px rows, scroll lock; drill-in + Back row; backdrop (no click-through) / close button / Escape / phone Back close + focus return; `'floating'` opt-out; desktop unchanged, `'sheet'` forced | ✓ | `menu-sheet.spec.ts` | `menu-sheet.html` |
 | Menu dismiss on scroll / window blur | ✗ | | |
 
 ## 10. Positioning (`/positioning`: tooltip, popover, anchor)

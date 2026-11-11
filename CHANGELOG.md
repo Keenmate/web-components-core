@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`/menu`: a bottom sheet on phones — every component's context / column menu gets it for
+  free.** `openMenu()` takes `presentation: 'auto' | 'floating' | 'sheet'` (default `'auto'` =
+  core's phone switch `resolvePresentation()`, the same one web-multiselect and web-grid use):
+  on a phone the menu opens as a full-width bottom sheet over a backdrop (safe areas, `dvh`,
+  44px rows via `--base-touch-target-min`, a header with the new `title` option and a close
+  button), submenus drill in with a Back row, page scroll is locked, the phone Back button goes
+  up one submenu level or closes. Tablet / desktop unchanged. New `onClose` reasons `'back'` and
+  `'close-button'`; a backdrop tap is `'outside-click'` (no click-through; focus returns). New
+  labels `back` / `close`, new variables `--km-menu-backdrop`, `--km-menu-sheet-*`,
+  `--km-menu-back-arrow` (manifest updated). `presentation: 'floating'` opts out. SPEC §12.13.
+
 - **`createCustomStyles({ getOwner })` — a managed child takes its owner's custom CSS.** An element
   a component mounts and owns (web-dropzone's bulk-mode satellites) names its owner; the owner's
   page and instance layers — as the owner's own handle resolved them — land between the child's

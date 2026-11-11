@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test — /menu phone bottom sheet (core §12.13)</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+    <style>
+        fx-files { max-width: 360px; }
+    </style>
+</head>
+<body>
+    <h1>/menu phone sheet fixture</h1>
+    <p>Targeted by <code>e2e/menu-sheet.spec.ts</code> at a phone viewport (touch) and at a desktop viewport.
+        <code>openMenu()</code> uses <code>presentation: 'auto'</code>: a bottom sheet on a phone, the floating
+        menu on a desktop. Steps are recorded in <code>window.fx.log</code>.</p>
+
+    <div class="fixture">
+        <div class="fixture-label">files: right-click a row; "Actions" dropdown</div>
+        <fx-files id="files"></fx-files>
+    </div>
+
+    <script type="module">
+        import '/test/interaction-fixtures.ts';
+        const fx = window.fx;
+        const el = document.getElementById('files');
+        el.addEventListener('action', (e) => fx.step('action event', String(e.detail.id ?? e.detail.action)));
+        await el.whenReady();
+        document.body.dataset.ready = '';
+    </script>
+</body>
+</html>

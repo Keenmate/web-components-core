@@ -7,4 +7,4 @@
  */
 export { openMenu } from './open-menu.js';
 export { MENU_CSS } from './styles.js';
-export type { MenuCloseReason, MenuHandle, MenuInvocation, MenuLabels, MenuPoint, OpenMenuOptions } from './types.js';
+export type { MenuCloseReason, MenuHandle, MenuInvocation, MenuLabels, MenuPoint, MenuPresentation, OpenMenuOptions } from './types.js';

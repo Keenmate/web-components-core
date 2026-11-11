@@ -14,12 +14,17 @@ import { composedClosest, composedParent } from '../dom/composed-tree.js';
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { coreLog } from '../logging/element-logger.js';
 import { callSafely } from '../logging/safe-call.js';
+import { getEnvironment } from '../environment/environment.js';
 import { registerOverlay, type OverlayHandle } from '../overlay/active-overlay.js';
+import { resolvePresentation } from '../overlay/presentation.js';
+import { lockBodyScroll } from '../overlay/scroll-lock.js';
 import { anchor } from '../positioning/anchor.js';
+import { inheritTheme } from '../positioning/inherit-theme.js';
 import { watchScrollClose } from '../positioning/scroll-close.js';
 import type { AnchorHandle } from '../positioning/types.js';
+import { claimBackEntry } from './back-entry.js';
 import { MENU_CSS } from './styles.js';
-import type { MenuCloseReason, MenuHandle, MenuPoint, OpenMenuOptions } from './types.js';
+import type { MenuCloseReason, MenuHandle, MenuPoint, MenuPresentation, OpenMenuOptions } from './types.js';
 
 type Entries<Ctx, A extends string> = readonly (MenuEntry<Ctx, A> | string)[];
 
@@ -28,6 +33,17 @@ const SUBMENU_HIDE_DELAY = 150;
 
 const BLOCK = 'km-menu';
 const ITEM = `${BLOCK}__item`;
+const SHEET = 'km-menu-sheet';
+
+/**
+ * Sheet or floating panel: `'auto'` asks core's phone switch, `resolvePresentation()` (SPEC
+ * §12.9) — a phone (`fullscreen`) gets the bottom sheet, a tablet / desktop the floating menu.
+ */
+function isSheetPresentation(mode: MenuPresentation | undefined): boolean {
+  if (mode === 'sheet') return true;
+  if (mode === 'floating') return false;
+  return resolvePresentation('auto', getEnvironment()) === 'fullscreen';
+}
 
 /** One open menu level. Open levels form a chain: root → submenu → sub-submenu. */
 interface Level<Ctx, A extends string> {
@@ -116,12 +132,29 @@ export function openMenu<Ctx, A extends string = string>(
   let overlay: OverlayHandle | null = null;
   let detachListeners: (() => void) | null = null;
 
+  // ── Phone sheet (SPEC §12.13) ─────────────────────────────────────────────
+  /** A bottom sheet instead of floating panels: submenus drill in, a backdrop, Back closes. */
+  const isSheet = isSheetPresentation(opts.presentation);
+  /** The sheet (`role=dialog`): header + the levels, only the deepest one shown. */
+  let sheet: HTMLElement | null = null;
+  let sheetHeader: HTMLElement | null = null;
+  let sheetTitle: HTMLElement | null = null;
+  let backdrop: HTMLElement | null = null;
+  /** Undo the sheet session: scroll lock + the history entry. */
+  let endSheetSession: (() => void) | null = null;
+  /** The "Back" rows at the top of a drilled-in submenu (sheet only; not action items). */
+  const backRows = new WeakSet<HTMLElement>();
+
   // ── Rendering ──────────────────────────────────────────────────────────
 
   const createLevelElement = (isSubmenu: boolean): HTMLElement => {
     const el = document.createElement('div');
     el.className = isSubmenu ? `${BLOCK} ${BLOCK}--submenu` : BLOCK;
     if (isCustom && !isSubmenu) el.classList.add(`${BLOCK}--custom`);
+    if (isSheet) {
+      el.classList.add(`${BLOCK}--sheet`);
+      if (opts.inheritThemeFrom) inheritTheme(opts.inheritThemeFrom, el);
+    }
     addClasses(el, opts.cssClass);
     if (!isCustom) el.setAttribute('role', 'menu');
     el.tabIndex = -1;
@@ -134,11 +167,28 @@ export function openMenu<Ctx, A extends string = string>(
     return isMenuDivider(entry) ? entry : opts.prepareItemCallback(entry);
   };
 
+  /** Sheet: the "Back" row on top of a drilled-in submenu (goes up one level). */
+  const addBackRow = (level: Level<Ctx, A>): void => {
+    if (!isSheet || !level.owner) return;
+    const row = document.createElement('div');
+    row.className = `${ITEM} ${ITEM}--back`;
+    row.setAttribute('role', 'menuitem');
+    row.tabIndex = -1;
+    const label = document.createElement('span');
+    label.className = `${BLOCK}__label`;
+    label.textContent = opts.labels?.back ?? 'Back';
+    row.appendChild(label);
+    row.addEventListener('mouseenter', () => row.focus({ preventScroll: true }));
+    backRows.add(row);
+    level.el.prepend(row);
+  };
+
   /** Render `list` into a level. Returns the number of items rendered. */
   const renderLevel = (level: Level<Ctx, A>, list: Entries<Ctx, A>): number => {
     const el = level.el;
     el.textContent = '';
     el.removeAttribute('aria-busy');
+    addBackRow(level);
     const resolvedEntries = resolveMenuEntries(list.map(prepare), ctx, opts.defaults, host);
     // Any icon at this level → every item gets the icon column, so labels line up.
     const hasIcons = resolvedEntries.some((e) => e.kind === 'item' && !!e.resolved.icon);
@@ -216,6 +266,7 @@ export function openMenu<Ctx, A extends string = string>(
     loading.setAttribute('role', 'none');
     loading.textContent = opts.labels?.loading ?? '…';
     level.el.replaceChildren(loading);
+    addBackRow(level);
     level.el.setAttribute('aria-busy', 'true'); // cleared when the items are rendered
   };
 
@@ -264,8 +315,26 @@ export function openMenu<Ctx, A extends string = string>(
       level.position?.destroy();
       level.el.remove();
       level.owner?.setAttribute('aria-expanded', 'false');
+      syncSheet(); // the parent level is shown again before its item takes focus
       if (hadFocus) level.owner?.focus({ preventScroll: true });
     }
+  };
+
+  /** Go up one level from `depth` (a submenu): close it, focus the item that opened it. */
+  const goUp = (depth: number): void => {
+    const owner = chain[depth]?.owner;
+    collapseFrom(depth);
+    focusItem(owner ?? undefined);
+  };
+
+  /** Sheet: show only the deepest level; the header names it (the menu title, else the submenu's item). */
+  const syncSheet = (): void => {
+    if (!sheet) return;
+    const last = chain.length - 1;
+    chain.forEach((level, i) => (level.el.hidden = i !== last));
+    const owner = chain[last]?.owner;
+    const title = owner ? (records.get(owner)?.resolved.text ?? '') : (opts.title ?? '');
+    if (sheetTitle) sheetTitle.textContent = title;
   };
 
   const cancelCollapse = (): void => {
@@ -283,9 +352,12 @@ export function openMenu<Ctx, A extends string = string>(
     }, SUBMENU_HIDE_DELAY);
   };
 
+  /** The focusable rows of a level: enabled items (+ the sheet's Back row). */
   const enabledItems = (level: Level<Ctx, A>): HTMLElement[] =>
     Array.from(level.el.children).filter(
-      (el): el is HTMLElement => records.has(el as HTMLElement) && !records.get(el as HTMLElement)!.resolved.isDisabled,
+      (el): el is HTMLElement =>
+        backRows.has(el as HTMLElement) ||
+        (records.has(el as HTMLElement) && !records.get(el as HTMLElement)!.resolved.isDisabled),
     );
 
   const focusItem = (el: HTMLElement | undefined): void => {
@@ -318,23 +390,37 @@ export function openMenu<Ctx, A extends string = string>(
     // The submenu is named by the item that opened it (WAI-ARIA menu pattern).
     const ownerLabel = record.resolved.text;
     if (ownerLabel) level.el.setAttribute('aria-label', ownerLabel);
-    level.el.addEventListener('mouseenter', cancelCollapse);
-    level.el.addEventListener('mouseleave', () => {
-      const index = chain.indexOf(level);
-      if (index > 0) scheduleCollapse(index);
-    });
+    if (!isSheet) {
+      level.el.addEventListener('mouseenter', cancelCollapse);
+      level.el.addEventListener('mouseleave', () => {
+        const index = chain.indexOf(level);
+        if (index > 0) scheduleCollapse(index);
+      });
+    }
     wireLevel(level);
-    host.appendChild(level.el);
+    if (sheet) {
+      // Drill in: the submenu replaces its parent in the sheet (Back row on top).
+      sheet.appendChild(level.el);
+      syncSheet();
+    } else host.appendChild(level.el);
     fillLevel(level, (count) => {
       if (count === 0) {
         collapseFrom(chain.indexOf(level));
         return;
       }
-      if (shouldFocus) focusItem(enabledItems(level)[0]);
+      // The sheet hid the item that had focus: focus moves into the submenu (its Back row,
+      // or its first item when the keyboard opened it — like the floating menu).
+      const rows = enabledItems(level);
+      if (shouldFocus) focusItem(rows.find((r) => !backRows.has(r)) ?? rows[0]);
+      else if (isSheet) rows[0]?.focus({ preventScroll: true });
     });
+    // A lazy submenu still loading: its Back row holds focus meanwhile.
+    if (isSheet && chain.includes(level) && level.el.getAttribute('aria-busy') === 'true') {
+      level.el.querySelector<HTMLElement>(`.${ITEM}--back`)?.focus({ preventScroll: true });
+    }
     // A static list with no visible entries collapsed the level synchronously above —
     // never position a level that is already gone (its anchor would never be destroyed).
-    if (!chain.includes(level)) return;
+    if (!chain.includes(level) || isSheet) return;
     level.position = anchor(level.el, owner, {
       placement: isRtl ? 'left-start' : 'right-start',
       offset: { mainAxis: 0, crossAxis: -4 },
@@ -353,6 +439,7 @@ export function openMenu<Ctx, A extends string = string>(
     cancelCollapse();
     const record = records.get(itemEl)!;
     if (!record.resolved.isDisabled) itemEl.focus({ preventScroll: true });
+    if (isSheet) return; // a sheet drills in on a tap / Enter only — never on hover
     const openChild = chain[depth + 1];
     if (record.hasChildren && !record.resolved.isDisabled) {
       // Hover intent: with ANOTHER item's submenu open, the pointer may only be crossing
@@ -378,6 +465,10 @@ export function openMenu<Ctx, A extends string = string>(
       const target = event.target as Element | null;
       const itemEl = target?.closest?.(`.${ITEM}`) as HTMLElement | null;
       if (!itemEl || !level.el.contains(itemEl)) return;
+      if (backRows.has(itemEl)) {
+        goUp(chain.indexOf(level));
+        return;
+      }
       const record = records.get(itemEl);
       if (!record || record.resolved.isDisabled) return;
       if (record.hasChildren) openSubmenu(chain.indexOf(level), itemEl, false);
@@ -421,8 +512,8 @@ export function openMenu<Ctx, A extends string = string>(
         }
         if (!wasFocused) return;
         const same = enabledItems(level).find((el) => {
-          const r = records.get(el)!.resolved;
-          return `${r.action}\u0000${r.id ?? ''}` === key;
+          const r = records.get(el)?.resolved;
+          return !!r && `${r.action}\u0000${r.id ?? ''}` === key;
         });
         focusItem(same ?? enabledItems(level)[0]);
       });
@@ -441,7 +532,11 @@ export function openMenu<Ctx, A extends string = string>(
     const stack = openMenuStack();
     if (stack[stack.length - 1] !== menuToken) return;
     const path = event.composedPath();
-    const inside = chain.findIndex((l) => path.includes(l.el));
+    // The sheet's header (its close button) counts as inside the open level; Enter / Space
+    // there is the button's own (native click).
+    const isInHeader = !!sheetHeader && path.includes(sheetHeader);
+    if (isInHeader && (event.key === 'Enter' || event.key === ' ')) return;
+    const inside = isInHeader ? chain.length - 1 : chain.findIndex((l) => path.includes(l.el));
     // Keyboard-modal only while focus is in the menu, on its opener, or nowhere in
     // particular (the body). Focus in an unrelated field (a pinned menu beside a form, a
     // right-click menu over an editor) keeps its keys — only Escape still closes the menu.
@@ -452,9 +547,11 @@ export function openMenu<Ctx, A extends string = string>(
     }
     const depth = inside < 0 ? chain.length - 1 : inside;
     const level = chain[depth]!;
-    const focused = (path.find((n) => n instanceof HTMLElement && records.has(n) && level.el.contains(n)) ??
-      null) as HTMLElement | null;
-    const record = focused ? records.get(focused)! : null;
+    const focused = (path.find(
+      (n) => n instanceof HTMLElement && (records.has(n) || backRows.has(n)) && level.el.contains(n),
+    ) ?? null) as HTMLElement | null;
+    const record = focused ? (records.get(focused) ?? null) : null;
+    const isBackRow = !!focused && backRows.has(focused);
 
     if (event.key === 'Tab') {
       // A custom menu (renderMenuCallback) may hold a form: Tab moves between its fields.
@@ -489,21 +586,18 @@ export function openMenu<Ctx, A extends string = string>(
           if (focused && record?.hasChildren) openSubmenu(depth, focused, true);
           break;
         case 'ArrowLeft':
-          if (depth > 0) {
-            const owner = level.owner;
-            collapseFrom(depth);
-            focusItem(owner ?? undefined);
-          }
+          if (depth > 0) goUp(depth);
           break;
         case 'Escape':
-          if (depth > 0) {
-            const owner = level.owner;
-            collapseFrom(depth);
-            focusItem(owner ?? undefined);
-          } else close('escape');
+          if (depth > 0) goUp(depth);
+          else close('escape');
           break;
         case 'Enter':
         case ' ':
+          if (isBackRow && depth > 0) {
+            goUp(depth);
+            break;
+          }
           if (!focused || !record || record.resolved.isDisabled) break;
           if (record.hasChildren) openSubmenu(depth, focused, true);
           else activate(focused, event);
@@ -513,7 +607,7 @@ export function openMenu<Ctx, A extends string = string>(
           // An item's shortcut (a letter, case-insensitive, or a key name like `F2`):
           // the current level first, then its ancestors.
           for (let d = depth; d >= 0; d--) {
-            const hit = enabledItems(chain[d]!).find((el) => matchesShortcut(records.get(el)!.resolved.shortcut, event));
+            const hit = enabledItems(chain[d]!).find((el) => matchesShortcut(records.get(el)?.resolved.shortcut, event));
             if (!hit) continue;
             if (records.get(hit)!.hasChildren) openSubmenu(d, hit, true);
             else activate(hit, event);
@@ -533,12 +627,13 @@ export function openMenu<Ctx, A extends string = string>(
 
   const isInside = (event: Event): boolean => {
     const path = event.composedPath();
-    return chain.some((l) => path.includes(l.el));
+    return (!!sheet && path.includes(sheet)) || chain.some((l) => path.includes(l.el));
   };
 
   const attachListeners = (): void => {
     const onPointerDown = (e: Event) => {
-      if (!isInside(e)) close('outside-click');
+      // The sheet's backdrop closes on its `click` (so the tap can't click through to the page).
+      if (!isInside(e) && !(backdrop && e.composedPath().includes(backdrop))) close('outside-click');
     };
     const onBlur = () => close('blur');
     // keydown in capture on the document: the menu is keyboard-modal while open,
@@ -552,15 +647,18 @@ export function openMenu<Ctx, A extends string = string>(
       // clicked cell / row, so the component's own scroller counts — else the host),
       // once that has actually moved; never a scroll inside the menu, never a bare wheel.
       const hostEl = typeof ShadowRoot !== 'undefined' && host instanceof ShadowRoot ? host.host : (host as Element);
-      stopScrollClose = watchScrollClose({
-        reference: opts.at instanceof Element ? opts.at : (elementAtPoint(opts.at, hostEl) ?? hostEl),
-        isInside,
-        onScroll: () => close('scroll'),
-      });
+      // A sheet is modal over a scroll-locked page: nothing behind it can scroll.
+      if (!isSheet) {
+        stopScrollClose = watchScrollClose({
+          reference: opts.at instanceof Element ? opts.at : (elementAtPoint(opts.at, hostEl) ?? hostEl),
+          isInside,
+          onScroll: () => close('scroll'),
+        });
+      }
       window.addEventListener('blur', onBlur);
       // In the page-wide overlay tree (SPEC §12.9): a menu opened from inside another
       // overlay (a context menu in a dropdown) is its child and doesn't dismiss it.
-      overlay = registerOverlay(() => close('overlay'), opts.overlayGroup, { getElement: () => chain[0]?.el });
+      overlay = registerOverlay(() => close('overlay'), opts.overlayGroup, { getElement: () => sheet ?? chain[0]?.el });
       const hostElement = typeof ShadowRoot !== 'undefined' && host instanceof ShadowRoot ? host.host : (host as Element);
       overlay.activate({ trigger: opts.returnFocusTo ?? (opts.at instanceof Element ? opts.at : hostElement) });
     }
@@ -583,7 +681,7 @@ export function openMenu<Ctx, A extends string = string>(
     const at = stack.indexOf(menuToken);
     if (at >= 0) stack.splice(at, 1);
     const active = deepActiveElement();
-    const hadFocus = chain.some((l) => l.el.contains(active));
+    const hadFocus = (!!sheet && !!active && sheet.contains(active)) || chain.some((l) => l.el.contains(active));
     cancelCollapse();
     detachListeners?.();
     detachListeners = null;
@@ -591,7 +689,13 @@ export function openMenu<Ctx, A extends string = string>(
       level.position?.destroy();
       level.el.remove();
     }
-    const isPointerAway = reason === 'outside-click' || reason === 'scroll' || reason === 'blur' || reason === 'overlay';
+    sheet?.remove();
+    backdrop?.remove();
+    endSheetSession?.();
+    endSheetSession = null;
+    // A sheet is modal: a backdrop tap dismisses it like Escape (focus goes back to the opener).
+    const isPointerAway =
+      (reason === 'outside-click' && !isSheet) || reason === 'scroll' || reason === 'blur' || reason === 'overlay';
     if (hadFocus && !isPointerAway && opts.returnFocusTo?.isConnected) {
       opts.returnFocusTo.focus({ preventScroll: true });
     }
@@ -631,29 +735,86 @@ export function openMenu<Ctx, A extends string = string>(
   }
   openMenuStack().push(menuToken); // only once it really opens (close() removes it)
   wireLevel(rootLevel);
-  host.appendChild(rootLevel.el);
+  if (opts.title) rootLevel.el.setAttribute('aria-label', opts.title);
 
-  const at = opts.at;
-  const reference = isPoint(at)
-    ? {
-        getBoundingClientRect: () =>
-          ({ x: at.x, y: at.y, width: 0, height: 0, top: at.y, left: at.x, right: at.x, bottom: at.y }) as DOMRect,
-      }
-    : at;
-  rootLevel.position = anchor(rootLevel.el, reference, {
-    placement: opts.placement ?? 'bottom-start',
-    // A point menu sits at the cursor; one dropping from an element takes the page's field → panel gap.
-    offset: opts.offset ?? (isPoint(at) ? 0 : undefined),
-    shift: 8,
-    maxHeight: { padding: 8 },
-    ...(opts.inheritThemeFrom ? { inheritThemeFrom: opts.inheritThemeFrom } : {}),
-  });
-  if (isPoint(at)) {
-    // Until the first (async) computation lands, show it at the point, not at 0,0.
-    rootLevel.el.style.left = `${at.x}px`;
-    rootLevel.el.style.top = `${at.y}px`;
+  if (isSheet) openSheet();
+  else {
+    host.appendChild(rootLevel.el);
+    positionRoot();
   }
   attachListeners();
+
+  /** Sheet: backdrop + `role=dialog` sheet (header: title + close) at the bottom; scroll lock + Back. */
+  function openSheet(): void {
+    backdrop = document.createElement('div');
+    backdrop.className = `${SHEET}-backdrop`;
+    backdrop.addEventListener('click', () => close('outside-click'));
+    // A press on the backdrop must not pull focus out of the sheet (it returns to the opener on close).
+    backdrop.addEventListener('mousedown', (e) => e.preventDefault());
+    sheet = document.createElement('div');
+    sheet.className = SHEET;
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    if (opts.title) sheet.setAttribute('aria-label', opts.title);
+    sheetHeader = document.createElement('div');
+    sheetHeader.className = `${SHEET}__header`;
+    sheetTitle = document.createElement('span');
+    sheetTitle.className = `${SHEET}__title`;
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.className = `${SHEET}__close`;
+    closeButton.setAttribute('aria-label', opts.labels?.close ?? 'Close');
+    closeButton.textContent = '\u2715';
+    closeButton.addEventListener('click', () => close('close-button'));
+    sheetHeader.append(sheetTitle, closeButton);
+    sheet.append(sheetHeader, rootLevel.el);
+    if (opts.inheritThemeFrom) {
+      inheritTheme(opts.inheritThemeFrom, sheet);
+      inheritTheme(opts.inheritThemeFrom, backdrop);
+    }
+    host.append(backdrop, sheet);
+    syncSheet();
+    const unlock = lockBodyScroll();
+    // Phone Back: up one submenu level (the entry is re-armed), else close the menu.
+    const onBack = (): void => {
+      if (!isOpen) return;
+      if (chain.length > 1) {
+        goUp(chain.length - 1);
+        releaseEntry = claimBackEntry(onBack);
+      } else close('back');
+    };
+    let releaseEntry = claimBackEntry(onBack);
+    endSheetSession = () => {
+      releaseEntry();
+      unlock();
+    };
+    // Modal: focus moves into the sheet (and returns to `returnFocusTo` on close).
+    if (!opts.shouldFocusFirst) rootLevel.el.focus({ preventScroll: true });
+  }
+
+  /** Floating: anchor the root level at the point / element. */
+  function positionRoot(): void {
+    const at = opts.at;
+    const reference = isPoint(at)
+      ? {
+          getBoundingClientRect: () =>
+            ({ x: at.x, y: at.y, width: 0, height: 0, top: at.y, left: at.x, right: at.x, bottom: at.y }) as DOMRect,
+        }
+      : at;
+    rootLevel.position = anchor(rootLevel.el, reference, {
+      placement: opts.placement ?? 'bottom-start',
+      // A point menu sits at the cursor; one dropping from an element takes the page's field → panel gap.
+      offset: opts.offset ?? (isPoint(at) ? 0 : undefined),
+      shift: 8,
+      maxHeight: { padding: 8 },
+      ...(opts.inheritThemeFrom ? { inheritThemeFrom: opts.inheritThemeFrom } : {}),
+    });
+    if (isPoint(at)) {
+      // Until the first (async) computation lands, show it at the point, not at 0,0.
+      rootLevel.el.style.left = `${at.x}px`;
+      rootLevel.el.style.top = `${at.y}px`;
+    }
+  }
 
   const handle: MenuHandle = {
     get isOpen() {

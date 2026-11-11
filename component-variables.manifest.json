@@ -18,7 +18,9 @@
     { "name": "base-hover-bg", "required": false, "usage": "Item hover / focus background (→ --km-menu-hover-bg)" },
     { "name": "base-disabled-opacity", "required": false, "usage": "Disabled item and loading row opacity" },
     { "name": "base-danger-color", "required": false, "usage": "Danger item text colour; tints the danger hover background" },
-    { "name": "base-primary-color", "required": false, "usage": "Toggled-on item colour (→ --km-menu-toggled-color)" }
+    { "name": "base-primary-color", "required": false, "usage": "Toggled-on item colour (→ --km-menu-toggled-color); the sheet close button focus ring" },
+    { "name": "base-overlay-bg", "required": false, "usage": "Phone sheet backdrop (→ --km-menu-backdrop)" },
+    { "name": "base-touch-target-min", "required": false, "usage": "Phone sheet row and close button minimum size (default 44px)" }
   ],
   "componentVariables": [
     { "name": "km-menu-z-index", "category": "menu", "usage": "Menu stacking order (default 10000)" },
@@ -51,6 +53,16 @@
     { "name": "km-menu-divider-color", "category": "menu", "usage": "Divider line colour (→ --base-border-color)" },
     { "name": "km-menu-divider-label-padding", "category": "menu", "usage": "Named divider padding (default 0 12px)" },
     { "name": "km-menu-divider-label-color", "category": "menu", "usage": "Named divider label colour (→ --base-text-color-3)" },
-    { "name": "km-menu-divider-label-font-size", "category": "menu", "usage": "Named divider label font size (default 0.8em)" }
+    { "name": "km-menu-divider-label-font-size", "category": "menu", "usage": "Named divider label font size (default 0.8em)" },
+    { "name": "km-menu-backdrop", "category": "menu", "usage": "Phone sheet backdrop (→ --base-overlay-bg, default rgba(0,0,0,.4))" },
+    { "name": "km-menu-sheet-max-height", "category": "menu", "usage": "Phone sheet maximum height (default 85dvh)" },
+    { "name": "km-menu-sheet-border-radius", "category": "menu", "usage": "Phone sheet corner radius (default 12px 12px 0 0)" },
+    { "name": "km-menu-sheet-shadow", "category": "menu", "usage": "Phone sheet box shadow (default 0 -8px 24px rgba(0,0,0,.2))" },
+    { "name": "km-menu-sheet-font-size", "category": "menu", "usage": "Phone sheet font size (default 16px)" },
+    { "name": "km-menu-sheet-header-padding", "category": "menu", "usage": "Phone sheet header padding (default 4px 4px 4px 16px)" },
+    { "name": "km-menu-sheet-title-font-weight", "category": "menu", "usage": "Phone sheet title font weight (default 600)" },
+    { "name": "km-menu-sheet-item-min-height", "category": "menu", "usage": "Phone sheet row minimum height (→ --base-touch-target-min, default 44px)" },
+    { "name": "km-menu-sheet-item-padding", "category": "menu", "usage": "Phone sheet row padding (default 8px 16px)" },
+    { "name": "km-menu-back-arrow", "category": "menu", "usage": "Phone sheet Back row glyph, a CSS content value (default \"\\2039\")" }
   ]
 }

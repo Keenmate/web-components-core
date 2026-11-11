@@ -587,9 +587,32 @@ const menu = openMenu(entries, ctx, {
   onClose: (reason) => { /* sync your state */ },
   returnFocusTo: this.bodyEl,
   shouldFocusFirst: isOpenedFromKeyboard,
+  title: row.name,                      // the phone sheet's header + the menu's aria-label
 });
 menu.close();
 ```
+
+**Phone: a bottom sheet, for free.** `presentation: 'auto'` (the default) asks core's phone
+switch, `resolvePresentation()` — the same one web-multiselect and web-grid use — so on a phone
+the menu opens as a bottom sheet; on a tablet / desktop nothing changes. The sheet is full width
+at the bottom over a backdrop (`env(safe-area-inset-*)`, `dvh`), with a header (`title` + a close
+button), rows at least `--base-touch-target-min` (44px) tall; a submenu drills in (it replaces
+the list, a Back row on top goes up); page scroll is locked (`lockBodyScroll`). It closes the
+same ways as the floating menu plus three:
+
+| Close | `onClose` reason | Focus |
+|---|---|---|
+| a tap on the backdrop (closes on `click`, no click-through) | `'outside-click'` | back to `returnFocusTo` |
+| the header's close button | `'close-button'` | back to `returnFocusTo` |
+| the phone Back button / gesture (one history entry while open; in a submenu it goes up one level instead) | `'back'` | back to `returnFocusTo` |
+
+Escape goes up one level / closes (`'escape'`), an item runs and closes (`'action'`). No scroll
+close (the page is locked). A component needs no code for it; pass `presentation: 'floating'`
+to keep the floating menu everywhere (or `'sheet'` to force the sheet, e.g. for a preview). The
+strings are `labels.back` (`'Back'`) and `labels.close` (`'Close'`); the look is the
+`--km-menu-*` chain (`--km-menu-sheet-*`, `--km-menu-backdrop`, `--km-menu-back-arrow`, see
+`component-variables.manifest.json`). A component that styles its menu through `cssClass`: that
+class is on every menu level, not on the sheet wrapper (`.km-menu-sheet`).
 
 ## Search (`@keenmate/web-components-core/search`)
 

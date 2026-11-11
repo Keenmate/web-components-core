@@ -19,8 +19,34 @@ export interface MenuPoint {
  * - `'overlay'` — another KM overlay opened (`registerOverlay` coordination)
  * - `'api'` — `handle.close()`
  * - `'empty'` — a keep-open item's refresh left no visible item
+ * - `'back'` — the phone Back button / gesture on the root of a sheet (see {@link MenuPresentation})
+ * - `'close-button'` — the sheet's close button
+ *
+ * On a sheet, a tap on the backdrop is `'outside-click'`.
  */
-export type MenuCloseReason = 'action' | 'escape' | 'tab' | 'outside-click' | 'scroll' | 'blur' | 'overlay' | 'api' | 'empty';
+export type MenuCloseReason =
+  | 'action'
+  | 'escape'
+  | 'tab'
+  | 'outside-click'
+  | 'scroll'
+  | 'blur'
+  | 'overlay'
+  | 'api'
+  | 'empty'
+  | 'back'
+  | 'close-button';
+
+/**
+ * How a menu is shown:
+ * - `'auto'` (default) — core's phone switch (`resolvePresentation()`, SPEC §12.9): a bottom
+ *   sheet on a phone, the floating menu on a tablet / desktop
+ * - `'floating'` — always the floating menu next to the point / element
+ * - `'sheet'` — always the bottom sheet: full width at the bottom over a backdrop, a header
+ *   (title + close button), touch-size rows, submenus drill in (a Back row goes up), page
+ *   scroll locked, the phone Back button closes it (or goes up one submenu level)
+ */
+export type MenuPresentation = 'auto' | 'floating' | 'sheet';
 
 /** What activated an item — handed to {@link OpenMenuOptions.runAction}. */
 export interface MenuInvocation {
@@ -93,12 +119,23 @@ export interface OpenMenuOptions<Ctx, A extends string = string> {
   labels?: MenuLabels;
   /** Copy the nearest `data-theme` from this element onto each menu level (portaled menus, C-CS-10). */
   inheritThemeFrom?: HTMLElement;
+  /** Floating menu or phone bottom sheet. Default `'auto'` (a sheet on a phone). See {@link MenuPresentation}. */
+  presentation?: MenuPresentation;
+  /**
+   * The menu's name: the sheet header's title and the accessible name (`aria-label`) of the
+   * root menu (and of the sheet dialog). A drilled-in submenu's header shows the item that opened it.
+   */
+  title?: string;
 }
 
 /** UI strings of {@link openMenu}; each key is optional and falls back to its default. */
 export interface MenuLabels {
   /** Text of the row shown while a lazy submenu loads. Default `'…'`. */
   loading?: string;
+  /** Sheet: the row on top of a drilled-in submenu that goes up one level. Default `'Back'`. */
+  back?: string;
+  /** Sheet: the accessible name of the header's close button. Default `'Close'`. */
+  close?: string;
 }
 
 /** Returned by {@link openMenu}. */
