@@ -14,7 +14,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { extractBlissClass, parseRegisterComponentCall, type ExtractedClass, type ModuleReader } from './extract.js';
+import { extractBlissClass, parseRegisterComponentCall, type ExtractedClass, type ExtractedRegistration, type ModuleReader } from './extract.js';
 import { withCoreDeclared } from './core-declared.js';
 
 /** Minimal shape of a CEM class-like declaration this plugin augments. */
@@ -108,11 +108,45 @@ export function blissInputsPlugin(): CemPlugin {
   // double, a demo) never receives this one's attributes.
   const extracted = new Map<string, ExtractedClass>();
   const keyOf = (moduleDoc: CemModuleDoc, className: string): string => `${moduleDoc.path ?? ''}::${className}`;
-  // className → tag name from a `registerComponent()` call (core §12.3), which
-  // the stock analyzer does not recognize as a custom-element definition.
-  const registrations = new Map<string, string>();
+  // `registerComponent()` calls (core §12.3), which the stock analyzer does not recognize as
+  // custom-element definitions. The class argument is resolved to its DECLARED name (an import
+  // alias / re-export is followed), and linked to the declaration in the module that declares it.
+  // The call usually sits in index.ts while the class lives elsewhere, and the analyzer links
+  // module by module, so whatever moduleLinkPhase couldn't link yet is linked in packageLinkPhase;
+  // a registration that never finds its class is a build warning, never a silent "no components".
+  const registrations: { reg: ExtractedRegistration; callModule: string; isLinked: boolean }[] = [];
   /** One reader per run, so a shared module is parsed once. */
   let readModule: ModuleReader | undefined;
+
+  /** Does `decl` (declared in `moduleDoc`) match the registration's class? */
+  const matches = (reg: ExtractedRegistration, moduleDoc: CemModuleDoc, decl: CemDeclaration): boolean =>
+    decl.name === reg.className && (!reg.fileName || !moduleDoc.path || resolve(moduleDoc.path) === resolve(reg.fileName));
+
+  /** Flag `decl` as the custom element `tagName` and add the `custom-element-definition` export. */
+  const define = (moduleDoc: CemModuleDoc, decl: CemDeclaration, tagName: string): void => {
+    decl.customElement = true;
+    decl.tagName = tagName;
+    moduleDoc.exports ??= [];
+    const already = moduleDoc.exports.some((e) => e.kind === 'custom-element-definition' && e.name === tagName);
+    if (!already) {
+      moduleDoc.exports.push({
+        kind: 'custom-element-definition',
+        name: tagName,
+        declaration: { name: decl.name, module: moduleDoc.path },
+      });
+    }
+  };
+
+  /** Link every not-yet-linked registration whose class `moduleDoc` declares. */
+  const linkRegistrations = (moduleDoc: CemModuleDoc): void => {
+    for (const entry of registrations) {
+      if (entry.isLinked) continue;
+      const decl = (moduleDoc.declarations ?? []).find((d) => matches(entry.reg, moduleDoc, d));
+      if (!decl) continue;
+      define(moduleDoc, decl, entry.reg.tagName);
+      entry.isLinked = true;
+    }
+  };
 
   return {
     name: 'keenmate-bliss-inputs',
@@ -120,10 +154,11 @@ export function blissInputsPlugin(): CemPlugin {
     analyzePhase({ ts, node, moduleDoc }) {
       const tsApi = ts as typeof import('typescript');
       const n = node as import('typescript').Node;
-      const reg = parseRegisterComponentCall(tsApi, n);
-      if (reg) registrations.set(reg.className, reg.tagName);
+      readModule ??= moduleReader(tsApi);
+      const reg = parseRegisterComponentCall(tsApi, n, { readModule });
+      if (reg) registrations.push({ reg, callModule: moduleDoc.path ?? '', isLinked: false });
       if (!tsApi.isClassDeclaration(n) && !tsApi.isClassExpression(n)) return;
-      const meta = extractBlissClass(tsApi, n, n.getSourceFile(), { readModule: (readModule ??= moduleReader(tsApi)) });
+      const meta = extractBlissClass(tsApi, n, n.getSourceFile(), { readModule });
       // Build-time tooling (not the runtime "no console" rule): say what was left out.
       for (const warning of meta?.warnings ?? []) console.warn(`[keenmate-bliss-inputs] ${moduleDoc.path ?? ''}: ${warning}`);
       // Core-declared inputs / events (defer, theme-source, responsive, ready) are
@@ -140,26 +175,24 @@ export function blissInputsPlugin(): CemPlugin {
           if (meta.members.length) decl.members = mergeByName(decl.members, meta.members);
           if (meta.events.length) decl.events = mergeByName(decl.events, meta.events);
         }
+      }
+      // Recognize core's registerComponent() as a custom-element definition: flag the
+      // declaration and add the `custom-element-definition` export the stock analyzer
+      // would have emitted for `customElements.define()`.
+      linkRegistrations(moduleDoc);
+    },
 
-        // Recognize core's registerComponent() as a custom-element definition:
-        // flag the declaration and add the `custom-element-definition` export the
-        // stock analyzer would have emitted for `customElements.define()`.
-        const tagName = registrations.get(decl.name);
-        if (tagName) {
-          decl.customElement = true;
-          decl.tagName = tagName;
-          moduleDoc.exports ??= [];
-          const already = moduleDoc.exports.some(
-            (e) => e.kind === 'custom-element-definition' && e.name === tagName,
-          );
-          if (!already) {
-            moduleDoc.exports.push({
-              kind: 'custom-element-definition',
-              name: tagName,
-              declaration: { name: decl.name, module: moduleDoc.path },
-            });
-          }
-        }
+    packageLinkPhase({ customElementsManifest }) {
+      // Registrations analyzed after their class's module (index.ts after the class file).
+      for (const moduleDoc of customElementsManifest.modules ?? []) linkRegistrations(moduleDoc);
+      for (const { reg, callModule, isLinked } of registrations) {
+        if (isLinked) continue;
+        const written = reg.localName ?? reg.className;
+        const why = reg.unresolved ?? `no analyzed module declares class \`${reg.className}\`${reg.fileName ? ` (resolved to ${reg.fileName})` : ''}`;
+        // Build-time tooling (not the runtime "no console" rule): never drop a component silently.
+        console.warn(
+          `[keenmate-bliss-inputs] ${callModule}: registerComponent('${reg.tagName}', ${written}) — the class can't be resolved (${why}); '${reg.tagName}' is missing from the manifest`,
+        );
       }
     },
   };

@@ -80,7 +80,17 @@ export interface ExtractedClass {
 /** A `registerComponent('tag', Class, …)` call linking a tag name to a class. */
 export interface ExtractedRegistration {
   tagName: string;
+  /**
+   * The class's DECLARED name: an import alias (`import { GridElement as _G }`) is followed to
+   * the exported declaration (re-exports too, when a module reader is given).
+   */
   className: string;
+  /** The identifier written in the call, when it differs from {@link className} (an alias). */
+  localName?: string;
+  /** The file the class is declared in, when it was resolved to one. */
+  fileName?: string;
+  /** Why the class argument couldn't be resolved to a declaration (a package import, an unreadable module, …). */
+  unresolved?: string;
 }
 
 /** Peel `(expr)`, `expr as T`, `expr satisfies T` down to the underlying expression. */
@@ -407,22 +417,97 @@ function resolveTableArray(
   if (local) return { arr: local, sf };
   const e = unwrap(ts, expr);
   if (!ts.isIdentifier(e) || !opts.readModule) return undefined;
+  const { found } = resolveBinding(ts, e.text, sf, opts);
+  if (!found || found.sf === sf) return undefined;
+  const arr = resolveArrayLiteral(ts, ts.factory.createIdentifier(found.name), found.sf);
+  return arr ? { arr, sf: found.sf } : undefined;
+}
+
+/** A top-level binding resolved to the file that declares it, under its declared name. */
+interface ResolvedBinding {
+  found?: { name: string; sf: SourceFile };
+  /** Why it couldn't be followed (only when `found` is missing). */
+  reason?: string;
+}
+
+/** Is `name` declared at the top level of `sf` (a class, a function, or a `const`/`let`/`var`)? */
+function declaresLocally(ts: TS, name: string, sf: SourceFile): boolean {
   for (const stmt of sf.statements) {
-    if (!ts.isImportDeclaration(stmt) || !ts.isStringLiteral(stmt.moduleSpecifier)) continue;
-    const specifier = stmt.moduleSpecifier.text;
-    if (!specifier.startsWith('.')) continue; // a package import isn't part of this analysis
-    const bindings = stmt.importClause?.namedBindings;
-    if (!bindings || !ts.isNamedImports(bindings)) continue;
-    for (const spec of bindings.elements) {
-      if (spec.name.text !== e.text) continue;
-      const target = opts.readModule(sf.fileName, specifier);
-      if (!target) return undefined;
-      const exported = (spec.propertyName ?? spec.name).text;
-      const arr = resolveArrayLiteral(ts, ts.factory.createIdentifier(exported), target);
-      return arr ? { arr, sf: target } : undefined;
-    }
+    if ((ts.isClassDeclaration(stmt) || ts.isFunctionDeclaration(stmt)) && stmt.name?.text === name) return true;
+    if (ts.isVariableStatement(stmt) && stmt.declarationList.declarations.some((d) => nameOf(ts, d.name) === name)) return true;
   }
-  return undefined;
+  return false;
+}
+
+/**
+ * Follow a top-level identifier of `sf` to its declaration: declared here, or imported (named,
+ * aliased, or default) from a RELATIVE module the reader can read — re-exports followed there.
+ */
+function resolveBinding(ts: TS, local: string, sf: SourceFile, opts: ExtractOptions, depth = 0): ResolvedBinding {
+  if (declaresLocally(ts, local, sf)) return { found: { name: local, sf } };
+  for (const stmt of sf.statements) {
+    if (!ts.isImportDeclaration(stmt) || !ts.isStringLiteral(stmt.moduleSpecifier) || !stmt.importClause) continue;
+    const clause = stmt.importClause;
+    let exported: string | undefined;
+    if (clause.name?.text === local) exported = 'default';
+    const bindings = clause.namedBindings;
+    if (!exported && bindings && ts.isNamedImports(bindings)) {
+      const spec = bindings.elements.find((el) => el.name.text === local);
+      if (spec) exported = (spec.propertyName ?? spec.name).text;
+    }
+    if (!exported) continue;
+    const specifier = stmt.moduleSpecifier.text;
+    if (!specifier.startsWith('.')) return { reason: `it is imported from the package '${specifier}', which isn't part of this analysis` };
+    if (!opts.readModule) return { reason: `it is imported from '${specifier}' and no module reader was given` };
+    const target = opts.readModule(sf.fileName, specifier);
+    if (!target) return { reason: `its module '${specifier}' couldn't be read` };
+    return resolveExport(ts, exported, target, opts, depth + 1);
+  }
+  return { reason: 'it is neither declared nor imported in this file' };
+}
+
+/**
+ * Follow an export of `sf` to its declaration: `export class X`, `export { a as X }`,
+ * `export { a as X } from './m'`, `export * from './m'`, `export default class X` / `export default X`.
+ */
+function resolveExport(ts: TS, exported: string, sf: SourceFile, opts: ExtractOptions, depth: number): ResolvedBinding {
+  if (depth > 8) return { reason: 'the re-export chain is too deep' };
+  const stars: string[] = [];
+  for (const stmt of sf.statements) {
+    if (exported === 'default') {
+      const isDefault = ts.canHaveModifiers(stmt) && ts.getModifiers(stmt)?.some((m) => m.kind === ts.SyntaxKind.DefaultKeyword);
+      if (ts.isClassDeclaration(stmt) && stmt.name && isDefault) return { found: { name: stmt.name.text, sf } };
+      if (ts.isExportAssignment(stmt) && !stmt.isExportEquals) {
+        const e = unwrap(ts, stmt.expression);
+        if (ts.isIdentifier(e)) return resolveBinding(ts, e.text, sf, opts, depth);
+      }
+    }
+    if (!ts.isExportDeclaration(stmt) || stmt.isTypeOnly) continue;
+    const from = stmt.moduleSpecifier && ts.isStringLiteral(stmt.moduleSpecifier) ? stmt.moduleSpecifier.text : undefined;
+    const clause = stmt.exportClause;
+    if (!clause) {
+      if (from) stars.push(from); // export * from '…'
+      continue;
+    }
+    if (!ts.isNamedExports(clause)) continue;
+    const spec = clause.elements.find((el) => el.name.text === exported);
+    if (!spec) continue;
+    const original = (spec.propertyName ?? spec.name).text;
+    if (!from) return resolveBinding(ts, original, sf, opts, depth); // export { local as X }
+    if (!from.startsWith('.')) return { reason: `it is re-exported from the package '${from}'` };
+    const target = opts.readModule?.(sf.fileName, from);
+    if (!target) return { reason: `its module '${from}' couldn't be read` };
+    return resolveExport(ts, original, target, opts, depth + 1);
+  }
+  if (exported !== 'default' && declaresLocally(ts, exported, sf)) return { found: { name: exported, sf } };
+  for (const from of stars) {
+    if (!from.startsWith('.')) continue;
+    const target = opts.readModule?.(sf.fileName, from);
+    if (!target) continue;
+    const r = resolveExport(ts, exported, target, opts, depth + 1);
+    if (r.found) return r;
+  }
+  return { reason: `'${sf.fileName}' doesn't export \`${exported}\`` };
 }
 
 /**
@@ -506,21 +591,33 @@ export function extractBlissClass(ts: TS, cls: ClassLike, sf: SourceFile, opts: 
  * `custom-element-definition` export). The class argument may be wrapped in an
  * `as` cast (`Class as unknown as CustomElementConstructor`), so it is unwrapped.
  */
-export function parseRegisterComponentCall(ts: TS, node: Node): ExtractedRegistration | undefined {
+export function parseRegisterComponentCall(ts: TS, node: Node, opts: ExtractOptions = {}): ExtractedRegistration | undefined {
   if (!ts.isCallExpression(node)) return undefined;
   if (!ts.isIdentifier(node.expression) || node.expression.text !== 'registerComponent') return undefined;
   const tagName = stringOf(ts, node.arguments[0]);
   const classArg = node.arguments[1] ? unwrap(ts, node.arguments[1]) : undefined;
-  const className = classArg && ts.isIdentifier(classArg) ? classArg.text : undefined;
-  if (!tagName || !className) return undefined;
-  return { tagName, className };
+  if (!tagName || !classArg) return undefined;
+  if (!ts.isIdentifier(classArg)) {
+    return { tagName, className: classArg.getText(), unresolved: 'the class argument is not an identifier' };
+  }
+  const local = classArg.text;
+  // Declarations are matched by name, so an import alias is followed to the declared name
+  // (web-grid: `import { GridElement as _GridElement } …; registerComponent('web-grid', _GridElement)`).
+  const { found, reason } = resolveBinding(ts, local, node.getSourceFile(), opts);
+  if (!found) return { tagName, className: local, unresolved: reason };
+  return {
+    tagName,
+    className: found.name,
+    ...(found.name !== local ? { localName: local } : {}),
+    fileName: found.sf.fileName,
+  };
 }
 
 /** Find every `registerComponent()` registration in a source file. */
-export function extractRegistrations(ts: TS, sf: SourceFile): ExtractedRegistration[] {
+export function extractRegistrations(ts: TS, sf: SourceFile, opts: ExtractOptions = {}): ExtractedRegistration[] {
   const out: ExtractedRegistration[] = [];
   const visit = (node: Node): void => {
-    const reg = parseRegisterComponentCall(ts, node);
+    const reg = parseRegisterComponentCall(ts, node, opts);
     if (reg) out.push(reg);
     ts.forEachChild(node, visit);
   };

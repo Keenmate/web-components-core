@@ -170,11 +170,12 @@ describe('extractRegistrations', () => {
   it('finds registerComponent() calls, unwrapping an as-cast class argument', () => {
     expect(
       registrations(`
+        class WebMultiSelect extends BlissElement {}
         registerComponent('web-multiselect', WebMultiSelect as unknown as CustomElementConstructor, {
           config: { name: 'x', version: '1' },
         });
       `),
-    ).toEqual([{ tagName: 'web-multiselect', className: 'WebMultiSelect' }]);
+    ).toEqual([{ tagName: 'web-multiselect', className: 'WebMultiSelect', fileName: 'test.ts' }]);
   });
 
   it('ignores non-registerComponent calls and calls with a non-literal tag', () => {

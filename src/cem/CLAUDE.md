@@ -12,7 +12,10 @@ right after the inputs plugin: every manifest string folded to LF (a CRLF checko
 sorted by path (the analyzer's order varies by run), so two builds in a row leave `git status` clean. Extracted data is keyed by module path + class name. The plugin also recognizes core's `registerComponent()`
 (via `parseRegisterComponentCall` / `extractRegistrations`) as a custom-element
 definition — the stock analyzer only knows `customElements.define()` — so it sets
-`customElement`/`tagName` and adds the `custom-element-definition` export.
+`customElement`/`tagName` and adds the `custom-element-definition` export. The class argument
+resolves to its DECLARED name + file (import alias / default import / relative re-exports followed);
+registrations still unlinked after moduleLinkPhase are linked in `packageLinkPhase` (the call in
+`index.ts` may be analyzed after the class module), and one that never links is a build warning.
 `toEnum` types resolve through `as const` and shared members-consts (e.g. a
 hoisted `const PLACEMENTS = […] as const`), not just inline array literals.
 Core-declared inputs (not table rows) are added by the plugin via

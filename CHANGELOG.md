@@ -20,6 +20,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **CEM: `registerComponent()` with an aliased class import no longer yields "No components
+  found".** The plugin matched the class argument by its written name, so
+  `import { GridElement as _GridElement } …; registerComponent('web-grid', _GridElement)` (web-grid)
+  linked nothing. The argument now resolves to its declaration — import alias, default import,
+  `export { a as b } from` / `export * from` re-exports in relative modules — and registrations whose
+  call is analyzed after the class module are linked in `packageLinkPhase` (module order no longer
+  matters). A registration that still can't be resolved is a `[keenmate-bliss-inputs]` build warning
+  naming the tag and the identifier. Table spreads (`...SHARED`) follow re-exports the same way.
+  `src/cem/extract.ts`, `src/cem/plugin.ts`.
 - **`anchor()` / `createPopover()` / `/menu` `inheritThemeFrom` — no mixed theme on a portaled panel.**
   Each theme attribute was copied from its own nearest carrier, so a section's
   `data-theme="dark"` above a component host landed on the panel next to the host's
