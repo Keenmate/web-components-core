@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc22] - 2026-11-11
+
 ### Added
 
 - **`/menu`: a bottom sheet on phones — every component's context / column menu gets it for
