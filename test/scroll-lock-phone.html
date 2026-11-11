@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test — body scroll lock on a phone page wider than the screen</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>scroll-lock phone fixture</h1>
+    <p>Targeted by <code>e2e/scroll-lock.spec.ts</code> at a phone viewport. <code>#wide</code> makes the page
+        wider than the screen, so the browser zooms out and <code>innerWidth</code> exceeds the root's
+        <code>clientWidth</code> — which is horizontal overflow, not a scrollbar.</p>
+    <div id="wide" style="width: 1000px; height: 2000px">wide content</div>
+    <div id="marker" style="height: 40px">marker</div>
+
+    <script type="module">
+        import * as core from '/src/index.ts';
+        window.core = core;
+        document.body.dataset.ready = '';
+    </script>
+</body>
+</html>

@@ -73,14 +73,12 @@ function pin(body: HTMLElement): void {
   for (const prop of ROOT_PROPERTIES) rootStyle[prop] = root.style.getPropertyValue(prop);
   state().saved = { scrollX, scrollY, style, body, rootStyle };
 
-  // Pinning removes the page scrollbar (desktop): pad the body by its width so the content
-  // doesn't jump sideways while the lock holds.
-  const rootWidth = body.ownerDocument.documentElement.clientWidth;
-  const scrollbar = view && rootWidth > 0 ? view.innerWidth - rootWidth : 0;
-  if (scrollbar > 0 && view) {
-    const padding = parseFloat(view.getComputedStyle(body).paddingRight) || 0;
-    body.style.setProperty('padding-right', `${padding + scrollbar}px`);
-  }
+  // Measure the root's content width before and after pinning: the difference is exactly the
+  // vertical scrollbar that disappeared (a classic desktop scrollbar), 0 with overlay scrollbars,
+  // touch devices or `scrollbar-gutter: stable`. NOT `innerWidth - clientWidth`: on a phone page
+  // wider than the screen the browser zooms out, `innerWidth` follows the zoomed-out visual
+  // viewport, and that difference is the horizontal overflow, not a scrollbar.
+  const widthBefore = root.clientWidth;
   body.style.setProperty('position', 'fixed');
   body.style.setProperty('top', `${-scrollY}px`);
   body.style.setProperty('left', `${-scrollX}px`);
@@ -88,6 +86,12 @@ function pin(body: HTMLElement): void {
   body.style.setProperty('width', '100%');
   body.style.setProperty('overflow', 'hidden');
   root.style.setProperty('overflow-x', 'hidden');
+  const scrollbar = widthBefore > 0 ? root.clientWidth - widthBefore : 0;
+  if (scrollbar > 0 && view) {
+    // Pad the body by it so the content doesn't jump sideways while the lock holds.
+    const padding = parseFloat(view.getComputedStyle(body).paddingRight) || 0;
+    body.style.setProperty('padding-right', `${padding + scrollbar}px`);
+  }
 }
 
 function unpin(current: HTMLElement): void {

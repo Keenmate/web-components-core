@@ -115,14 +115,49 @@ describe('lockBodyScroll — scrollbar compensation', () => {
     vi.restoreAllMocks();
   });
 
-  it('pads the body by the scrollbar width while pinned, and restores it', () => {
+  /** Stub `<html>`'s clientWidth: `pinned` while the body is position: fixed, else `free`. */
+  const stubRootWidth = (free: number, pinned: number) =>
+    Object.defineProperty(document.documentElement, 'clientWidth', {
+      configurable: true,
+      get: () => (document.body.style.position === 'fixed' ? pinned : free),
+    });
+  const unstubRootWidth = () =>
+    Object.defineProperty(document.documentElement, 'clientWidth', { configurable: true, value: 0 });
+
+  it('pads the body by the scrollbar that disappears while pinned, and restores it', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
-    Object.defineProperty(document.documentElement, 'clientWidth', { configurable: true, value: window.innerWidth - 15 });
+    stubRootWidth(1265, 1280); // a classic 15px scrollbar goes away when pinned
     document.body.style.paddingRight = '4px';
     const release = lockBodyScroll();
     expect(document.body.style.paddingRight).toBe('19px');
     release();
     expect(document.body.style.paddingRight).toBe('4px');
-    Object.defineProperty(document.documentElement, 'clientWidth', { configurable: true, value: 0 });
+    unstubRootWidth();
+  });
+
+  it('no compensation on a zoomed-out phone page wider than the screen (overlay scrollbars)', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    // innerWidth follows the zoomed-out visual viewport (the old innerWidth - clientWidth bug: 651px).
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(1026);
+    stubRootWidth(375, 375);
+    const release = lockBodyScroll();
+    expect(document.body.style.paddingRight).toBe('');
+    release();
+    expect(document.body.style.paddingRight).toBe('');
+    unstubRootWidth();
+  });
+
+  it('nested locks pad once and restore the original inline padding on the last release', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    stubRootWidth(1265, 1280);
+    document.body.style.paddingRight = '2px';
+    const a = lockBodyScroll();
+    const b = lockBodyScroll();
+    expect(document.body.style.paddingRight).toBe('17px');
+    a();
+    expect(document.body.style.paddingRight).toBe('17px');
+    b();
+    expect(document.body.style.paddingRight).toBe('2px');
+    unstubRootWidth();
   });
 });

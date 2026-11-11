@@ -1670,7 +1670,10 @@ target (`null` = none). `createPopover({ shouldCloseOnEscape, shouldCloseOnOutsi
 getInsideElements, returnFocusTo, overlayGroup, onClose })` joins the tree with them. `/menu` keeps its own keyboard and
 dismiss handling (its submenus are levels of ONE overlay) but is a node of the tree;
 components move their own dropdown dismissal onto the stack when they next touch it.
-`lockBodyScroll()` pads `<body>` by the scrollbar width while pinned (no sideways jump).
+`lockBodyScroll()` pads `<body>` by the width of the vertical scrollbar that pinning actually removes
+(`<html>` `clientWidth` after minus before; no sideways jump) — 0 with overlay scrollbars, on touch
+devices, or under `scrollbar-gutter: stable`; never `innerWidth - clientWidth`, which on a zoomed-out
+phone page wider than the screen is the horizontal overflow.
 
 ### 12.10 Theme context (dark / light) — IMPLEMENTED (`src/environment/theme.ts`)
 

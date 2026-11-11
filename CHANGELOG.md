@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`lockBodyScroll()` no longer adds a bogus `padding-right` on a phone page wider than the
+  screen.** The scrollbar compensation was `innerWidth - documentElement.clientWidth`; on a phone the
+  browser zooms out to fit horizontal overflow, so `innerWidth` follows the wider visual viewport and
+  the "scrollbar" was the overflow (651px in web-grid's phone-sheet fixture). It now measures the root's
+  `clientWidth` before and after pinning — exactly the vertical scrollbar that disappears (0 with
+  overlay scrollbars / touch / `scrollbar-gutter: stable`). Inline padding restore and nested-lock
+  ref-counting unchanged. `src/overlay/scroll-lock.ts`, SPEC §12.9.
+
 - **CEM: `registerComponent()` with an aliased class import no longer yields "No components
   found".** The plugin matched the class argument by its written name, so
   `import { GridElement as _GridElement } …; registerComponent('web-grid', _GridElement)` (web-grid)
