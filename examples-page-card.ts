@@ -16,6 +16,9 @@
  *                             page pre-creates its `window.components` entry (adopted), defines it
  *                             later via `entry.register()`, and core's messages for it fall back to
  *                             `[CORE:ELEMENT] core-demo-pg-early#id`.
+ *   - `<core-demo-pg-owner>`  mounts a `<core-demo-pg-child>` in its shadow root; the child's
+ *     / `<core-demo-pg-child>`  `createCustomStyles({ getOwner })` takes the owner's custom-CSS
+ *                             layers (PG06: child page → owner page → owner instance → child instance).
  *
  * Demo-only — not part of the published package (`files` ships `dist/` only).
  */
@@ -189,6 +192,111 @@ export class CoreDemoPgEarly extends BlissElement {
  * loads; `registerComponent()` adopts it.
  */
 export class CoreDemoPgLate extends CoreDemoPg {}
+
+// ── PG06 · managed child (createCustomStyles getOwner) ───────────────────────
+
+/** Shared CSS of the owner / child pair, in `@layer component` so every custom layer wins. */
+const OWNED_CSS = `@layer component {
+  :host { display: block; }
+  .pgo { border: 1px dashed var(--kmwc-border-color-strong, GrayText); border-radius: var(--kmwc-radius-lg, 12px);
+         padding: .6rem; font-size: .85rem; }
+  .pgo-title { font: 600 .75rem var(--kmwc-mono-font-family, ui-monospace, monospace); color: var(--kmwc-text-color-3, GrayText);
+               margin-bottom: .45rem; }
+  .pgc { border: 4px solid var(--kmwc-border-color, GrayText); border-radius: var(--kmwc-radius-md, 10px); padding: .6rem .8rem;
+         background: var(--kmwc-main-bg, Canvas); color: var(--kmwc-text-color-1, CanvasText); font-weight: 500; }
+  .pgc-winner { display: block; margin-top: .3rem; font: .78rem var(--kmwc-mono-font-family, ui-monospace, monospace); }
+  .pgc-winner::after { content: "no custom layer"; }
+}`;
+
+/** Instance custom CSS rows, shared by the owner and the child. */
+const CUSTOM_STYLE_INPUTS: readonly InputDef[] = [
+  { configKey: 'customStyles', attribute: 'custom-styles', converter: toText({ isNullable: true }) },
+  { configKey: 'getCustomStylesCallback', converter: toFunction<CustomStylesCallback>(), default: null },
+];
+
+/**
+ * A managed child: mounted by `<core-demo-pg-owner>` inside its shadow root. Its custom CSS names the
+ * owner (`getOwner`), so the owner's page + instance layers land between its own:
+ * child page → owner page → owner instance → child instance.
+ */
+export class CoreDemoPgChild extends BlissElement {
+  protected static override inputs: readonly InputDef[] = CUSTOM_STYLE_INPUTS;
+
+  #styles?: CustomStylesHandle;
+
+  protected override reinit(): void {
+    const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
+    adoptStyles(root, OWNED_CSS);
+    root.innerHTML = `<div class="pgc" part="card">Managed child <code>&lt;core-demo-pg-child&gt;</code>
+      <span class="pgc-winner"></span></div>`;
+    this.#styles ??= createCustomStyles(this, root, {
+      cssClass: 'pgc-custom',
+      getContext: () => ({ element: this }),
+      getInstanceStyles: () => ({
+        css: this.config.customStyles as string | null,
+        callback: this.config.getCustomStylesCallback as CustomStylesCallback | null,
+      }),
+      // The host of the shadow root it lives in; read on every refresh.
+      getOwner: () => {
+        const rootNode = this.getRootNode();
+        return rootNode instanceof ShadowRoot ? (rootNode.host as HTMLElement) : null;
+      },
+    });
+    this.#styles.refresh();
+  }
+
+  protected override update(): void {
+    this.#styles?.refresh();
+  }
+
+  protected override destroyCallback(): void {
+    this.#styles?.destroy();
+  }
+}
+
+/** The owner: an ordinary component with custom CSS that mounts one `<core-demo-pg-child>`. */
+export class CoreDemoPgOwner extends BlissElement {
+  protected static override inputs: readonly InputDef[] = CUSTOM_STYLE_INPUTS;
+
+  #styles?: CustomStylesHandle;
+
+  /** The managed child it mounted (for the demo page). */
+  get child(): CoreDemoPgChild | null {
+    return (this.shadowRoot?.querySelector('core-demo-pg-child') as CoreDemoPgChild | null) ?? null;
+  }
+
+  protected override reinit(): void {
+    const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
+    adoptStyles(root, OWNED_CSS);
+    root.innerHTML = `<div class="pgo" part="box"><div class="pgo-title">&lt;core-demo-pg-owner&gt; · shadow root</div>
+      <core-demo-pg-child></core-demo-pg-child></div>`;
+    this.#styles ??= createCustomStyles(this, root, {
+      cssClass: 'pgo-custom',
+      getContext: () => ({ element: this }),
+      getInstanceStyles: () => ({
+        css: this.config.customStyles as string | null,
+        callback: this.config.getCustomStylesCallback as CustomStylesCallback | null,
+      }),
+    });
+    this.#styles.refresh(); // also refreshes the managed child
+  }
+
+  protected override update(): void {
+    this.#styles?.refresh();
+  }
+
+  protected override destroyCallback(): void {
+    this.#styles?.destroy();
+  }
+}
+
+registerComponent('core-demo-pg-child', CoreDemoPgChild as unknown as CustomElementConstructor, {
+  config: { name: 'core-demo-pg-child', version: '0.0.0-demo', author: 'examples-page-card.ts' },
+});
+
+registerComponent('core-demo-pg-owner', CoreDemoPgOwner as unknown as CustomElementConstructor, {
+  config: { name: 'core-demo-pg-owner', version: '0.0.0-demo', author: 'examples-page-card.ts' },
+});
 
 registerComponent('core-demo-pg', CoreDemoPg as unknown as CustomElementConstructor, {
   config: { name: 'core-demo-pg', version: '0.0.0-demo', author: 'examples-page-card.ts' },

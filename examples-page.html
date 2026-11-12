@@ -50,7 +50,7 @@
                 <div class="field-row" id="pg01-stage">
                     <core-demo-pg id="demo-pg-a" label="Instance A" tone="info"></core-demo-pg>
                     <core-demo-pg id="demo-pg-b" label="Instance B"></core-demo-pg>
-                    <core-demo-pg-early id="demo-pg-early"></core-demo-pg-early>
+                    <core-demo-pg-early id="demo-pg-early" data-kmwc-undefined></core-demo-pg-early>
                 </div>
                 <div class="output"><pre id="pg01-readout"></pre></div>
             </div>
@@ -306,7 +306,7 @@ destroyCallback() { this.#styles.destroy(); }</pre></div>
                     <core-demo-pg id="demo-pg-e" label="Instance E" tone="info"></core-demo-pg>
                     <core-demo-pg id="demo-pg-f" label="Instance F"></core-demo-pg>
                     <core-demo-pg id="demo-pg-g" label="Instance G" tone="success"></core-demo-pg>
-                    <core-demo-pg-late id="demo-pg-late" label="Late tag">core-demo-pg-late — not defined yet</core-demo-pg-late>
+                    <core-demo-pg-late id="demo-pg-late" data-kmwc-undefined label="Late tag">core-demo-pg-late — not defined yet</core-demo-pg-late>
                 </div>
                 <div class="grid-2 mt-1">
                     <div class="output"><pre id="pg05-readout"></pre></div>
@@ -327,10 +327,57 @@ window.components['core-demo-pg'].customStyles = null;                    // cle
         </div>
 
         <!-- ============================================================= -->
-        <!-- PG06 · API summary                                            -->
+        <!-- PG06 · Managed child: getOwner                                -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>PG06 · API summary</h2>
+            <h2>PG06 · Managed child: <code>getOwner</code></h2>
+            <p>
+                Some components mount another element and own it: web-dropzone's satellites belong to one store. The
+                page styles the <strong>owner</strong>, so the child should look the same without being styled twice.
+                The child's <code>createCustomStyles()</code> names its owner with <code>getOwner</code>, and the
+                owner's page and instance layers, as the owner itself resolved them, land between the child's own:
+                <strong>child page → owner page → owner instance → child instance</strong>.
+            </p>
+            <p>
+                A later layer wins over an earlier one. A page write for either tag, or the owner's
+                <code>refresh()</code>, refreshes the child too. No owner (<code>getOwner</code> returns
+                <code>null</code>, throws, or the owner is gone from the page) means no owner layers, exactly as before.
+            </p>
+            <p>
+                <strong>Try it.</strong> Each checkbox sets one layer. Every layer gives the child's card its own
+                border colour and names itself under the card text, so the card always shows the layer that won. Tick
+                them one by one in any order: the winner is always the latest layer in the chain above, not the last
+                one you ticked. The readout lists the child's <code>&lt;style&gt;</code> slots in cascade order.
+            </p>
+            <div class="controls">
+                <label><input type="checkbox" id="pg06-child-page"> child page: <code>window.components['core-demo-pg-child'].customStyles</code> (blue)</label>
+                <label><input type="checkbox" id="pg06-owner-page"> owner page: <code>window.components['core-demo-pg-owner'].customStyles</code> (purple)</label>
+                <label><input type="checkbox" id="pg06-owner"> owner instance: <code>owner.customStyles</code> (orange)</label>
+                <label><input type="checkbox" id="pg06-child"> child instance: <code>owner.child.customStyles</code> (green)</label>
+                <button id="pg06-reset" class="btn-danger">↺ Reset demo</button>
+            </div>
+            <div class="demo-area">
+                <core-demo-pg-owner id="demo-pg-owner"></core-demo-pg-owner>
+                <div class="output mt-1"><pre id="pg06-readout"></pre></div>
+            </div>
+            <div class="code-block"><pre>// in the child: its custom CSS names the owner
+this.#customStyles = createCustomStyles(this, this.shadowRoot, {
+  cssClass: 'pgc-custom',
+  getContext: () =&gt; this.withContext({}),
+  getInstanceStyles: () =&gt; ({ css: this.config.customStyles, callback: this.config.getCustomStylesCallback }),
+  getOwner: () =&gt; this.#store?.host ?? null,   // read on every refresh; null = no owner layers
+});
+
+// the page styles the owner — its managed children follow
+window.components['core-demo-pg-owner'].customStyles = '.pgc { border-color: #9333ea }';
+owner.customStyles = '.pgc { border-color: #ea580c }';</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- PG07 · API summary                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>PG07 · API summary</h2>
             <table class="reference-table">
                 <thead><tr><th>API</th><th>What it does</th></tr></thead>
                 <tbody>
@@ -349,7 +396,8 @@ window.components['core-demo-pg'].customStyles = null;                    // cle
                     <tr><td><code>window.components.renderLoadingCallback</code></td><td>Page-wide loader hook (non-enumerable accessor; a non-function reads as unset).</td></tr>
                     <tr><td><code>adoptStyles(root, ...css)</code></td><td>A component's own static CSS: shared, cached constructable sheets, deduplicated per root. Keep it in <code>@layer component</code> so custom CSS can override it.</td></tr>
                     <tr><td><code>createStyleSlot(root, { position?, cssClass? })</code></td><td>A replaceable per-instance <code>&lt;style&gt;</code>: <code>set(css)</code> / <code>clear()</code> / <code>destroy()</code>, read-only <code>element</code>.</td></tr>
-                    <tr><td><code>createCustomStyles(host, root, { getContext, getInstanceStyles, cssClass?, position?, onApply? })</code></td><td>Custom CSS for a component: the page layer, then the instance layer, each a <code>&lt;style&gt;</code> (callback wins over CSS). Returns <code>{ refresh, destroy }</code>; follows page changes until <code>destroy()</code>.</td></tr>
+                    <tr><td><code>createCustomStyles(host, root, { getContext, getInstanceStyles, cssClass?, position?, onApply?, getOwner? })</code></td><td>Custom CSS for a component: the page layer, then the instance layer, each a <code>&lt;style&gt;</code> (callback wins over CSS). Returns <code>{ refresh, destroy }</code>; follows page changes until <code>destroy()</code>.</td></tr>
+                    <tr><td><code>getOwner: () =&gt; HTMLElement | null</code></td><td>A managed child's owner (PG06), read on every refresh. The owner's page and instance layers, as the owner's own handle resolved them, sit between the child's: child page → owner page → owner instance → child instance (slots <code>&lt;cssClass&gt;--owner-page</code>, <code>&lt;cssClass&gt;--owner</code>). A page write for either tag or the owner's <code>refresh()</code> refreshes the child. <code>null</code>, a throw (logged), an owner with no live handle or one removed from the page = no owner layers.</td></tr>
                     <tr><td><code>window.components[tag].customStyles</code> / <code>.getCustomStylesCallback(ctx)</code></td><td>Page layer for every instance of the tag, before the instance's own custom CSS. The callback gets each instance's context and, while set, replaces <code>customStyles</code>. Installed by <code>registerComponent()</code> (a value set on a pre-created entry is adopted); assigning updates the live instances; a wrong type warns and keeps the previous value.</td></tr>
                 </tbody>
             </table>
@@ -658,6 +706,47 @@ window.components['core-demo-pg'].customStyles = null;                    // cle
         }));
         render5();
 
+        // ── PG06 · managed child (getOwner) ──────────────────────────────────
+        await customElements.whenDefined('core-demo-pg-owner');
+        const owner = $('demo-pg-owner');
+        await owner.whenReady();
+        /** Each layer: a border colour and its name under the card text (the winner shows). */
+        const layerCss = (color, name) => `.pgc { border-color: ${color}; } .pgc-winner::after { content: "winner: ${name}"; color: ${color}; }`;
+        const LAYERS6 = {
+            'pg06-child-page': { css: layerCss('#2563eb', 'child page'), set: (css) => { reg['core-demo-pg-child'].customStyles = css; } },
+            'pg06-owner-page': { css: layerCss('#9333ea', 'owner page'), set: (css) => { reg['core-demo-pg-owner'].customStyles = css; } },
+            'pg06-owner': { css: layerCss('#ea580c', 'owner instance'), set: (css) => { owner.customStyles = css; } },
+            'pg06-child': { css: layerCss('#16a34a', 'child instance'), set: (css) => { owner.child.customStyles = css; } },
+        };
+        async function render6() {
+            const child = owner.child;
+            await Promise.all([owner.whenSettled(), child?.whenSettled()]);
+            const root = child?.shadowRoot;
+            const card = root?.querySelector('.pgc');
+            if (!card) return;
+            const winner = getComputedStyle(root.querySelector('.pgc-winner'), '::after').content;
+            const slots = [...root.querySelectorAll('style')].map((st, i) => {
+                const name = st.textContent.match(/winner: ([^"]+)/)?.[1];
+                return `   ${i + 1}. ${st.className.padEnd(22)} ${name ? escapeHtml(name) : '(empty)'}`;
+            });
+            $('pg06-readout').innerHTML = [
+                `<b>child border</b> ${escapeHtml(getComputedStyle(card).borderTopColor)} · <b>::after</b> ${escapeHtml(winner)}`,
+                '<b>the child\'s style slots, in cascade order</b>',
+                ...slots,
+            ].join('\n');
+        }
+        for (const [id, layer] of Object.entries(LAYERS6)) {
+            $(id).addEventListener('change', (e) => { layer.set(e.target.checked ? layer.css : null); render6(); });
+        }
+        $('pg06-reset').addEventListener('click', () => {
+            for (const [id, layer] of Object.entries(LAYERS6)) {
+                layer.set(null);
+                $(id).checked = false;
+            }
+            render6();
+        });
+        render6();
+
         // ── Reset page-wide state (also on pagehide) ─────────────────────────
         const resetPageWide = () => {
             reg.logging.resetLogging();             // no page level → the built-in warn
@@ -666,12 +755,15 @@ window.components['core-demo-pg'].customStyles = null;                    // cle
             reg.renderLoadingCallback = null;
             reg['core-demo-pg'].customStyles = null;
             reg['core-demo-pg'].getCustomStylesCallback = null;
+            reg['core-demo-pg-child'].customStyles = null;
+            reg['core-demo-pg-owner'].customStyles = null;
         };
         $('pg-reset').addEventListener('click', () => {
             resetPageWide();
             $('pg03-page').checked = false;
             restart();
-            render2(); render3(); render5();
+            $('pg06-child-page').checked = $('pg06-owner-page').checked = false;
+            render2(); render3(); render5(); render6();
             log(panel2, '▶ page-wide state reset (page, type and instance levels cleared → warn)', 'action');
         });
         window.addEventListener('pagehide', resetPageWide);
