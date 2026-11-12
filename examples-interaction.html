@@ -312,22 +312,46 @@ await runAction({
                 closes an open menu, like any click outside).
             </p>
             <p>
+                <strong>On a phone the menu is a bottom sheet.</strong> <code>presentation</code> picks the form:
+                <code>'auto'</code> (the default) asks core's phone switch <code>resolvePresentation()</code>, so it
+                becomes a sheet <strong>only on a phone</strong> and stays the floating menu on a tablet or desktop;
+                <code>'floating'</code> keeps the floating menu everywhere; <code>'sheet'</code> forces the sheet, so you
+                can try it here on a desktop. The sheet is full width at the bottom over a backdrop, with a header (the
+                <code>title</code> option and a close button) and touch-size rows. A submenu drills in, replacing the
+                list, with a <em>Back</em> row on top. The page underneath can't scroll, and the phone Back button goes
+                up one submenu level or closes the sheet. <code>onClose</code> gets two new reasons:
+                <code>'close-button'</code> and <code>'back'</code> (the Back button on the root); a tap on the backdrop
+                is <code>'outside-click'</code>. Every reason lands in the timeline and in the row under the list.
+            </p>
+            <p>
                 <strong>Try it.</strong> Right-click <code>report.pdf</code> and click <em>Pinned</em>: the menu stays
                 open, the check flips and the row gets a <code>pinned</code> tag. Hover <em>Move to</em> to watch it
                 load. Right-click <code>contract.docx</code>: <em>Archive</em> is greyed out. Tick the
                 <code>beforeActionCallback</code> box and pick <em>Delete</em>: the menu closes, the log shows
                 <code>→ false</code> and the file stays. <em>Actions ▾</em> opens the dropdown. From the keyboard, focus
                 a file and press <kbd>Shift+F10</kbd>, then the arrows or a shortcut (<kbd>F2</kbd> renames). A row an
-                action changed pings.
+                action changed pings. Then set <code>presentation</code> to <code>sheet</code> and right-click a file:
+                tap <em>Share</em> to drill in, <em>More</em> to go one level deeper, <em>Back</em> to come up again,
+                and close it with the ✕, the backdrop or <kbd>Esc</kbd>.
             </p>
             <div class="controls">
                 <label><input type="checkbox" id="do-ia04-veto-delete"> <code>beforeActionCallback</code> rejects <code>delete</code></label>
                 <label><input type="checkbox" id="do-ia04-page-theme"> page-wide theme (<code>:root { --km-menu-* }</code>)</label>
                 <label><input type="checkbox" id="do-ia04-instance-theme"> this instance only (<code>--dfm-menu-bg</code>)</label>
+                <label><code>presentation</code>
+                    <select id="do-ia04-presentation">
+                        <option value="auto">auto (a sheet on a phone)</option>
+                        <option value="floating">floating</option>
+                        <option value="sheet">sheet (forced)</option>
+                    </select>
+                </label>
+                <label><code>title</code>
+                    <input type="text" id="do-ia04-title" value="File actions" class="w-md"></label>
                 <button id="do-ia04-reset" class="btn-danger">↺ Reset demo</button>
             </div>
             <div class="demo-area">
                 <core-demo-files id="demo-ia04-files" data-log="ia04"></core-demo-files>
+                <div class="css-readout mt-1" id="demo-ia04-reasons"><span class="muted"><code>onClose</code> reasons appear here.</span></div>
                 <!-- No height cap: a scroll anywhere outside the menu dismisses it (reason 'scroll'), so this log grows instead. -->
                 <div class="log-panel log-panel--dark mt-1" style="--log-max-height: none" data-empty="Timeline — right-click a file or press Actions ▾." id="demo-ia04-log"></div>
             </div>
@@ -365,8 +389,10 @@ row.addEventListener('contextmenu', (e) =&gt; {
     returnFocusTo: row,
     shouldFocusFirst: false,                   // true when opened from the keyboard
     inheritThemeFrom: this,
+    presentation: 'auto',                      // 'auto' (a sheet on a phone) | 'floating' | 'sheet'
+    title: file.name,                          // the sheet header + the menu's aria-label
     runAction: (item, { triggerElement, sourceEvent }) =&gt; runAction({ … }),   // as in IA03
-    onClose: (reason) =&gt; { … },                // 'action' | 'escape' | 'tab' | 'outside-click' | …
+    onClose: (reason) =&gt; { … },                // 'action' | 'escape' | 'outside-click' | 'back' | 'close-button' | …
   });
 });
 
@@ -402,8 +428,8 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
                     <tr><td><code>ActionEventDetail</code></td><td><code>/actions</code></td><td>Surface ctx + <code>action</code>, <code>id</code>, <code>item</code>, <code>source</code>, <code>sourceEvent</code>, <code>triggerElement</code>, <code>dataset</code>. One object for <code>beforeActionCallback</code>, <code>onClick</code>, <code>onAction</code> and the event.</td></tr>
                     <tr><td><code>ActionSource</code></td><td><code>/actions</code></td><td>Where an activation came from: <code>'action-buttons'</code>, <code>'toolbar'</code>, <code>'row-toolbar'</code>, <code>'cell-toolbar'</code>, <code>'context-menu'</code>, <code>'header-menu'</code>, <code>'message'</code>, <code>'summary'</code>, <code>'palette'</code>, <code>'keyboard'</code>, or any custom string (IA03's page HTML uses <code>'markup'</code>).</td></tr>
                     <tr><td><code>openMenu(entries, ctx, opts)</code> → <code>MenuHandle</code></td><td><code>/menu</code></td><td><code>{ isOpen, element, close(), focusFirst(), update() }</code>. No visible item means nothing is rendered and the handle is already closed.</td></tr>
-                    <tr><td><code>OpenMenuOptions</code></td><td><code>/menu</code></td><td><code>at</code>, <code>host</code>, <code>runAction</code>, <code>onClose</code>, <code>renderItemCallback</code>, <code>renderMenuCallback</code>, <code>defaults</code>, <code>prepareItemCallback</code>, <code>placement</code>, <code>offset</code>, <code>cssClass</code>, <code>shouldFocusFirst</code>, <code>returnFocusTo</code>, <code>shouldCloseOnOutsideInteraction</code>, <code>overlayGroup</code>, <code>labels</code>, <code>inheritThemeFrom</code>.</td></tr>
-                    <tr><td><code>MenuCloseReason</code>, <code>MenuLabels</code>, <code>MENU_CSS</code></td><td><code>/menu</code></td><td>The <code>onClose</code> reason (<code>'action'</code>, <code>'escape'</code>, <code>'tab'</code>, <code>'outside-click'</code>, <code>'scroll'</code>, <code>'blur'</code>, <code>'overlay'</code>, <code>'api'</code>, <code>'empty'</code>); the menu's UI strings (<code>{ loading }</code>); the stylesheet <code>openMenu()</code> adopts into <code>host</code>.</td></tr>
+                    <tr><td><code>OpenMenuOptions</code></td><td><code>/menu</code></td><td><code>at</code>, <code>host</code>, <code>runAction</code>, <code>onClose</code>, <code>renderItemCallback</code>, <code>renderMenuCallback</code>, <code>defaults</code>, <code>prepareItemCallback</code>, <code>placement</code>, <code>offset</code>, <code>cssClass</code>, <code>shouldFocusFirst</code>, <code>returnFocusTo</code>, <code>shouldCloseOnOutsideInteraction</code>, <code>overlayGroup</code>, <code>labels</code>, <code>inheritThemeFrom</code>, <code>presentation</code> (<code>'auto'</code> by default: a bottom sheet on a phone via <code>resolvePresentation()</code>; <code>'floating'</code>; <code>'sheet'</code>), <code>title</code> (the sheet header and the root menu's <code>aria-label</code>).</td></tr>
+                    <tr><td><code>MenuCloseReason</code>, <code>MenuPresentation</code>, <code>MenuLabels</code>, <code>MENU_CSS</code></td><td><code>/menu</code></td><td>The <code>onClose</code> reason (<code>'action'</code>, <code>'escape'</code>, <code>'tab'</code>, <code>'outside-click'</code> (also a tap on a sheet's backdrop), <code>'scroll'</code>, <code>'blur'</code>, <code>'overlay'</code>, <code>'api'</code>, <code>'empty'</code>, <code>'back'</code> (the phone Back button on a sheet's root), <code>'close-button'</code> (the sheet's close button)); <code>'auto' | 'floating' | 'sheet'</code>; the menu's UI strings (<code>{ loading, back, close }</code>: the lazy-submenu row, the sheet's Back row, the close button's accessible name); the stylesheet <code>openMenu()</code> adopts into <code>host</code>.</td></tr>
                     <tr><td><code>--km-menu-*</code> / <code>--_km-menu-*</code></td><td>CSS</td><td>Public page-wide layer / private per-component layer (set from the component's own variable, no fallback), then <code>--base-*</code> tokens. Full list in <code>component-variables.manifest.json</code>.</td></tr>
                 </tbody>
             </table>
@@ -756,6 +782,26 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
                 });
             });
 
+            const presentation = document.getElementById('do-ia04-presentation');
+            const title = document.getElementById('do-ia04-title');
+            const reasons = document.getElementById('demo-ia04-reasons');
+            const applySheet = () => {
+                el.presentation = presentation.value;
+                el.menuTitle = title.value.trim();
+            };
+            presentation.addEventListener('change', applySheet);
+            title.addEventListener('input', applySheet);
+            applySheet();
+            const resetReasons = () => {
+                reasons.innerHTML = '<span class="muted"><code>onClose</code> reasons appear here.</span>';
+            };
+            el.onMenuClose = (reason) => {
+                if (reasons.querySelector('.muted')) reasons.replaceChildren();
+                const chip = document.createElement('code');
+                chip.textContent = JSON.stringify(reason);
+                reasons.append(chip);
+            };
+
             pageTheme.addEventListener('change', () => document.documentElement.classList.toggle('ia-menu-theme', pageTheme.checked));
             instanceTheme.addEventListener('change', () => {
                 if (instanceTheme.checked) {
@@ -772,7 +818,11 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
                     box.checked = false;
                     box.dispatchEvent(new Event('change'));
                 }
+                presentation.value = 'auto';
+                title.value = 'File actions';
+                applySheet();
                 el.resetDemo();
+                resetReasons();
                 tl.list.replaceChildren();
                 tl.seq = 0;
             });

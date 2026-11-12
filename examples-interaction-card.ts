@@ -38,7 +38,7 @@ import {
 } from './src/actions/index.js';
 import type { ActionEventDetail, ActionItem, ActionSource, MenuEntry, MenuItem } from './src/actions/index.js';
 import { openMenu } from './src/menu/index.js';
-import type { MenuHandle, MenuInvocation } from './src/menu/index.js';
+import type { MenuCloseReason, MenuHandle, MenuInvocation, MenuPresentation } from './src/menu/index.js';
 
 // ── trace sink ───────────────────────────────────────────────────────────────
 
@@ -488,6 +488,15 @@ export class FilesDemo extends BlissElement<{ action: FilesDetail }> {
   /** The currently open menu (one at a time). */
   menu: MenuHandle | null = null;
 
+  /** Demo page only: `openMenu()`'s `presentation` (`'auto'` = a bottom sheet on a phone). */
+  presentation: MenuPresentation = 'auto';
+
+  /** Demo page only: `openMenu()`'s `title` (the sheet header, the menu's `aria-label`); `''` = none. */
+  menuTitle = '';
+
+  /** Demo page only: every `onClose` reason, in order. */
+  onMenuClose: ((reason: MenuCloseReason) => void) | null = null;
+
   /** The row (context) menu entries. */
   #rowEntries(): FilesEntry[] {
     return [
@@ -611,10 +620,13 @@ export class FilesDemo extends BlissElement<{ action: FilesDetail }> {
       returnFocusTo,
       shouldFocusFirst,
       inheritThemeFrom: this,
+      presentation: this.presentation,
+      ...(this.menuTitle ? { title: this.menuTitle } : {}),
       runAction: (item, inv) => this.#run(item, inv, ctx, source),
       onClose: (reason) => {
         trace(this, 'event', 'onClose', `reason "${reason}"`);
         if (this.menu === handle) this.menu = null;
+        this.onMenuClose?.(reason);
       },
     });
     this.menu = handle;
