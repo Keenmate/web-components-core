@@ -455,6 +455,9 @@ export function openMenu<Ctx, A extends string = string>(
   };
 
   const onItemLeave = (itemEl: HTMLElement): void => {
+    // A sheet hides the parent level when it drills in, which fires mouseleave on the item that
+    // opened the submenu — collapsing it again. Sheets close a level only by Back / close.
+    if (isSheet) return;
     const depth = levelIndexOf(itemEl);
     if (depth >= 0 && chain[depth + 1]?.owner === itemEl) scheduleCollapse(depth + 1);
   };

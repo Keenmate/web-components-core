@@ -181,6 +181,21 @@ describe('drill-in submenus', () => {
     expect(active()).toBe(opener);
   });
 
+  it('a mouse leaving the item that drilled in (its level is now hidden) keeps the submenu open', () => {
+    vi.useFakeTimers();
+    try {
+      open();
+      byId('share').click();
+      expect(levels()).toHaveLength(2);
+      byId('share').dispatchEvent(new MouseEvent('mouseleave'));
+      vi.advanceTimersByTime(1000);
+      expect(levels()).toHaveLength(2);
+      expect(title()).toBe('Share');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('a lazy submenu shows the loading row under its Back row, then the items', async () => {
     open();
     byId('move').click();
