@@ -164,10 +164,73 @@
         </div>
 
         <!-- ============================================================= -->
-        <!-- TH05 · API summary                                            -->
+        <!-- TH05 · Portaled panel                                         -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>TH05 · API &amp; component CSS</h2>
+            <h2>TH05 · A portaled panel in a themed section</h2>
+            <p>
+                A dropdown or popover is often moved to <code>&lt;body&gt;</code> so no <code>overflow</code> clips it.
+                There it no longer sits under the component, so <code>anchor()</code> / <code>createPopover()</code>
+                copy the theme onto it from <code>inheritThemeFrom</code> (for <code>createPopover()</code> the
+                reference by default). The panel then reads only its own attributes, like the component does.
+            </p>
+            <p>
+                The section below says <code>data-theme="dark"</code>, but the card in it is light: its
+                <code>theme-source</code> points at the light signal above the section, and core wrote that into the
+                card's <code>data-context-theme</code>. The panel has to match the <strong>card</strong>, not the
+                section. Above the nearest host that carries <code>data-context-theme</code>, a
+                <code>data-theme</code> / <code>data-bs-theme</code> is not copied (core already folded the page or
+                section signal into the host's context). The host's <strong>own</strong> <code>data-theme</code> is
+                still copied: it is the per-instance switch, and it wins.
+            </p>
+            <p>
+                <strong>Try it.</strong> Press <em>Open the panel</em> on the card (again, or <kbd>Esc</kbd>, closes it): it reads <code>data-context-theme: light</code>, no
+                <code>data-theme</code>, and renders light next to the light card in the dark section. Then set the
+                card's own <code>data-theme</code> to <code>dark</code>: the card turns dark and the panel (reopened, as
+                the theme is copied when it opens) follows it. <code>setThemeMode()</code> in TH02 moves both together.
+            </p>
+            <div class="controls">
+                <label>The card's own <code>data-theme</code>:
+                    <select id="th05-own-theme">
+                        <option value="" selected>none (follows its context: light)</option>
+                        <option value="dark">dark</option>
+                        <option value="light">light</option>
+                    </select>
+                </label>
+            </div>
+            <div class="demo-area">
+                <div class="controls">
+                    <span class="pill" id="th05-source" data-theme="light">theme-source target: <code>#th05-source[data-theme="light"]</code></span>
+                </div>
+                <!-- The inline color-scheme stands in for the section rule a page theme (pure-css) ships for [data-theme="dark"]. -->
+                <div class="demo-card" id="th05-section" data-theme="dark" style="color-scheme: dark; --demo-card-border: 2px dashed var(--kmwc-border-color-strong)">
+                    <div class="demo-label"><code>&lt;div data-theme="dark"&gt;</code> (a dark section)</div>
+                    <div class="card-grid" style="--grid-min: 14rem; --grid-gap: 0.8rem">
+                        <theme-panel-card id="th05-card" label='theme-source="#th05-source"' theme-source="#th05-source"></theme-panel-card>
+                    </div>
+                </div>
+            </div>
+            <div class="code-block"><pre>import { createPopover } from '@keenmate/web-components-core/positioning';
+
+const popover = createPopover({
+  reference: button,            // inside the component's shadow root
+  panel,                        // mounted in &lt;body&gt; on open
+  inheritThemeFrom: this,       // the component host (the default is the reference)
+});
+// &lt;div data-theme="dark"&gt;                                 section: NOT copied (above the host)
+//   &lt;my-el data-context-theme="light" [data-theme="…"]&gt;  copied: the context, and the host's own data-theme
+// → &lt;body&gt; &gt; .panel[data-context-theme="light"]
+
+/* the panel's CSS reads its own attributes, like the component's */
+.panel[data-context-theme="dark"] { color-scheme: dark; }
+.panel[data-theme="dark"]         { color-scheme: dark; }   /* per-instance, declared last */</pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TH06 · API summary                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>TH06 · API &amp; component CSS</h2>
             <table class="reference-table">
                 <thead><tr><th>API</th><th>What it does</th></tr></thead>
                 <tbody>
@@ -178,6 +241,7 @@
                     <tr><td><code>readThemeSignal(el)</code></td><td>The signal on one element: <code>data-theme</code>, then <code>data-bs-theme</code>, then <code>.dark</code> / <code>.light</code>. Only <code>dark</code> / <code>light</code> count; else <code>null</code>.</td></tr>
                     <tr><td><code>resolveThemeSource(host, source)</code></td><td>The element a <code>source</code> points at for <code>host</code>, or <code>null</code> for the page (also for <code>&lt;html&gt;</code> / <code>&lt;body&gt;</code> and an invalid selector).</td></tr>
                     <tr><td><code>THEME_CONTEXT_ATTRIBUTE</code> · <code>THEME_SOURCE_ATTRIBUTE</code></td><td><code>'data-context-theme'</code> (what core writes on the host) · <code>'theme-source'</code> (the attribute every <code>BlissElement</code> reads).</td></tr>
+                    <tr><td><code>anchor(panel, reference, { inheritThemeFrom })</code> · <code>createPopover({ inheritThemeFrom })</code> · <code>openMenu(…, { inheritThemeFrom })</code></td><td>Copy the theme onto a panel moved out of the component (<code>/positioning</code>, <code>/menu</code>; TH05): the nearest <code>data-theme</code>, <code>data-bs-theme</code>, <code>data-context-theme</code> and <code>data-motion</code>, but <code>data-theme</code> / <code>data-bs-theme</code> only up to the nearest host carrying <code>data-context-theme</code>. Restored when the anchor is destroyed. <code>createPopover()</code> defaults to the reference; <code>false</code> copies nothing.</td></tr>
                     <tr><td>Types</td><td><code>ColorScheme</code> (<code>'dark' | 'light'</code>), <code>ThemeMode</code> (<code>ColorScheme | 'auto'</code>), <code>ThemeSource</code> (<code>string | Element | null</code>), <code>ThemeListener</code>, <code>ObserveThemeContextOptions</code>.</td></tr>
                 </tbody>
             </table>
@@ -260,6 +324,16 @@ getThemeContext();      // the effective page scheme: forced mode, else detected
             else panel.removeAttribute('data-bs-theme');
             $('panel-title').textContent =
                 e.target.value ? `<div id="panel" data-bs-theme="${e.target.value}">` : '<div id="panel">';
+        });
+
+        // TH05 — portaled panel
+        const th05 = $('th05-card');
+        $('th05-own-theme').addEventListener('change', async (e) => {
+            if (e.target.value) th05.setAttribute('data-theme', e.target.value);
+            else th05.removeAttribute('data-theme');
+            th05.repaint();
+            // The theme is copied when the panel opens: reopen an open one.
+            if (th05.isPanelOpen) th05.openPanel();
         });
 
         // The examples kit's theme switch writes data-theme on <html> too — keep the

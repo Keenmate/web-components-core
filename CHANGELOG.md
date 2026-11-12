@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Docs
+
+- **Example pages demo the rc22 features.** IA04 (`examples-interaction.html`): a `presentation`
+  picker (`auto` / `floating` / `sheet`) and a `title` field for the file list's menus, so the phone
+  bottom sheet (drill-in submenus with a Back row, header, close button) can be forced on a desktop,
+  plus a row of every `onClose` reason; the IA05 API table lists `presentation`, `title`,
+  `MenuPresentation`, the `'back'` / `'close-button'` reasons and the `back` / `close` labels.
+  New PG06 (`examples-page.html`, API summary now PG07): an owner that mounts a managed child, four
+  layer switches (child page / owner page / owner instance / child instance) and the child's style
+  slots in cascade order, `getOwner` in the API table. New TH05 (`examples-theme.html`, API now
+  TH06): a light component in a `data-theme="dark"` section opening a `createPopover()` panel in
+  `<body>` that stays light and follows the component's own `data-theme`. `examples-page.html`
+  marks its two deliberately lazy tags `data-kmwc-undefined` (clean `kmwc check-pages`).
+
 ## [1.0.0-rc22] - 2026-11-11
 
 ### Added
