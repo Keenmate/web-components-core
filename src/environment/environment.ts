@@ -443,6 +443,9 @@ function removeMqlListener(mql: MediaQueryList): void {
   else if (typeof mql.removeListener === 'function') mql.removeListener(onMediaChange);
 }
 
+/** start() attached the window / document listeners (stop() removes only those). */
+let isListening = false;
+
 /** Attach the shared media-query + resize listeners on the first subscriber. */
 function start(): void {
   if (!canMatchMedia()) {
@@ -459,6 +462,7 @@ function start(): void {
   for (const mql of mqls) addMqlListener(mql);
   if (typeof window.addEventListener === 'function') window.addEventListener('resize', onResize);
   if (typeof document !== 'undefined') document.addEventListener(BREAKPOINTS_CHANGE_EVENT, onBreakpointsChange);
+  isListening = true;
   current = computeSnapshot();
 }
 
@@ -466,10 +470,12 @@ function start(): void {
 function stop(): void {
   for (const mql of mqls) removeMqlListener(mql);
   mqls = [];
-  if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
+  // Only what start() attached (no matchMedia → it attached nothing).
+  if (isListening && typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
     window.removeEventListener('resize', onResize);
   }
-  if (typeof document !== 'undefined') document.removeEventListener(BREAKPOINTS_CHANGE_EVENT, onBreakpointsChange);
+  if (isListening && typeof document !== 'undefined') document.removeEventListener(BREAKPOINTS_CHANGE_EVENT, onBreakpointsChange);
+  isListening = false;
   resizeFrame.cancel(); // a queued frame would re-cache a snapshot nobody observes
   viewportThrottle.cancel();
   current = null;

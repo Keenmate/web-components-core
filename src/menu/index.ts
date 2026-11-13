@@ -5,6 +5,6 @@
  * WAI-ARIA menu keyboard model. A separate subpath: it pulls in
  * `/positioning` (and so `@floating-ui/dom`).
  */
-export { openMenu } from './open-menu.js';
+export { openMenu, DEFAULT_MENU_PRESENTATION_MAP } from './open-menu.js';
 export { MENU_CSS } from './styles.js';
-export type { MenuCloseReason, MenuHandle, MenuInvocation, MenuLabels, MenuPoint, MenuPresentation, OpenMenuOptions } from './types.js';
+export type { MenuCloseReason, MenuHandle, MenuInvocation, MenuLabels, MenuPoint, MenuPresentation, MenuPresentationMap, MenuDrawerSide, ResolvedMenuPresentation, OpenMenuOptions } from './types.js';

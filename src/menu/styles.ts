@@ -62,6 +62,11 @@ const FONT_FAMILY = km('font-family', 'var(--base-font-family, inherit)');
 const LINE_HEIGHT = km('line-height', 'var(--base-line-height-normal, 1.5)');
 const HOVER_BG = km('hover-bg', 'var(--base-hover-bg, color-mix(in srgb, currentColor 8%, transparent))');
 const TOUCH_TARGET = 'var(--base-touch-target-min, 44px)';
+/** Open / close animation: the motion tokens only (SPEC §12.16 — `data-motion`, OS reduced motion → 0s). */
+const SHEET_DURATION = km('sheet-duration', 'var(--base-duration-medium, 0.25s)');
+const EASE_OUT = 'var(--base-ease-out, cubic-bezier(0, 0, 0.2, 1))';
+const EASE_IN = 'var(--base-ease-in, cubic-bezier(0.4, 0, 1, 1))';
+const DRAWER_RADIUS = km('drawer-border-radius', RADIUS_LG);
 
 export const MENU_CSS = `
 @layer component {
@@ -203,6 +208,7 @@ export const MENU_CSS = `
   inset: 0;
   z-index: ${Z_INDEX};
   background: ${km('backdrop', 'var(--base-overlay-bg, rgba(0, 0, 0, 0.4))')};
+  animation: km-menu-fade-in ${SHEET_DURATION} ${EASE_OUT};
 }
 
 .km-menu-sheet {
@@ -224,7 +230,61 @@ export const MENU_CSS = `
   font-family: ${FONT_FAMILY};
   font-size: ${km('sheet-font-size', rem('font-size-base', 1.6))};
   line-height: ${LINE_HEIGHT};
+  animation: km-menu-in-bottom ${SHEET_DURATION} ${EASE_OUT};
 }
+
+/* ── Side drawer (presentation 'drawer'): the same sheet, full height on one edge ── */
+.km-menu-sheet--drawer {
+  top: 0;
+  bottom: 0;
+  width: ${km('drawer-width', 'min(320px, 85vw)')};
+  max-height: none;
+  box-shadow: ${km('drawer-shadow', `0 0 24px ${SHADOW_COLOR}`)};
+}
+
+.km-menu-sheet--drawer.km-menu-sheet--left {
+  left: 0;
+  right: auto;
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) env(safe-area-inset-left);
+  border-radius: 0 ${DRAWER_RADIUS} ${DRAWER_RADIUS} 0;
+  animation-name: km-menu-in-left;
+}
+
+.km-menu-sheet--drawer.km-menu-sheet--right {
+  left: auto;
+  right: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) 0;
+  border-radius: ${DRAWER_RADIUS} 0 0 ${DRAWER_RADIUS};
+  animation-name: km-menu-in-right;
+}
+
+/* Closing: played out, then removed by openMenu (inert meanwhile). */
+.km-menu-sheet.km-menu-sheet--closing {
+  pointer-events: none;
+  animation: km-menu-out-bottom ${SHEET_DURATION} ${EASE_IN} forwards;
+}
+
+.km-menu-sheet--closing.km-menu-sheet--left {
+  animation-name: km-menu-out-left;
+}
+
+.km-menu-sheet--closing.km-menu-sheet--right {
+  animation-name: km-menu-out-right;
+}
+
+.km-menu-sheet-backdrop.km-menu-sheet-backdrop--closing {
+  pointer-events: none;
+  animation: km-menu-fade-out ${SHEET_DURATION} ${EASE_IN} forwards;
+}
+
+@keyframes km-menu-fade-in { from { opacity: 0; } }
+@keyframes km-menu-fade-out { to { opacity: 0; } }
+@keyframes km-menu-in-bottom { from { transform: translateY(100%); } }
+@keyframes km-menu-out-bottom { to { transform: translateY(100%); } }
+@keyframes km-menu-in-left { from { transform: translateX(-100%); } }
+@keyframes km-menu-out-left { to { transform: translateX(-100%); } }
+@keyframes km-menu-in-right { from { transform: translateX(100%); } }
+@keyframes km-menu-out-right { to { transform: translateX(100%); } }
 
 /* The header (title + close) is the shared sheet chrome: SHEET_CHROME_CSS, --km-sheet-* (SPEC §12.9). */
 

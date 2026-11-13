@@ -471,8 +471,9 @@ export class FxFiles extends BlissElement<{ action: FilesDetail }> {
       shouldFocusFirst,
       inheritThemeFrom: this,
       title: ctx.file ? ctx.file.name : 'Actions',
-      // test/menu-sheet.html forces a presentation via data-presentation (default 'auto').
-      presentation: (this.dataset.presentation as 'auto' | 'floating' | 'sheet' | undefined) ?? 'auto',
+      // test/menu-sheet.html forces a presentation via data-presentation (default 'auto'), a drawer edge via data-side.
+      presentation: (this.dataset.presentation as 'auto' | 'floating' | 'sheet' | 'drawer' | undefined) ?? 'auto',
+      side: (this.dataset.side as 'start' | 'end' | undefined) ?? 'start',
       runAction: (item, inv) => this.#run(item, inv, ctx, source),
       onClose: (reason) => {
         step('onClose', reason);

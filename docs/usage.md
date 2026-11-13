@@ -643,9 +643,10 @@ const menu = openMenu(entries, ctx, {
 menu.close();
 ```
 
-**Phone: a bottom sheet, for free.** `presentation: 'auto'` (the default) asks core's phone
-switch, `resolvePresentation()` — the same one web-multiselect and web-grid use — so on a phone
-the menu opens as a bottom sheet; on a tablet / desktop nothing changes. The sheet is full width
+**Phone: a bottom sheet, for free.** `presentation: 'auto'` (the default) classifies the device
+(`classifyDevice()` — the same device class web-multiselect and web-grid use) and looks it up in
+`presentationMap` (default `{ mobile: 'sheet', tablet: 'floating', desktop: 'floating' }`), so on
+a phone the menu opens as a bottom sheet; on a tablet / desktop nothing changes. The sheet is full width
 at the bottom over a backdrop (`env(safe-area-inset-*)`, `dvh`), with a header (`title` + a close
 button), rows at least `--base-touch-target-min` (44px) tall; a submenu drills in (it replaces
 the list, a Back row on top goes up); page scroll is locked (`lockBodyScroll`). It closes the
@@ -659,7 +660,20 @@ same ways as the floating menu plus three:
 
 Escape goes up one level / closes (`'escape'`), an item runs and closes (`'action'`). No scroll
 close (the page is locked). A component needs no code for it; pass `presentation: 'floating'`
-to keep the floating menu everywhere (or `'sheet'` to force the sheet, e.g. for a preview). The
+to keep the floating menu everywhere (or `'sheet'` to force the sheet, e.g. for a preview).
+
+**Drawer.** `presentation: 'drawer'` is the same sheet as a full-height side panel on `side`
+(`'start'` — left in LTR, right in RTL — or `'end'`), `--km-menu-drawer-width` wide
+(`min(320px, 85vw)`). Mix them per device class:
+
+```ts
+openMenu(entries, ctx, { at: button, presentationMap: { mobile: 'drawer', tablet: 'drawer' }, side: 'end' });
+```
+
+While an `'auto'` menu is open a device-class change re-resolves it (sheet ⇄ drawer in place; to /
+from floating it closes with `'presentation'`). The sheet and drawer slide in / out on
+`--base-duration-medium`, so `motion="none"`, `data-motion` and OS reduced motion turn that off
+with no code; keyboard-shortcut hints are hidden on both (the keys still work). The
 strings are `labels.back` (`'Back'`) and `labels.close` (`'Close'`); the look is the
 `--km-menu-*` chain (`--km-menu-sheet-*`, `--km-menu-backdrop`, `--km-menu-back-arrow`, see
 `component-variables.manifest.json`). A component that styles its menu through `cssClass`: that

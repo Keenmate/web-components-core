@@ -1920,22 +1920,40 @@ root / element the levels are appended to; the stylesheet is adopted into its ro
 `runAction()` — a leaf closes the menu first, then runs; a `shouldCloseOnClick: false`
 item runs and its level re-renders when the returned promise settles),
 `onClose(reason)` (`'action' | 'escape' | 'tab' | 'outside-click' | 'scroll' | 'blur' |
-'overlay' | 'api' | 'empty' | 'back' | 'close-button'` — the last two from the phone sheet; `'scroll'` by the popover's rule — one shared `watchScrollClose()`: the page or a
+'overlay' | 'api' | 'empty' | 'back' | 'close-button' | 'presentation'` — `'back'` / `'close-button'` from the phone sheet, `'presentation'` an `'auto'` menu's device-class flip to / from floating; `'scroll'` by the popover's rule — one shared `watchScrollClose()`: the page or a
 scroller around the `at` element / host, once it moved; never inside the menu, no bare wheel —
 rc20), `renderItemCallback(item, el, ctx, resolved)` (fill-or-fall-through),
 `renderMenuCallback(el, close)` (full custom content; core still positions + dismisses),
 `defaults` / `prepareItemCallback` (built-in state / rewrite, every level), `placement`,
 `offset`, `cssClass`, `shouldFocusFirst`, `returnFocusTo`,
 `shouldCloseOnOutsideInteraction` (default `true`), `overlayGroup`, `labels` (`{ loading }`),
-`inheritThemeFrom`, `presentation` (`'auto' | 'floating' | 'sheet'`, default `'auto'`),
-`title`, `labels.back` / `labels.close`. No visible item → nothing rendered, a closed handle, no `onClose`.
+`inheritThemeFrom`, `presentation` (`'auto' | 'floating' | 'sheet' | 'drawer'`, default `'auto'`),
+`presentationMap`, `side` (`'start' | 'end'`, the drawer's edge), `title`, `labels.back` / `labels.close`. No visible item → nothing rendered, a closed handle, no `onClose`.
 
 **Phone: the bottom sheet (decided 2026-11-11).** Every component's context / column menu
 gets the phone presentation from core, so the phone rule is ONE rule: `presentation: 'auto'`
-calls `resolvePresentation('auto', getEnvironment())` (§12.9 — the device class, never a width
-literal) and `fullscreen` (a phone) → the sheet; tablet / desktop keep the floating menu
-unchanged. Resolved once at open (a rotation doesn't swap an open menu). `'floating'` is the
-per-component / per-call opt-out, `'sheet'` forces it. The sheet:
+classifies the device (`classifyDevice(getEnvironment())`, §12.9 — the device class, never a width
+literal) and looks it up in `presentationMap` over `DEFAULT_MENU_PRESENTATION_MAP`
+(`{ mobile: 'sheet', tablet: 'floating', desktop: 'floating' }`); a phone → the sheet, tablet /
+desktop keep the floating menu. `'floating'` is the per-component / per-call opt-out, `'sheet'` /
+`'drawer'` force one. Width-based choices are the host component's responsive rules (§6.7) on its
+`menu-presentation` input, not the menu's. While an `'auto'` menu is open, `observeEnvironment`
+re-resolves it on a device-class change (a rotation never changes the class — the short side
+stays; a foldable unfolding does): sheet ⇄ drawer switch in place (classes only), a switch to /
+from `'floating'` closes it with `'presentation'` (another structure; the next open gets it).
+
+**Drawer (decided 2026-11-13).** `'drawer'` = the same sheet as a full-height side panel:
+`.km-menu-sheet--drawer` + `--left` / `--right` (physical, from `side` and the opener's `dir`:
+`'start'` is left in LTR), `width: --km-menu-drawer-width` (`min(320px, 85vw)`), the inner corners
+rounded (`--base-border-radius-lg`), safe-area padding on its three free edges. Everything else —
+header, drill-in, Back, dismiss, focus — is the sheet's. An app navigation sidebar (links, current
+page, docked) is not `openMenu()`: it would reuse the sheet chrome, not the menu.
+
+**Motion (decided 2026-11-13).** The sheet slides in from its edge (bottom / left / right) and the
+backdrop fades, `--km-menu-sheet-duration` → `--base-duration-medium` with `--base-ease-out`;
+closing plays the reverse (`--closing`, inert, `--base-ease-in`) and then removes both — at once
+when the computed duration is 0. Only the tokens: `data-motion` and OS reduced motion reach them
+through `MOTION_CSS` (`adoptMotionStyles(sheet)` on open), no own media query. The sheet:
 - **DOM.** `.km-menu-sheet-backdrop` + `.km-menu-sheet` (`role=dialog`, `aria-modal`,
   `aria-label` = `title`) appended to `host`: a header `__header` (the shared sheet chrome, §12.9: also `km-sheet-header`; `__title`, `__close` button,
   `aria-label` = `labels.close`) and the menu levels (`.km-menu.km-menu--sheet`). Never anchored

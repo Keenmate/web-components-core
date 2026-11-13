@@ -14,7 +14,7 @@ vi.mock('../positioning/anchor.js', () => ({
 }));
 
 // The device the presentation switch sees.
-const env = vi.hoisted(() => ({ isPhone: false }));
+const env = vi.hoisted(() => ({ isPhone: false, isTablet: false, listeners: new Set<() => void>() }));
 vi.mock('../environment/environment.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../environment/environment.js')>();
   return {
@@ -22,7 +22,14 @@ vi.mock('../environment/environment.js', async (importOriginal) => {
     getEnvironment: () =>
       env.isPhone
         ? { ...actual.getEnvironment(), isTouchPrimary: true, viewportWidth: 390, viewportHeight: 844, screenShortSide: 390 }
-        : { ...actual.getEnvironment(), isTouchPrimary: false, viewportWidth: 1440, viewportHeight: 900 },
+        : env.isTablet
+          ? { ...actual.getEnvironment(), isTouchPrimary: true, viewportWidth: 820, viewportHeight: 1180, screenShortSide: 820 }
+          : { ...actual.getEnvironment(), isTouchPrimary: false, viewportWidth: 1440, viewportHeight: 900 },
+    // A device-class change while open: the test flips `env` and calls changeDevice().
+    observeEnvironment: (listener: () => void) => {
+      env.listeners.add(listener);
+      return () => env.listeners.delete(listener);
+    },
   };
 });
 
@@ -47,6 +54,7 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 beforeEach(() => {
   anchors.length = 0;
   env.isPhone = true;
+  env.isTablet = false;
   host = document.createElement('div');
   shadow = host.attachShadow({ mode: 'open' });
   opener = document.createElement('button');
@@ -130,6 +138,59 @@ describe('presentation switch', () => {
     open({ presentation: 'sheet' });
     expect(sheet()).not.toBeNull();
     expect(anchors).toHaveLength(1);
+  });
+});
+
+const changeDevice = (to: 'phone' | 'tablet' | 'desktop') => {
+  env.isPhone = to === 'phone';
+  env.isTablet = to === 'tablet';
+  for (const listener of [...env.listeners]) listener();
+};
+
+describe('drawer + presentationMap', () => {
+  it("'drawer' is the sheet on the start edge (left in LTR); side 'end' → right; RTL mirrors", () => {
+    open({ presentation: 'drawer' });
+    expect(sheet()!.classList.contains('km-menu-sheet--drawer')).toBe(true);
+    expect(sheet()!.classList.contains('km-menu-sheet--left')).toBe(true);
+    expect(sheet()!.querySelector('.km-sheet-close')).not.toBeNull();
+    handle!.close();
+    open({ presentation: 'drawer', side: 'end' });
+    expect(sheet()!.classList.contains('km-menu-sheet--right')).toBe(true);
+    handle!.close();
+    host.setAttribute('dir', 'rtl');
+    open({ presentation: 'drawer' });
+    expect(sheet()!.classList.contains('km-menu-sheet--right')).toBe(true);
+  });
+
+  it("'auto' + presentationMap: a tablet can get the drawer; unmapped classes keep the default", () => {
+    env.isPhone = false;
+    env.isTablet = true;
+    open({ presentationMap: { tablet: 'drawer' } });
+    expect(sheet()!.classList.contains('km-menu-sheet--drawer')).toBe(true);
+    handle!.close();
+    changeDevice('phone');
+    open({ presentationMap: { tablet: 'drawer' } });
+    expect(sheet()!.classList.contains('km-menu-sheet--drawer')).toBe(false); // mobile: the default sheet
+  });
+
+  it('a device-class change while open: sheet ⇄ drawer in place; to floating closes ("presentation")', () => {
+    const { onClose } = open({ presentationMap: { tablet: 'drawer' } });
+    const opened = sheet();
+    changeDevice('tablet');
+    expect(sheet()).toBe(opened);
+    expect(opened!.classList.contains('km-menu-sheet--drawer')).toBe(true);
+    changeDevice('phone');
+    expect(opened!.classList.contains('km-menu-sheet--drawer')).toBe(false);
+    expect(onClose).not.toHaveBeenCalled();
+    changeDevice('desktop');
+    expect(onClose).toHaveBeenCalledWith('presentation');
+    expect(sheet()).toBeNull();
+    expect(env.listeners.size).toBe(0); // unsubscribed
+  });
+
+  it("a forced presentation doesn't watch the device", () => {
+    open({ presentation: 'sheet' });
+    expect(env.listeners.size).toBe(0);
   });
 });
 

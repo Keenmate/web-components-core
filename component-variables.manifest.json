@@ -34,7 +34,10 @@
     { "name": "base-shadow-color", "required": false, "usage": "Phone sheet shadow tint" },
     { "name": "base-z-tooltip", "required": false, "usage": "Menu and sheet stacking: one above it (default 9000)" },
     { "name": "base-font-size-lg", "required": false, "usage": "Sheet title size (× --base-rem, default 1.8)" },
-    { "name": "base-icon-close", "required": false, "usage": "Sheet close icon (→ --km-sheet-close-icon)" }
+    { "name": "base-icon-close", "required": false, "usage": "Sheet close icon (→ --km-sheet-close-icon)" },
+    { "name": "base-duration-medium", "required": false, "usage": "Sheet / drawer open and close animation (→ --km-menu-sheet-duration, default 0.25s)" },
+    { "name": "base-ease-out", "required": false, "usage": "Sheet / drawer open easing" },
+    { "name": "base-ease-in", "required": false, "usage": "Sheet / drawer close easing" }
   ],
   "componentVariables": [
     { "name": "km-menu-z-index", "category": "menu", "usage": "Menu and phone sheet stacking order (default calc(--base-z-tooltip + 1) = 9001, the phone-sheet tier)" },
@@ -76,6 +79,10 @@
     { "name": "km-menu-sheet-item-min-height", "category": "menu", "usage": "Phone sheet row minimum height (→ --base-touch-target-min, default 44px)" },
     { "name": "km-menu-sheet-item-padding", "category": "menu", "usage": "Phone sheet row padding (--base-space-sm --base-space-base, default 8px 16px)" },
     { "name": "km-menu-back-arrow", "category": "menu", "usage": "Phone sheet Back row glyph, a CSS content value (default \"\\2039\")" },
+    { "name": "km-menu-sheet-duration", "category": "menu", "usage": "Sheet / drawer open and close animation length (→ --base-duration-medium, default 0.25s; data-motion and OS reduced motion set it through the token)" },
+    { "name": "km-menu-drawer-width", "category": "menu", "usage": "Side drawer width (presentation 'drawer', default min(320px, 85vw))" },
+    { "name": "km-menu-drawer-shadow", "category": "menu", "usage": "Side drawer box shadow (default 0 0 24px --base-shadow-color)" },
+    { "name": "km-menu-drawer-border-radius", "category": "menu", "usage": "Side drawer radius on its two inner corners (→ --base-border-radius-lg, default 8px)" },
     { "name": "km-sheet-header-gap", "category": "sheet", "usage": "Gap between the header's title / fields and the close button (→ --base-space-sm, default 8px)" },
     { "name": "km-sheet-header-padding-block", "category": "sheet", "usage": "Header top / bottom padding; the close button's tap area reaches it (→ --base-space-sm, default 8px)" },
     { "name": "km-sheet-header-padding-inline", "category": "sheet", "usage": "Header start / end padding (lines the title up with the sheet rows); the close button's tap area reaches it (→ --base-space-base, default 16px)" },

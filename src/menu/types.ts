@@ -1,5 +1,6 @@
 import type { MenuItem, ResolvedActionItem } from '../actions/types.js';
 import type { AnchorOffset, Placement } from '../positioning/types.js';
+import type { DeviceClass } from '../environment/environment.js';
 
 /** A viewport point (`clientX` / `clientY`) — where a context menu opens. */
 export interface MenuPoint {
@@ -21,6 +22,8 @@ export interface MenuPoint {
  * - `'empty'` — a keep-open item's refresh left no visible item
  * - `'back'` — the phone Back button / gesture on the root of a sheet (see {@link MenuPresentation})
  * - `'close-button'` — the sheet's close button
+ * - `'presentation'` — `'auto'` resolved to another kind while open (floating ⇄ sheet / drawer:
+ *   the device class changed, e.g. a foldable unfolded); open it again to get the new one
  *
  * On a sheet, a tap on the backdrop is `'outside-click'`.
  */
@@ -35,18 +38,30 @@ export type MenuCloseReason =
   | 'api'
   | 'empty'
   | 'back'
-  | 'close-button';
+  | 'close-button'
+  | 'presentation';
 
 /**
  * How a menu is shown:
- * - `'auto'` (default) — core's phone switch (`resolvePresentation()`, SPEC §12.9): a bottom
- *   sheet on a phone, the floating menu on a tablet / desktop
+ * - `'auto'` (default) — by the device class (`classifyDevice()`, SPEC §12.9) through
+ *   {@link OpenMenuOptions.presentationMap}: by default a bottom sheet on a phone, the floating
+ *   menu on a tablet / desktop
  * - `'floating'` — always the floating menu next to the point / element
  * - `'sheet'` — always the bottom sheet: full width at the bottom over a backdrop, a header
  *   (title + close button), touch-size rows, submenus drill in (a Back row goes up), page
  *   scroll locked, the phone Back button closes it (or goes up one submenu level)
+ * - `'drawer'` — the sheet as a full-height side panel on {@link OpenMenuOptions.side}
  */
-export type MenuPresentation = 'auto' | 'floating' | 'sheet';
+export type MenuPresentation = 'auto' | ResolvedMenuPresentation;
+
+/** What a menu is rendered as ({@link MenuPresentation} without `'auto'`). */
+export type ResolvedMenuPresentation = 'floating' | 'sheet' | 'drawer';
+
+/** `'auto'`'s device class → presentation; classes left out keep the default (`mobile: 'sheet'`, else `'floating'`). */
+export type MenuPresentationMap = Partial<Record<DeviceClass, ResolvedMenuPresentation>>;
+
+/** The edge a `'drawer'` slides in from: `'start'` (left in LTR, right in RTL) or `'end'`. */
+export type MenuDrawerSide = 'start' | 'end';
 
 /** What activated an item — handed to {@link OpenMenuOptions.runAction}. */
 export interface MenuInvocation {
@@ -119,8 +134,16 @@ export interface OpenMenuOptions<Ctx, A extends string = string> {
   labels?: MenuLabels;
   /** Copy the nearest `data-theme` from this element onto each menu level (portaled menus, C-CS-10). */
   inheritThemeFrom?: HTMLElement;
-  /** Floating menu or phone bottom sheet. Default `'auto'` (a sheet on a phone). See {@link MenuPresentation}. */
+  /** Floating menu, bottom sheet or side drawer. Default `'auto'` (a sheet on a phone). See {@link MenuPresentation}. */
   presentation?: MenuPresentation;
+  /**
+   * `'auto'`'s policy per device class, e.g. `{ mobile: 'drawer', tablet: 'drawer' }`. While the
+   * menu is open a device-class change re-resolves it: sheet ⇄ drawer switches in place, a switch
+   * to / from `'floating'` closes it (`'presentation'`).
+   */
+  presentationMap?: MenuPresentationMap;
+  /** The edge a `'drawer'` slides in from. Default `'start'`. */
+  side?: MenuDrawerSide;
   /**
    * The menu's name: the sheet header's title and the accessible name (`aria-label`) of the
    * root menu (and of the sheet dialog). A drilled-in submenu's header shows the item that opened it.

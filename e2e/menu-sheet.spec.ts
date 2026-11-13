@@ -24,6 +24,8 @@ const actionsButton = (page: Page) => files(page).locator('.do-actions');
 const focusedText = (page: Page) =>
   page.evaluate(() => (document.getElementById('files')!.shadowRoot!.activeElement as HTMLElement | null)?.textContent ?? null);
 const bodyPosition = (page: Page) => page.evaluate(() => getComputedStyle(document.body).position);
+/** The open / close slide (motion tokens) has played out — geometry is final. */
+const animated = (page: Page) => sheet(page).evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)).then(() => {}));
 const sheetEntry = (page: Page) => page.evaluate(() => (history.state as { kmBackEntry?: boolean } | null)?.kmBackEntry ?? null);
 
 test.beforeEach(async ({ page }) => {
@@ -40,6 +42,7 @@ test.describe('phone (touch, 390 x 844)', () => {
     await expect(sheet(page)).toHaveAttribute('role', 'dialog');
     await expect(backdrop(page)).toBeVisible();
     await expect(title(page)).toHaveText('Actions');
+    await animated(page);
     const box = (await sheet(page).boundingBox())!;
     expect(box.x).toBe(0);
     expect(box.width).toBe(390);
@@ -99,6 +102,7 @@ test.describe('phone (touch, 390 x 844)', () => {
   test('a backdrop tap closes ("outside-click") without clicking through; focus returns to the opener', async ({ page }) => {
     await actionsButton(page).tap();
     await expect(sheet(page)).toBeVisible();
+    await animated(page);
     // Tap above the sheet, right over the Actions button: the backdrop takes it.
     const btn = (await actionsButton(page).boundingBox())!;
     expect(btn.y + btn.height).toBeLessThan((await sheet(page).boundingBox())!.y);
@@ -199,6 +203,45 @@ test.describe('desktop', () => {
     await page.keyboard.press('Escape'); // closes the submenu
     await page.keyboard.press('Escape');
     await expect(files(page).locator('.km-menu')).toHaveCount(0);
+  });
+
+  test("presentation 'drawer': a full-height panel on the start edge (end with side 'end'), sliding in / out", async ({ page }) => {
+    await files(page).evaluate((el) => (el.dataset.presentation = 'drawer'));
+    await actionsButton(page).click();
+    await expect(sheet(page)).toBeVisible();
+    await expect(sheet(page)).toHaveClass(/km-menu-sheet--drawer/);
+    // the slide-in runs on the motion tokens (no reduced motion here)
+    expect(await sheet(page).evaluate((el) => getComputedStyle(el).animationName)).toBe('km-menu-in-left');
+    await animated(page);
+    const viewport = page.viewportSize()!;
+    let box = (await sheet(page).boundingBox())!;
+    expect(box.x).toBe(0);
+    expect(box.y).toBe(0);
+    expect(box.height).toBe(viewport.height);
+    expect(box.width).toBe(320);
+    await files(page).locator('.km-sheet-close').click();
+    // closing plays out (inert meanwhile), then the sheet leaves the DOM
+    await expect(sheet(page)).toHaveClass(/km-menu-sheet--closing/);
+    await expect(sheet(page)).toHaveCount(0);
+    expect(await details(page, 'onClose')).toEqual(['close-button']);
+
+    await files(page).evaluate((el) => (el.dataset.side = 'end'));
+    await actionsButton(page).click();
+    await animated(page);
+    box = (await sheet(page).boundingBox())!;
+    expect(Math.round(box.x + box.width)).toBe(viewport.width);
+    await page.keyboard.press('Escape');
+    await expect(sheet(page)).toHaveCount(0);
+  });
+
+  test('reduced motion: the sheet opens and closes without animating', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await files(page).evaluate((el) => (el.dataset.presentation = 'sheet'));
+    await actionsButton(page).click();
+    await expect(sheet(page)).toBeVisible();
+    expect(await sheet(page).evaluate((el) => getComputedStyle(el).animationDuration)).toBe('0s');
+    await page.keyboard.press('Escape');
+    expect(await sheet(page).count()).toBe(0); // removed at once, no close animation
   });
 
   test("presentation 'sheet' forces the sheet on a desktop", async ({ page }) => {

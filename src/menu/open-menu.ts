@@ -14,9 +14,9 @@ import { composedClosest, composedParent } from '../dom/composed-tree.js';
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { coreLog } from '../logging/element-logger.js';
 import { callSafely } from '../logging/safe-call.js';
-import { getEnvironment } from '../environment/environment.js';
+import { classifyDevice, getEnvironment, observeEnvironment, type DeviceClass } from '../environment/environment.js';
+import { adoptMotionStyles } from '../environment/motion.js';
 import { registerOverlay, type OverlayHandle } from '../overlay/active-overlay.js';
-import { resolvePresentation } from '../overlay/presentation.js';
 import { lockBodyScroll } from '../overlay/scroll-lock.js';
 import { anchor } from '../positioning/anchor.js';
 import { inheritTheme } from '../positioning/inherit-theme.js';
@@ -25,7 +25,15 @@ import type { AnchorHandle } from '../positioning/types.js';
 import { claimBackEntry } from '../overlay/back-entry.js';
 import { MENU_CSS } from './styles.js';
 import { createSheetHeader, SHEET_CHROME_CSS } from '../overlay/sheet-chrome.js';
-import type { MenuCloseReason, MenuHandle, MenuPoint, MenuPresentation, OpenMenuOptions } from './types.js';
+import type {
+  MenuCloseReason,
+  MenuHandle,
+  MenuPoint,
+  MenuPresentation,
+  MenuPresentationMap,
+  OpenMenuOptions,
+  ResolvedMenuPresentation,
+} from './types.js';
 
 type Entries<Ctx, A extends string> = readonly (MenuEntry<Ctx, A> | string)[];
 
@@ -36,14 +44,28 @@ const BLOCK = 'km-menu';
 const ITEM = `${BLOCK}__item`;
 const SHEET = 'km-menu-sheet';
 
-/**
- * Sheet or floating panel: `'auto'` asks core's phone switch, `resolvePresentation()` (SPEC
- * §12.9) — a phone (`fullscreen`) gets the bottom sheet, a tablet / desktop the floating menu.
- */
-function isSheetPresentation(mode: MenuPresentation | undefined): boolean {
-  if (mode === 'sheet') return true;
-  if (mode === 'floating') return false;
-  return resolvePresentation('auto', getEnvironment()) === 'fullscreen';
+/** `'auto'`'s default policy: the bottom sheet on a phone, the floating menu elsewhere (SPEC §12.13). */
+export const DEFAULT_MENU_PRESENTATION_MAP: Readonly<Record<DeviceClass, ResolvedMenuPresentation>> = {
+  mobile: 'sheet',
+  tablet: 'floating',
+  desktop: 'floating',
+};
+
+/** `'auto'` → the device class (`classifyDevice()`, SPEC §12.9) looked up in `map`, then the default. */
+function resolveMenuPresentation(mode: MenuPresentation | undefined, map: MenuPresentationMap | undefined): ResolvedMenuPresentation {
+  if (mode && mode !== 'auto') return mode;
+  const cls = classifyDevice(getEnvironment());
+  return map?.[cls] ?? DEFAULT_MENU_PRESENTATION_MAP[cls];
+}
+
+/** The running (or last) animation's length in ms; 0 when there is none (or it can't be read). */
+function animationMs(el: HTMLElement): number {
+  const style = getComputedStyle(el);
+  if (!style.animationName || style.animationName === 'none') return 0;
+  const raw = (style.animationDuration || '').split(',')[0]!.trim();
+  const value = parseFloat(raw);
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return raw.endsWith('ms') ? value : value * 1000;
 }
 
 /** One open menu level. Open levels form a chain: root → submenu → sub-submenu. */
@@ -135,7 +157,10 @@ export function openMenu<Ctx, A extends string = string>(
 
   // ── Phone sheet (SPEC §12.13) ─────────────────────────────────────────────
   /** A bottom sheet instead of floating panels: submenus drill in, a backdrop, Back closes. */
-  const isSheet = isSheetPresentation(opts.presentation);
+  let presentation = resolveMenuPresentation(opts.presentation, opts.presentationMap);
+  const isSheet = presentation !== 'floating';
+  /** `'auto'`: stop re-resolving the presentation on device-class changes (set while open). */
+  let stopPresentationWatch: (() => void) | null = null;
   /** The sheet (`role=dialog`): header + the levels, only the deepest one shown. */
   let sheet: HTMLElement | null = null;
   let sheetHeader: HTMLElement | null = null;
@@ -687,14 +712,15 @@ export function openMenu<Ctx, A extends string = string>(
     const active = deepActiveElement();
     const hadFocus = (!!sheet && !!active && sheet.contains(active)) || chain.some((l) => l.el.contains(active));
     cancelCollapse();
+    stopPresentationWatch?.();
+    stopPresentationWatch = null;
     detachListeners?.();
     detachListeners = null;
     for (const level of chain.splice(0).reverse()) {
       level.position?.destroy();
-      level.el.remove();
+      if (!sheet) level.el.remove(); // a sheet's levels leave with it
     }
-    sheet?.remove();
-    backdrop?.remove();
+    if (sheet && backdrop) removeSheetAnimated(sheet, backdrop);
     endSheetSession?.();
     endSheetSession = null;
     // A sheet is modal: a backdrop tap dismisses it like Escape (focus goes back to the opener).
@@ -747,6 +773,56 @@ export function openMenu<Ctx, A extends string = string>(
     positionRoot();
   }
   attachListeners();
+  if (!opts.presentation || opts.presentation === 'auto') {
+    // A device-class change while open (a foldable unfolds, DevTools emulation): sheet ⇄ drawer
+    // switches in place; to / from the floating menu is another structure, so it closes.
+    stopPresentationWatch = observeEnvironment(
+      () => {
+        const next = resolveMenuPresentation(opts.presentation, opts.presentationMap);
+        if (!isOpen || next === presentation) return;
+        if ((next === 'floating') !== !isSheet) {
+          close('presentation');
+          return;
+        }
+        presentation = next;
+        applySheetKind();
+      },
+      { shouldFireImmediately: false },
+    );
+  }
+
+  /** Sheet vs drawer (and the drawer's physical edge: `side` + the opener's direction). */
+  function applySheetKind(): void {
+    if (!sheet || !backdrop) return;
+    const isDrawer = presentation === 'drawer';
+    const isLeft = (opts.side ?? 'start') === 'start' ? !isRtl : isRtl;
+    sheet.classList.toggle(`${SHEET}--drawer`, isDrawer);
+    sheet.classList.toggle(`${SHEET}--left`, isDrawer && isLeft);
+    sheet.classList.toggle(`${SHEET}--right`, isDrawer && !isLeft);
+  }
+
+  /** Close animation (motion tokens, SPEC §12.16), then out of the DOM; none → removed at once. */
+  function removeSheetAnimated(sheetEl: HTMLElement, backdropEl: HTMLElement): void {
+    sheetEl.classList.add(`${SHEET}--closing`);
+    backdropEl.classList.add(`${SHEET}-backdrop--closing`);
+    sheetEl.inert = true;
+    const ms = animationMs(sheetEl);
+    let isRemoved = false;
+    const remove = (): void => {
+      if (isRemoved) return;
+      isRemoved = true;
+      sheetEl.remove();
+      backdropEl.remove();
+    };
+    if (ms <= 0) {
+      remove();
+      return;
+    }
+    sheetEl.addEventListener('animationend', (e) => {
+      if (e.target === sheetEl) remove();
+    });
+    setTimeout(remove, ms + 50); // no animationend (hidden tab, display change)
+  }
 
   /** Sheet: backdrop + `role=dialog` sheet (header: title + close) at the bottom; scroll lock + Back. */
   function openSheet(): void {
@@ -777,7 +853,10 @@ export function openMenu<Ctx, A extends string = string>(
       inheritTheme(opts.inheritThemeFrom, sheet);
       inheritTheme(opts.inheritThemeFrom, backdrop);
     }
+    applySheetKind();
     host.append(backdrop, sheet);
+    // Durations come from the motion tokens: make sure OS reduced motion / data-motion reach them.
+    adoptMotionStyles(sheet);
     syncSheet();
     const unlock = lockBodyScroll();
     // Phone Back: up one submenu level (the entry is re-armed), else close the menu.

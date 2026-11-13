@@ -16,8 +16,12 @@ buttons (no native Space-on-keyup click). A toggle item (defines `isToggled` /
 `getIsToggledCallback` / a `defaults` `isToggled`) is `menuitemcheckbox` +
 `aria-checked`. Tests mock `../positioning/anchor.js` (jsdom has no layout).
 
-**Phone sheet** (`presentation: 'auto' | 'floating' | 'sheet'`, default `'auto'` →
-`resolvePresentation()`; SPEC §12.13): no `anchor()`, a `.km-menu-sheet` dialog (header title +
+**Phone sheet / drawer** (`presentation: 'auto' | 'floating' | 'sheet' | 'drawer'`, default
+`'auto'` → `classifyDevice()` + `presentationMap` over `DEFAULT_MENU_PRESENTATION_MAP`; SPEC §12.13;
+`isSheet` is fixed at open, `presentation` may flip sheet ⇄ drawer via `applySheetKind()` while an
+`'auto'` menu is open — a flip to / from floating closes with `'presentation'`. The drawer is CSS
+on the same DOM: `--drawer` + physical `--left` / `--right`. Close removal is deferred for the
+`--closing` animation, `removeSheetAnimated()`; levels inside the sheet leave with it): no `anchor()`, a `.km-menu-sheet` dialog (header title +
 close — the shared `createSheetHeader()` / `SHEET_CHROME_CSS`, `src/overlay/sheet-chrome.ts`) over a `.km-menu-sheet-backdrop`, levels inside it with only the deepest shown (`syncSheet()`
 — call it whenever the chain changes); drilled-in levels get a Back row (`backRows`, part of
 `enabledItems()` but not of `records` — guard `records.get()` with `?.`). Hover never opens a

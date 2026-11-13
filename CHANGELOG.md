@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   44px chip with the `--base-icon-close` mask and a tap area reaching the sheet's corner; themed with
   `--km-sheet-*` (page) / `--_km-sheet-*` (a component's instance mapping). Replaces the copies in
   `/menu`, web-grid, web-multiselect, web-daterangepicker and web-dropzone.
+- `/menu` `presentation: 'drawer'` + `side: 'start' | 'end'`: the phone sheet as a full-height side
+  panel (`--km-menu-drawer-width` / `-shadow` / `-border-radius`).
+- `/menu` `presentationMap` (+ `DEFAULT_MENU_PRESENTATION_MAP`): `'auto'`'s device class →
+  `'floating' | 'sheet' | 'drawer'`, e.g. `{ tablet: 'drawer' }`.
+- `/menu`: an open `'auto'` menu follows a device-class change — sheet ⇄ drawer in place, to / from
+  floating it closes with the new reason `'presentation'`.
+- `/menu` sheet / drawer open and close animations (slide + backdrop fade) on the motion tokens
+  (`--km-menu-sheet-duration` → `--base-duration-medium`): `motion`, `data-motion` and OS reduced
+  motion apply; closing plays out before the sheet leaves the DOM (none → removed at once).
 
 ### Changed
 - The `/menu` phone sheet header is the shared sheet chrome: the close button is the masked ✕ chip
@@ -27,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `/menu` stacking defaults to `calc(var(--base-z-tooltip, 9000) + 1)` (9001, the components' own
   phone-sheet tier), was `10000`. `--km-menu-z-index` still overrides it.
 - The `/menu` phone sheet hides keyboard-shortcut hints; the keys still work with a keyboard.
+
+### Fixed
+- `observeEnvironment()` / `observeViewport()`: the last unsubscribe no longer removes window /
+  document listeners that were never added (no `matchMedia`, e.g. jsdom).
 
 ## [1.0.0-rc23] - 2026-11-13
 
