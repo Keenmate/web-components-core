@@ -43,11 +43,17 @@ function suspendScrollRestoration(s: BackEntryState): void {
   history.scrollRestoration = 'manual';
 }
 
-/** Back on the page's entry: give it its own mode again. */
+/**
+ * Back on the page's entry: give it its own mode again — one task later. The browser restores the
+ * traversed entry's scroll AFTER `popstate` and reads the mode then; resuming inside the handler
+ * would let it apply the 0 recorded while the page was pinned. A claim meanwhile keeps 'manual'.
+ */
 function resumeScrollRestoration(s: BackEntryState): void {
-  if (s.savedRestoration === null) return;
-  history.scrollRestoration = s.savedRestoration;
-  s.savedRestoration = null;
+  setTimeout(() => {
+    if (s.savedRestoration === null || s.isPushed) return;
+    history.scrollRestoration = s.savedRestoration;
+    s.savedRestoration = null;
+  }, 0);
 }
 
 /**
@@ -93,7 +99,7 @@ export function claimBackEntry(onBack: () => void): () => void {
       if (s.onBack || !s.isPushed) return; // adopted meanwhile, or popped by Back
       s.isPushed = false;
       // Resume once the page's entry is current again (a re-claim meanwhile keeps 'manual').
-      window.addEventListener('popstate', () => { if (!s.isPushed) resumeScrollRestoration(s); }, { once: true });
+      window.addEventListener('popstate', () => resumeScrollRestoration(s), { once: true });
       history.back();
     }, 0);
   };

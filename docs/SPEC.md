@@ -1682,7 +1682,8 @@ other close. Back pops the entry and runs the newest claim's `onBack` (call `cla
 from it to re-arm — one level up, the sheet stays open); a release gives the entry back with
 `history.back()` one task later, so a sheet opening right after adopts it instead. Page-wide
 (shared state, every copy of core), one entry for the page. While held, the page's entry uses
-`history.scrollRestoration = 'manual'` and gets its own mode back once current again: the entry is
+`history.scrollRestoration = 'manual'` and gets its own mode back one task after it is current again
+(the browser restores scroll after `popstate` and reads the mode then): the entry is
 pushed while `lockBodyScroll()` has the window at scroll 0, so the browser's own restore would jump
 the page to the top after the lock put it back. Replaces the private copies in web-multiselect
 (`pushOverlayHistory`), web-daterangepicker (same) and web-grid (`claimHistoryEntry`); `/menu`'s

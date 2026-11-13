@@ -79,6 +79,8 @@ describe('claimBackEntry (the phone Back gesture for a sheet)', () => {
     const p = popped();
     history.back(); // Back
     await p;
+    expect(history.scrollRestoration).toBe('manual'); // still: the browser restores scroll after popstate
+    await tick();
     expect(history.scrollRestoration).toBe('auto');
   });
 });
