@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc23] - 2026-11-13
+
 ### Added
 
 - **`claimBackEntry(onBack)` (main index, SPEC §12.9)** — the phone Back gesture for a full-screen
@@ -14,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   newest claim's `onBack` (claim again from inside it to go up one level), the returned release gives
   the entry back one task later (a sheet opening right after adopts it), and the page keeps its scroll
   position. It was `/menu`'s private helper; web-grid, web-multiselect and web-daterangepicker each had
-  their own copy (per-instance or page-wide, all jumping to the top on close) and now use it. Rulebook
+  their own copy (per-instance or page-wide; web-daterangepicker's jumped to the top on close like the
+  menu's) and now use it. Rulebook
   C-RO-15 checks no component pushes its own history entry. The entry's `history.state` is now
   `{ kmBackEntry: true }` (was `{ kmMenuSheet: true }`).
 
@@ -25,21 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the browser recorded 0 for the page's entry and restored it when the entry was given back (close
   button, backdrop, Escape, an item) or popped (Back) — after the scroll lock had put the page back.
   While a sheet holds its entry the page's entry now uses `history.scrollRestoration = 'manual'`;
-  the page's own mode comes back once its entry is current again.
-
-### Docs
-
-- **Example pages demo the rc22 features.** IA04 (`examples-interaction.html`): a `presentation`
-  picker (`auto` / `floating` / `sheet`) and a `title` field for the file list's menus, so the phone
-  bottom sheet (drill-in submenus with a Back row, header, close button) can be forced on a desktop,
-  plus a row of every `onClose` reason; the IA05 API table lists `presentation`, `title`,
-  `MenuPresentation`, the `'back'` / `'close-button'` reasons and the `back` / `close` labels.
-  New PG06 (`examples-page.html`, API summary now PG07): an owner that mounts a managed child, four
-  layer switches (child page / owner page / owner instance / child instance) and the child's style
-  slots in cascade order, `getOwner` in the API table. New TH05 (`examples-theme.html`, API now
-  TH06): a light component in a `data-theme="dark"` section opening a `createPopover()` panel in
-  `<body>` that stays light and follows the component's own `data-theme`. `examples-page.html`
-  marks its two deliberately lazy tags `data-kmwc-undefined` (clean `kmwc check-pages`).
+  the page's own mode comes back one task after its entry is current again (the browser restores
+  scroll after `popstate` and reads the mode then).
 
 ## [1.0.0-rc22] - 2026-11-11
 
@@ -66,6 +56,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `src/dom/custom-styles.ts`, SPEC §12.8.
 
 ### Fixed
+
+- **`/menu` sheet — a drilled-in submenu stays open under a mouse.** Leaving the item that opened it
+  (its `mouseleave`) scheduled the floating menu's hover-close, so a sheet's submenu collapsed ~150ms
+  after opening with a mouse (DevTools phone emulation, a phone with a mouse). A sheet ignores it.
 
 - **`lockBodyScroll()` no longer adds a bogus `padding-right` on a phone page wider than the
   screen.** The scrollbar compensation was `innerWidth - documentElement.clientWidth`; on a phone the
@@ -95,6 +89,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Docs
 
+- **Example pages demo the rc22 features.** IA04 (`examples-interaction.html`): a `presentation`
+  picker (`auto` / `floating` / `sheet`) and a `title` field for the file list's menus, so the phone
+  bottom sheet (drill-in submenus with a Back row, header, close button) can be forced on a desktop,
+  plus a row of every `onClose` reason; the IA05 API table lists `presentation`, `title`,
+  `MenuPresentation`, the `'back'` / `'close-button'` reasons and the `back` / `close` labels.
+  New PG06 (`examples-page.html`, API summary now PG07): an owner that mounts a managed child, four
+  layer switches (child page / owner page / owner instance / child instance) and the child's style
+  slots in cascade order, `getOwner` in the API table. New TH05 (`examples-theme.html`, API now
+  TH06): a light component in a `data-theme="dark"` section opening a `createPopover()` panel in
+  `<body>` that stays light and follows the component's own `data-theme`. `examples-page.html`
+  marks its two deliberately lazy tags `data-kmwc-undefined` (clean `kmwc check-pages`).
 - **SPEC §6.4 — readonly text surfaces:** focus + select + copy is the minimum; a moving caret is
   optional.
 - **SPEC §6.4 / §11.4 — store / satellite rules:** only a satellite that is itself a data-input
