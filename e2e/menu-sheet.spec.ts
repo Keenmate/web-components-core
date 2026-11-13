@@ -49,8 +49,16 @@ test.describe('phone (touch, 390 x 844)', () => {
       .evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
     expect(heights.length).toBeGreaterThan(0);
     for (const h of heights) expect(h).toBeGreaterThanOrEqual(44);
-    const close = (await files(page).locator('.km-menu-sheet__close').boundingBox())!;
+    const closeButton = files(page).locator('.km-menu-sheet__close');
+    const close = (await closeButton.boundingBox())!;
     expect(close.height).toBeGreaterThanOrEqual(44);
+    // The shared sheet chrome (SHEET_CHROME_CSS): a round chip with the masked ✕, no text glyph.
+    await expect(closeButton).toHaveClass(/\bkm-sheet-close\b/);
+    await expect(closeButton).toHaveText('');
+    expect(await closeButton.evaluate((el) => getComputedStyle(el).borderRadius)).toBe('50%');
+    expect(await closeButton.evaluate((el) => getComputedStyle(el, '::before').maskImage)).toContain('url(');
+    // No keyboard-shortcut hints on the touch presentation.
+    await expect(item(page, 'New file').locator('.km-menu__shortcut')).toBeHidden();
     expect(await bodyPosition(page)).toBe('fixed');
     expect(await sheetEntry(page)).toBe(true);
 

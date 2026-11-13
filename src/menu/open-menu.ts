@@ -24,6 +24,7 @@ import { watchScrollClose } from '../positioning/scroll-close.js';
 import type { AnchorHandle } from '../positioning/types.js';
 import { claimBackEntry } from '../overlay/back-entry.js';
 import { MENU_CSS } from './styles.js';
+import { createSheetHeader, SHEET_CHROME_CSS } from '../overlay/sheet-chrome.js';
 import type { MenuCloseReason, MenuHandle, MenuPoint, MenuPresentation, OpenMenuOptions } from './types.js';
 
 type Entries<Ctx, A extends string> = readonly (MenuEntry<Ctx, A> | string)[];
@@ -709,7 +710,7 @@ export function openMenu<Ctx, A extends string = string>(
 
   // ── Open ───────────────────────────────────────────────────────────────
 
-  adoptStyles(styleRoot, MENU_CSS);
+  adoptStyles(styleRoot, MENU_CSS, SHEET_CHROME_CSS);
   const rootLevel: Level<Ctx, A> = {
     el: createLevelElement(false),
     owner: null,
@@ -759,17 +760,18 @@ export function openMenu<Ctx, A extends string = string>(
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-modal', 'true');
     if (opts.title) sheet.setAttribute('aria-label', opts.title);
-    sheetHeader = document.createElement('div');
-    sheetHeader.className = `${SHEET}__header`;
-    sheetTitle = document.createElement('span');
-    sheetTitle.className = `${SHEET}__title`;
-    const closeButton = document.createElement('button');
-    closeButton.type = 'button';
-    closeButton.className = `${SHEET}__close`;
-    closeButton.setAttribute('aria-label', opts.labels?.close ?? 'Close');
-    closeButton.textContent = '\u2715';
-    closeButton.addEventListener('click', () => close('close-button'));
-    sheetHeader.append(sheetTitle, closeButton);
+    // The shared sheet chrome (core `createSheetHeader`, SPEC \u00a712.9); `__header` / `__title` /
+    // `__close` stay as the menu's own hooks.
+    const chrome = createSheetHeader({
+      title: '',
+      closeLabel: opts.labels?.close ?? 'Close',
+      onClose: () => close('close-button'),
+    });
+    sheetHeader = chrome.header;
+    sheetHeader.classList.add(`${SHEET}__header`);
+    sheetTitle = chrome.title;
+    sheetTitle?.classList.add(`${SHEET}__title`);
+    chrome.close.classList.add(`${SHEET}__close`);
     sheet.append(sheetHeader, rootLevel.el);
     if (opts.inheritThemeFrom) {
       inheritTheme(opts.inheritThemeFrom, sheet);

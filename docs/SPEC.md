@@ -1689,6 +1689,20 @@ the page to the top after the lock put it back. Replaces the private copies in w
 (`pushOverlayHistory`), web-daterangepicker (same) and web-grid (`claimHistoryEntry`); `/menu`'s
 sheet uses it too (`src/overlay/back-entry.ts`).
 
+**Sheet chrome (`SHEET_CHROME_CSS` + `createSheetHeader()`, decided 2026-11-13).** Every phone
+sheet / full-screen panel has ONE header bar: `.km-sheet-header` > `.km-sheet-title` (optional) +
+`.km-sheet-close`. The close is a fixed-size round chip (`--base-touch-target-min`) with the
+`--base-icon-close` mask in `currentColor` (no text glyph), slid toward the trailing edge, and an
+invisible `::after` that stretches the tap target into the sheet's top-trailing corner without
+covering the first row; bg / border / radius turn it into a bordered button. A component adds the
+classes to its own elements (or builds them with `createSheetHeader({ title, closeLabel, onClose })`,
+then adds its BEM classes and any fields), adopts `SHEET_CHROME_CSS` into that root, and maps its
+own variables onto the private `--_km-sheet-*` on its host with no fallback (the `/menu` three-layer
+rule, §12.13); the page themes every sheet with `--km-sheet-*`. Sizes from base-css-variables
+(`--base-space-*`, `--base-font-size-lg`, `--base-font-weight-semibold`, × `--base-rem`). Replaces the
+four copies (menu sheet + grid sheet: a text ✕; multiselect + daterangepicker: the mask chip this
+standardises on) and the dropzone drawer / popover close (`src/overlay/sheet-chrome.ts`).
+
 ### 12.10 Theme context (dark / light) — IMPLEMENTED (`src/environment/theme.ts`)
 
 **The gap.** Components followed a framework's dark/light signal with
@@ -1923,7 +1937,7 @@ literal) and `fullscreen` (a phone) → the sheet; tablet / desktop keep the flo
 unchanged. Resolved once at open (a rotation doesn't swap an open menu). `'floating'` is the
 per-component / per-call opt-out, `'sheet'` forces it. The sheet:
 - **DOM.** `.km-menu-sheet-backdrop` + `.km-menu-sheet` (`role=dialog`, `aria-modal`,
-  `aria-label` = `title`) appended to `host`: a header `__header` (`__title`, `__close` button,
+  `aria-label` = `title`) appended to `host`: a header `__header` (the shared sheet chrome, §12.9: also `km-sheet-header`; `__title`, `__close` button,
   `aria-label` = `labels.close`) and the menu levels (`.km-menu.km-menu--sheet`). Never anchored
   (no `anchor()`), full width at the bottom, `max-height: 85dvh`, safe-area padding on the
   three free edges, rows ≥ `--base-touch-target-min` (44px). `inheritThemeFrom` is copied onto the

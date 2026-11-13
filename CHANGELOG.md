@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `SHEET_CHROME_CSS` + `createSheetHeader({ title, closeLabel, onClose })` (main index): one header
+  bar for every phone sheet — `.km-sheet-header` / `.km-sheet-title` / `.km-sheet-close`, a round
+  44px chip with the `--base-icon-close` mask and a tap area reaching the sheet's corner; themed with
+  `--km-sheet-*` (page) / `--_km-sheet-*` (a component's instance mapping). Replaces the copies in
+  `/menu`, web-grid, web-multiselect, web-daterangepicker and web-dropzone.
+
 ### Changed
+- The `/menu` phone sheet header is the shared sheet chrome: the close button is the masked ✕ chip
+  (was a text ✕), the title 18px. `--km-menu-sheet-header-padding` and
+  `--km-menu-sheet-title-font-weight` are gone — use `--km-sheet-header-padding-block` /
+  `-inline` and `--km-sheet-title-font-weight`.
 - `/menu` sizes read the base-css-variables scale: radius `--base-border-radius-sm` (sheet top
   corners `--base-border-radius-lg`, now 8px, was 12px), font size `--base-font-size-sm` / `-base`,
   paddings and gaps `--base-space-*`, sheet title `--base-font-weight-semibold`, sheet shadow

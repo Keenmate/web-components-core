@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { MENU_CSS } from './styles.js';
+import { SHEET_CHROME_CSS } from '../overlay/sheet-chrome.js';
 
 interface Row {
   name: string;
@@ -12,7 +13,9 @@ const manifest = JSON.parse(readFileSync(resolve(process.cwd(), 'component-varia
   componentVariables: Row[];
 };
 
-const names = (re: RegExp): Set<string> => new Set([...MENU_CSS.matchAll(re)].map((m) => m[1]!));
+// The manifest covers every stylesheet core ships: the menu + the shared sheet chrome.
+const ALL_CSS = MENU_CSS + SHEET_CHROME_CSS;
+const names = (re: RegExp): Set<string> => new Set([...ALL_CSS.matchAll(re)].map((m) => m[1]!));
 const sorted = (s: Iterable<string>): string[] => [...s].sort();
 
 describe('MENU_CSS variable chain (SPEC §12.13)', () => {
@@ -40,7 +43,18 @@ describe('MENU_CSS variable chain (SPEC §12.13)', () => {
 
   it('component-variables.manifest.json lists exactly the variables the stylesheet reads', () => {
     expect(manifest.prefix).toBe('km');
-    expect(sorted(manifest.componentVariables.map((r) => r.name))).toEqual(sorted(names(/var\(--(km-menu-[a-z0-9-]+)/g)));
+    expect(sorted(manifest.componentVariables.map((r) => r.name))).toEqual(sorted(names(/var\(--(km-(?:menu|sheet)-[a-z0-9-]+)/g)));
     expect(sorted(manifest.baseVariables.map((r) => r.name))).toEqual(sorted(names(/var\(--(base-[a-z0-9-]+)/g)));
+  });
+});
+
+describe('SHEET_CHROME_CSS variable chain (SPEC §12.9)', () => {
+  it('every public --km-sheet-* read is wrapped by its private --_km-sheet-* layer', () => {
+    const publicReads = [...SHEET_CHROME_CSS.matchAll(/var\(--km-sheet-([a-z0-9-]+)/g)];
+    expect(publicReads.length).toBeGreaterThan(10);
+    for (const m of publicReads) {
+      const before = SHEET_CHROME_CSS.slice(0, m.index);
+      expect(before.endsWith(`var(--_km-sheet-${m[1]}, `), `--km-sheet-${m[1]}`).toBe(true);
+    }
   });
 });

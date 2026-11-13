@@ -18,7 +18,7 @@ buttons (no native Space-on-keyup click). A toggle item (defines `isToggled` /
 
 **Phone sheet** (`presentation: 'auto' | 'floating' | 'sheet'`, default `'auto'` →
 `resolvePresentation()`; SPEC §12.13): no `anchor()`, a `.km-menu-sheet` dialog (header title +
-close) over a `.km-menu-sheet-backdrop`, levels inside it with only the deepest shown (`syncSheet()`
+close — the shared `createSheetHeader()` / `SHEET_CHROME_CSS`, `src/overlay/sheet-chrome.ts`) over a `.km-menu-sheet-backdrop`, levels inside it with only the deepest shown (`syncSheet()`
 — call it whenever the chain changes); drilled-in levels get a Back row (`backRows`, part of
 `enabledItems()` but not of `records` — guard `records.get()` with `?.`). Hover never opens a
 submenu there. Backdrop closes on `click`, not `pointerdown`; no scroll close; `lockBodyScroll()`

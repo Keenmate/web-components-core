@@ -226,48 +226,7 @@ export const MENU_CSS = `
   line-height: ${LINE_HEIGHT};
 }
 
-.km-menu-sheet__header {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: ${ITEM_GAP};
-  padding: ${km('sheet-header-padding', `${SPACE_XS} ${SPACE_XS} ${SPACE_XS} ${SPACE_BASE}`)};
-  border-bottom: 1px solid ${DIVIDER_COLOR};
-}
-
-.km-menu-sheet__title {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: ${km('sheet-title-font-weight', 'var(--base-font-weight-semibold, 600)')};
-}
-
-.km-menu-sheet__close {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  min-width: ${TOUCH_TARGET};
-  min-height: ${TOUCH_TARGET};
-  padding: 0;
-  border: none;
-  border-radius: ${km('border-radius', RADIUS_SM)};
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.km-menu-sheet__close:hover {
-  background: ${HOVER_BG};
-}
-
-.km-menu-sheet__close:focus-visible {
-  outline: 2px solid ${km('toggled-color', 'var(--base-primary-color, #0078d4)')};
-  outline-offset: -2px;
-}
+/* The header (title + close) is the shared sheet chrome: SHEET_CHROME_CSS, --km-sheet-* (SPEC §12.9). */
 
 .km-menu.km-menu--sheet {
   position: static;
