@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `/menu` sizes read the base-css-variables scale: radius `--base-border-radius-sm` (sheet top
+  corners `--base-border-radius-lg`, now 8px, was 12px), font size `--base-font-size-sm` / `-base`,
+  paddings and gaps `--base-space-*`, sheet title `--base-font-weight-semibold`, sheet shadow
+  `--base-shadow-color` (each unitless × `--base-rem`, fallback 10px). Without base-css-variables the
+  pixels are unchanged except the sheet corners.
+- `/menu` stacking defaults to `calc(var(--base-z-tooltip, 9000) + 1)` (9001, the components' own
+  phone-sheet tier), was `10000`. `--km-menu-z-index` still overrides it.
+- The `/menu` phone sheet hides keyboard-shortcut hints; the keys still work with a keyboard.
+
 ## [1.0.0-rc23] - 2026-11-13
 
 ### Added

@@ -31,14 +31,31 @@ function km(name: string, fallback?: string): string {
   return `var(--_km-menu-${name}, ${pub})`;
 }
 
+const REM = 'var(--base-rem, 10px)';
+/** `calc(var(--base-<token>, <multiplier>) * var(--base-rem, 10px))` — a unitless base-css-variables size. */
+function rem(token: string, multiplier: number): string {
+  return `calc(var(--base-${token}, ${multiplier}) * ${REM})`;
+}
+/** A size with no base token, still scaled by the rem base. */
+function remOf(multiplier: number): string {
+  return `calc(${multiplier} * ${REM})`;
+}
+
+const SPACE_XS = rem('space-xs', 0.4); // 4px
+const SPACE_SM = rem('space-sm', 0.8); // 8px
+const SPACE_MD = rem('space-md', 1.2); // 12px
+const SPACE_BASE = rem('space-base', 1.6); // 16px
+const RADIUS_SM = rem('border-radius-sm', 0.4); // 4px
+const RADIUS_LG = rem('border-radius-lg', 0.8); // 8px
+const SHADOW_COLOR = 'var(--base-shadow-color, rgba(0, 0, 0, 0.2))';
 const BORDER_COLOR = 'var(--base-border-color, light-dark(#e0e0e0, #3d3d3d))';
 const MUTED_TEXT = 'var(--base-text-color-3, light-dark(#707070, #a3a3a3))';
-const ITEM_GAP = km('item-gap', '8px');
-const ITEM_PADDING = km('item-padding', '6px 12px');
+const ITEM_GAP = km('item-gap', SPACE_SM);
+const ITEM_PADDING = km('item-padding', `${remOf(0.6)} ${SPACE_MD}`);
 const DISABLED_OPACITY = km('disabled-opacity', 'var(--base-disabled-opacity, 0.65)');
 const DANGER_COLOR = km('danger-color', 'var(--base-danger-color, light-dark(#d13438, #f87c86))');
 const DIVIDER_COLOR = km('divider-color', BORDER_COLOR);
-const Z_INDEX = km('z-index', '10000');
+const Z_INDEX = km('z-index', 'calc(var(--base-z-tooltip, 9000) + 1)');
 const BG = km('bg', 'var(--base-dropdown-bg, var(--base-elevated-bg, var(--base-main-bg, light-dark(#ffffff, #2b2b2b))))');
 const TEXT_COLOR = km('text-color', 'var(--base-text-color-1, light-dark(#242424, #f5f5f5))');
 const FONT_FAMILY = km('font-family', 'var(--base-font-family, inherit)');
@@ -55,14 +72,14 @@ export const MENU_CSS = `
   min-width: ${km('min-width', '160px')};
   max-width: ${km('max-width', 'none')};
   overflow-y: auto;
-  padding: ${km('padding', '4px 0')};
+  padding: ${km('padding', `${SPACE_XS} 0`)};
   background: ${BG};
   border: ${km('border', `var(--base-dropdown-border, 1px solid ${BORDER_COLOR})`)};
-  border-radius: ${km('border-radius', '4px')};
+  border-radius: ${km('border-radius', RADIUS_SM)};
   box-shadow: ${km('shadow', 'var(--base-dropdown-box-shadow, 0 8px 16px rgba(0, 0, 0, 0.15))')};
   color: ${TEXT_COLOR};
   font-family: ${FONT_FAMILY};
-  font-size: ${km('font-size', '14px')};
+  font-size: ${km('font-size', rem('font-size-sm', 1.4))};
   line-height: ${LINE_HEIGHT};
   outline: none;
 }
@@ -118,7 +135,7 @@ export const MENU_CSS = `
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: ${km('icon-size', '16px')};
+  width: ${km('icon-size', remOf(1.6))};
   font-size: ${km('icon-font-size', 'inherit')};
 }
 
@@ -146,7 +163,7 @@ export const MENU_CSS = `
 
 .km-menu__divider {
   height: 1px;
-  margin: ${km('divider-margin', '4px 0')};
+  margin: ${km('divider-margin', `${SPACE_XS} 0`)};
   background: ${DIVIDER_COLOR};
 }
 
@@ -155,7 +172,7 @@ export const MENU_CSS = `
   align-items: center;
   gap: ${ITEM_GAP};
   height: auto;
-  padding: ${km('divider-label-padding', '0 12px')};
+  padding: ${km('divider-label-padding', `0 ${SPACE_MD}`)};
   background: none;
   color: ${km('divider-label-color', MUTED_TEXT)};
   font-size: ${km('divider-label-font-size', '0.8em')};
@@ -201,11 +218,11 @@ export const MENU_CSS = `
   padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   overscroll-behavior: contain;
   background: ${BG};
-  border-radius: ${km('sheet-border-radius', '12px 12px 0 0')};
-  box-shadow: ${km('sheet-shadow', '0 -8px 24px rgba(0, 0, 0, 0.2)')};
+  border-radius: ${km('sheet-border-radius', `${RADIUS_LG} ${RADIUS_LG} 0 0`)};
+  box-shadow: ${km('sheet-shadow', `0 -8px 24px ${SHADOW_COLOR}`)};
   color: ${TEXT_COLOR};
   font-family: ${FONT_FAMILY};
-  font-size: ${km('sheet-font-size', '16px')};
+  font-size: ${km('sheet-font-size', rem('font-size-base', 1.6))};
   line-height: ${LINE_HEIGHT};
 }
 
@@ -214,7 +231,7 @@ export const MENU_CSS = `
   flex: none;
   align-items: center;
   gap: ${ITEM_GAP};
-  padding: ${km('sheet-header-padding', '4px 4px 4px 16px')};
+  padding: ${km('sheet-header-padding', `${SPACE_XS} ${SPACE_XS} ${SPACE_XS} ${SPACE_BASE}`)};
   border-bottom: 1px solid ${DIVIDER_COLOR};
 }
 
@@ -224,7 +241,7 @@ export const MENU_CSS = `
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: ${km('sheet-title-font-weight', '600')};
+  font-weight: ${km('sheet-title-font-weight', 'var(--base-font-weight-semibold, 600)')};
 }
 
 .km-menu-sheet__close {
@@ -236,7 +253,7 @@ export const MENU_CSS = `
   min-height: ${TOUCH_TARGET};
   padding: 0;
   border: none;
-  border-radius: ${km('border-radius', '4px')};
+  border-radius: ${km('border-radius', RADIUS_SM)};
   background: transparent;
   color: inherit;
   font: inherit;
@@ -274,8 +291,13 @@ export const MENU_CSS = `
 .km-menu--sheet .km-menu__item {
   box-sizing: border-box;
   min-height: ${km('sheet-item-min-height', TOUCH_TARGET)};
-  padding: ${km('sheet-item-padding', '8px 16px')};
+  padding: ${km('sheet-item-padding', `${SPACE_SM} ${SPACE_BASE}`)};
   white-space: normal;
+}
+
+/* No keyboard-shortcut hints on the touch presentation (the keys still work). */
+.km-menu--sheet .km-menu__shortcut {
+  display: none;
 }
 
 /* A tap focuses the row it lands on; no lingering highlight unless it's keyboard focus. */

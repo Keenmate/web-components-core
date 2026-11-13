@@ -1985,6 +1985,13 @@ reserved for shared UI rendered by core — not a component prefix), `__item` (`
    component variable is unset and shadows the page value.
 3. **`--base-*`** theme tokens, then the literal default.
 
+Sizes come from the base-css-variables scale too (decided 2026-11-13): radius
+`--base-border-radius-sm` (sheet top corners `-lg`), font size `--base-font-size-sm` (sheet
+`-base`), paddings / gaps `--base-space-*`, title weight `--base-font-weight-semibold`, each
+unitless × `--base-rem` (fallback `10px`, as in every component). Stacking:
+`calc(var(--base-z-tooltip, 9000) + 1)` — the phone-sheet tier the components' own sheets use
+(was a bare `10000`). The sheet hides keyboard-shortcut hints (`__shortcut`); the keys still work.
+
 ```css
 :root { --km-menu-bg: #fffbe6; }                 /* every menu on the page */
 web-tree-view.files { --wtv-context-menu-bg: #eef; } /* just this tree's menu */
