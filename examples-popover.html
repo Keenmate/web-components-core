@@ -99,7 +99,7 @@
         <!-- ============================================================= -->
         <div class="card">
             <h2>PO02 · API summary</h2>
-            <div class="code-block"><pre>import { createPopover } from '@keenmate/web-components-core/positioning';
+            <div class="code-block" data-language="js"><pre><code>import { createPopover } from '@keenmate/web-components-core/positioning';
 
 const pop = createPopover({
   reference,                 // element (or VirtualElement) to anchor to
@@ -116,12 +116,12 @@ const pop = createPopover({
   shouldCloseOnScroll: true, // a scroll outside the panel (page or a scroller around the reference)
   shouldCloseOnResize: true, // a window resize
   overlayGroup: 'menus',     // opening another overlay of the group closes this one
-  onClose(reason) {},        // every close: 'escape' | 'outside-click' | 'overlay' | 'parent' | 'scroll' | 'resize' | 'api'
+  onClose(reason) {},        // every close: 'escape' | 'outside-click' | 'overlay' | 'parent' | 'scroll' | 'resize' | 'reference-removed' | 'api'
   // Every shouldCloseOn* also takes a function, asked each time: () =&gt; !hasStagedSelection
 
   // Every anchor() option is forwarded as given:
   placement: 'bottom-start', // default 'bottom-start'
-  offset: 4,                 // px gap (default 4)
+  offset: 4,                 // px gap (default: --base-dropdown-offset, else 4)
   matchWidth: 'min',         // 'min' | 'exact' | 'max' | false — size against the reference width
   lockPlacement: 'freeze',   // 'initial' = return to initial on overflow; 'freeze' = flip once then pin
   shouldFlip: true, shift: 8, // middleware toggles
@@ -132,7 +132,8 @@ const pop = createPopover({
 pop.open(); pop.close(); pop.update(); pop.isOpen; pop.destroy();
 pop.setAnchored(false);   // e.g. the phone layout: still open, now placed by your CSS
 pop.reanchor();           // async content changed the height: pick the side again (lockPlacement 'freeze')
-// reference may be a function: () =&gt; currentAnchorElement, asked at each open / reanchor</pre></div>
+pop.claimCurrentClick();  // from an API method a page button outside the panel calls: this click doesn't close it
+// reference may be a function: () =&gt; currentAnchorElement, asked at each open / reanchor</code></pre></div>
             <p class="muted">
                 <code>container</code> may be a <code>ShadowRoot</code> (the panel keeps the component's styles). See the
                 anchor page for every forwarded option.

@@ -80,7 +80,7 @@
             <div class="controls">
                 <input id="nz-input" type="text" placeholder="Add your own text…">
             </div>
-            <table class="reference-table">
+            <table class="reference-table table-scroll">
                 <thead><tr><th>input</th><th><code>normalized</code></th><th><code>case-insensitive</code></th><th><code>exact</code></th></tr></thead>
                 <tbody id="nz-rows"></tbody>
             </table>
@@ -99,7 +99,7 @@
             <div class="controls">
                 <label>term <input id="mm-term" type="text" value="town"></label>
             </div>
-            <table class="reference-table">
+            <table class="reference-table table-scroll">
                 <thead id="mm-head"></thead>
                 <tbody id="mm-rows"></tbody>
             </table>
@@ -165,7 +165,7 @@
                 <span class="pill">ActiveSearchTerm:&nbsp;<b id="pn-active"></b></span>
                 <ul class="results" id="pn-results"></ul>
             </div>
-            <div class="code-block"><pre>// consumer side
+            <div class="code-block" data-language="js"><pre><code>// consumer side
 el.getSearchTermCallback = ({ term, target, behavior, match }) => {
   const parts = term.split(/[^a-z0-9]+/i).filter(Boolean);
   return parts.length ? new RegExp(parts.join('[^a-z0-9]*'), 'i') : null;
@@ -176,7 +176,7 @@ const cb = this.getSearchTermCallback;
 prepareSearchTerm(typed, {
   behavior, match, regex,
   getSearchTermCallback: cb ? (term) => cb({ term, target: 'internal', behavior, match }) : undefined,
-});</pre></div>
+});</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -208,7 +208,7 @@ prepareSearchTerm(typed, {
                 </div>
                 <ul class="results" id="cb-results"></ul>
             </div>
-            <div class="code-block"><pre>// component side — what web-multiselect does
+            <div class="code-block" data-language="js"><pre><code>// component side — what web-multiselect does
 const term = getSearchTermCallback
   ? getSearchTermCallback({ term: typed, target: 'callback', behavior, match })
   : typed;
@@ -222,7 +222,7 @@ getSearchTermCallback  = ({ term }) => ({ text: normalizeSearchText(term.trim())
 searchCallback = ({ term, signal, entries }) => {
   if (entries !== indexedFor) { index = buildIndex(entries); indexedFor = entries; } // once per item set
   return index.search(term);
-};</pre></div>
+};</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -230,7 +230,7 @@ searchCallback = ({ term, signal, entries }) => {
         <!-- ============================================================= -->
         <div class="card">
             <h2>SE07 · API</h2>
-            <div class="code-block"><pre>import {
+            <div class="code-block" data-language="js"><pre><code>import {
   normalizeSearchText,                    // (text, behavior = 'normalized') → string
   findTextMatches, matchesText,           // (text, term, match) → ranges / boolean (prepared strings)
   findRegexMatches, statelessRegex,       // regex helpers
@@ -245,7 +245,7 @@ searchCallback = ({ term, signal, entries }) => {
 
 // types: SearchBehavior, SearchMatch, SearchTermContext, PreparedSearchTerm,
 //        SearchEntry, SearchCallbackContext, ActiveSearchTerm, SearchRange, HighlightResult,
-//        RegexCompiler, PrepareSearchTermOptions, WrapRangesOptions</pre></div>
+//        RegexCompiler, PrepareSearchTermOptions, WrapRangesOptions</code></pre></div>
         </div>
 
     <script type="module">

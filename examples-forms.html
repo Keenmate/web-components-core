@@ -60,7 +60,7 @@
                     <div class="log-panel" id="fo01-log"></div>
                 </div>
             </div>
-            <div class="code-block" data-kmwc-snippet><pre>class CoreDemoField extends BlissElement {
+            <div class="code-block" data-language="js" data-kmwc-snippet><pre><code>class CoreDemoField extends BlissElement {
   static formAssociated = true;               // el.form, formDisabledCallback, validity API
   reinit() {
     this.#hidden ??= Object.assign(document.createElement('input'), { type: 'hidden' });
@@ -75,7 +75,7 @@
 el.form;                                      // &lt;form id="do-fo01-form"&gt; — also via form="do-fo01-form"
 el.closest('form');                           // null for the outside field
 form.addEventListener('change', (e) =&gt; e.target.form);   // resolves like a native input
-[...new FormData(form)];                      // [['qty','3'], ['note','hi'], ['extra','7']]</pre></div>
+[...new FormData(form)];                      // [['qty','3'], ['note','hi'], ['extra','7']]</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -127,7 +127,7 @@ form.addEventListener('change', (e) =&gt; e.target.form);   // resolves like a n
                     <div class="log-panel" id="fo02-log"></div>
                 </div>
             </div>
-            <div class="code-block"><pre>static inputs = [
+            <div class="code-block" data-language="js"><pre><code>static inputs = [
   { configKey: 'isDisabled', attribute: 'disabled', converter: toBool('presence'),
     default: false, shouldReflect: true },             // must reflect (SPEC §6.4)
 ];
@@ -136,7 +136,7 @@ update(p) { /* ignore p.isDisabled */ }
 disabledChanged(isDisabled) { this.#applyDisabled(isDisabled); } // flips on a built element
 
 fieldset.disabled = true;   // el.isDisabled stays false; isFormDisabled true → disabledChanged(true)
-el.isDisabled = true;       // reflects disabled="" → still disabled → no second disabledChanged</pre></div>
+el.isDisabled = true;       // reflects disabled="" → still disabled → no second disabledChanged</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -196,7 +196,7 @@ el.isDisabled = true;       // reflects disabled="" → still disabled → no se
                     <div class="log-panel" id="fo03-log"></div>
                 </div>
             </div>
-            <div class="code-block"><pre>#produceValue() {
+            <div class="code-block" data-language="js"><pre><code>#produceValue() {
   const raw = this.config.value.trim();
   if (raw === '' || /^-?\d+$/.test(raw)) {
     this.#hidden.value = raw;
@@ -212,7 +212,7 @@ el.validationMessage;      // '"abc" is not a whole number'
 el.matches(':invalid');    // true
 form.requestSubmit();      // 'invalid' fires on el, no 'submit' (a novalidate form submits)
 plain.validity;            // undefined — plain.checkValidity() === true, plain.willValidate === false
-plain.form;                // null — even inside a &lt;form&gt;: no association without formAssociated</pre></div>
+plain.form;                // null — even inside a &lt;form&gt;: no association without formAssociated</code></pre></div>
         </div>
 
         <!-- ============================================================= -->

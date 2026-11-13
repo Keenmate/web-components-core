@@ -163,7 +163,7 @@
         <!-- ============================================================= -->
         <div class="card">
             <h2>AN04 · API summary</h2>
-            <div class="code-block"><pre>import { anchor } from '@keenmate/web-components-core/positioning';
+            <div class="code-block" data-language="js"><pre><code>import { anchor } from '@keenmate/web-components-core/positioning';
 
 const handle = anchor(floating, reference, {   // reference: Element or VirtualElement
   placement: 'bottom-start',
@@ -175,13 +175,13 @@ const handle = anchor(floating, reference, {   // reference: Element or VirtualE
 });
 
 handle.update();   // reposition now
-handle.destroy();  // stop autoUpdate, restore the copied data-theme</pre></div>
+handle.destroy();  // stop autoUpdate, restore the copied data-theme</code></pre></div>
             <table class="reference-table table-compact mt-1">
                 <thead><tr><th>Option</th><th>Default</th><th>What it does</th></tr></thead>
                 <tbody>
                     <tr><td><code>placement</code></td><td><code>'bottom-start'</code></td><td>Preferred side and alignment.</td></tr>
                     <tr><td><code>strategy</code></td><td><code>'fixed'</code></td><td><code>'fixed'</code> or <code>'absolute'</code>. Drift checks run only for <code>'fixed'</code>.</td></tr>
-                    <tr><td><code>offset</code></td><td><code>4</code></td><td>Gap in px, or <code>{ mainAxis, crossAxis, alignmentAxis }</code> to also shift along the edge.</td></tr>
+                    <tr><td><code>offset</code></td><td><code>--base-dropdown-offset</code>, else <code>4</code></td><td>Gap in px (default: the page's <code>--base-dropdown-offset</code>, read on the reference when the anchor is created), or <code>{ mainAxis, crossAxis, alignmentAxis }</code> to also shift along the edge.</td></tr>
                     <tr><td><code>shouldFlip</code></td><td><code>true</code></td><td>Flip to the opposite side on overflow.</td></tr>
                     <tr><td><code>flipPadding</code></td><td><code>0</code></td><td>Extra viewport-edge padding (px) before flipping.</td></tr>
                     <tr><td><code>fallbackPlacements</code></td><td>the opposite side</td><td>The placements flip tries, in order, when the preferred one doesn't fit.</td></tr>
@@ -192,7 +192,7 @@ handle.destroy();  // stop autoUpdate, restore the copied data-theme</pre></div>
                     <tr><td><code>arrow</code></td><td>—</td><td><code>{ element, padding? }</code>: an arrow child of the floating element, positioned each frame.</td></tr>
                     <tr><td><code>shouldAutoUpdate</code></td><td><code>true</code></td><td>Keep it placed on scroll / resize (<code>autoUpdate</code>).</td></tr>
                     <tr><td><code>autoUpdateOptions</code></td><td>—</td><td>Passed to <code>autoUpdate</code>, e.g. <code>{ elementResize: false }</code>.</td></tr>
-                    <tr><td><code>inheritThemeFrom</code></td><td>—</td><td>Copy the nearest <code>data-theme</code> / <code>data-bs-theme</code> onto the floating element.</td></tr>
+                    <tr><td><code>inheritThemeFrom</code></td><td>—</td><td>Copy the nearest <code>data-theme</code> / <code>data-bs-theme</code> / <code>data-context-theme</code> / <code>data-motion</code> onto the floating element.</td></tr>
                     <tr><td><code>shouldUseFixedContainingBlock</code></td><td><code>false</code></td><td>Take the offset parent from the floating element's own containing-block ancestor.</td></tr>
                     <tr><td><code>platform</code></td><td>—</td><td>A custom Floating&nbsp;UI platform. Wins over <code>shouldUseFixedContainingBlock</code>.</td></tr>
                     <tr><td><code>beforeComputeCallback()</code></td><td>—</td><td>Runs right before each computation (publish a CSS var, clamp, …).</td></tr>

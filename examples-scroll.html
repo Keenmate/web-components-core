@@ -34,10 +34,10 @@
                 </div>
             </div>
             <div class="log-panel log-panel--dark mt-1" data-empty="Press a button above." id="sc01-log"></div>
-            <div class="code-block"><pre>import { scrollIntoContainer } from '@keenmate/web-components-core';
+            <div class="code-block" data-language="js"><pre><code>import { scrollIntoContainer } from '@keenmate/web-components-core';
 
 // instead of row.scrollIntoView({ block: 'start' })
-scrollIntoContainer(row, { block: 'start' });   // → the container it scrolled, or null (page fallback)</pre></div>
+scrollIntoContainer(row, { block: 'start' });   // → the container it scrolled, or null (page fallback)</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -119,7 +119,7 @@ scrollIntoContainer(row, { block: 'start' });   // → the container it scrolled
                 <button id="sc04-on">Row 55 — shouldRevealContainer on</button>
             </div>
             <div class="log-panel log-panel--dark mt-1" data-empty="Scroll this card into view, then press a button." id="sc04-log"></div>
-            <div class="code-block"><pre>scrollIntoContainer(row, { block: 'center', behavior: 'smooth', shouldRevealContainer: true });</pre></div>
+            <div class="code-block" data-language="js"><pre><code>scrollIntoContainer(row, { block: 'center', behavior: 'smooth', shouldRevealContainer: true });</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -127,7 +127,7 @@ scrollIntoContainer(row, { block: 'start' });   // → the container it scrolled
         <!-- ============================================================= -->
         <div class="card">
             <h2>SC05 · API</h2>
-            <div class="code-block"><pre>import { findScrollContainer, scrollIntoContainer } from '@keenmate/web-components-core';
+            <div class="code-block" data-language="js"><pre><code>import { findScrollContainer, scrollIntoContainer, getScrollTopForBox, scrollContainerToBox } from '@keenmate/web-components-core';
 
 findScrollContainer(el, {
   stopAt,       // Element — stop the walk here (exclusive); default: walk up to &lt;body&gt;
@@ -141,7 +141,15 @@ scrollIntoContainer(el, {
   container,    // scroll this one instead of searching
   stopAt, axis, // passed to findScrollContainer()
   shouldRevealContainer, // also bring the container into the viewport; default false
-});             // → the container it scrolled, or null (page fallback, or nothing scrolled)</pre></div>
+});             // → the container it scrolled, or null (page fallback, or nothing scrolled)
+
+// a target that isn't rendered (a virtual-list row by index): box = { top, height } in content px
+scrollContainerToBox(container, { top: index * rowHeight, height: rowHeight }, {
+  block,        // 'nearest' (default) | 'start' | 'center' | 'end'
+  behavior,     // 'auto' (default, sets scrollTop synchronously) | 'smooth'
+  insetTop,     // extra top inset in px on top of scroll-padding-top (a sticky header measured in JS)
+});             // → the new scrollTop, or null when nothing moved
+getScrollTopForBox(container, box, options);   // the same scrollTop, computed only (render the window first)</code></pre></div>
             <p>
                 No container found: the page scrolls with <code>window.scrollTo()</code> and the same alignment rules.
                 With <code>stopAt</code> set and no container below it, nothing scrolls. Nothing to move: no

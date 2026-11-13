@@ -47,6 +47,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Docs
 - IA04 (Events and interaction): the demo file list takes the standard `menu-presentation` /
   `menu-side` inputs; `presentation` gains `drawer`, plus a `side` switch.
+- Example pages on devkit `^1.0.0-rc14`: API tables stack into cards on a phone (live value grids
+  keep scrolling), code blocks are syntax-highlighted with the kit's Copy button. Reference
+  updated: `anchor()` `offset` defaults to `--base-dropdown-offset` and `inheritThemeFrom` copies
+  `data-context-theme` / `data-motion` too; `createPopover` gains the `'reference-removed'` close
+  reason and `claimCurrentClick()`; `/menu` lists `'drawer'`, the `'presentation'` close reason,
+  `menuPresentationInputs()` / `menuPresentationOptions()` and the presentation map; custom styles
+  list `shouldHoistImports`; `whenReady()` resolves on `destroy()`; scroll lists
+  `getScrollTopForBox` / `scrollContainerToBox`; responsive lists `BREAKPOINTS_CHANGE_EVENT` and
+  the missing environment types.
 
 ### Fixed
 - `observeEnvironment()` / `observeViewport()`: the last unsubscribe no longer removes window /

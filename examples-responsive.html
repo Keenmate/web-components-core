@@ -66,14 +66,14 @@
                     A desktop window narrowed to 700 px is the opposite: <code>desktop</code> device, <code>mobile</code> bucket.
                 </div>
             </div>
-            <div class="code-block"><pre>import { getEnvironment, observeEnvironment, observeViewport, classifyDevice, configureBreakpoints } from '@keenmate/web-components-core';
+            <div class="code-block" data-language="js"><pre><code>import { getEnvironment, observeEnvironment, observeViewport, classifyDevice, configureBreakpoints } from '@keenmate/web-components-core';
 
 const env = getEnvironment();          // { pointer, canHover, isTouchPrimary, orientation, viewportWidth, screenShortSide, breakpoint, os, … }
 classifyDevice(env);                   // 'mobile' | 'tablet' | 'desktop'
 
 const offDiscrete   = observeEnvironment((env) =&gt; …, { shouldFireImmediately: false }); // category flips only
 const offContinuous = observeViewport((env) =&gt; …,    { shouldFireImmediately: false }); // every size change, ≈30 ms throttle
-configureBreakpoints({ mobile: 640, tablet: 1100, desktop: Infinity });                  // global, beats the tokens</pre></div>
+configureBreakpoints({ mobile: 640, tablet: 1100, desktop: Infinity });                  // global, beats the tokens</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -104,13 +104,13 @@ configureBreakpoints({ mobile: 640, tablet: 1100, desktop: Infinity });         
                 <thead><tr><th>Environment</th><th>classifyDevice</th><th>resolvePresentation</th></tr></thead>
                 <tbody></tbody>
             </table>
-            <div class="code-block"><pre>import { resolvePresentation, DEFAULT_PRESENTATION_MAP } from '@keenmate/web-components-core';
+            <div class="code-block" data-language="ts"><pre><code>import { resolvePresentation, DEFAULT_PRESENTATION_MAP } from '@keenmate/web-components-core';
 
 // setPresentation() / this.presentation are the component's own (not BlissElement API).
 protected override environmentChanged(env) {
   // "on a tablet, use a modal" — phone and desktop keep the defaults:
   this.setPresentation(resolvePresentation(this.presentation, env, { tablet: 'modal' }));
-}</pre></div>
+}</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -160,7 +160,7 @@ protected override environmentChanged(env) {
                 The <em>base</em> column is read by a probe <code>el.responsiveCallback</code> that only records
                 <code>ctx.config</code> and returns <code>undefined</code> (= nothing to add) — so it changes no value.
             </p>
-            <div class="code-block"><pre>&lt;core-demo-rs-map responsive='{
+            <div class="code-block" data-language="html"><pre><code>&lt;core-demo-rs-map responsive='{
   "breakpoint": { "mobile": { "layout": "stack", "columns": 1 }, "tablet": { "columns": 2 } },
   "device":     { "tablet": { "layout": "grid", "columns": 2, "presentation": "modal" },
                   "mobile": { "presentation": "fullscreen" } }
@@ -169,7 +169,7 @@ protected override environmentChanged(env) {
 // iPad portrait → deviceClass 'tablet', breakpoint 'mobile':
 //   breakpoint.mobile → { layout: 'stack', columns: 1 }, then device.tablet over it
 //   → effective { layout: 'grid', columns: 2, presentation: 'modal' }
-el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  // the base, no override</pre></div>
+el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  // the base, no override</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -286,13 +286,13 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
                 <core-demo-rs-size id="rs06-el" style="width: 480px"></core-demo-rs-size>
             </div>
             <div class="log-panel log-panel--dark mt-1" data-empty="Move a slider." id="rs06-log"></div>
-            <div class="code-block"><pre>class MyPanel extends BlissElement {
+            <div class="code-block" data-language="ts"><pre><code>class MyPanel extends BlissElement {
   protected override sizeChanged({ width, height }: ElementSize) {
     // layout size (transforms not applied); throttled, deduped
     this.#columns = Math.max(1, Math.floor(width / 120));
     this.#renderTiles();
   }
-}</pre></div>
+}</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -307,7 +307,7 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
                     <tr><td><code>observeEnvironment(cb, { shouldFireImmediately? })</code></td><td>Discrete channel — category flips only. Returns the unsubscribe. <code>BlissElement</code> hook: <code>environmentChanged(env)</code>.</td></tr>
                     <tr><td><code>observeViewport(cb, opts)</code></td><td>Continuous channel — size changes, throttled ≈30 ms (leading + trailing). Hook: <code>viewportChanged(env)</code>.</td></tr>
                     <tr><td><code>sizeChanged(size)</code> · <code>observeElementSize(el, cb, opts)</code></td><td>The element's border-box <strong>layout</strong> size (transforms not applied), via one shared <code>ResizeObserver</code>; deduped. <code>opts</code>: <code>shouldFireImmediately</code> (default <code>true</code>), <code>throttleMs</code> (default 30, <code>0</code> = off). The hook is override-gated (RS06).</td></tr>
-                    <tr><td><code>configureBreakpoints(map)</code></td><td>Redefine the width buckets globally (beats the <code>--base-breakpoint-*</code> tokens). Default <code>{ mobile: 768, tablet: 1024, desktop: Infinity }</code>.</td></tr>
+                    <tr><td><code>configureBreakpoints(map)</code></td><td>Redefine the width buckets globally (beats the <code>--base-breakpoint-*</code> tokens). Default <code>{ mobile: 768, tablet: 1024, desktop: Infinity }</code>. Page-wide across every bundled copy of core: it fires <code>BREAKPOINTS_CHANGE_EVENT</code> (<code>'km-breakpoints-change'</code>) on <code>document</code> so the other copies recompute.</td></tr>
                     <tr><td><code>classifyDevice(env)</code></td><td><code>'mobile' | 'tablet' | 'desktop'</code> — not touch-primary → desktop; else <code>min(viewportWidth, screenShortSide)</code> &lt; <code>TABLET_MIN_SHORT_SIDE</code> (600) → mobile, else tablet. Without a screen size it uses the shorter viewport side.</td></tr>
                     <tr><td><code>resolvePresentation(mode, env, map?)</code></td><td>Forced mode as-is; <code>auto</code> → <code>map[deviceClass] ?? DEFAULT_PRESENTATION_MAP[deviceClass]</code>.</td></tr>
                     <tr><td><code>createPresentationContext(presentation)</code></td><td>Builds a <code>PresentationContext</code> — <code>{ presentation, isFullscreen, isModal }</code> — to spread into a render callback's context, so a custom renderer can adapt to how the panel is shown.</td></tr>
@@ -315,7 +315,7 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
                     <tr><td><code>window.components[tag].responsive</code> / <code>.responsiveCallback</code></td><td>Per-tag layers (installed by <code>registerComponent()</code>; a pre-existing entry is adopted).</td></tr>
                     <tr><td><code>el.responsive</code> / <code>responsive='{…}'</code></td><td>Instance map <code>{ device?, breakpoint? }</code>; breakpoint entry first, device entry over it. A <code>null</code> entry = ignore page rules.</td></tr>
                     <tr><td><code>el.responsiveCallback = (ctx) =&gt; …</code></td><td>Instance callback; <code>ctx = { env, deviceClass, breakpoint, element, component, config }</code> (<code>config</code> = frozen base). Return a partial, <code>undefined</code> (nothing) or <code>null</code> (ignore page rules). A throw is logged and treated as <code>undefined</code>.</td></tr>
-                    <tr><td>Types</td><td><code>ResponsiveMap&lt;C&gt;</code>, <code>ResponsiveMapAxis</code>, <code>ResponsiveContext&lt;C&gt;</code>, <code>ResponsiveCallback&lt;C&gt;</code>, <code>EnvironmentSnapshot</code>, <code>ObserveEnvironmentOptions</code>, <code>PointerAccuracy</code>, <code>BreakpointMap</code>, <code>DeviceClass</code>, <code>ElementSize</code>, <code>ObserveElementSizeOptions</code>, <code>Presentation</code>, <code>ResolvedPresentation</code>, <code>PresentationMap</code>, <code>PresentationContext</code>.</td></tr>
+                    <tr><td>Types</td><td><code>ResponsiveMap&lt;C&gt;</code>, <code>ResponsiveMapAxis</code>, <code>ResponsiveContext&lt;C&gt;</code>, <code>ResponsiveCallback&lt;C&gt;</code>, <code>EnvironmentSnapshot</code>, <code>EnvironmentListener</code>, <code>ObserveEnvironmentOptions</code>, <code>PointerAccuracy</code>, <code>Orientation</code>, <code>OS</code>, <code>BreakpointMap</code>, <code>DeviceClass</code>, <code>ElementSize</code>, <code>ElementSizeListener</code>, <code>ObserveElementSizeOptions</code>, <code>Presentation</code>, <code>ResolvedPresentation</code>, <code>PresentationMap</code>, <code>PresentationContext</code>.</td></tr>
                 </tbody>
             </table>
             <div class="note">

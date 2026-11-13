@@ -92,7 +92,7 @@
         <!-- ============================================================= -->
         <div class="card">
             <h2>NC04 · API summary</h2>
-            <div class="code-block"><pre>// Component side — assemble the config to hand your engine:
+            <div class="code-block" data-language="ts"><pre><code>// Component side — assemble the config to hand your engine:
 protected override update(partial = {}) {
   const cfg = this.engineConfig(NON_ENGINE_KEYS); // shallow copy, nulls PRESERVED
   Object.assign(cfg, partial);                    // partial already carries null
@@ -105,7 +105,7 @@ const cfg = collectEngineConfig(bag, { exclude: ['theme'] });
 
 // Engine side — treat null as a real value, per field:
 if (updates.x !== undefined) this._x = updates.x;          // clearable: null clears
-if (updates.y !== undefined) this._y = updates.y ?? DEFAULT;// defaulted: null → default</pre></div>
+if (updates.y !== undefined) this._y = updates.y ?? DEFAULT;// defaulted: null → default</code></pre></div>
             <table class="reference-table mt-1">
                 <thead><tr><th>Member</th><th>Where</th><th>What</th></tr></thead>
                 <tbody>

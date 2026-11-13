@@ -210,7 +210,7 @@
                     </div>
                 </div>
             </div>
-            <div class="code-block"><pre>import { createPopover } from '@keenmate/web-components-core/positioning';
+            <div class="code-block" data-language="js"><pre><code>import { createPopover } from '@keenmate/web-components-core/positioning';
 
 const popover = createPopover({
   reference: button,            // inside the component's shadow root
@@ -223,7 +223,7 @@ const popover = createPopover({
 
 /* the panel's CSS reads its own attributes, like the component's */
 .panel[data-context-theme="dark"] { color-scheme: dark; }
-.panel[data-theme="dark"]         { color-scheme: dark; }   /* per-instance, declared last */</pre></div>
+.panel[data-theme="dark"]         { color-scheme: dark; }   /* per-instance, declared last */</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -245,7 +245,7 @@ const popover = createPopover({
                     <tr><td>Types</td><td><code>ColorScheme</code> (<code>'dark' | 'light'</code>), <code>ThemeMode</code> (<code>ColorScheme | 'auto'</code>), <code>ThemeSource</code> (<code>string | Element | null</code>), <code>ThemeListener</code>, <code>ObserveThemeContextOptions</code>.</td></tr>
                 </tbody>
             </table>
-            <div class="code-block"><pre>import { setThemeMode, getThemeMode, getThemeContext } from '@keenmate/web-components-core';
+            <div class="code-block" data-language="js"><pre><code>import { setThemeMode, getThemeMode, getThemeContext } from '@keenmate/web-components-core';
 
 setThemeMode('dark');   // force every component; 'light' | 'auto' (detect)
 getThemeMode();         // 'auto' | 'dark' | 'light'
@@ -258,13 +258,13 @@ getThemeContext();      // the effective page scheme: forced mode, else detected
 //   el.themeSource = someElement;        property form
 //
 // In a component: override themeChanged(scheme) for JS-side theming;
-// static hasThemeContext = false opts out.</pre></div>
-            <div class="code-block"><pre>/* Component dark-mode.css — works in every browser */
+// static hasThemeContext = false opts out.</code></pre></div>
+            <div class="code-block" data-language="css"><pre><code>/* Component dark-mode.css — works in every browser */
 :host([data-context-theme="dark"])  { color-scheme: dark; }
 :host([data-context-theme="light"]) { color-scheme: light; }
 /* per-instance forcing, declared last so it wins */
 :host([data-theme="dark"])  { color-scheme: dark; }
-:host([data-theme="light"]) { color-scheme: light; }</pre></div>
+:host([data-theme="light"]) { color-scheme: light; }</code></pre></div>
         </div>
 
     <!-- The demo web component (registers <theme-card>). -->

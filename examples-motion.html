@@ -32,8 +32,8 @@
                 <core-demo-motion motion="smooth" label='motion="smooth"'></core-demo-motion>
             </div>
             <div class="log-panel log-panel--dark mt-1" data-empty="Press Slide." id="mo01-log"></div>
-            <div class="code-block"><pre>&lt;web-multiselect motion="none"&gt;&lt;/web-multiselect&gt;
-el.motion = 'snappy';</pre></div>
+            <div class="code-block" data-language="html"><pre><code>&lt;web-multiselect motion="none"&gt;&lt;/web-multiselect&gt;
+el.motion = 'snappy';</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -96,7 +96,7 @@ el.motion = 'snappy';</pre></div>
             <div class="grid-2" id="mo02-d-wrap">
                 <core-demo-motion id="mo02-d" label="D · motion=&quot;auto&quot;, outside the section"></core-demo-motion>
             </div>
-            <table class="reference-table table-compact table-full mt-1">
+            <table class="reference-table table-compact table-full table-scroll mt-1">
                 <thead><tr><th>Component</th><th>Effective level <span class="pill pill--warn">demo helper</span></th><th>Decided by <span class="pill pill--warn">demo helper</span></th><th>Knob speed</th></tr></thead>
                 <tbody id="mo02-table"></tbody>
             </table>
@@ -109,11 +109,11 @@ el.motion = 'snappy';</pre></div>
                 <pre id="mo02-dom"></pre>
             </div>
             <div class="log-panel log-panel--dark mt-1" data-empty="Change a level or press Slide." id="mo02-log"></div>
-            <div class="code-block"><pre>window.components.motion = 'smooth';           // page level → &lt;html data-motion="smooth"&gt;
+            <div class="code-block" data-language="html"><pre><code>window.components.motion = 'smooth';           // page level → &lt;html data-motion="smooth"&gt;
 &lt;section data-motion="none"&gt;                     &lt;!-- beats the page for everything inside --&gt;
   &lt;web-multiselect&gt;&lt;/web-multiselect&gt;             &lt;!-- auto: core writes nothing, inherits "none" --&gt;
   &lt;web-multiselect motion="snappy"&gt;&lt;/web-multiselect&gt;  &lt;!-- its own level beats the section --&gt;
-&lt;/section&gt;</pre></div>
+&lt;/section&gt;</code></pre></div>
         </div>
 
         <!-- ============================================================= -->

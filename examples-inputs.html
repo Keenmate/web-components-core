@@ -75,7 +75,7 @@
                 <label class="demo-label mt-1">Write log:</label>
                 <div class="log-panel" id="in01-log"></div>
             </div>
-            <div class="code-block"><pre>import { BlissElement, define, toBool, toEnum, toFunction, toInt, toList, toText } from '@keenmate/web-components-core';
+            <div class="code-block" data-language="js"><pre><code>import { BlissElement, define, toBool, toEnum, toFunction, toInt, toList, toText } from '@keenmate/web-components-core';
 
 class CoreDemoInputs extends BlissElement {
   static inputs = [
@@ -94,7 +94,7 @@ define('core-demo-inputs', CoreDemoInputs);
 
 el.setAttribute('count', '7');   // fromAttribute('7') → 7
 el.count = 7;                    // validate(7) → ok → reflected: count="7"
-el.removeAttribute('count');     // → default 3</pre></div>
+el.removeAttribute('count');     // → default 3</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -139,7 +139,7 @@ el.removeAttribute('count');     // → default 3</pre></div>
                     <div class="log-panel log-panel--dark" id="in02-log" style="--log-max-height: 360px"></div>
                 </div>
             </div>
-            <div class="code-block"><pre>// A custom converter reports a bad attribute string the same way the to* factories do:
+            <div class="code-block" data-language="js"><pre><code>// A custom converter reports a bad attribute string the same way the to* factories do:
 const toPercent = toCustom((raw, reportInvalid) =&gt; {
   if (raw === null) return 100;
   const n = Number(raw);
@@ -154,7 +154,7 @@ el.count = 99;                   // warn · count stays 5 (max: 10)
 el.addEventListener('input-rejected', (e) =&gt; {
   e.detail; // { configKey: 'count', value: 99, kept: 5, source: 'property' }
 });
-el.setAttributes({ count: 3, limit: 'x' }); // → [{ configKey: 'limit', value: 'x', kept: 50, … }]</pre></div>
+el.setAttributes({ count: 3, limit: 'x' }); // → [{ configKey: 'limit', value: 'x', kept: 50, … }]</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -204,7 +204,7 @@ el.setAttributes({ count: 3, limit: 'x' }); // → [{ configKey: 'limit', value:
                     <div class="log-panel log-panel--dark" id="in03-log" style="--log-max-height: 360px"></div>
                 </div>
             </div>
-            <div class="code-block"><pre>static inputs = [
+            <div class="code-block" data-language="js"><pre><code>static inputs = [
   { configKey: 'caption',  attribute: 'caption',   converter: toText({ default: 'Report' }), on: 'update' },
   { configKey: 'accent',   attribute: 'accent',    converter: toEnum(['blue', 'green', 'red'], { default: 'blue' }), on: 'update' },
   { configKey: 'layout',   attribute: 'layout',    converter: toEnum(['list', 'grid'], { default: 'list' }), on: 'reinit' },
@@ -214,7 +214,7 @@ el.setAttributes({ count: 3, limit: 'x' }); // → [{ configKey: 'limit', value:
 reinit()        { /* rebuild everything from this.config */ }
 update(partial) { /* patch only partial's keys — e.g. { caption: 'Quarterly' } */ }
 
-el.setAttributes({ caption: 'Mixed', layout: 'grid' });  // → reinit() only, no update partial</pre></div>
+el.setAttributes({ caption: 'Mixed', layout: 'grid' });  // → reinit() only, no update partial</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -251,7 +251,7 @@ el.setAttributes({ caption: 'Mixed', layout: 'grid' });  // → reinit() only, n
                     <div class="log-panel log-panel--dark" id="in04-log" style="--log-max-height: 420px"></div>
                 </div>
             </div>
-            <div class="code-block"><pre>el.caption = 'A'; el.accent = 'green'; el.caption = 'B';
+            <div class="code-block" data-language="js"><pre><code>el.caption = 'A'; el.accent = 'green'; el.caption = 'B';
 // nothing has run yet — one microtask flush is queued
 await el.whenSettled();                 // → ONE update({ caption: 'B', accent: 'green' })
 
@@ -265,7 +265,7 @@ el.pageSize = 8; el.readRendered().pageSize;          // 8, no await needed
 // Pay for the build once: configure detached, then append
 const fresh = document.createElement('core-demo-reactivity');
 fresh.setAttributes({ layout: 'grid', pageSize: 8 });
-document.body.append(fresh);            // ONE reinit() with the full config</pre></div>
+document.body.append(fresh);            // ONE reinit() with the full config</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -291,7 +291,8 @@ document.body.append(fresh);            // ONE reinit() with the full config</pr
                         <button id="in05-explicit"><code>setAttributes({ mode: 'excel', editTrigger: 'none' })</code></button>
                         <span class="muted">The excel preset says <code>dblclick</code>, but <code>editTrigger</code> stays <code>none</code> — the explicit value wins. <code>hasGridLines</code> still comes from the preset.</span>
                     </div>
-                    <table class="reference-table table-compact mt-1">
+                    <table class="reference-table table-compact table-scroll mt-1">
+                        <thead><tr><th>read</th><th>value</th><th>attribute</th></tr></thead>
                         <tbody id="in05-state"></tbody>
                     </table>
                 </div>
@@ -300,7 +301,7 @@ document.body.append(fresh);            // ONE reinit() with the full config</pr
                     <div class="log-panel log-panel--dark" id="in05-log" style="--log-max-height: 420px"></div>
                 </div>
             </div>
-            <div class="code-block"><pre>static inputs = [
+            <div class="code-block" data-language="js"><pre><code>static inputs = [
   { configKey: 'mode', attribute: 'mode', converter: toEnum(['simple', 'excel', 'custom'], { default: 'simple' }),
     shouldReflect: true,
     getBatchValuesCallback: (mode) =&gt; ({
@@ -312,7 +313,7 @@ document.body.append(fresh);            // ONE reinit() with the full config</pr
 ];
 
 el.mode = 'excel';                  // → ONE update({ mode, editTrigger: 'dblclick', hasGridLines: true })
-el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrigger wins</pre></div>
+el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrigger wins</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -340,7 +341,8 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
                         <button id="in06-staged">3 · <code>el.items = ['Fresh']</code>, read <code>el.items</code> at once</button>
                         <span class="muted">Before the flush runs, the getter returns <code>['Fresh']</code> (what you assigned), not the old live rows.</span>
                     </div>
-                    <table class="reference-table table-compact mt-1">
+                    <table class="reference-table table-compact table-scroll mt-1">
+                        <thead><tr><th>read</th><th>value</th></tr></thead>
                         <tbody id="in06-state"></tbody>
                     </table>
                 </div>
@@ -349,13 +351,13 @@ el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrig
                     <div class="log-panel log-panel--dark" id="in06-log" style="--log-max-height: 420px"></div>
                 </div>
             </div>
-            <div class="code-block"><pre>static inputs = [
+            <div class="code-block" data-language="js"><pre><code>static inputs = [
   { configKey: 'items', converter: toObjectArray(), default: [], on: 'reinit',
     getLiveValue: (el) =&gt; el.liveRows },                 // undefined → falls back to the stored value
 ];
 
 el.items = ['Alpha', 'Beta'];       // setter: stored in this.config.items, as always
-el.items;                           // getter: the component's live rows (user-added ones included)</pre></div>
+el.items;                           // getter: the component's live rows (user-added ones included)</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -685,8 +687,7 @@ el.items;                           // getter: the component's live rows (user-a
                 ['el.editTrigger', fmt(el5.editTrigger), fmtAttr(el5.getAttribute('edit-trigger'))],
                 ['el.hasGridLines', fmt(el5.hasGridLines), fmtAttr(el5.getAttribute('grid-lines'))],
             ];
-            $('in05-state').innerHTML = '<tr><th>read</th><th>value</th><th>attribute</th></tr>'
-                + rows.map(([k, v, a]) => `<tr data-read="${escapeHtml(k)}"><td><code>${escapeHtml(k)}</code></td><td><code>${escapeHtml(v)}</code></td><td><code>${escapeHtml(a)}</code></td></tr>`).join('');
+            $('in05-state').innerHTML = rows.map(([k, v, a]) => `<tr data-read="${escapeHtml(k)}"><td><code>${escapeHtml(k)}</code></td><td><code>${escapeHtml(v)}</code></td><td><code>${escapeHtml(a)}</code></td></tr>`).join('');
         };
         el5.addEventListener('hook', (e) => log(log5, `◆ ${escapeHtml(describeHook(e.detail))}`, 'info'));
         $('in05-mode').addEventListener('change', async (e) => {
@@ -712,8 +713,7 @@ el.items;                           // getter: the component's live rows (user-a
                 ['el.items (live getter)', fmt(el6.items)],
                 ['this.config.items (assigned)', fmt(el6.assignedItems)],
             ];
-            $('in06-state').innerHTML = '<tr><th>read</th><th>value</th></tr>'
-                + rows.map(([k, v]) => `<tr data-read="${escapeHtml(k)}"><td><code>${escapeHtml(k)}</code></td><td><code>${escapeHtml(v)}</code></td></tr>`).join('');
+            $('in06-state').innerHTML = rows.map(([k, v]) => `<tr data-read="${escapeHtml(k)}"><td><code>${escapeHtml(k)}</code></td><td><code>${escapeHtml(v)}</code></td></tr>`).join('');
         };
         $('in06-assign').addEventListener('click', async () => {
             log(log6, "› <code>el.items = ['Alpha', 'Beta']</code>", 'action');
