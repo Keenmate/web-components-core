@@ -7,4 +7,5 @@
  */
 export { openMenu, DEFAULT_MENU_PRESENTATION_MAP } from './open-menu.js';
 export { MENU_CSS } from './styles.js';
+export { menuPresentationInputs, menuPresentationOptions, MENU_PRESENTATIONS, MENU_DRAWER_SIDES } from './inputs.js';
 export type { MenuCloseReason, MenuHandle, MenuInvocation, MenuLabels, MenuPoint, MenuPresentation, MenuPresentationMap, MenuDrawerSide, ResolvedMenuPresentation, OpenMenuOptions } from './types.js';

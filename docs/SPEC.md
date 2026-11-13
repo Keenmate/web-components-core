@@ -1942,6 +1942,12 @@ re-resolves it on a device-class change (a rotation never changes the class — 
 stays; a foldable unfolding does): sheet ⇄ drawer switch in place (classes only), a switch to /
 from `'floating'` closes it with `'presentation'` (another structure; the next open gets it).
 
+**Menu hosts (decided 2026-11-13).** A component that opens menus spreads `menuPresentationInputs()`
+into its `static inputs` — `menuPresentation` (`menu-presentation`, `auto | floating | sheet | drawer`)
+and `menuSide` (`menu-side`, `start | end`), both `on: 'none'` (read at open) — and opens with
+`...menuPresentationOptions(this.config)` (the effective config, so the responsive rules apply) plus
+`labels.back` / `labels.close` from its own `labels`. One spelling for every host; rulebook C-RO-16.
+
 **Drawer (decided 2026-11-13).** `'drawer'` = the same sheet as a full-height side panel:
 `.km-menu-sheet--drawer` + `--left` / `--right` (physical, from `side` and the opener's `dir`:
 `'start'` is left in LTR), `width: --km-menu-drawer-width` (`min(320px, 85vw)`), the inner corners

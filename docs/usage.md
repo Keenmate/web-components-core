@@ -673,7 +673,25 @@ openMenu(entries, ctx, { at: button, presentationMap: { mobile: 'drawer', tablet
 While an `'auto'` menu is open a device-class change re-resolves it (sheet ⇄ drawer in place; to /
 from floating it closes with `'presentation'`). The sheet and drawer slide in / out on
 `--base-duration-medium`, so `motion="none"`, `data-motion` and OS reduced motion turn that off
-with no code; keyboard-shortcut hints are hidden on both (the keys still work). The
+with no code; keyboard-shortcut hints are hidden on both (the keys still work).
+
+**A component that opens menus** (treeview, grid, editor …) takes the two standard inputs — never
+its own presentation attribute — and passes its own strings:
+
+```ts
+import { menuPresentationInputs, menuPresentationOptions, openMenu } from '@keenmate/web-components-core/menu';
+
+static inputs = [...OWN_INPUTS, ...menuPresentationInputs()];   // menu-presentation, menu-side
+// at open
+openMenu(entries, ctx, {
+  ...menuPresentationOptions(this.config),                       // { presentation, side } (effective config)
+  labels: { back: this.labels.back, close: this.labels.close },  // never hard-coded English
+});
+```
+
+So `<web-tree-view menu-presentation="drawer" menu-side="end">`, the per-tag settings and the
+responsive rules (`responsive = { device: { tablet: { menuPresentation: 'drawer' } } }`) work for
+every menu host alike. The
 strings are `labels.back` (`'Back'`) and `labels.close` (`'Close'`); the look is the
 `--km-menu-*` chain (`--km-menu-sheet-*`, `--km-menu-backdrop`, `--km-menu-back-arrow`, see
 `component-variables.manifest.json`). A component that styles its menu through `cssClass`: that

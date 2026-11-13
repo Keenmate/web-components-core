@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `'floating' | 'sheet' | 'drawer'`, e.g. `{ tablet: 'drawer' }`.
 - `/menu`: an open `'auto'` menu follows a device-class change — sheet ⇄ drawer in place, to / from
   floating it closes with the new reason `'presentation'`.
+- `/menu` `menuPresentationInputs()` / `menuPresentationOptions(config)` (+ `MENU_PRESENTATIONS`,
+  `MENU_DRAWER_SIDES`): the standard `menu-presentation` / `menu-side` inputs every menu host spreads
+  into its `static inputs`, and the matching `openMenu()` options.
 - `/menu` sheet / drawer open and close animations (slide + backdrop fade) on the motion tokens
   (`--km-menu-sheet-duration` → `--base-duration-medium`): `motion`, `data-motion` and OS reduced
   motion apply; closing plays out before the sheet leaves the DOM (none → removed at once).
