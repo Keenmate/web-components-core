@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Closing a menu's phone sheet no longer scrolls the page to the top.** The sheet pushes its
+  history entry (phone Back) while the page is scroll-locked (body pinned, window scroll 0), so
+  the browser recorded 0 for the page's entry and restored it when the entry was given back (close
+  button, backdrop, Escape, an item) or popped (Back) — after the scroll lock had put the page back.
+  While a sheet holds its entry the page's entry now uses `history.scrollRestoration = 'manual'`;
+  the page's own mode comes back once its entry is current again.
+
 ### Docs
 
 - **Example pages demo the rc22 features.** IA04 (`examples-interaction.html`): a `presentation`

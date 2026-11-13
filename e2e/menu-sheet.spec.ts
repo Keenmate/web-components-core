@@ -128,6 +128,44 @@ test.describe('phone (touch, 390 x 844)', () => {
     expect(page.url()).toContain('/test/menu-sheet.html'); // never left the page
   });
 
+  test('closing keeps the page scrolled where it was: close button, Back, Back after a submenu Back', async ({ page }) => {
+    // A tall page with the fixture well below the top.
+    await page.evaluate(() => {
+      const spacer = document.createElement('div');
+      spacer.style.height = '1500px';
+      document.body.prepend(spacer);
+      document.body.style.minHeight = '4000px';
+    });
+    await files(page).evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+    const scrollY = () => page.evaluate(() => Math.round(window.scrollY));
+    const before = await scrollY();
+    expect(before).toBeGreaterThan(1000);
+    const settled = async () => {
+      await expect(sheet(page)).toHaveCount(0);
+      await page.waitForTimeout(300); // the deferred history.back() and its traversal
+      expect(await scrollY()).toBe(before);
+    };
+
+    await actionsButton(page).tap();
+    await expect(sheet(page)).toBeVisible();
+    await files(page).locator('.km-menu-sheet__close').tap();
+    await settled();
+
+    await actionsButton(page).tap();
+    await expect(sheet(page)).toBeVisible();
+    await page.evaluate(() => history.back());
+    await settled();
+
+    await row(page, 'report.pdf').click({ button: 'right' });
+    await item(page, 'Share').tap();
+    await expect(title(page)).toHaveText('Share');
+    await page.evaluate(() => history.back()); // up one level: the entry is re-armed
+    await expect(title(page)).toHaveText('report.pdf');
+    await files(page).locator('.km-menu-sheet__close').tap();
+    await settled();
+    expect(await page.evaluate(() => history.scrollRestoration)).toBe('auto'); // the page's own mode is back
+  });
+
   test("presentation 'floating' opts out on a phone", async ({ page }) => {
     await files(page).evaluate((el) => (el.dataset.presentation = 'floating'));
     await actionsButton(page).tap();

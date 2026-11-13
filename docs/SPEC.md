@@ -1931,7 +1931,10 @@ per-component / per-call opt-out, `'sheet'` forces it. The sheet:
   web-multiselect / web-grid pattern; `src/menu/back-entry.ts`, page-wide state): Back in a
   submenu goes up one level and re-arms the entry; at the root it closes with `'back'`. Closed any
   other way, the entry is given back with `history.back()` one task later (a sheet opened right
-  after adopts it instead).
+  after adopts it instead). While the entry is held the page's entry uses
+  `history.scrollRestoration = 'manual'` (the page's own mode returns once its entry is current
+  again): the entry is pushed while the body is pinned (window scroll 0), so the browser's own
+  restore would jump the page to the top; the scroll lock restores the position itself.
 
 **Decisions.** Icons are inserted as HTML (developer-supplied, like action buttons);
 label and shortcut are text. Items are `div[role=menuitem][tabindex=-1]` (not buttons —

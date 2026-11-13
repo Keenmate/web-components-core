@@ -8,6 +8,11 @@
  * racing a `back()` against a new `pushState()`. The listener is detached before that `back()`,
  * so the `popstate` it triggers closes nothing. Page-wide state (every copy of core), one
  * sheet at a time.
+ *
+ * Scroll: the sheet locks page scroll (body pinned, window scroll 0) before it claims the entry,
+ * so the browser would record 0 for the page's entry and jump to the top on the way back. While
+ * an entry is held the page's entry uses `history.scrollRestoration = 'manual'` (the scroll lock
+ * restores the position itself); the page's own mode comes back once its entry is current again.
  */
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 
@@ -16,14 +21,30 @@ interface BackEntryState {
   pendingBack: ReturnType<typeof setTimeout> | null;
   onBack: (() => void) | null;
   listener: (() => void) | null;
+  /** The page's `history.scrollRestoration` while ours is `'manual'`; `null` = not overridden. */
+  savedRestoration: ScrollRestoration | null;
 }
 
 const state = (): BackEntryState =>
-  sharedState(sharedStateKey('menu-back-entry'), () => ({ isPushed: false, pendingBack: null, onBack: null, listener: null }));
+  sharedState(sharedStateKey('menu-back-entry'), () => ({ isPushed: false, pendingBack: null, onBack: null, listener: null, savedRestoration: null }));
 
 function detach(s: BackEntryState): void {
   if (s.listener) window.removeEventListener('popstate', s.listener);
   s.listener = null;
+}
+
+/** Before the push: the page's entry (and so ours, which inherits it) restores no scroll. */
+function suspendScrollRestoration(s: BackEntryState): void {
+  if (!('scrollRestoration' in history) || s.savedRestoration !== null) return;
+  s.savedRestoration = history.scrollRestoration;
+  history.scrollRestoration = 'manual';
+}
+
+/** Back on the page's entry: give it its own mode again. */
+function resumeScrollRestoration(s: BackEntryState): void {
+  if (s.savedRestoration === null) return;
+  history.scrollRestoration = s.savedRestoration;
+  s.savedRestoration = null;
 }
 
 /**
@@ -39,6 +60,7 @@ export function claimBackEntry(onBack: () => void): () => void {
     s.pendingBack = null;
   }
   if (!s.isPushed) {
+    suspendScrollRestoration(s);
     history.pushState({ kmMenuSheet: true }, '');
     s.isPushed = true;
   }
@@ -48,6 +70,7 @@ export function claimBackEntry(onBack: () => void): () => void {
     // Our entry is gone (Back): run the handler without popping again.
     detach(s);
     s.isPushed = false;
+    resumeScrollRestoration(s);
     const back = s.onBack;
     s.onBack = null;
     back?.();
@@ -66,6 +89,8 @@ export function claimBackEntry(onBack: () => void): () => void {
       s.pendingBack = null;
       if (s.onBack || !s.isPushed) return; // adopted meanwhile, or popped by Back
       s.isPushed = false;
+      // Resume once the page's entry is current again (a re-claim meanwhile keeps 'manual').
+      window.addEventListener('popstate', () => { if (!s.isPushed) resumeScrollRestoration(s); }, { once: true });
       history.back();
     }, 0);
   };
