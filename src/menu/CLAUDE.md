@@ -22,7 +22,7 @@ close) over a `.km-menu-sheet-backdrop`, levels inside it with only the deepest 
 — call it whenever the chain changes); drilled-in levels get a Back row (`backRows`, part of
 `enabledItems()` but not of `records` — guard `records.get()` with `?.`). Hover never opens a
 submenu there. Backdrop closes on `click`, not `pointerdown`; no scroll close; `lockBodyScroll()`
-+ one history entry (`back-entry.ts`) per open sheet, both undone in `close()` via
++ one history entry (core `claimBackEntry()`, `src/overlay/back-entry.ts`) per open sheet, both undone in `close()` via
 `endSheetSession`. Tests: `sheet.test.ts` (mocks `getEnvironment`), e2e `menu-sheet.spec.ts`.
 
 Consumers: web-treeview, web-editor, web-grid (cell + header menus; built-in submenus via

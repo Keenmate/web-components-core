@@ -1675,6 +1675,19 @@ components move their own dropdown dismissal onto the stack when they next touch
 devices, or under `scrollbar-gutter: stable`; never `innerWidth - clientWidth`, which on a zoomed-out
 phone page wider than the screen is the horizontal overflow.
 
+**Phone Back (`claimBackEntry(onBack)`, decided 2026-11-13).** A sheet / modal that the phone Back
+gesture should close holds ONE history entry (same URL, `history.state = { kmBackEntry: true }`)
+while open: `const release = claimBackEntry(() => close('back'))` on open, `release()` on every
+other close. Back pops the entry and runs the newest claim's `onBack` (call `claimBackEntry` again
+from it to re-arm — one level up, the sheet stays open); a release gives the entry back with
+`history.back()` one task later, so a sheet opening right after adopts it instead. Page-wide
+(shared state, every copy of core), one entry for the page. While held, the page's entry uses
+`history.scrollRestoration = 'manual'` and gets its own mode back once current again: the entry is
+pushed while `lockBodyScroll()` has the window at scroll 0, so the browser's own restore would jump
+the page to the top after the lock put it back. Replaces the private copies in web-multiselect
+(`pushOverlayHistory`), web-daterangepicker (same) and web-grid (`claimHistoryEntry`); `/menu`'s
+sheet uses it too (`src/overlay/back-entry.ts`).
+
 ### 12.10 Theme context (dark / light) — IMPLEMENTED (`src/environment/theme.ts`)
 
 **The gap.** Components followed a framework's dark/light signal with
@@ -1928,7 +1941,7 @@ per-component / per-call opt-out, `'sheet'` forces it. The sheet:
   Tab / blur / overlay / action as before; no scroll close (page scroll is locked by
   `lockBodyScroll()` for the sheet's lifetime).
 - **Phone Back.** While open the sheet holds ONE history entry (`pushState`, same URL — the
-  web-multiselect / web-grid pattern; `src/menu/back-entry.ts`, page-wide state): Back in a
+  core `claimBackEntry()`, §12.9; page-wide state): Back in a
   submenu goes up one level and re-arms the entry; at the root it closes with `'back'`. Closed any
   other way, the entry is given back with `history.back()` one task later (a sheet opened right
   after adopts it instead). While the entry is held the page's entry uses

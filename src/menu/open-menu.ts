@@ -22,7 +22,7 @@ import { anchor } from '../positioning/anchor.js';
 import { inheritTheme } from '../positioning/inherit-theme.js';
 import { watchScrollClose } from '../positioning/scroll-close.js';
 import type { AnchorHandle } from '../positioning/types.js';
-import { claimBackEntry } from './back-entry.js';
+import { claimBackEntry } from '../overlay/back-entry.js';
 import { MENU_CSS } from './styles.js';
 import type { MenuCloseReason, MenuHandle, MenuPoint, MenuPresentation, OpenMenuOptions } from './types.js';
 

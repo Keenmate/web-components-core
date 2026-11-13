@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`claimBackEntry(onBack)` (main index, SPEC §12.9)** — the phone Back gesture for a full-screen
+  sheet / modal: one history entry (same URL) for the whole page while a sheet is open; Back runs the
+  newest claim's `onBack` (claim again from inside it to go up one level), the returned release gives
+  the entry back one task later (a sheet opening right after adopts it), and the page keeps its scroll
+  position. It was `/menu`'s private helper; web-grid, web-multiselect and web-daterangepicker each had
+  their own copy (per-instance or page-wide, all jumping to the top on close) and now use it. Rulebook
+  C-RO-15 checks no component pushes its own history entry. The entry's `history.state` is now
+  `{ kmBackEntry: true }` (was `{ kmMenuSheet: true }`).
+
 ### Fixed
 
 - **Closing a menu's phone sheet no longer scrolls the page to the top.** The sheet pushes its

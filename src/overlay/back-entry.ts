@@ -1,18 +1,21 @@
 /**
- * The phone Back gesture for the menu sheet (SPEC §12.13): one history entry (same URL)
- * while a sheet is open, so Back pops it and closes the sheet (or goes up one submenu level)
- * instead of leaving the page — the web-multiselect / web-grid pattern.
+ * The phone Back gesture for a full-screen sheet / modal (SPEC §12.9): one history entry (same
+ * URL) while a sheet is open, so Back pops it and runs the sheet's `onBack` (close it, or go up
+ * one level) instead of leaving the page. Every component's phone sheet uses it — the menu sheet
+ * (/menu), web-grid's cell sheets, web-multiselect's and web-daterangepicker's full-screen / modal
+ * panels — never its own `pushState()`.
  *
  * A sheet closed any other way gives its entry back with `history.back()`, deferred one task:
  * a sheet that opens right after (a menu re-opened on another row) adopts the entry instead of
  * racing a `back()` against a new `pushState()`. The listener is detached before that `back()`,
  * so the `popstate` it triggers closes nothing. Page-wide state (every copy of core), one
- * sheet at a time.
+ * entry for the whole page: a newer claim takes it over (Back runs the newest `onBack`).
  *
- * Scroll: the sheet locks page scroll (body pinned, window scroll 0) before it claims the entry,
- * so the browser would record 0 for the page's entry and jump to the top on the way back. While
- * an entry is held the page's entry uses `history.scrollRestoration = 'manual'` (the scroll lock
+ * Scroll: a sheet locks page scroll (`lockBodyScroll()`: body pinned, window scroll 0), so the
+ * browser would record 0 for the page's entry and jump to the top on the way back. While an
+ * entry is held the page's entry uses `history.scrollRestoration = 'manual'` (the scroll lock
  * restores the position itself); the page's own mode comes back once its entry is current again.
+ * Claim before or after `lockBodyScroll()` — either order is safe.
  */
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 
@@ -26,7 +29,7 @@ interface BackEntryState {
 }
 
 const state = (): BackEntryState =>
-  sharedState(sharedStateKey('menu-back-entry'), () => ({ isPushed: false, pendingBack: null, onBack: null, listener: null, savedRestoration: null }));
+  sharedState(sharedStateKey('back-entry'), () => ({ isPushed: false, pendingBack: null, onBack: null, listener: null, savedRestoration: null }));
 
 function detach(s: BackEntryState): void {
   if (s.listener) window.removeEventListener('popstate', s.listener);
@@ -61,7 +64,7 @@ export function claimBackEntry(onBack: () => void): () => void {
   }
   if (!s.isPushed) {
     suspendScrollRestoration(s);
-    history.pushState({ kmMenuSheet: true }, '');
+    history.pushState({ kmBackEntry: true }, '');
     s.isPushed = true;
   }
   s.onBack = onBack;

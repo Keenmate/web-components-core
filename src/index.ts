@@ -131,6 +131,8 @@ export { resolvePresentation, DEFAULT_PRESENTATION_MAP, createPresentationContex
 export type { Presentation, ResolvedPresentation, PresentationMap, PresentationContext } from './overlay/presentation.js';
 export { lockBodyScroll, type ScrollLockState } from './overlay/scroll-lock.js';
 export { observeKeyboardInset } from './overlay/keyboard-inset.js';
+// The phone Back gesture for a sheet: one history entry while it is open (SPEC §12.9).
+export { claimBackEntry } from './overlay/back-entry.js';
 // Cross-component "one overlay open at a time" coordination (framework-agnostic via a
 // `km-overlay-activate` document event; external code can trigger + observe it too).
 export {

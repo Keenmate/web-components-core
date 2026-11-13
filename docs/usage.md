@@ -239,6 +239,29 @@ and keeping the sheet above the soft keyboard. See [SPEC §12.9](SPEC.md) for
 the full rationale (why 600px, capability over width). The author-facing setting
 type is `Presentation` (`'auto' | 'floating' | 'modal' | 'fullscreen'`).
 
+### Phone sheet session (scroll lock + keyboard inset + Back)
+
+The one way a full-screen sheet / modal runs while open — never a component's own `pushState()`
+(rulebook C-RO-6):
+
+```ts
+import { claimBackEntry, lockBodyScroll, observeKeyboardInset } from '@keenmate/web-components-core';
+
+// on open (fullscreen / modal tier)
+const unlock = lockBodyScroll();
+const unobserve = observeKeyboardInset(panel);
+const releaseBack = claimBackEntry(() => this.close('back'));   // phone Back closes it
+// one level up instead: claimBackEntry again from inside onBack (re-arms the entry)
+
+// on EVERY close (✕, Escape, a pick, Back — releasing twice is a no-op)
+releaseBack();
+unobserve();
+unlock();
+```
+
+One history entry for the whole page; closing any other way gives it back one task later (a sheet
+that opens right after adopts it), and the page keeps its scroll position (no jump to the top).
+
 ## Responsive rules (page / per-tag / instance)
 
 Apps tune what components do per device class / width bucket in one place — no app-side
@@ -709,7 +732,7 @@ explain the main ones; [SPEC](SPEC.md) has the design notes.
 | Environment | `getEnvironment`, `observeEnvironment`, `observeViewport`, `observeElementSize`, `configureBreakpoints` / `BREAKPOINTS_CHANGE_EVENT`, `classifyDevice` / `TABLET_MIN_SHORT_SIDE` |
 | Theme | `getThemeContext`, `observeThemeContext`, `setThemeMode` / `getThemeMode` (force dark / light page-wide), `readThemeSignal(el)`, `resolveThemeSource(host, source)`, `THEME_CONTEXT_ATTRIBUTE`, `THEME_SOURCE_ATTRIBUTE` |
 | Motion | `getPageMotion`, `observePageMotion`, `adoptMotionStyles(node)`, `MOTION_CSS`, `MOTION_PRESETS`, `MOTION_VALUES`, `MOTION_ATTRIBUTE`, `MOTION_DATA_ATTRIBUTE` |
-| Overlays | `resolvePresentation` / `DEFAULT_PRESENTATION_MAP` / `createPresentationContext` (floating panel vs fullscreen sheet), `lockBodyScroll()` (shared ref-counted lock), `observeKeyboardInset(panel)`, `registerOverlay` / `notifyOverlayActivated` / `onOverlayActivated` / `dismissAllOverlays` / `OVERLAY_ACTIVATE_EVENT` / `ALL_GROUPS` (one overlay open at a time, nesting, Escape routing) |
+| Overlays | `resolvePresentation` / `DEFAULT_PRESENTATION_MAP` / `createPresentationContext` (floating panel vs fullscreen sheet), `lockBodyScroll()` (shared ref-counted lock), `observeKeyboardInset(panel)`, `claimBackEntry(onBack)` (phone Back closes the sheet), `registerOverlay` / `notifyOverlayActivated` / `onOverlayActivated` / `dismissAllOverlays` / `OVERLAY_ACTIVATE_EVENT` / `ALL_GROUPS` (one overlay open at a time, nesting, Escape routing) |
 | Logging | `createLoggers(namespace, categories?)`, `createPerfLogger(namespace)`, `getGlobalLogging()` (= `window.components.logging`), `getCoreLogging()` / `coreLogging` / `CORE_LOG_CATEGORIES` (core's own messages), `setLogPersistKeyPrefix` / `getLogPersistKeyPrefix`, `isLogLevel`, `toLogLevelNumber`, `LOG_LEVELS`, `DEFAULT_CATEGORIES`, `DEFAULT_LOG_LEVEL`, `DEFAULT_ENABLED_LEVEL` |
 
 ### Subpaths

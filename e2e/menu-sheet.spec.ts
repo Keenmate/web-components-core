@@ -24,7 +24,7 @@ const actionsButton = (page: Page) => files(page).locator('.do-actions');
 const focusedText = (page: Page) =>
   page.evaluate(() => (document.getElementById('files')!.shadowRoot!.activeElement as HTMLElement | null)?.textContent ?? null);
 const bodyPosition = (page: Page) => page.evaluate(() => getComputedStyle(document.body).position);
-const sheetEntry = (page: Page) => page.evaluate(() => (history.state as { kmMenuSheet?: boolean } | null)?.kmMenuSheet ?? null);
+const sheetEntry = (page: Page) => page.evaluate(() => (history.state as { kmBackEntry?: boolean } | null)?.kmBackEntry ?? null);
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/test/menu-sheet.html');
