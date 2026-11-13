@@ -187,3 +187,21 @@ describe('extractRegistrations', () => {
     ).toEqual([]);
   });
 });
+
+describe('core row factories', () => {
+  it('reads `...menuPresentationInputs()` (a package import) as its rows: menu-presentation / menu-side enums', () => {
+    const [cls] = parse(`
+      import { menuPresentationInputs } from '@keenmate/web-components-core/menu';
+      class X extends BlissElement {
+        static inputs = [{ configKey: 'a', attribute: 'a', converter: toInt() }, ...menuPresentationInputs()];
+      }
+    `);
+    expect(cls!.warnings ?? []).toEqual([]);
+    const attrs = Object.fromEntries(cls!.attributes.map((a) => [a.name, a]));
+    expect(Object.keys(attrs)).toEqual(['a', 'menu-presentation', 'menu-side']);
+    expect(attrs['menu-presentation']!.fieldName).toBe('menuPresentation');
+    expect(attrs['menu-presentation']!.type?.text).toBe("'auto' | 'floating' | 'sheet' | 'drawer'");
+    expect(attrs['menu-presentation']!.default).toBe("'auto'");
+    expect(attrs['menu-side']!.description).toContain("'drawer'");
+  });
+});

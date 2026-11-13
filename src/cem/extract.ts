@@ -9,6 +9,7 @@
  * into the manifest.
  */
 import type * as TsNamespace from 'typescript';
+import { CORE_ROW_FACTORY_SOURCES } from './core-row-factories.js';
 
 type TS = typeof import('typescript');
 type Node = TsNamespace.Node;
@@ -510,6 +511,18 @@ function resolveExport(ts: TS, exported: string, sf: SourceFile, opts: ExtractOp
   return { reason: `'${sf.fileName}' doesn't export \`${exported}\`` };
 }
 
+/** `...menuPresentationInputs()` — a core row factory (no arguments): its rows as a parsed array literal. */
+function coreRowFactory(ts: TS, expr: Expression): { arr: TsNamespace.ArrayLiteralExpression; sf: SourceFile } | undefined {
+  const e = unwrap(ts, expr);
+  if (!ts.isCallExpression(e) || e.arguments.length > 0 || !ts.isIdentifier(e.expression)) return undefined;
+  const source = CORE_ROW_FACTORY_SOURCES[e.expression.text];
+  if (!source) return undefined;
+  const sf = ts.createSourceFile(`core:${e.expression.text}.ts`, source, ts.ScriptTarget.Latest, true);
+  const stmt = sf.statements[0];
+  const init = stmt && ts.isVariableStatement(stmt) ? stmt.declarationList.declarations[0]?.initializer : undefined;
+  return init && ts.isArrayLiteralExpression(init) ? { arr: init, sf } : undefined;
+}
+
 /**
  * The entries of a table: array literal elements, with `...SHARED` spreads flattened in (nested
  * up to a few levels) — a same-file `const` array, or one imported from a relative module when a
@@ -534,6 +547,11 @@ function tableEntries(
   const out: TableEntry[] = [];
   for (const el of resolved.arr.elements) {
     if (ts.isSpreadElement(el)) {
+      const factory = coreRowFactory(ts, el.expression);
+      if (factory) {
+        out.push(...tableEntries(ts, factory.arr, factory.sf, label, warnings, opts, depth + 1));
+        continue;
+      }
       if (depth < 4 && resolveTableArray(ts, el.expression, resolved.sf, opts)) {
         out.push(...tableEntries(ts, el.expression, resolved.sf, label, warnings, opts, depth + 1));
       } else {

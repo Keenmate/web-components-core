@@ -40,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   phone-sheet tier), was `10000`. `--km-menu-z-index` still overrides it.
 - The `/menu` phone sheet hides keyboard-shortcut hints; the keys still work with a keyboard.
 
+- CEM: the manifest generator reads core's row factories — `...menuPresentationInputs()` in a
+  component's `static inputs` gives `menu-presentation` / `menu-side` in `custom-elements.json`
+  (it was a "can't read this spread" warning and the rows were missing).
+
 ### Docs
 - IA04 (Events and interaction): the demo file list takes the standard `menu-presentation` /
   `menu-side` inputs; `presentation` gains `drawer`, plus a `side` switch.

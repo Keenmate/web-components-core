@@ -36,7 +36,9 @@ values. It also flattens `...SHARED` spreads of a same-file const array — or o
 imported by name from a RELATIVE module (the plugin reads it from disk via `ExtractOptions.readModule`;
 rows resolve in that module) — reads a row given as a
 same-file const object, `static get inputs() { return […] }` and `const X = class …`; anything
-else (a spread of a package import / `Base.inputs`, `.concat()`) goes into `ExtractedClass.warnings`,
+else (a spread of a package import / `Base.inputs`, `.concat()`) goes into `ExtractedClass.warnings`
+— EXCEPT core's own row factories (`...menuPresentationInputs()`, `core-row-factories.ts`: source text
+generated from the runtime rows, parsed like a table; add new factories there),
 which the plugin prints as `[keenmate-bliss-inputs]` build warnings (review L-07). Rich prose goes in `description` as a **template literal** (multi-line
 markdown, bullet lists — preserved verbatim; the leading-comment fallback
 flattens to one line, so use the field for structured text, and no `${}`
