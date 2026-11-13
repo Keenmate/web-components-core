@@ -40,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   phone-sheet tier), was `10000`. `--km-menu-z-index` still overrides it.
 - The `/menu` phone sheet hides keyboard-shortcut hints; the keys still work with a keyboard.
 
+### Docs
+- IA04 (Events and interaction): the demo file list takes the standard `menu-presentation` /
+  `menu-side` inputs; `presentation` gains `drawer`, plus a `side` switch.
+
 ### Fixed
 - `observeEnvironment()` / `observeViewport()`: the last unsubscribe no longer removes window /
   document listeners that were never added (no `matchMedia`, e.g. jsdom).

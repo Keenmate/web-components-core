@@ -313,10 +313,13 @@ await runAction({
             </p>
             <p>
                 <strong>On a phone the menu is a bottom sheet.</strong> <code>presentation</code> picks the form:
-                <code>'auto'</code> (the default) asks core's phone switch <code>resolvePresentation()</code>, so it
+                <code>'auto'</code> (the default) looks the device class up in <code>presentationMap</code>, so it
                 becomes a sheet <strong>only on a phone</strong> and stays the floating menu on a tablet or desktop;
-                <code>'floating'</code> keeps the floating menu everywhere; <code>'sheet'</code> forces the sheet, so you
-                can try it here on a desktop. The sheet is full width at the bottom over a backdrop, with a header (the
+                <code>'floating'</code> keeps the floating menu everywhere; <code>'sheet'</code> forces the sheet and
+                <code>'drawer'</code> the same sheet as a full-height side panel on <code>side</code>, so you can try
+                both here on a desktop. This demo component takes them as the standard menu-host attributes
+                <code>menu-presentation</code> / <code>menu-side</code> (<code>menuPresentationInputs()</code>), like
+                web-treeview, web-grid and web-editor. The sheet and the drawer slide in and out on the motion tokens. The sheet is full width at the bottom over a backdrop, with a header (the
                 <code>title</code> option and a close button) and touch-size rows. A submenu drills in, replacing the
                 list, with a <em>Back</em> row on top. The page underneath can't scroll, and the phone Back button goes
                 up one submenu level or closes the sheet. <code>onClose</code> gets two new reasons:
@@ -343,6 +346,13 @@ await runAction({
                         <option value="auto">auto (a sheet on a phone)</option>
                         <option value="floating">floating</option>
                         <option value="sheet">sheet (forced)</option>
+                        <option value="drawer">drawer (forced)</option>
+                    </select>
+                </label>
+                <label><code>side</code>
+                    <select id="do-ia04-side">
+                        <option value="start">start</option>
+                        <option value="end">end</option>
                     </select>
                 </label>
                 <label><code>title</code>
@@ -389,7 +399,8 @@ row.addEventListener('contextmenu', (e) =&gt; {
     returnFocusTo: row,
     shouldFocusFirst: false,                   // true when opened from the keyboard
     inheritThemeFrom: this,
-    presentation: 'auto',                      // 'auto' (a sheet on a phone) | 'floating' | 'sheet'
+    ...menuPresentationOptions(this.config),   // menu-presentation / menu-side → { presentation, side }
+    labels: { back: this.labels.back, close: this.labels.close },
     title: file.name,                          // the sheet header + the menu's aria-label
     runAction: (item, { triggerElement, sourceEvent }) =&gt; runAction({ … }),   // as in IA03
     onClose: (reason) =&gt; { … },                // 'action' | 'escape' | 'outside-click' | 'back' | 'close-button' | …
@@ -428,7 +439,7 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
                     <tr><td><code>ActionEventDetail</code></td><td><code>/actions</code></td><td>Surface ctx + <code>action</code>, <code>id</code>, <code>item</code>, <code>source</code>, <code>sourceEvent</code>, <code>triggerElement</code>, <code>dataset</code>. One object for <code>beforeActionCallback</code>, <code>onClick</code>, <code>onAction</code> and the event.</td></tr>
                     <tr><td><code>ActionSource</code></td><td><code>/actions</code></td><td>Where an activation came from: <code>'action-buttons'</code>, <code>'toolbar'</code>, <code>'row-toolbar'</code>, <code>'cell-toolbar'</code>, <code>'context-menu'</code>, <code>'header-menu'</code>, <code>'message'</code>, <code>'summary'</code>, <code>'palette'</code>, <code>'keyboard'</code>, or any custom string (IA03's page HTML uses <code>'markup'</code>).</td></tr>
                     <tr><td><code>openMenu(entries, ctx, opts)</code> → <code>MenuHandle</code></td><td><code>/menu</code></td><td><code>{ isOpen, element, close(), focusFirst(), update() }</code>. No visible item means nothing is rendered and the handle is already closed.</td></tr>
-                    <tr><td><code>OpenMenuOptions</code></td><td><code>/menu</code></td><td><code>at</code>, <code>host</code>, <code>runAction</code>, <code>onClose</code>, <code>renderItemCallback</code>, <code>renderMenuCallback</code>, <code>defaults</code>, <code>prepareItemCallback</code>, <code>placement</code>, <code>offset</code>, <code>cssClass</code>, <code>shouldFocusFirst</code>, <code>returnFocusTo</code>, <code>shouldCloseOnOutsideInteraction</code>, <code>overlayGroup</code>, <code>labels</code>, <code>inheritThemeFrom</code>, <code>presentation</code> (<code>'auto'</code> by default: a bottom sheet on a phone via <code>resolvePresentation()</code>; <code>'floating'</code>; <code>'sheet'</code>), <code>title</code> (the sheet header and the root menu's <code>aria-label</code>).</td></tr>
+                    <tr><td><code>OpenMenuOptions</code></td><td><code>/menu</code></td><td><code>at</code>, <code>host</code>, <code>runAction</code>, <code>onClose</code>, <code>renderItemCallback</code>, <code>renderMenuCallback</code>, <code>defaults</code>, <code>prepareItemCallback</code>, <code>placement</code>, <code>offset</code>, <code>cssClass</code>, <code>shouldFocusFirst</code>, <code>returnFocusTo</code>, <code>shouldCloseOnOutsideInteraction</code>, <code>overlayGroup</code>, <code>labels</code>, <code>inheritThemeFrom</code>, <code>presentation</code> (<code>'auto'</code> by default: a bottom sheet on a phone, through <code>presentationMap</code>; <code>'floating'</code>; <code>'sheet'</code>; <code>'drawer'</code>), <code>presentationMap</code>, <code>side</code>, <code>title</code> (the sheet header and the root menu's <code>aria-label</code>).</td></tr>
                     <tr><td><code>MenuCloseReason</code>, <code>MenuPresentation</code>, <code>MenuLabels</code>, <code>MENU_CSS</code></td><td><code>/menu</code></td><td>The <code>onClose</code> reason (<code>'action'</code>, <code>'escape'</code>, <code>'tab'</code>, <code>'outside-click'</code> (also a tap on a sheet's backdrop), <code>'scroll'</code>, <code>'blur'</code>, <code>'overlay'</code>, <code>'api'</code>, <code>'empty'</code>, <code>'back'</code> (the phone Back button on a sheet's root), <code>'close-button'</code> (the sheet's close button)); <code>'auto' | 'floating' | 'sheet'</code>; the menu's UI strings (<code>{ loading, back, close }</code>: the lazy-submenu row, the sheet's Back row, the close button's accessible name); the stylesheet <code>openMenu()</code> adopts into <code>host</code>.</td></tr>
                     <tr><td><code>--km-menu-*</code> / <code>--_km-menu-*</code></td><td>CSS</td><td>Public page-wide layer / private per-component layer (set from the component's own variable, no fallback), then <code>--base-*</code> tokens. Full list in <code>component-variables.manifest.json</code>.</td></tr>
                 </tbody>
@@ -783,13 +794,17 @@ core-demo-files.special { --dfm-menu-bg: #ecfeff; }</pre></div>
             });
 
             const presentation = document.getElementById('do-ia04-presentation');
+            const side = document.getElementById('do-ia04-side');
             const title = document.getElementById('do-ia04-title');
             const reasons = document.getElementById('demo-ia04-reasons');
             const applySheet = () => {
-                el.presentation = presentation.value;
+                // The standard menu-host inputs (core menuPresentationInputs()): attributes, properties, responsive rules.
+                el.setAttribute('menu-presentation', presentation.value);
+                el.setAttribute('menu-side', side.value);
                 el.menuTitle = title.value.trim();
             };
             presentation.addEventListener('change', applySheet);
+            side.addEventListener('change', applySheet);
             title.addEventListener('input', applySheet);
             applySheet();
             const resetReasons = () => {
