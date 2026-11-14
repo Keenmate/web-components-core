@@ -79,11 +79,12 @@
             </div>
             <div class="controls">
                 <label><input type="checkbox" id="po-flip" checked> <code>shouldFlip</code></label>
+                <label><input type="checkbox" id="po-offset-default" checked> no <code>offset</code> (page's <code>--base-dropdown-offset</code>, else 4)</label>
             </div>
             <div class="display-sliders">
                 <label for="po-offset">offset</label>
-                <input type="range" id="po-offset" min="0" max="32" step="2" value="4">
-                <output id="po-offset-out" for="po-offset">4&nbsp;px</output>
+                <input type="range" id="po-offset" min="0" max="32" step="2" value="4" disabled>
+                <output id="po-offset-out" for="po-offset">default</output>
                 <label for="po-shift">shift padding</label>
                 <input type="range" id="po-shift" min="0" max="32" step="2" value="8">
                 <output id="po-shift-out" for="po-shift">8&nbsp;px</output>
@@ -167,7 +168,7 @@ pop.claimCurrentClick();  // from an API method a page button outside the panel 
                 `<dt>matchWidth</dt><dd>${opts.matchWidth ?? 'none'}</dd>` +
                 `<dt>lockPlacement</dt><dd>${String(opts.lockPlacement)}</dd>` +
                 `<dt>shouldFlip</dt><dd>${String(opts.shouldFlip)}</dd>` +
-                `<dt>offset</dt><dd>${opts.offset}</dd>` +
+                `<dt>offset</dt><dd>${opts.offset ?? 'none passed → --base-dropdown-offset'}</dd>` +
                 `<dt>shift</dt><dd>${opts.shift}</dd>` +
                 '</dl>' +
                 (document.getElementById('po-long').checked ? `<p class="po-long">${LONG_LINE}</p>` : '');
@@ -193,7 +194,8 @@ pop.claimCurrentClick();  // from an API method a page button outside the panel 
                 matchWidth: m === 'none' ? undefined : m,
                 lockPlacement: lockValue(),
                 shouldFlip: $('po-flip').checked,
-                offset: parseInt($('po-offset').value, 10) || 0,
+                // Checkbox on → no `offset` key: anchor() reads --base-dropdown-offset (else 4).
+                ...($('po-offset-default').checked ? {} : { offset: parseInt($('po-offset').value, 10) || 0 }),
                 shift: parseInt($('po-shift').value, 10) || 0,
                 shouldCloseOnEscape: true,
                 shouldCloseOnOutsideClick: true,
@@ -208,6 +210,12 @@ pop.claimCurrentClick();  // from an API method a page button outside the panel 
         // Rebuild on any control change; keep the slider readouts in sync.
         ['po-placement', 'po-lock', 'po-flip', 'po-long'].forEach((id) => $(id).addEventListener('change', build));
         document.querySelectorAll('input[name="po-mw"]').forEach((r) => r.addEventListener('change', build));
-        $('po-offset').addEventListener('input', () => { $('po-offset-out').innerHTML = `${$('po-offset').value}&nbsp;px`; build(); });
+        const syncOffset = () => {
+            const isDefault = $('po-offset-default').checked;
+            $('po-offset').disabled = isDefault;
+            $('po-offset-out').innerHTML = isDefault ? 'default' : `${$('po-offset').value}&nbsp;px`;
+        };
+        $('po-offset').addEventListener('input', () => { syncOffset(); build(); });
+        $('po-offset-default').addEventListener('change', () => { syncOffset(); build(); });
         $('po-shift').addEventListener('input', () => { $('po-shift-out').innerHTML = `${$('po-shift').value}&nbsp;px`; build(); });
     </script>
