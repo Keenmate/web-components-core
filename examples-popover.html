@@ -5,7 +5,9 @@
 <style>
     /* Room below the trigger so you can scroll it near an edge and watch
        flip / lockPlacement:'freeze' behave. */
-    .po-stage { padding-bottom: 50vh; }
+    /* Sets the page token on the stage (it inherits to the button), so "no offset" visibly
+       differs from the slider: 12px here, 4 when nothing sets it. */
+    .po-stage { padding-bottom: 50vh; --base-dropdown-offset: 12px; }
     /* The 360px reference the matchWidth modes measure against. */
     #po-btn { width: 360px; max-width: 100%; }
     /* Panel content. `auto auto` → the list is content-sized (narrow), so
@@ -79,12 +81,12 @@
             </div>
             <div class="controls">
                 <label><input type="checkbox" id="po-flip" checked> <code>shouldFlip</code></label>
-                <label><input type="checkbox" id="po-offset-default" checked> no <code>offset</code> (page's <code>--base-dropdown-offset</code>, else 4)</label>
+                <label><input type="checkbox" id="po-offset-default" checked> no <code>offset</code> → <code>--base-dropdown-offset</code> (this stage sets <code>12px</code>; unset = 4)</label>
             </div>
             <div class="display-sliders">
                 <label for="po-offset">offset</label>
                 <input type="range" id="po-offset" min="0" max="32" step="2" value="4" disabled>
-                <output id="po-offset-out" for="po-offset">default</output>
+                <output id="po-offset-out" for="po-offset">12&nbsp;px (var)</output>
                 <label for="po-shift">shift padding</label>
                 <input type="range" id="po-shift" min="0" max="32" step="2" value="8">
                 <output id="po-shift-out" for="po-shift">8&nbsp;px</output>
@@ -213,7 +215,7 @@ pop.claimCurrentClick();  // from an API method a page button outside the panel 
         const syncOffset = () => {
             const isDefault = $('po-offset-default').checked;
             $('po-offset').disabled = isDefault;
-            $('po-offset-out').innerHTML = isDefault ? 'default' : `${$('po-offset').value}&nbsp;px`;
+            $('po-offset-out').innerHTML = isDefault ? '12&nbsp;px (var)' : `${$('po-offset').value}&nbsp;px`;
         };
         $('po-offset').addEventListener('input', () => { syncOffset(); build(); });
         $('po-offset-default').addEventListener('change', () => { syncOffset(); build(); });
