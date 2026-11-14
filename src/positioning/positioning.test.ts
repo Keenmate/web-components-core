@@ -424,6 +424,25 @@ describe('createTooltip', () => {
     tip.destroy();
   });
 
+  it('follow-cursor: the cursor point moves with the trigger when the page scrolls (no mousemove)', async () => {
+    const trigger = document.createElement('button');
+    let top = 200;
+    trigger.getBoundingClientRect = () => new DOMRect(100, top, 300, 40);
+    document.body.append(trigger);
+    const tip = createTooltip({ trigger, content: 'hi', shouldFollowCursor: true });
+
+    trigger.dispatchEvent(new MouseEvent('mouseenter', { clientX: 130, clientY: 220 }));
+    await Promise.resolve();
+    const ref = vi.mocked(fui.computePosition).mock.calls[0]![0] as { getBoundingClientRect: () => DOMRect };
+    expect(ref.getBoundingClientRect().y).toBe(220);
+
+    top = -180; // scrolled 380px up — a tapped card on a phone: focused, no pointer event
+    const rect = ref.getBoundingClientRect();
+    expect(rect.x).toBe(130);
+    expect(rect.y).toBe(-160); // same spot ON the trigger, not left behind at 220
+    tip.destroy();
+  });
+
   // --- Regression: the follow-cursor stationary-hover mispositioning bug. ---
   // The move listener used to attach only inside show() (after the show delay). If
   // the pointer entered and stayed still through the delay, no mousemove fired, so

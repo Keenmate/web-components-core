@@ -66,6 +66,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `observeEnvironment()` / `observeViewport()`: the last unsubscribe no longer removes window /
   document listeners that were never added (no `matchMedia`, e.g. jsdom).
+- `createTooltip({ shouldFollowCursor })`: the cursor point is kept relative to the trigger, so a
+  scroll moves the tooltip with it. It used to stay put on screen — a card tapped on a phone keeps
+  focus, so its tooltip floated over the page after the card scrolled away.
 
 ## [1.0.0-rc23] - 2026-11-13
 

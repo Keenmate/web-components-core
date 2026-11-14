@@ -103,27 +103,37 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
   element.id ||= `km-tooltip-${++tooltipSeq}`;
   let showTimer: ReturnType<typeof setTimeout> | undefined;
   let hideTimer: ReturnType<typeof setTimeout> | undefined;
-  let cursorRect: DOMRect | undefined;
+  // The pointer as an offset from the trigger's top-left corner, not a viewport point: a scroll
+  // moves the trigger without a mousemove (a tapped card on a phone keeps focus, so nothing hides
+  // the tooltip), and a viewport point would leave the tooltip behind on screen.
+  let cursorOffset: { x: number; y: number } | undefined;
+  const setCursor = (event: MouseEvent): void => {
+    const rect = opts.trigger.getBoundingClientRect();
+    cursorOffset = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  };
 
   const cursorReference: VirtualElement = {
-    getBoundingClientRect: () => cursorRect ?? opts.trigger.getBoundingClientRect(),
+    getBoundingClientRect: () => {
+      const rect = opts.trigger.getBoundingClientRect();
+      return cursorOffset ? new DOMRect(rect.left + cursorOffset.x, rect.top + cursorOffset.y, 0, 0) : rect;
+    },
     contextElement: opts.trigger,
   };
 
   const onMouseMove = (event: MouseEvent): void => {
-    cursorRect = new DOMRect(event.clientX, event.clientY, 0, 0);
+    setCursor(event);
     if (visible) handle?.update();
   };
 
   // Begin following the pointer the moment it ENTERS the trigger — seed the rect
   // from the enter event and attach the move listener NOW, not in show(). When a
   // show delay is set, show() runs after it; if the pointer is stationary during
-  // that window (the normal "hover to read" case) no mousemove fires, so cursorRect
+  // that window (the normal "hover to read" case) no mousemove fires, so the cursor
   // would still be undefined at show time and the VirtualElement falls back to the
   // trigger's full rect → the tooltip pins to the trigger's corner instead of the
   // cursor. Seeding here guarantees a cursor rect before the first anchor().
   const startTrackingCursor = (event: MouseEvent): void => {
-    cursorRect = new DOMRect(event.clientX, event.clientY, 0, 0);
+    setCursor(event);
     opts.trigger.addEventListener('mousemove', onMouseMove);
   };
   const stopTrackingCursor = (): void => {
@@ -161,7 +171,7 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     addDescribedBy(opts.trigger, element.id);
     document.addEventListener('keydown', onKeydown, true);
     // Ensure cursor tracking is live. For a pointer show it was already attached on
-    // mouseenter (so cursorRect was seeded through the show delay); for an imperative
+    // mouseenter (so the cursor was seeded through the show delay); for an imperative
     // show() / focus show it's attached here. addEventListener is idempotent on the
     // same function ref, so the double-attach from mouseenter is a no-op.
     if (opts.shouldFollowCursor) opts.trigger.addEventListener('mousemove', onMouseMove);
@@ -174,7 +184,7 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     // mouseenter while the show delay was still pending (never became visible).
     stopTrackingCursor();
     // A later focus / show() places the tooltip at the trigger, not where the pointer last was.
-    cursorRect = undefined;
+    cursorOffset = undefined;
     if (!visible) return;
     visible = false;
     element.classList.remove(visibleClass);
