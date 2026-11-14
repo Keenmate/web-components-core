@@ -47,6 +47,9 @@
         font-size: 1rem;
     }
     .demo-float__close:hover { background: color-mix(in srgb, currentColor 15%, transparent); }
+    /* AN01: a reference much wider than the floating box, so -start / -end
+       visibly align to its left / right edge. */
+    .an-ref-wide { inline-size: min(36rem, 100%); }
     /* Room below the AN02 reference, so there is space on both sides to compare
        (flip still picks the roomier one). */
     .an-size-stage { padding-bottom: 36vh; }
@@ -82,7 +85,7 @@
                 </label>
             </div>
             <div class="demo-area">
-                <span class="pos-trigger" id="an-ref">reference element</span>
+                <span class="pos-trigger an-ref-wide" id="an-ref">reference element</span>
                 <p class="muted mt-1">A floating box is anchored to it (it follows on scroll).</p>
             </div>
         </div>
