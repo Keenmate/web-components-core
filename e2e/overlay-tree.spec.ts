@@ -57,3 +57,29 @@ test('a click whose propagation a page handler stops still closes the chain', as
   await expect(page.locator('#outer')).toBeHidden();
   await expect(page.locator('#stopper-box')).toBeChecked();
 });
+
+test('opening a sibling popover from the same outer panel closes the first inner one, not the outer', async ({ page }) => {
+  await page.locator('#open-inner-2').click();
+  await expect(page.locator('#inner-2')).toBeVisible();
+  await expect(page.locator('#inner')).toBeHidden();
+  await expect(page.locator('#outer')).toBeVisible();
+  // …and back: the first one replaces the second the same way.
+  await page.locator('#open-inner').click();
+  await expect(page.locator('#inner')).toBeVisible();
+  await expect(page.locator('#inner-2')).toBeHidden();
+  await expect(page.locator('#outer')).toBeVisible();
+  expect((await log(page)).filter((entry) => entry.startsWith('outer'))).toEqual([]);
+});
+
+test('Escape in a sibling closes only that sibling; closing the outer closes its open child', async ({ page }) => {
+  await page.locator('#open-inner-2').click();
+  await page.locator('#inner-2-button').focus();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#inner-2')).toBeHidden();
+  await expect(page.locator('#outer')).toBeVisible();
+  await page.locator('#open-inner-2').click();
+  await page.evaluate(() => (window as any).fixture.outerPopover.close());
+  await expect(page.locator('#inner-2')).toBeHidden();
+  await expect(page.locator('#outer')).toBeHidden();
+  expect((await log(page)).slice(-2)).toEqual(['inner-2:parent', 'outer:api']);
+});

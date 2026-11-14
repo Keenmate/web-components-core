@@ -19,6 +19,16 @@
     /* The long line wraps normally, so its max-content width (wide) drives the
        panel under none/min, while exact clamps the panel and wraps the line. */
     .demo-panel .po-long { margin: 0.6rem 0 0; color: var(--kmwc-accent-color); }
+    /* PO02: the "dialog" and its two simulated multiselects. */
+    .po-dialog { inline-size: 24rem; display: grid; gap: 0.75rem; }
+    /* Side by side, so an open list never covers the other picker's trigger. */
+    .po-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .po-dialog h3 { margin: 0; }
+    .po-field { display: grid; gap: 0.25rem; }
+    .po-field > button { justify-content: space-between; text-align: start; }
+    .po-field > button::after { content: "▾"; margin-inline-start: 0.5rem; }
+    .po-list { display: grid; padding: 0.35rem; min-inline-size: 12rem; }
+    .po-list button { justify-content: flex-start; }
 </style>
 
         <!-- ============================================================= -->
@@ -98,10 +108,41 @@
         </div>
 
         <!-- ============================================================= -->
-        <!-- PO02 · Summary                                                 -->
+        <!-- PO02 · Nested popovers                                         -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>PO02 · API summary</h2>
+            <h2>PO02 · Nested popovers (a dialog with two pickers)</h2>
+            <p>
+                Popovers that close on Escape / an outside press join one page-wide <strong>overlay tree</strong>. A
+                popover opened from inside another one becomes its <em>child</em>: core finds the parent by looking for
+                the open panel that contains the trigger, so there is nothing to wire up. Below, a "dialog" popover holds
+                two simulated multiselects, each opening its own list popover.
+            </p>
+            <p>Try it — the log shows every <code>onClose(reason)</code>:</p>
+            <ul>
+                <li><strong>Open Colour, then Size</strong> → only the Colour list closes (<code>overlay</code>: a sibling opened); the dialog stays open.</li>
+                <li><strong>Click the dialog's own body</strong> → only the open list closes (<code>outside-click</code>).</li>
+                <li><strong>Escape</strong> → closes one level per press, deepest first; focus returns to that level's trigger.</li>
+                <li><strong>Pick an option</strong> → that list closes (<code>api</code>), the dialog stays.</li>
+                <li><strong>Close the dialog</strong> (its button, or a press outside everything) → an open list closes with
+                    it, child first (<code>parent</code> / <code>outside-click</code>).</li>
+            </ul>
+            <!-- The log sits above the trigger: the dialog opens below it and would cover it. -->
+            <div class="output mt-1">
+                <div class="output-label">onClose log:</div>
+                <pre id="po-nest-log">(nothing closed yet)</pre>
+            </div>
+            <div class="controls mt-1 po-stage">
+                <button id="po-nest-btn">Toggle dialog</button>
+                <button id="po-nest-clear" class="btn-outline">Clear log</button>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- PO03 · Summary                                                 -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>PO03 · API summary</h2>
             <div class="code-block" data-language="js"><pre><code>import { createPopover } from '@keenmate/web-components-core/positioning';
 
 const pop = createPopover({
@@ -220,4 +261,64 @@ pop.claimCurrentClick();  // from an API method a page button outside the panel 
         $('po-offset').addEventListener('input', () => { syncOffset(); build(); });
         $('po-offset-default').addEventListener('change', () => { syncOffset(); build(); });
         $('po-shift').addEventListener('input', () => { $('po-shift-out').innerHTML = `${$('po-shift').value}&nbsp;px`; build(); });
+    </script>
+
+    <script type="module">
+        // ── PO02 · a dialog popover with two child pickers ───────────────────
+        import { createPopover } from '/src/positioning/index.ts';
+
+        const out = document.getElementById('po-nest-log');
+        const lines = [];
+        const log = (line) => { lines.push(line); out.textContent = lines.join('\n'); };
+        document.getElementById('po-nest-clear').addEventListener('click', () => { lines.length = 0; out.textContent = '(cleared)'; });
+
+        const dialog = document.createElement('div');
+        dialog.className = 'demo-panel po-dialog';
+        dialog.innerHTML =
+            '<h3>Filter products</h3>' +
+            '<div class="po-row">' +
+            '<label class="po-field">Colour <button type="button" data-field="colour">Any</button></label>' +
+            '<label class="po-field">Size <button type="button" data-field="size">Any</button></label>' +
+            '</div>' +
+            '<p>Click here (the dialog body) to close just an open list.</p>' +
+            '<button type="button" class="btn-outline" data-close>Close dialog</button>';
+
+        const dialogBtn = document.getElementById('po-nest-btn');
+        const dialogPop = createPopover({
+            reference: dialogBtn,
+            panel: dialog,
+            shouldCloseOnEscape: true,
+            shouldCloseOnOutsideClick: true,
+            onClose: (reason) => log(`dialog closed: ${reason}`),
+        });
+        dialogBtn.addEventListener('click', () => (dialogPop.isOpen ? dialogPop.close() : dialogPop.open()));
+        dialog.querySelector('[data-close]').addEventListener('click', () => dialogPop.close());
+
+        // A simulated multiselect: a button that opens a list popover. Opened from INSIDE the
+        // dialog panel, so it becomes the dialog's child in the overlay tree — and a sibling of
+        // the other picker: opening one closes the other, never the dialog.
+        const picker = (field, options) => {
+            const trigger = dialog.querySelector(`[data-field="${field}"]`);
+            const list = document.createElement('div');
+            list.className = 'demo-panel po-list';
+            const pop = createPopover({
+                reference: trigger,
+                panel: list,
+                matchWidth: 'min',
+                shouldCloseOnEscape: true,
+                shouldCloseOnOutsideClick: true,
+                onClose: (reason) => log(`  ${field} list closed: ${reason}`),
+            });
+            for (const option of ['Any', ...options]) {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'btn-outline';
+                b.textContent = option;
+                b.addEventListener('click', () => { trigger.textContent = option; pop.close(); });
+                list.appendChild(b);
+            }
+            trigger.addEventListener('click', () => (pop.isOpen ? pop.close() : pop.open()));
+        };
+        picker('colour', ['Red', 'Green', 'Blue']);
+        picker('size', ['S', 'M', 'L', 'XL']);
     </script>

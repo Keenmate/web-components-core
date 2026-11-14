@@ -56,6 +56,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   list `shouldHoistImports`; `whenReady()` resolves on `destroy()`; scroll lists
   `getScrollTopForBox` / `scrollContainerToBox`; responsive lists `BREAKPOINTS_CHANGE_EVENT` and
   the missing environment types.
+- Positioning pages: AN01 / PO01 show `--base-dropdown-offset` (no `offset` passed → the
+  variable, the demo area sets `12px`); AN01's wider reference makes `-start` / `-end` visible;
+  AN02's header and end padding survive a sideways scroll; AN03 explains when to use the default,
+  `shouldUseFixedContainingBlock`, `onDrift` or `platform`, on a real drift
+  (`content-visibility: auto`); new PO02 "Nested popovers": a dialog with two pickers — siblings
+  replace each other, the dialog stays (API summary is now PO03).
 
 ### Fixed
 - `observeEnvironment()` / `observeViewport()`: the last unsubscribe no longer removes window /
