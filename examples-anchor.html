@@ -50,6 +50,8 @@
     /* AN01: a reference much wider than the floating box, so -start / -end
        visibly align to its left / right edge. */
     .an-ref-wide { inline-size: min(36rem, 100%); }
+    /* Room for the "--base-dropdown-offset (4)" placeholder. */
+    #an-offset { inline-size: 16rem; }
     /* Room below the AN02 reference, so there is space on both sides to compare
        (flip still picks the roomier one). */
     .an-size-stage { padding-bottom: 36vh; }
@@ -70,7 +72,8 @@
             <h2>AN01 · Positioning a bare element</h2>
             <p>
                 <code>anchor()</code> positions any floating element against a reference and keeps it there across
-                scroll/resize (<code>autoUpdate</code>). Change the placement or offset — the box repositions live.
+                scroll/resize (<code>autoUpdate</code>). Change the placement or offset — the box repositions live. Leave <code>offset</code> empty to pass none:
+                the gap is then the page's <code>--base-dropdown-offset</code> (<code>4</code> when unset).
             </p>
             <div class="controls">
                 <label>placement
@@ -81,7 +84,7 @@
                     </select>
                 </label>
                 <label><code>offset</code> (px):
-                    <input type="number" id="an-offset" min="0" max="40" step="2" value="8">
+                    <input type="number" id="an-offset" min="0" max="40" step="2" placeholder="--base-dropdown-offset (4)">
                 </label>
             </div>
             <div class="demo-area">
@@ -231,9 +234,11 @@ handle.destroy();  // stop autoUpdate, restore the copied data-theme</code></pre
             let handle;
             const build = () => {
                 handle?.destroy();
+                // Empty field → no `offset` key, so anchor() reads --base-dropdown-offset.
+                const raw = document.getElementById('an-offset').value;
                 handle = anchor(floating, ref, {
                     placement: document.getElementById('an-placement').value,
-                    offset: parseInt(document.getElementById('an-offset').value, 10) || 0,
+                    ...(raw === '' ? {} : { offset: parseInt(raw, 10) || 0 }),
                 });
             };
             build();
