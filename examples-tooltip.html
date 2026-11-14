@@ -174,6 +174,27 @@
                 The first tooltip gets the shadow styles. The second mounts on <code>&lt;body&gt;</code> with the same
                 class, so it renders unstyled.
             </p>
+            <h3>When to use which</h3>
+            <ul>
+                <li>
+                    <strong>Default (<code>&lt;body&gt;</code>)</strong> — for page code, or a component whose tooltip
+                    is styled by page-level CSS. On <code>&lt;body&gt;</code> the tooltip escapes everything around
+                    the trigger: no parent can clip it, and no stacking context (a parent's <code>z-index</code>,
+                    <code>opacity</code>, <code>transform</code>) can put it under other content. The price: the
+                    component's shadow styles and <code>:host</code> variables don't reach it.
+                </li>
+                <li>
+                    <strong><code>container: this.shadowRoot</code></strong> — for a web component that styles its
+                    own tooltip. The component's CSS and <code>--variables</code> apply, the way they do to the rest
+                    of its UI. The price: the tooltip now lives inside the page around the component, so a stacking
+                    context there can cover it, and a containing block on an ancestor can push it off its anchor
+                    (see the anchor page, AN03).
+                </li>
+            </ul>
+            <p class="muted mt-1">
+                Inside a modal <code>&lt;dialog&gt;</code> or an open <code>popover</code>, the default already mounts
+                the tooltip in that element (the top layer), so it shows above the dialog.
+            </p>
         </div>
 
         <!-- ============================================================= -->
