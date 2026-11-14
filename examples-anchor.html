@@ -53,6 +53,9 @@
     /* AN01: a reference much wider than the floating box, so -start / -end
        visibly align to its left / right edge. */
     .an-ref-wide { inline-size: min(36rem, 100%); }
+    /* Sets the page token on the AN01 stage (it inherits to the reference), so an empty
+       offset field visibly uses it: 12px here, 4 when nothing sets it. */
+    .an-offset-stage { --base-dropdown-offset: 12px; }
     /* Room for the "--base-dropdown-offset (4)" placeholder. */
     #an-offset { inline-size: 16rem; }
     /* Room below the AN02 reference, so there is space on both sides to compare
@@ -76,7 +79,8 @@
             <p>
                 <code>anchor()</code> positions any floating element against a reference and keeps it there across
                 scroll/resize (<code>autoUpdate</code>). Change the placement or offset — the box repositions live. Leave <code>offset</code> empty to pass none:
-                the gap is then the page's <code>--base-dropdown-offset</code> (<code>4</code> when unset).
+                the gap is then <code>--base-dropdown-offset</code> read on the reference — this demo area sets <code>12px</code>
+                (<code>4</code> when nothing sets it).
             </p>
             <div class="controls">
                 <label>placement
@@ -87,10 +91,10 @@
                     </select>
                 </label>
                 <label><code>offset</code> (px):
-                    <input type="number" id="an-offset" min="0" max="40" step="2" placeholder="--base-dropdown-offset (4)">
+                    <input type="number" id="an-offset" min="0" max="40" step="2" placeholder="--base-dropdown-offset (12px here)">
                 </label>
             </div>
-            <div class="demo-area">
+            <div class="demo-area an-offset-stage">
                 <span class="pos-trigger an-ref-wide" id="an-ref">reference element</span>
                 <p class="muted mt-1">A floating box is anchored to it (it follows on scroll).</p>
             </div>
