@@ -156,15 +156,15 @@ const pop = createPopover({
   container,                 // default: the open modal &lt;dialog&gt; / :popover-open around the reference, else body
   inheritThemeFrom: false,   // default: the reference; false when the panel stays in your shadow root
   visibleClass: 'is-open',   // added on open (hidden by visibility until placed: no flash at 0,0), removed on close
-  shouldKeepMounted: true,   // the panel stays where you put it; open / close only toggle visibleClass
+  shouldKeepMounted: true,   // the panel stays where you put it; open / close only toggle visibleClass (else the hidden attribute)
   isAnchored: true,          // false: open unpositioned (fullscreen / modal); switch with setAnchored()
   shouldCloseOnEscape: true,       // close on Escape (deepest open overlay only)
   shouldCloseOnOutsideClick: true, // close on a press outside the panel and the reference
   getInsideElements: () =&gt; [hint], // more elements a press on doesn't count as outside
   returnFocusTo: input,      // focus target after Escape (default: the reference; null = none)
-  shouldCloseOnScroll: true, // a scroll outside the panel (page or a scroller around the reference)
+  shouldCloseOnScroll: true, // the page or a scroller around the reference scrolled AND the reference moved
   shouldCloseOnResize: true, // a window resize
-  overlayGroup: 'menus',     // opening another overlay of the group closes this one
+  overlayGroup: 'menus',     // opening another overlay of the group closes this one (never the one it was opened from)
   onClose(reason) {},        // every close: 'escape' | 'outside-click' | 'overlay' | 'parent' | 'scroll' | 'resize' | 'reference-removed' | 'api'
   // Every shouldCloseOn* also takes a function, asked each time: () =&gt; !hasStagedSelection
 
@@ -178,7 +178,7 @@ const pop = createPopover({
   onPlaced(placement) {},    // resolved placement callback
 });
 
-pop.open(); pop.close(); pop.update(); pop.isOpen; pop.destroy();
+pop.open(); pop.close(); pop.update(); pop.isOpen; pop.isAnchored; pop.destroy();
 pop.setAnchored(false);   // e.g. the phone layout: still open, now placed by your CSS
 pop.reanchor();           // async content changed the height: pick the side again (lockPlacement 'freeze')
 pop.claimCurrentClick();  // from an API method a page button outside the panel calls: this click doesn't close it
