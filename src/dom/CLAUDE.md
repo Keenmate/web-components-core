@@ -41,6 +41,16 @@ The component's input rows are `storageKey` (`storage-key`, unset = off), `loadS
 into the WHOLE state and the save callback gets all of it; cache per key, the key is read per call; either callback set = host mode (no localStorage, a missing half is a no-op + one warning); never throws
 (callback / storage failures → the element's logger, state kept in memory). No `localStorage` in components.
 
+## Animating out (`src/dom/animate-out.ts`, SPEC §12.16 — implemented)
+
+`animateOut(elements, { className, onDone, shouldSetInert = true, shouldSetHeightVar = false })` →
+`{ cancel(), finished }`: closing class (+ `inert`) → wait for each element's OWN `animationend` (timer
+fallback duration + 50ms) → `onDone` (via `callSafely`). Duration read back from CSS by `readAnimationMs`
+(longest delay + duration; `0` → synchronous `onDone`), so motion level / reduced motion need no code.
+`shouldSetHeightVar` → `--km-exit-height` (measure all, then write). Cancel restores class, inert, var;
+done keeps the class. `/menu`'s sheet close uses it; rulebook C-CA-18 bans own `animationend` waits.
+jsdom: no animations and no `inert` — tests fake `getComputedStyle`.
+
 ## Loader (`src/dom/render-loader.ts`, SPEC §12.14 — implemented)
 
 `renderLoader(host, container, context, { label, prefix, renderLoadingCallback? })`

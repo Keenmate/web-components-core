@@ -353,6 +353,36 @@ page (core writes `window.components.motion` on `<html data-motion>`) → the co
                                                          left on auto outside the section -->
 ```
 
+### Animating something out (`animateOut`)
+
+Appearing needs no JavaScript: a CSS `@keyframes` on the new element plays when it is inserted.
+Disappearing does — the element must stay until its closing animation ends. `animateOut()` adds
+the closing class (+ `inert`), waits, then calls you; at a `0s` duration (motion `none`, OS reduced
+motion) it calls you at once. Time the keyframes ONLY with the motion tokens:
+
+```css
+.xx__row { animation: xx-row-in var(--xx-row-animation-duration, var(--xx-transition-normal)) var(--base-ease-out); }
+.xx__row--closing { animation: xx-row-out var(--xx-row-animation-duration, var(--xx-transition-normal)) var(--base-ease-in) forwards; }
+@keyframes xx-row-out { from { height: var(--km-exit-height); } to { height: 0; opacity: 0; } }
+```
+
+```ts
+import { animateOut } from '@keenmate/web-components-core';
+
+const out = animateOut(rows, {
+  className: 'xx__row--closing',
+  shouldSetHeightVar: true,          // --km-exit-height = each row's height: shrink in the flow
+  onDone: () => this.#collapse(node), // remove / collapse — never runs after cancel()
+});
+out.cancel();          // re-expanded mid-close: class + inert come off
+await out.finished;    // true after onDone, false when cancelled
+```
+
+`readAnimationMs(el)` is the read underneath: the longest `delay + duration` of the element's
+current animations, `0` for none. Never your own `animationend` / `transitionend` wait (rulebook
+C-CA-18) — `animateOut` also covers a tab that never fires `animationend` (gives up after the
+duration + 50ms).
+
 ## Global registration (`window.components`)
 
 `registerComponent` replaces the block every component used to copy-paste (and

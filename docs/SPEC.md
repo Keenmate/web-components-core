@@ -2229,6 +2229,23 @@ Every level sets the scroll behaviour too, so a level nested inside another (`sm
 base-css-variables, so a later page stylesheet can win there; core's adopted copy comes after the
 page's styles, so on pages with components the level holds.
 
+**Enter / exit animations (`animateOut`, `src/dom/animate-out.ts`, main index, decided 2026-11-14).**
+An element that appears animates with a CSS `@keyframes` that plays on insertion — no JS. One that
+disappears gets a closing class whose `forwards` keyframe uses the `-in` easing, and the caller
+removes / collapses it only after: `animateOut(elements, { className, onDone, shouldSetInert = true,
+shouldSetHeightVar = false })` → `{ cancel(), finished: Promise<boolean> }`. It reads the duration back
+from CSS (`readAnimationMs(el)`: the longest `delay + duration` over the animation list, `0` for none
+or `0s`), so the motion level, the component's own knob and reduced motion need no code: at `0` it
+calls `onDone` synchronously. Otherwise it waits for each animating element's OWN `animationend` (a
+child's bubbling one doesn't count), with a duration + 50ms timer for a tab that never fires it.
+`shouldSetHeightVar` writes each element's height to `--km-exit-height` first (all measured, then
+all written), because a keyframe can't shrink from `height: auto` — so rows shrink in the flow and
+what follows slides up. `cancel()` takes the class, `inert` and the variable off and skips `onDone`;
+after `onDone` the class stays (the caller removes or resets the element), `inert` and the variable
+are put back. Used by `/menu`'s sheet close; components (row expand / collapse) use it instead of
+their own waits — rulebook C-CA-18. CSS transitions remain right for an element that STAYS in the
+DOM (a dropdown, a tooltip toggling a class).
+
 base-css-variables carries the same `[data-motion]` presets (the reference for the values; a core
 unit test compares them when the repo sits next to core).
 

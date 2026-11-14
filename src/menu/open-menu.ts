@@ -10,6 +10,7 @@ import { getMenuChildren, isMenuDivider, resolveMenuEntries } from '../actions/r
 import type { MenuEntry, MenuItem, ResolvedActionItem } from '../actions/types.js';
 import { deepActiveElement } from '../dom/active-element.js';
 import { adoptStyles } from '../dom/adopt-styles.js';
+import { animateOut } from '../dom/animate-out.js';
 import { composedClosest, composedParent } from '../dom/composed-tree.js';
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { coreLog } from '../logging/element-logger.js';
@@ -56,16 +57,6 @@ function resolveMenuPresentation(mode: MenuPresentation | undefined, map: MenuPr
   if (mode && mode !== 'auto') return mode;
   const cls = classifyDevice(getEnvironment());
   return map?.[cls] ?? DEFAULT_MENU_PRESENTATION_MAP[cls];
-}
-
-/** The running (or last) animation's length in ms; 0 when there is none (or it can't be read). */
-function animationMs(el: HTMLElement): number {
-  const style = getComputedStyle(el);
-  if (!style.animationName || style.animationName === 'none') return 0;
-  const raw = (style.animationDuration || '').split(',')[0]!.trim();
-  const value = parseFloat(raw);
-  if (!Number.isFinite(value) || value <= 0) return 0;
-  return raw.endsWith('ms') ? value : value * 1000;
 }
 
 /** One open menu level. Open levels form a chain: root → submenu → sub-submenu. */
@@ -803,25 +794,15 @@ export function openMenu<Ctx, A extends string = string>(
 
   /** Close animation (motion tokens, SPEC §12.16), then out of the DOM; none → removed at once. */
   function removeSheetAnimated(sheetEl: HTMLElement, backdropEl: HTMLElement): void {
-    sheetEl.classList.add(`${SHEET}--closing`);
+    // The backdrop fades alongside; the sheet's own animation decides when both go.
     backdropEl.classList.add(`${SHEET}-backdrop--closing`);
-    sheetEl.inert = true;
-    const ms = animationMs(sheetEl);
-    let isRemoved = false;
-    const remove = (): void => {
-      if (isRemoved) return;
-      isRemoved = true;
-      sheetEl.remove();
-      backdropEl.remove();
-    };
-    if (ms <= 0) {
-      remove();
-      return;
-    }
-    sheetEl.addEventListener('animationend', (e) => {
-      if (e.target === sheetEl) remove();
+    animateOut(sheetEl, {
+      className: `${SHEET}--closing`,
+      onDone: () => {
+        sheetEl.remove();
+        backdropEl.remove();
+      },
     });
-    setTimeout(remove, ms + 50); // no animationend (hidden tab, display change)
   }
 
   /** Sheet: backdrop + `role=dialog` sheet (header: title + close) at the bottom; scroll lock + Back. */

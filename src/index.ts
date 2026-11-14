@@ -54,6 +54,8 @@ export { resolveEnumAttribute } from './dom/resolve-enum-attribute.js';
 export { createMicrotaskScheduler } from './dom/microtask-scheduler.js';
 export type { MicrotaskScheduler } from './dom/microtask-scheduler.js';
 export { adoptStyles, createStyleSlot } from './dom/adopt-styles.js';
+export { animateOut, EXIT_HEIGHT_VAR, readAnimationMs } from './dom/animate-out.js';
+export type { AnimateOutHandle, AnimateOutOptions } from './dom/animate-out.js';
 export type { StyleSlot, StyleSlotOptions } from './dom/adopt-styles.js';
 export { createCustomStyles } from './dom/custom-styles.js';
 export { createStateStore, stateStorageKey } from './dom/state-store.js';

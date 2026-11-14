@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `animateOut(elements, { className, onDone, shouldSetInert, shouldSetHeightVar })` → `{ cancel(),
+  finished }` and `readAnimationMs(el)` (main index, SPEC §12.16): the one way to animate something
+  out — closing class, wait for its keyframe (timed by the motion tokens; `0s` → at once), then
+  remove / collapse. `shouldSetHeightVar` writes `--km-exit-height` so a row can shrink in the flow.
+  The `/menu` sheet close uses it; `readAnimationMs` now takes the longest of several animations and
+  counts `animation-delay`.
 - `SHEET_CHROME_CSS` + `createSheetHeader({ title, closeLabel, onClose })` (main index): one header
   bar for every phone sheet — `.km-sheet-header` / `.km-sheet-title` / `.km-sheet-close`, a round
   44px chip with the `--base-icon-close` mask and a tap area reaching the sheet's corner; themed with
