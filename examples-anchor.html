@@ -20,10 +20,13 @@
     }
     /* Sticky header with a close button, so the panel is always dismissable
        even when it flips up over its toggle button (AN02). Stays put while the
-       capped list scrolls underneath. */
+       capped list scrolls underneath — both ways: `left` keeps it in view when
+       the maxWidth-capped panel scrolls sideways. */
     .demo-float__head {
         position: sticky;
-        top: 0;
+        /* Minus the panel padding, so it sticks to the panel's EDGE (no rows peeking above). */
+        top: -0.6rem;
+        left: -0.9rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
