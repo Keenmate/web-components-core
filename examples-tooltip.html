@@ -228,6 +228,8 @@ tip.element;  tip.isVisible;             // the tooltip node + state</code></pre
                     <li>Shows on hover and keyboard focus. <strong>Escape</strong> hides it.</li>
                     <li>While shown, the trigger's <code>aria-describedby</code> points at the tooltip (<code>role="tooltip"</code>).</li>
                     <li>Hoverable: with a hide delay, moving the pointer onto the tooltip keeps it open. A focused trigger keeps it open too.</li>
+                    <li>A trigger removed from the page (a re-rendered row) takes its tooltip with it.</li>
+                    <li>A follow-cursor tooltip stays on its spot of the trigger when the page scrolls.</li>
                 </ul>
             </div>
             <div class="note">
