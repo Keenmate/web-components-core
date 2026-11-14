@@ -31,8 +31,9 @@
             <h2>NC02 · <code>collectEngineConfig</code> preserves <code>null</code></h2>
             <p>
                 The pure assembler, driven directly (no component). Set a value, then clear it, and watch the assembled
-                config: the key stays <strong>present with <code>null</code></strong>
-                — it is <em>not</em> dropped. Compare with the old hand-rolled “delete every null” loop.
+                config: the key stays <strong>present with <code>null</code></strong> — it is <em>not</em> dropped.
+                That is what makes the clear work: the engine's <code>if (updates.x !== undefined)</code> guard skips a
+                key that is missing, so a dropped key would leave the old value in place.
             </p>
             <div class="controls">
                 <label><code>focused-node-class</code>:
@@ -40,7 +41,6 @@
                 </label>
                 <button id="d-set">Set</button>
                 <button id="d-clear">Clear (= null)</button>
-                <label class="push-end"><input type="checkbox" id="d-strip"> old “delete null” loop</label>
             </div>
             <div class="demo-area">
                 <label class="demo-label">Assembled engine config (<code>exclude: ['theme']</code>):</label>
@@ -52,23 +52,16 @@
         <!-- NC03 · The live <nullclear-card> component                     -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>NC03 · The bug &amp; the fix, live</h2>
+            <h2>NC03 · Clearing an input, live</h2>
             <p>
                 A real <code>BlissElement</code> (<code>&lt;nullclear-card&gt;</code>) driving a stub engine with the
-                genuine <code>!== undefined</code> merge. Row&nbsp;2 is focused; its highlight class comes from the
-                <code>focused-node-class</code> input, falling back to a built-in default
-                (<code>nc-focus-default</code>, the blue bar). <strong>Set</strong> a custom class, then
-                <strong>Clear</strong> it. Clear removes the attribute, so it only does something when the attribute is
-                set. After switching the mode, Set again, then Clear.
+                usual <code>!== undefined</code> merge, its config assembled by <code>this.engineConfig()</code>.
+                Row&nbsp;2 is focused; its highlight class comes from the <code>focused-node-class</code> input, falling
+                back to a built-in default (<code>nc-focus-default</code>, the blue bar). <strong>Set</strong> a custom
+                class, then <strong>Clear</strong> it: the engine receives <code>focusedNodeClass: null</code> and the
+                row goes back to the blue default. Clear removes the attribute, so it only does something when the
+                attribute is set.
             </p>
-            <ul>
-                <li><strong>preserve</strong> (<code>engineConfig</code>): clearing reverts to the blue default. ✅</li>
-                <li><strong>strip</strong> (old loop): clearing is a silent no-op — the custom class sticks. 🐛</li>
-            </ul>
-            <div class="controls">
-                <label><input type="radio" name="mode" value="preserve" checked> <code>preserve</code> (engineConfig)</label>
-                <label><input type="radio" name="mode" value="strip"> <code>strip</code> (old loop)</label>
-            </div>
             <div class="controls">
                 <label><code>focused-node-class</code>:
                     <select id="c-value">
@@ -124,10 +117,9 @@ if (updates.y !== undefined) this._y = updates.y ?? DEFAULT;// defaulted: null �
                 <code>''</code>, <code>0</code>, <code>false</code> or <code>[]</code>, so <code>null</code> never lands in its config.
             </p>
             <div class="note">
-                <div class="note-title">Never re-drop the null</div>
-                A field that is neither clearable nor <code>?? DEFAULT</code>-guarded will now receive <code>null</code>
-                where it used to receive nothing — a latent bug the old drop-the-null behavior hid. Fix the engine
-                merge; don't strip the null back out.
+                <div class="note-title">Never strip the null</div>
+                Don't delete <code>null</code> keys from the engine config: the clear would never reach the engine. An
+                engine field that can't hold <code>null</code> takes a <code>?? DEFAULT</code> in its merge instead.
             </div>
         </div>
 
@@ -154,14 +146,11 @@ if (updates.y !== undefined) this._y = updates.y ?? DEFAULT;// defaulted: null �
         // non-engine key (theme) that is always excluded.
         let bag = { focusedNodeClass: null, theme: 'dark' };
         const dOut = document.getElementById('d-out');
-        const dStrip = document.getElementById('d-strip');
         const renderD = () => {
-            let cfg = collectEngineConfig(bag, { exclude: ['theme'] });
-            if (dStrip.checked) for (const k of Object.keys(cfg)) if (cfg[k] === null) delete cfg[k];
-            const cleared = !('focusedNodeClass' in cfg);
-            dOut.innerHTML = fmt(cfg) + (cleared
-                ? `\n\n<span class="comment">// focusedNodeClass is ABSENT — the engine's guard will skip it → stale value sticks</span>`
-                : (cfg.focusedNodeClass === null ? `\n\n<span class="comment">// focusedNodeClass present as null — the clear reaches the engine</span>` : ''));
+            const cfg = collectEngineConfig(bag, { exclude: ['theme'] });
+            dOut.innerHTML = fmt(cfg) + (cfg.focusedNodeClass === null
+                ? `\n\n<span class="comment">// focusedNodeClass present as null — the clear reaches the engine</span>`
+                : '');
         };
         document.getElementById('d-set').addEventListener('click', () => {
             bag = { ...bag, focusedNodeClass: document.getElementById('d-value').value }; renderD();
@@ -169,7 +158,6 @@ if (updates.y !== undefined) this._y = updates.y ?? DEFAULT;// defaulted: null �
         document.getElementById('d-clear').addEventListener('click', () => {
             bag = { ...bag, focusedNodeClass: null }; renderD();
         });
-        dStrip.addEventListener('change', renderD);
         renderD();
 
         // ── NC03 · the live <nullclear-card> ─────────────────────────────────
@@ -184,17 +172,8 @@ if (updates.y !== undefined) this._y = updates.y ?? DEFAULT;// defaulted: null �
             const isDefault = info.appliedClass === 'nc-focus-default';
             const custom = card.getAttribute('focused-node-class');
             if (custom === null && isDefault) { cVerdict.className = 'note success'; cVerdict.textContent = '✅ cleared → reverted to the built-in default'; }
-            else if (custom === null && !isDefault) { cVerdict.className = 'note danger'; cVerdict.textContent = '🐛 cleared, but the stale custom class is still applied (strip mode)'; }
             else { cVerdict.className = 'note success'; cVerdict.textContent = `✅ custom class "${info.appliedClass}" applied`; }
         };
-        for (const r of document.querySelectorAll('input[name="mode"]')) {
-            r.addEventListener('change', () => {
-                card.assembleMode = document.querySelector('input[name="mode"]:checked').value;
-                // The old verdict described the other mode. A Clear needs a set attribute to remove.
-                cVerdict.className = 'note';
-                cVerdict.textContent = `Mode is now ${card.assembleMode}. Set a class again, then Clear.`;
-            });
-        }
         document.getElementById('c-set').addEventListener('click', () => {
             card.setAttribute('focused-node-class', document.getElementById('c-value').value);
         });

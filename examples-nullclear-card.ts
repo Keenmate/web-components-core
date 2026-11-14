@@ -6,15 +6,9 @@
  * engine exactly like `TreeController.updateProps` does — the `!== undefined`
  * guard lets a partial resend omit untouched keys, and `focusedNodeClass` is a
  * clearable field (direct assign; `null` clears, resolved to a built-in default
- * at apply time).
- *
- * The teaching knob is `assembleMode`:
- *   - `'preserve'` — assemble via `this.engineConfig(...)` (the fix): a cleared
- *     `focused-node-class` reaches the engine as `{ focusedNodeClass: null }`,
- *     so the row reverts to the built-in default.
- *   - `'strip'`    — layer the OLD per-component `if (v === null) delete` loop on
- *     top: the cleared key is dropped, the engine's guard skips it, and the stale
- *     custom class sticks. This is the bug the contract fixes.
+ * at apply time). The config is assembled by `this.engineConfig(...)`, so a
+ * cleared `focused-node-class` reaches the engine as `{ focusedNodeClass: null }`
+ * and the row reverts to the built-in default.
  *
  * Demo-only — not part of the published package (`files` ships `dist/` only).
  */
@@ -49,9 +43,6 @@ export class NullclearCard extends BlissElement {
     { configKey: 'onEngineUpdate', converter: toFunction(), on: 'none' },
   ];
 
-  /** Demo-only toggle (not an input): how the engine config is assembled. */
-  assembleMode: 'preserve' | 'strip' = 'preserve';
-
   #engine?: StubEngine;
   #focusedRow?: HTMLElement;
 
@@ -77,14 +68,10 @@ export class NullclearCard extends BlissElement {
     this.#focusedRow = root.getElementById('focused') as HTMLElement;
   }
 
-  /** Build the engine config the way the demo's current mode dictates. */
+  /** The engine config: the full config (nulls PRESERVED) with the changed keys on top. */
   #assemble(partial: Record<string, unknown>): Record<string, unknown> {
-    const cfg = this.engineConfig(NON_ENGINE_KEYS); // nulls PRESERVED
+    const cfg = this.engineConfig(NON_ENGINE_KEYS);
     Object.assign(cfg, partial);
-    if (this.assembleMode === 'strip') {
-      // The old per-component bug, layered back on for contrast.
-      for (const k of Object.keys(cfg)) if (cfg[k] === null) delete cfg[k];
-    }
     return cfg;
   }
 
