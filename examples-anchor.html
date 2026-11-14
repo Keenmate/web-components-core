@@ -58,14 +58,14 @@
     /* Room below the AN02 reference, so there is space on both sides to compare
        (flip still picks the roomier one). */
     .an-size-stage { padding-bottom: 36vh; }
-    /* A transformed ancestor — establishes a fixed-positioning containing block,
-       the classic reason a `position: fixed` panel drifts off its anchor. */
-    .transformed {
-        transform: translateZ(0) scale(1);
-        will-change: transform;
+    /* AN03: the ancestor that becomes the panel's fixed-positioning containing block.
+       The dashed frame marks it; the CSS that traps the panel is the mode's own. */
+    .an-drift-box {
         border: 1px dashed var(--kmwc-warning-color);
         background: color-mix(in srgb, var(--kmwc-warning-color) 8%, transparent);
     }
+    .an-drift-box[data-css="transform"] { transform: translateZ(0); }
+    .an-drift-box[data-css="content-visibility"] { content-visibility: auto; }
 </style>
 
         <!-- ============================================================= -->
@@ -126,44 +126,61 @@
         <!-- AN03 · Drift detection                                        -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>AN03 · Drift detection (<code>onDrift</code>)</h2>
+            <h2>AN03 · Containing blocks and drift (<code>shouldUseFixedContainingBlock</code> / <code>onDrift</code>)</h2>
             <p>
-                A <code>position: fixed</code> element is placed against the viewport — <em>unless</em> an ancestor
-                makes a containing block for it (<code>transform</code>, <code>filter</code>, a matching
-                <code>will-change</code>, <code>contain: paint</code>, …). Then the browser measures its
-                <code>left</code> / <code>top</code> from that ancestor. If the positioning code didn't account for it,
-                the panel lands off its anchor. <code>onDrift</code> reports that case: after each placement core
-                measures where the panel really is, and calls <code>onDrift</code> only when it is 1.5px or more off.
+                <code>anchor()</code> places panels with <code>position: fixed</code>, which normally means "relative to
+                the window". But some CSS on an <em>ancestor</em> of the panel (<code>transform</code>,
+                <code>filter</code>, <code>contain: paint</code>, <code>content-visibility: auto</code>, …) silently
+                changes that to "relative to this ancestor". If the positioning code doesn't notice, the panel lands
+                off its anchor. This is called <strong>drift</strong>.
             </p>
-            <p>
-                The panel below is a child of the <strong>transformed</strong> box. Floating&nbsp;UI's default platform
-                sees the transform and places it correctly, so no drift. To show a report, the first mode
-                <strong>simulates</strong> a containing block the heuristic misses: a custom <code>platform</code> whose
-                <code>getOffsetParent</code> always answers <code>window</code>.
+            <h3>When to use what</h3>
+            <ul>
+                <li>
+                    <strong>Nothing (the default)</strong> — enough when the panel is appended to
+                    <code>document.body</code>, or its ancestors are markup you control. Floating&nbsp;UI already spots
+                    the common culprits (<code>transform</code>, <code>filter</code>, <code>will-change</code>,
+                    <code>contain</code>).
+                </li>
+                <li>
+                    <strong><code>shouldUseFixedContainingBlock: true</code></strong> — use it when the panel stays
+                    inside a component (its shadow root) or a page you don't control, where any ancestor CSS is
+                    possible. Core then finds the containing block itself, starting from the panel, and also catches
+                    what the default misses (<code>content-visibility: auto</code> below). web-multiselect sets it.
+                </li>
+                <li>
+                    <strong><code>onDrift</code></strong> — a safety net, not a fix. After each placement core checks
+                    where the panel really landed and calls it only when it is 1.5px or more off, naming the ancestor
+                    and the CSS to blame. Pair it with the option above and log a warning once, so a page that still
+                    breaks the panel tells the developer why.
+                </li>
+                <li>
+                    <strong><code>platform</code></strong> — a custom Floating&nbsp;UI platform, the last resort for a
+                    frame neither of the above knows. You will rarely need it; it overrides
+                    <code>shouldUseFixedContainingBlock</code>.
+                </li>
+            </ul>
+            <p class="mt-1">
+                Try it: the panel below is a child of the dashed box. With <code>transform</code> the default already
+                lands on target. With <code>content-visibility: auto</code> the default drifts and <code>onDrift</code>
+                reports it; switch the option on and the panel is back on target.
             </p>
             <div class="controls">
-                <label>frame
-                    <select id="an-drift-mode">
-                        <option value="miss" selected>simulated miss: platform.getOffsetParent = () =&gt; window</option>
-                        <option value="default">default platform</option>
-                        <option value="fixed-cb">shouldUseFixedContainingBlock: true</option>
+                <label>ancestor CSS
+                    <select id="an-drift-css">
+                        <option value="content-visibility" selected>content-visibility: auto</option>
+                        <option value="transform">transform: translateZ(0)</option>
                     </select>
                 </label>
+                <label><input type="checkbox" id="an-drift-fixed-cb"> <code>shouldUseFixedContainingBlock</code></label>
             </div>
-            <div class="demo-area transformed" id="an-drift-box">
-                <span class="pos-trigger" id="an-drift-ref">reference inside a transformed box</span>
+            <div class="demo-area an-drift-box" id="an-drift-box" data-css="content-visibility">
+                <span class="pos-trigger" id="an-drift-ref">reference inside the dashed box</span>
                 <div class="output mt-1">
                     <div class="output-label">onDrift report:</div>
                     <pre id="an-drift-out">(open the panel)</pre>
                 </div>
                 <button id="an-drift-btn" class="mt-1">Anchor a panel to it</button>
-            </div>
-            <div class="note warning">
-                <div class="note-title">The fix</div>
-                Pass <code>shouldUseFixedContainingBlock: true</code> (or your own <code>platform</code>) so
-                <code>anchor()</code> takes the offset parent from the floating element's own containing-block
-                ancestor. web-multiselect uses this. If a containing block is still missed, <code>onDrift</code> tells you
-                and names the likely culprit — log it once.
             </div>
         </div>
 
@@ -224,7 +241,7 @@ handle.destroy();  // stop autoUpdate, restore the copied data-theme</code></pre
         </div>
 
     <script type="module">
-        import { anchor, platform } from '/src/positioning/index.ts';
+        import { anchor } from '/src/positioning/index.ts';
 
         // ── AN01 · the primitive, rebuilt on control change ──────────────────
         {
@@ -302,43 +319,41 @@ handle.destroy();  // stop autoUpdate, restore the copied data-theme</code></pre
             });
         }
 
-        // ── AN03 · drift detection inside a transformed ancestor ─────────────
+        // ── AN03 · containing block + drift ──────────────────────────────────
         {
             const box = document.getElementById('an-drift-box');
             const ref = document.getElementById('an-drift-ref');
             const out = document.getElementById('an-drift-out');
-            const modeSelect = document.getElementById('an-drift-mode');
+            const cssSelect = document.getElementById('an-drift-css');
+            const fixedCb = document.getElementById('an-drift-fixed-cb');
             let floating, handle;
             const close = () => { handle?.destroy(); handle = undefined; floating?.remove(); floating = undefined; };
             const open = () => {
                 close();
                 floating = document.createElement('div');
                 floating.className = 'demo-float';
-                floating.textContent = 'panel inside the transformed box';
-                // A child of the transformed box: that box is its fixed containing block.
+                floating.textContent = 'panel inside the dashed box';
+                // A child of the box: the box's CSS decides what `position: fixed` is relative to.
                 box.appendChild(floating);
-                const mode = modeSelect.value;
                 handle = anchor(floating, ref, {
                     placement: 'bottom-start',
-                    // Simulated miss: claim the viewport is the frame, as a heuristic that
-                    // doesn't know this containing block would.
-                    ...(mode === 'miss' ? { platform: { ...platform, getOffsetParent: () => window } } : {}),
-                    ...(mode === 'fixed-cb' ? { shouldUseFixedContainingBlock: true } : {}),
+                    shouldUseFixedContainingBlock: fixedCb.checked,
                     // onComputed runs first on every placement; onDrift only when drifted.
-                    onComputed: () => { out.textContent = '(on target: onDrift not called)'; },
+                    onComputed: () => { out.textContent = 'on target: onDrift not called'; },
                     onDrift: (report) => {
                         out.textContent =
-                            `driftX: ${report.driftX.toFixed(1)}px  driftY: ${report.driftY.toFixed(1)}px
+                            `drifted by x: ${report.driftX.toFixed(1)}px, y: ${report.driftY.toFixed(1)}px
 ` +
                             `culprit: ${report.culpritDescription}
 ` +
-                            `culpritCss: ${report.culpritCss}`;
+                            `culprit CSS: ${report.culpritCss}`;
                     },
                 });
             };
             document.getElementById('an-drift-btn').addEventListener('click', () => {
                 if (floating) { close(); out.textContent = '(closed)'; } else open();
             });
-            modeSelect.addEventListener('change', () => { if (floating) open(); });
+            cssSelect.addEventListener('change', () => { box.dataset.css = cssSelect.value; if (floating) open(); });
+            fixedCb.addEventListener('change', () => { if (floating) open(); });
         }
     </script>
