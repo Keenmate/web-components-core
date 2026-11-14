@@ -29,6 +29,8 @@
     .po-field > button::after { content: "▾"; margin-inline-start: 0.5rem; }
     .po-list { display: grid; padding: 0.35rem; min-inline-size: 12rem; }
     .po-list button { justify-content: flex-start; }
+    /* The log column lines up with the demo column's buttons (no kit top margin). */
+    .po-nest-output { margin-top: 0; }
 </style>
 
         <!-- ============================================================= -->
@@ -127,14 +129,17 @@
                 <li><strong>Close the dialog</strong> (its button, or a press outside everything) → an open list closes with
                     it, child first (<code>parent</code> / <code>outside-click</code>).</li>
             </ul>
-            <!-- The log sits above the trigger: the dialog opens below it and would cover it. -->
-            <div class="output mt-1">
-                <div class="output-label">onClose log:</div>
-                <pre id="po-nest-log">(nothing closed yet)</pre>
-            </div>
-            <div class="controls mt-1 po-stage">
-                <button id="po-nest-btn">Toggle dialog</button>
-                <button id="po-nest-clear" class="btn-outline">Clear log</button>
+            <!-- Demo left, log right: the dialog opens below its trigger and never covers the log
+                 (stacks on a narrow screen, log last). -->
+            <div class="grid-2 mt-1">
+                <div class="controls po-stage">
+                    <button id="po-nest-btn">Toggle dialog</button>
+                    <button id="po-nest-clear" class="btn-outline">Clear log</button>
+                </div>
+                <div class="output po-nest-output">
+                    <div class="output-label">onClose log:</div>
+                    <pre id="po-nest-log">(nothing closed yet)</pre>
+                </div>
             </div>
         </div>
 
