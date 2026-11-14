@@ -275,6 +275,9 @@ handle.destroy();  // stop autoUpdate, restore the copied data-theme</code></pre
                 const list = document.createElement('div');
                 // Rows that don't wrap: wider than the window, so the maxWidth cap shows.
                 list.style.whiteSpace = 'nowrap';
+                // As wide as its widest row: the panel's end padding is added after a child BOX,
+                // not after text spilling out of one (else the rows end flush with the right edge).
+                list.style.width = 'max-content';
                 const cells = Array.from({ length: 24 }, (_, c) => `column ${c + 1}`).join(' · ');
                 list.innerHTML = Array.from({ length: 30 }, (_, i) => `<div>Row ${i + 1} · ${cells}</div>`).join('');
                 floating.append(head, list);
