@@ -7,7 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc24] - 2026-11-15
+
+Includes 1.0.0-rc23 (dated 2026-11-13), which was never published.
+
 ### Added
+- **`claimBackEntry(onBack)` (main index, SPEC §12.9)** — the phone Back gesture for a full-screen
+  sheet / modal: one history entry (same URL) for the whole page while a sheet is open; Back runs the
+  newest claim's `onBack` (claim again from inside it to go up one level), the returned release gives
+  the entry back one task later (a sheet opening right after adopts it), and the page keeps its scroll
+  position. It was `/menu`'s private helper; web-grid, web-multiselect and web-daterangepicker each had
+  their own copy (per-instance or page-wide; web-daterangepicker's jumped to the top on close like the
+  menu's) and now use it. Rulebook
+  C-RO-15 checks no component pushes its own history entry. The entry's `history.state` is now
+  `{ kmBackEntry: true }` (was `{ kmMenuSheet: true }`).
 - `animateOut(elements, { className, onDone, shouldSetInert, shouldSetHeightVar })` → `{ cancel(),
   finished }` (`className` may be `(el) => string`: one BEM modifier per element) and `readAnimationMs(el)` (main index, SPEC §12.16): the one way to animate something
   out — closing class, wait for its keyframe (timed by the motion tokens; `0s` → at once), then
@@ -68,30 +81,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `shouldUseFixedContainingBlock`, `onDrift` or `platform`, on a real drift
   (`content-visibility: auto`); new PO02 "Nested popovers": a dialog with two pickers — siblings
   replace each other, the dialog stays (API summary is now PO03).
+- Motion (SPEC §12.16, usage.md): what `motion` covers — decorative animations only, not timers or
+  activity indicators; `motion` is the one switch (no per-feature `is…AnimationEnabled` inputs) and
+  one animation is turned off with its own `--<prefix>-<what>-animation-duration: 0s` token, whose
+  default points at a speed token. Motion page MO03 demos `animateOut` (cancel, `0s` = instant, one
+  animation off); the API summary is MO04. Rulebook C-NC-15 / C-CA-18 check it.
+- "Sheet" defined where the sheet-bar variables are listed: a panel that covers the page on a phone
+  (bottom sheet, side drawer, full-screen picker); every component names its bar variables
+  `--<prefix>-sheet-*` with core's 19 suffixes.
 
 ### Fixed
-- `observeEnvironment()` / `observeViewport()`: the last unsubscribe no longer removes window /
-  document listeners that were never added (no `matchMedia`, e.g. jsdom).
-- `createTooltip({ shouldFollowCursor })`: the cursor point is kept relative to the trigger, so a
-  scroll moves the tooltip with it. It used to stay put on screen — a card tapped on a phone keeps
-  focus, so its tooltip floated over the page after the card scrolled away.
-
-## [1.0.0-rc23] - 2026-11-13
-
-### Added
-
-- **`claimBackEntry(onBack)` (main index, SPEC §12.9)** — the phone Back gesture for a full-screen
-  sheet / modal: one history entry (same URL) for the whole page while a sheet is open; Back runs the
-  newest claim's `onBack` (claim again from inside it to go up one level), the returned release gives
-  the entry back one task later (a sheet opening right after adopts it), and the page keeps its scroll
-  position. It was `/menu`'s private helper; web-grid, web-multiselect and web-daterangepicker each had
-  their own copy (per-instance or page-wide; web-daterangepicker's jumped to the top on close like the
-  menu's) and now use it. Rulebook
-  C-RO-15 checks no component pushes its own history entry. The entry's `history.state` is now
-  `{ kmBackEntry: true }` (was `{ kmMenuSheet: true }`).
-
-### Fixed
-
 - **Closing a menu's phone sheet no longer scrolls the page to the top.** The sheet pushes its
   history entry (phone Back) while the page is scroll-locked (body pinned, window scroll 0), so
   the browser recorded 0 for the page's entry and restored it when the entry was given back (close
@@ -99,6 +98,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   While a sheet holds its entry the page's entry now uses `history.scrollRestoration = 'manual'`;
   the page's own mode comes back one task after its entry is current again (the browser restores
   scroll after `popstate` and reads the mode then).
+- `observeEnvironment()` / `observeViewport()`: the last unsubscribe no longer removes window /
+  document listeners that were never added (no `matchMedia`, e.g. jsdom).
+- `createTooltip({ shouldFollowCursor })`: the cursor point is kept relative to the trigger, so a
+  scroll moves the tooltip with it. It used to stay put on screen — a card tapped on a phone keeps
+  focus, so its tooltip floated over the page after the card scrolled away.
 
 ## [1.0.0-rc22] - 2026-11-11
 

@@ -20,14 +20,17 @@ theme context, motion level, a shared scroll lock and overlay tree, container sc
 > **[`docs/SPEC.md`](docs/SPEC.md) is the source of truth** for design intent. This README is
 > the landing page; read the relevant SPEC section before changing behavior.
 
-## What's New in v1.0.0-rc23
+## What's New in v1.0.0-rc24
 
-Upgrade guide: the [1.0.0-rc23 release notes](release-notes/1.0.0-rc23.md); full list: the [CHANGELOG 1.0.0-rc23 section](CHANGELOG.md).
+Upgrade guide: the [1.0.0-rc24 release notes](release-notes/1.0.0-rc24.md); full list: the [CHANGELOG 1.0.0-rc24 section](CHANGELOG.md). Also carries 1.0.0-rc23, which was never published.
 
-A phone fix found in the rc22 demo, and the Back gesture behind it as one core helper. No code change needed.
+Phone sheets finished, and one rule for animations. No code change needed unless you style the menu sheet's header padding / title weight.
 
-- **Phone sheets — closing no longer scrolls the page to the top** — A sheet locks page scroll before it pushes its Back history entry, so the browser recorded scroll 0 for the page and restored it on close, after the lock had put the page back. While a sheet holds its entry the page now uses `history.scrollRestoration = 'manual'`, and gets its own mode back once the sheet is gone. Seen in the menu sheet and web-daterangepicker.
-- **`claimBackEntry()` — one phone Back gesture for every sheet** — `/menu`, web-grid, web-multiselect and web-daterangepicker each pushed their own history entry so the phone Back button closes a sheet: per instance or page-wide, giving it back at once or deferred. `claimBackEntry(onBack)` on the main index is now the one way: one entry for the page, Back runs the newest `onBack` (claim again inside it to go up one level), the release gives the entry back one task later so the next sheet can take it over, and the scroll position stays. Rulebook C-RO-15 flags a component's own `pushState()`.
+- **One sheet header — `SHEET_CHROME_CSS` + `createSheetHeader()`** — `/menu`, web-grid, web-multiselect, web-daterangepicker and web-dropzone each drew the top bar of their phone sheet on their own. Core now builds it: a title and a round 44px ✕ whose tap area reaches the corner, themed with `--km-sheet-*` page-wide and `--<prefix>-sheet-*` per component (19 shared suffixes).
+- **`claimBackEntry()` — one phone Back gesture, and the page keeps its scroll** — Four copies of "push a history entry so Back closes the sheet" become one helper: one entry for the page, Back runs the newest `onBack`, the next sheet takes the entry over. Closing a sheet no longer scrolls the page to the top: the browser had recorded scroll 0 while the page was locked.
+- **`/menu` — side drawer, per-device presentation, animations** — `presentation: 'drawer'` + `side`, a `presentationMap` per device class (`{ tablet: 'drawer' }`), an open menu that follows a device-class change, the standard `menu-presentation` / `menu-side` inputs via `menuPresentationInputs()`, and a slide + fade on the motion tokens. Menus now stack at 9001 (was 10000).
+- **`animateOut()` and one motion switch** — Something that disappears has to wait for its closing animation; `animateOut(elements, { className, onDone })` adds the class, waits for each element's own `animationend` (with a timeout for hidden tabs), runs `onDone` at once when motion is off, and can be cancelled mid-close. `motion` is the only animation switch — no `is…AnimationEnabled` inputs; one animation is turned off with its own `--<prefix>-<what>-animation-duration: 0s` token.
+- **Follow-cursor tooltip scrolls with its trigger** — On a phone a tapped card kept its tooltip floating over the page after the card scrolled away; the cursor point is now kept relative to the trigger.
 
 ## What's New in v1.0.0-rc22
 
