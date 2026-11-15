@@ -2229,6 +2229,24 @@ Every level sets the scroll behaviour too, so a level nested inside another (`sm
 base-css-variables, so a later page stylesheet can win there; core's adopted copy comes after the
 page's styles, so on pages with components the level holds.
 
+**What `motion` covers (decided 2026-11-15).** Every *decorative* animation — one that shows a change
+happening: appear / disappear, expand / collapse, a size change, a highlight fade, smooth scrolling.
+At `none` (or OS reduced motion) they are instant. They are timed ONLY by `--<prefix>-transition-*` →
+`--base-duration-*`. Not covered: **timers** (a delay before something happens — feedback time,
+debounce, tooltip delay, auto-close) keep their time; **activity indicators** (a loader) keep moving —
+the only sign something runs — slower under OS reduced motion. A visual OF a timer (a countdown bar)
+is decorative: hidden at `none` as under reduced motion.
+
+**One switch, no per-feature properties.** `motion` is the only "animate or not" setting — no
+`isRowAnimationEnabled` / `isContextMenuAnimationEnabled`, no animations object (rulebook
+naming-conventions "Motion is CSS, never an attribute", C-NC-15). Fine-tuning ONE animation is its CSS
+duration token, `--<prefix>-<what>-animation-duration` (`--km-menu-sheet-duration`,
+`--wtv-row-animation-duration`): `0s` turns it off, at any level the cascade reaches (page `:root`, a
+section, one instance). Its default points at a speed token (`var(--<prefix>-transition-normal)`),
+never a literal time, so `motion` and reduced motion still win over it; a page author who writes a
+literal opts that animation out on purpose. JS-driven animations need nothing extra:
+`animateOut` reads the computed duration, so `0s` is instant there too.
+
 **Enter / exit animations (`animateOut`, `src/dom/animate-out.ts`, main index, decided 2026-11-14).**
 An element that appears animates with a CSS `@keyframes` that plays on insertion — no JS. One that
 disappears gets a closing class whose `forwards` keyframe uses the `-in` easing, and the caller

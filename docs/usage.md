@@ -353,6 +353,21 @@ page (core writes `window.components.motion` on `<html data-motion>`) → the co
                                                          left on auto outside the section -->
 ```
 
+### What `motion` covers, and switching off one animation
+
+`motion` is the ONE "animate or not" setting — components have no `is…AnimationEnabled` properties.
+It covers every decorative animation (appear / disappear, expand / collapse, size changes, highlight
+fades, smooth scrolling); timers (feedback time, debounce, tooltip delay) and loaders keep running.
+To switch off just ONE animation, set its duration token to `0s`, anywhere the cascade reaches:
+
+```css
+:root            { --wtv-row-animation-duration: 0s; }   /* every tree on the page: rows don't animate */
+#files-menu-host { --km-menu-sheet-duration: 0s; }       /* one component's menu sheet */
+```
+
+A component's per-animation token defaults to a speed token (`var(--xx-transition-normal)`), so
+`motion="none"` and reduced motion still switch it off; a literal time (`0.3s`) would opt it out.
+
 ### Animating something out (`animateOut`)
 
 Appearing needs no JavaScript: a CSS `@keyframes` on the new element plays when it is inserted.
