@@ -36,6 +36,18 @@ test.beforeEach(async ({ page }) => {
 test.describe('phone (touch, 390 x 844)', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
 
+  test('the close chip shows no hover tint on touch (it sticks after a tap); pressing tints it', async ({ page }) => {
+    await actionsButton(page).tap();
+    await animated(page);
+    const closeButton = files(page).locator('.km-sheet-close');
+    const bg = () => closeButton.evaluate((el) => getComputedStyle(el).backgroundColor);
+    await closeButton.hover();
+    expect(await bg()).toBe('rgba(0, 0, 0, 0)');
+    await page.mouse.down();
+    expect(await bg()).not.toBe('rgba(0, 0, 0, 0)');
+    await page.mouse.up();
+  });
+
   test('the dropdown opens as a bottom sheet: full width, header, touch-size rows, page locked; an item runs', async ({ page }) => {
     await actionsButton(page).tap();
     await expect(sheet(page)).toBeVisible();
@@ -203,6 +215,17 @@ test.describe('desktop', () => {
     await page.keyboard.press('Escape'); // closes the submenu
     await page.keyboard.press('Escape');
     await expect(files(page).locator('.km-menu')).toHaveCount(0);
+  });
+
+  test('the sheet close chip tints on mouse hover', async ({ page }) => {
+    await files(page).evaluate((el) => (el.dataset.presentation = 'drawer'));
+    await actionsButton(page).click();
+    await animated(page);
+    const closeButton = files(page).locator('.km-sheet-close');
+    const bg = () => closeButton.evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(await bg()).toBe('rgba(0, 0, 0, 0)');
+    await closeButton.hover();
+    expect(await bg()).not.toBe('rgba(0, 0, 0, 0)');
   });
 
   test("presentation 'drawer': a full-height panel on the start edge (end with side 'end'), sliding in / out", async ({ page }) => {

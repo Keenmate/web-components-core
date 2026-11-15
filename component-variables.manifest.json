@@ -97,7 +97,7 @@
     { "name": "km-sheet-close-icon", "category": "sheet", "usage": "Close icon, a mask image (→ --base-icon-close, default the base ✕)" },
     { "name": "km-sheet-close-color", "category": "sheet", "usage": "Close icon colour (default inherit)" },
     { "name": "km-sheet-close-bg", "category": "sheet", "usage": "Close chip background (default transparent)" },
-    { "name": "km-sheet-close-bg-hover", "category": "sheet", "usage": "Close chip hover background (→ --base-hover-bg)" },
+    { "name": "km-sheet-close-bg-hover", "category": "sheet", "usage": "Close chip background on mouse hover and while pressed (→ --base-hover-bg)" },
     { "name": "km-sheet-close-border", "category": "sheet", "usage": "Close chip border (default none; with a radius and a bg it reads as a bordered button)" },
     { "name": "km-sheet-close-border-radius", "category": "sheet", "usage": "Close chip radius (default 50%)" },
     { "name": "km-sheet-close-edge-nudge", "category": "sheet", "usage": "How far the close button slides past the header padding toward the edge (→ --base-space-sm, default 8px)" },

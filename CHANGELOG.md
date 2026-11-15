@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Sheet close chip (`SHEET_CHROME_CSS`): the hover tint applies only with a real pointer
+  (`@media (hover: hover)`), and pressing tints it (`:active`). On touch the circle used to stick
+  after a tap, and a sheet opening under a resting mouse showed it at once.
+
 ## [1.0.0-rc24] - 2026-11-15
 
 Includes 1.0.0-rc23 (dated 2026-11-13), which was never published.

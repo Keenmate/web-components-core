@@ -35,6 +35,7 @@ const HEADER_PADDING_BLOCK = ks('header-padding-block', rem('space-sm', 0.8));
 const HEADER_PADDING_INLINE = ks('header-padding-inline', rem('space-base', 1.6));
 const CLOSE_SIZE = ks('close-size', 'var(--base-touch-target-min, 44px)');
 const CLOSE_EDGE_NUDGE = ks('close-edge-nudge', rem('space-sm', 0.8));
+const CLOSE_BG_HOVER = ks('close-bg-hover', 'var(--base-hover-bg, color-mix(in srgb, currentColor 8%, transparent))');
 
 export const SHEET_CHROME_CSS = `
 @layer component {
@@ -104,8 +105,16 @@ export const SHEET_CHROME_CSS = `
   mask: ${ks('close-icon', `var(--base-icon-close, ${CLOSE_ICON})`)} center / contain no-repeat;
 }
 
-.km-sheet-close:hover {
-  background: ${ks('close-bg-hover', 'var(--base-hover-bg, color-mix(in srgb, currentColor 8%, transparent))')};
+/* Hover only with a real pointer: on touch :hover sticks after a tap, and a sheet opening under a
+   resting mouse would show the tint at once. :active is the press feedback on touch. */
+@media (hover: hover) {
+  .km-sheet-close:hover {
+    background: ${CLOSE_BG_HOVER};
+  }
+}
+
+.km-sheet-close:active {
+  background: ${CLOSE_BG_HOVER};
 }
 
 .km-sheet-close:focus-visible {
