@@ -394,6 +394,12 @@ const out = animateOut(rows, {
 });
 out.cancel();          // re-expanded mid-close: class + inert come off
 await out.finished;    // true after onDone, false when cancelled
+
+// Two elements, each its own BEM modifier: onDone waits for the longer animation.
+animateOut([panel, backdrop], {
+  className: (el) => (el === backdrop ? 'xx__backdrop--closing' : 'xx__panel--closing'),
+  onDone: () => { panel.remove(); backdrop.remove(); },
+});
 ```
 
 `readAnimationMs(el)` is the read underneath: the longest `delay + duration` of the element's

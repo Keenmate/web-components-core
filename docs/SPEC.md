@@ -2250,7 +2250,7 @@ literal opts that animation out on purpose. JS-driven animations need nothing ex
 **Enter / exit animations (`animateOut`, `src/dom/animate-out.ts`, main index, decided 2026-11-14).**
 An element that appears animates with a CSS `@keyframes` that plays on insertion — no JS. One that
 disappears gets a closing class whose `forwards` keyframe uses the `-in` easing, and the caller
-removes / collapses it only after: `animateOut(elements, { className, onDone, shouldSetInert = true,
+removes / collapses it only after: `animateOut(elements, { className /* string, or (el) => string per element */, onDone, shouldSetInert = true,
 shouldSetHeightVar = false })` → `{ cancel(), finished: Promise<boolean> }`. It reads the duration back
 from CSS (`readAnimationMs(el)`: the longest `delay + duration` over the animation list, `0` for none
 or `0s`), so the motion level, the component's own knob and reduced motion need no code: at `0` it

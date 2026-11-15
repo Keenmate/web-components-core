@@ -794,10 +794,9 @@ export function openMenu<Ctx, A extends string = string>(
 
   /** Close animation (motion tokens, SPEC §12.16), then out of the DOM; none → removed at once. */
   function removeSheetAnimated(sheetEl: HTMLElement, backdropEl: HTMLElement): void {
-    // The backdrop fades alongside; the sheet's own animation decides when both go.
-    backdropEl.classList.add(`${SHEET}-backdrop--closing`);
-    animateOut(sheetEl, {
-      className: `${SHEET}--closing`,
+    // Each its own modifier; both go once the longer of the two animations ends.
+    animateOut([sheetEl, backdropEl], {
+      className: (el) => (el === backdropEl ? `${SHEET}-backdrop--closing` : `${SHEET}--closing`),
       onDone: () => {
         sheetEl.remove();
         backdropEl.remove();

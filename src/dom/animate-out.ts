@@ -47,8 +47,12 @@ export function readAnimationMs(el: Element): number {
 
 /** Options for {@link animateOut}. */
 export interface AnimateOutOptions {
-  /** The closing class added to every element; its CSS runs the disappear `@keyframes` (`forwards`). */
-  className: string;
+  /**
+   * The closing class; its CSS runs the disappear `@keyframes` (`forwards`). A function is asked once
+   * per element — different BEM modifiers on one call (`cp__container--closing` /
+   * `cp__backdrop--closing`), so `cancel()` takes each one's own class off and `onDone` waits for both.
+   */
+  className: string | ((el: Element) => string);
   /**
    * Runs once every element's closing animation ended (at once when there is none): remove the
    * elements, collapse the node, … Never runs after `cancel()`. A throw is logged.
@@ -85,6 +89,10 @@ export interface AnimateOutHandle {
  *
  * ```ts
  * animateOut(rows, { className: 'wtv__row--closing', shouldSetHeightVar: true, onDone: () => collapse(node) });
+ * animateOut([panel, backdrop], {
+ *   className: (el) => (el === backdrop ? 'xx__backdrop--closing' : 'xx__panel--closing'),
+ *   onDone: () => { panel.remove(); backdrop.remove(); },
+ * });
  * ```
  */
 export function animateOut(elements: Element | readonly Element[], opts: AnimateOutOptions): AnimateOutHandle {
@@ -98,7 +106,9 @@ export function animateOut(elements: Element | readonly Element[], opts: Animate
     const heights = html.map((el) => el.getBoundingClientRect().height);
     html.forEach((el, i) => el.style.setProperty(EXIT_HEIGHT_VAR, `${heights[i]}px`));
   }
-  for (const el of targets) el.classList.add(opts.className);
+  // Resolved once per element, so cancel() removes exactly what was added.
+  const classes = new Map(targets.map((el) => [el, typeof opts.className === 'function' ? opts.className(el) : opts.className]));
+  for (const el of targets) el.classList.add(classes.get(el)!);
   if (shouldSetInert) for (const el of html) el.inert = true;
 
   let resolveFinished!: (isDone: boolean) => void;
@@ -126,7 +136,7 @@ export function animateOut(elements: Element | readonly Element[], opts: Animate
       const { onDone } = opts;
       if (onDone) callSafely(onDone, { source: targets[0] ?? null, message: 'animateOut onDone threw' });
     } else {
-      for (const el of targets) el.classList.remove(opts.className);
+      for (const el of targets) el.classList.remove(classes.get(el)!);
     }
     restore();
     resolveFinished(isDone);

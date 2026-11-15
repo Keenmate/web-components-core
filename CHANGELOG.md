@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `animateOut(elements, { className, onDone, shouldSetInert, shouldSetHeightVar })` → `{ cancel(),
-  finished }` and `readAnimationMs(el)` (main index, SPEC §12.16): the one way to animate something
+  finished }` (`className` may be `(el) => string`: one BEM modifier per element) and `readAnimationMs(el)` (main index, SPEC §12.16): the one way to animate something
   out — closing class, wait for its keyframe (timed by the motion tokens; `0s` → at once), then
   remove / collapse. `shouldSetHeightVar` writes `--km-exit-height` so a row can shrink in the flow.
   The `/menu` sheet close uses it; `readAnimationMs` now takes the longest of several animations and

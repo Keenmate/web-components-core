@@ -136,6 +136,33 @@ describe('animateOut', () => {
     expect(inertDuringDone).toBeFalsy(); // never set (jsdom: undefined)
   });
 
+  it('className as a function: one class per element, onDone waits for all, cancel removes each own class', async () => {
+    vi.useFakeTimers();
+    const panel = div();
+    const backdrop = div();
+    fakeAnimation(new Map([
+      [panel, { animationName: 'out', animationDuration: '0.2s' }],
+      [backdrop, { animationName: 'fade', animationDuration: '0.3s' }],
+    ]));
+    const className = (el: Element): string => (el === backdrop ? 'x__backdrop--closing' : 'x__panel--closing');
+    const onDone = vi.fn();
+    animateOut([panel, backdrop], { className, onDone });
+    expect(panel.classList.contains('x__panel--closing')).toBe(true);
+    expect(backdrop.classList.contains('x__backdrop--closing')).toBe(true);
+    expect(panel.classList.contains('x__backdrop--closing')).toBe(false);
+    expect(backdrop.inert).toBe(true);
+    end(panel);
+    expect(onDone).not.toHaveBeenCalled(); // the longer backdrop fade still runs
+    end(backdrop);
+    expect(onDone).toHaveBeenCalledTimes(1);
+
+    const again = animateOut([panel, backdrop], { className, onDone: vi.fn() });
+    again.cancel();
+    expect(panel.classList.contains('x__panel--closing')).toBe(false);
+    expect(backdrop.classList.contains('x__backdrop--closing')).toBe(false);
+    await expect(again.finished).resolves.toBe(false);
+  });
+
   it('a throwing onDone is logged, and finished still resolves true', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const handle = animateOut(div(), { className: 'x--closing', onDone: () => { throw new Error('boom'); } });
