@@ -1,6 +1,27 @@
 <meta name="kmwc:title" content="Motion level">
 <meta name="kmwc:subtitle" content="One switch for how much every component animates: <code>motion=&quot;auto | none | snappy | smooth&quot;</code> on an element, <code>window.components.motion</code> for the page, and <code>data-motion</code> on any element (a section, <code>&lt;html&gt;</code>) for everything inside. Components follow through the shared <code>--base-duration-*</code> / <code>--base-scroll-behavior</code> tokens, with or without base-css-variables on the page.">
 <meta name="kmwc:entry" content="none">
+<style>
+    /* MO03: the demo's own animation, timed ONLY through tokens (its per-animation token → a speed token). */
+    .mo-list { display: grid; gap: 0.4rem; max-width: 22rem; }
+    .mo-item {
+        overflow: hidden;
+        padding: 0.5rem 0.8rem;
+        border-radius: var(--kmwc-radius-sm);
+        background: var(--kmwc-elevated-bg);
+        animation: mo-item-in var(--mo-item-animation-duration, var(--base-duration-slow, 0.3s)) var(--base-ease-out, ease-out);
+    }
+    .mo-item--closing {
+        animation: mo-item-out var(--mo-item-animation-duration, var(--base-duration-slow, 0.3s)) var(--base-ease-in, ease-in) forwards;
+    }
+    @keyframes mo-item-in { from { opacity: 0; transform: translateX(-1rem); } }
+    /* --km-exit-height: written by animateOut({ shouldSetHeightVar }) — CSS can't shrink from height: auto. */
+    @keyframes mo-item-out {
+        from { height: var(--km-exit-height); }
+        to { height: 0; padding-block: 0; opacity: 0; transform: translateX(1rem); }
+    }
+    .mo-off { --mo-item-animation-duration: 0s; }
+</style>
 
         <div class="note warning">
             <div class="note-title">The OS reduced-motion setting always wins. See SPEC §12.16</div>
@@ -117,10 +138,65 @@ el.motion = 'snappy';</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
-        <!-- MO03 · API summary                                            -->
+        <!-- MO03 · Animating out, and switching off one animation         -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>MO03 · API summary</h2>
+            <h2>MO03 · Animating out, and switching off one animation</h2>
+            <p>
+                <code>motion</code> is the one "animate or not" switch. It covers every <strong>decorative</strong>
+                animation, i.e. one that shows a change happening: appear / disappear, expand / collapse, a size change,
+                a highlight fade, smooth scrolling. It does <strong>not</strong> touch <strong>timers</strong> (a feedback
+                time, a debounce, a tooltip delay keep their time) or <strong>activity indicators</strong> (a loader keeps
+                spinning — the only sign something runs). Components have no <code>is…AnimationEnabled</code> properties.
+            </p>
+            <p>
+                To switch off just <strong>one</strong> animation, set its duration token to <code>0s</code>, anywhere
+                the cascade reaches. Its default points at a speed token, so <code>motion</code> still wins over it.
+                Below, the list items animate in and out with core <code>animateOut()</code>; the knob next to them is
+                a different animation.
+            </p>
+            <ul>
+                <li><strong>Remove</strong> → the last item animates out, then leaves the page (<code>onDone</code>).</li>
+                <li><strong>Add</strong> while an item is still closing → <code>cancel()</code>: it comes back instead.</li>
+                <li><code>data-motion="none"</code> on the area → everything is instant, no waiting.</li>
+                <li>The checkbox → only the items are instant; the knob still slides.</li>
+            </ul>
+            <div class="controls">
+                <label>area <code>data-motion</code>
+                    <select id="mo03-motion" class="w-sm">
+                        <option value="">(none)</option><option>none</option><option>snappy</option><option>smooth</option>
+                    </select>
+                </label>
+                <label><input type="checkbox" id="mo03-off"> <code>--mo-item-animation-duration: 0s</code> (just the items)</label>
+                <button id="mo03-remove">Remove</button>
+                <button id="mo03-add" class="btn-outline">Add</button>
+                <button id="mo03-slide" class="btn-outline">Slide the knob</button>
+            </div>
+            <div class="grid-2 mt-1" id="mo03-area">
+                <div class="mo-list" id="mo03-list"></div>
+                <core-demo-motion id="mo03-knob" label="another animation (the knob)"></core-demo-motion>
+            </div>
+            <div class="log-panel log-panel--dark mt-1" data-empty="Press Remove." id="mo03-log"></div>
+            <div class="code-block" data-language="css"><pre><code>.xx__row { animation: xx-row-in var(--xx-row-animation-duration, var(--xx-transition-normal)) var(--base-ease-out); }
+.xx__row--closing { animation: xx-row-out var(--xx-row-animation-duration, var(--xx-transition-normal)) var(--base-ease-in) forwards; }
+@keyframes xx-row-out { from { height: var(--km-exit-height); } to { height: 0; opacity: 0; } }
+
+:root { --xx-row-animation-duration: 0s; }   /* only the rows stop animating */</code></pre></div>
+            <div class="code-block" data-language="js"><pre><code>import { animateOut } from '@keenmate/web-components-core';
+
+const out = animateOut(row, {
+  className: 'xx__row--closing',
+  shouldSetHeightVar: true,            // --km-exit-height: shrink in the flow
+  onDone: () =&gt; row.remove(),          // at once when the duration is 0s
+});
+out.cancel();                          // re-added mid-close: the class comes off, onDone never runs</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- MO04 · API summary                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>MO04 · API summary</h2>
             <table class="reference-table">
                 <thead><tr><th>API</th><th>What it does</th></tr></thead>
                 <tbody>
@@ -133,7 +209,10 @@ el.motion = 'snappy';</code></pre></div>
                     <tr><td><code>MOTION_CSS</code></td><td>The <code>[data-motion]</code> rules that set those tokens, plus the <code>prefers-reduced-motion: reduce</code> rule that zeroes them.</td></tr>
                     <tr><td><code>adoptMotionStyles(node)</code></td><td>Adopts <code>MOTION_CSS</code> into the root <code>node</code> lives in and into its document. Core does this for every element; idempotent.</td></tr>
                     <tr><td><code>MOTION_ATTRIBUTE</code> · <code>MOTION_DATA_ATTRIBUTE</code></td><td><code>'motion'</code> (the input) · <code>'data-motion'</code> (what core writes).</td></tr>
-                    <tr><td>Types</td><td><code>Motion</code>.</td></tr>
+                    <tr><td><code>animateOut(elements, { className, onDone, shouldSetInert, shouldSetHeightVar })</code></td><td>Adds the closing class (a string, or <code>(el) =&gt; string</code> per element) and <code>inert</code>, waits for each element's own <code>animationend</code> (gives up after the duration + 50ms), then runs <code>onDone</code> — at once when the duration is <code>0s</code>. Returns <code>{ cancel(), finished }</code>; <code>finished</code> resolves <code>true</code> after <code>onDone</code>, <code>false</code> when cancelled.</td></tr>
+                    <tr><td><code>readAnimationMs(el)</code></td><td>The longest <code>delay + duration</code> of the element's current CSS animations, in ms; <code>0</code> for none.</td></tr>
+                    <tr><td><code>EXIT_HEIGHT_VAR</code></td><td><code>'--km-exit-height'</code>: what <code>shouldSetHeightVar</code> writes (each element's height in px).</td></tr>
+                    <tr><td>Types</td><td><code>Motion</code>, <code>AnimateOutOptions</code>, <code>AnimateOutHandle</code>.</td></tr>
                 </tbody>
             </table>
             <div class="note">
@@ -141,14 +220,15 @@ el.motion = 'snappy';</code></pre></div>
                 Closest wins, like CSS inheritance: the element's own <code>motion</code> → the nearest
                 <code>data-motion</code> (a section) → the page → the component's own speed. The OS "reduce motion"
                 setting always wins. Components animate only through the <code>--base-duration-*</code> /
-                <code>--base-scroll-behavior</code> tokens.
+                <code>--base-scroll-behavior</code> tokens. One animation is switched off by its own
+                <code>--&lt;prefix&gt;-&lt;what&gt;-animation-duration: 0s</code>, never by a property.
             </div>
         </div>
 
     <script type="module" src="examples-motion-card.ts"></script>
 
     <script type="module">
-        import { getPageMotion } from '/src/index.ts';
+        import { animateOut, getPageMotion, readAnimationMs } from '/src/index.ts';
 
         await customElements.whenDefined('core-demo-motion');
         const $ = (id) => document.getElementById(id);
@@ -285,6 +365,68 @@ el.motion = 'snappy';</code></pre></div>
         });
         // The page level lives on <html>: don't carry it into the next page of the examples.
         window.addEventListener('pagehide', resetMo02);
+
+        // MO03 ------------------------------------------------------------
+        const list = $('mo03-list');
+        const area = $('mo03-area');
+        /** Items still animating out → their animateOut handle (newest last). */
+        const closing = new Map();
+        let itemSeq = 0;
+        const addItem = () => {
+            const item = document.createElement('div');
+            item.className = 'mo-item';
+            item.textContent = `Item ${++itemSeq}`;
+            list.append(item);
+            return item;
+        };
+        for (let i = 0; i < 4; i++) addItem();
+
+        $('mo03-remove').addEventListener('click', () => {
+            const item = [...list.children].reverse().find((el) => !closing.has(el));
+            if (!item) return;
+            const started = performance.now();
+            const out = animateOut(item, {
+                className: 'mo-item--closing',
+                shouldSetHeightVar: true,
+                onDone: () => {
+                    closing.delete(item);
+                    item.remove();
+                    const took = Math.round(performance.now() - started);
+                    log('mo03-log', took ? 'ok' : 'muted', item.textContent,
+                        took ? `removed after ${took} ms (onDone)` : 'removed at once — duration 0s, no waiting');
+                },
+            });
+            if (item.isConnected) {
+                closing.set(item, out);
+                log('mo03-log', 'action', item.textContent, `animating out — readAnimationMs = ${readAnimationMs(item)} ms`);
+            }
+        });
+        $('mo03-add').addEventListener('click', () => {
+            const last = [...closing.keys()].pop();
+            if (last) {
+                closing.get(last).cancel();
+                closing.delete(last);
+                log('mo03-log', 'warn', last.textContent, 'cancel() — back before it left; onDone never runs');
+            } else {
+                const item = addItem();
+                log('mo03-log', 'info', item.textContent, 'added — the enter keyframe plays on insert (no JS)');
+            }
+        });
+        $('mo03-motion').addEventListener('change', (e) => {
+            setData(area, e.target.value);
+            log('mo03-log', 'action', 'area', e.target.value ? `data-motion="${e.target.value}"` : 'data-motion removed');
+        });
+        $('mo03-off').addEventListener('change', (e) => {
+            area.classList.toggle('mo-off', e.target.checked);
+            log('mo03-log', 'action', 'items', e.target.checked
+                ? '--mo-item-animation-duration: 0s (the knob keeps its speed)'
+                : 'token back to its default (a speed token)');
+        });
+        $('mo03-slide').addEventListener('click', () => {
+            const knob = $('mo03-knob');
+            knob.toggle();
+            log('mo03-log', knob.durations.transition === '0s' ? 'muted' : 'info', 'knob', `transition ${knob.durations.transition}`);
+        });
 
         const showOs = () => { $('os-status').textContent = reduced.matches ? 'yes' : 'no'; render2(); };
         reduced.addEventListener('change', showOs);
