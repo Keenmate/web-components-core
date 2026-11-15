@@ -264,7 +264,10 @@ that opens right after adopts it), and the page keeps its scroll position (no ju
 
 ### Sheet header (title + close button)
 
-One header bar for every sheet ([SPEC §12.9](SPEC.md)) — never a component's own ✕ button CSS:
+A **sheet** is a panel that covers the page on a phone — a bottom sheet, a side drawer, a full-screen
+picker. One header bar for every sheet ([SPEC §12.9](SPEC.md)) — never a component's own ✕ button CSS.
+Its variables (`--km-sheet-*`, a component's `--<prefix>-sheet-*`) style that top bar only: the strip
+(`header-*`), its title (`title-*`) and the round close button (`close-*`):
 
 ```ts
 import { adoptStyles, createSheetHeader, SHEET_CHROME_CSS } from '@keenmate/web-components-core';

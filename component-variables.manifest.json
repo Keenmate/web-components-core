@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/keenmate/schemas/main/component-variables.schema.json",
   "component": "@keenmate/web-components-core",
   "prefix": "km",
-  "description": "Shared UI rendered by core: the /menu context / dropdown menu (--km-menu-*) and the phone sheet chrome every sheet uses (--km-sheet-*: header, title, close button). Each value (likewise --_km-sheet-X / --km-sheet-X) reads var(--_km-menu-X, var(--km-menu-X, var(--base-…, <default>))): the component's per-instance variable (mapped by the component onto the private --_km-menu-X with no fallback) wins, then the page-wide --km-menu-X (set on :root; components never set it), then the --base-* theme, then the default.",
+  "description": "Shared UI rendered by core: the /menu context / dropdown menu (--km-menu-*) and the phone sheet chrome every sheet uses (--km-sheet-*: header, title, close button; a sheet is a panel that covers the page on a phone — a bottom sheet, a side drawer, a full-screen picker). Each value (likewise --_km-sheet-X / --km-sheet-X) reads var(--_km-menu-X, var(--km-menu-X, var(--base-…, <default>))): the component's per-instance variable (mapped by the component onto the private --_km-menu-X with no fallback) wins, then the page-wide --km-menu-X (set on :root; components never set it), then the --base-* theme, then the default.",
   "baseVariables": [
     { "name": "base-dropdown-bg", "required": false, "usage": "Menu background (→ --km-menu-bg)" },
     { "name": "base-elevated-bg", "required": false, "usage": "Menu background when --base-dropdown-bg is unset" },
