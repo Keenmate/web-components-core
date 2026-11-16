@@ -12,6 +12,7 @@ import { SHEET_CHROME_CSS, createSheetHeader } from '../overlay/sheet-chrome.js'
 import { startModalSession, type ModalDismissReason } from '../overlay/modal-session.js';
 import { callSafely } from '../logging/safe-call.js';
 import { adoptMotionStyles } from '../environment/motion.js';
+import { createId } from '../dom/create-id.js';
 import { DIALOG_CSS } from './styles.js';
 
 /** Button texts (from the component's / app's `labels`); English defaults. */
@@ -70,7 +71,6 @@ export interface DialogHandle {
 }
 
 const DEFAULT_LABELS: Required<DialogLabels> = { ok: 'OK', cancel: 'Cancel', close: 'Close' };
-let idCounter = 0;
 
 /** Open a modal dialog. SSR: returns a handle whose `result` resolves `null` at once. */
 export function openDialog(opts: OpenDialogOptions = {}): DialogHandle {
@@ -80,7 +80,7 @@ export function openDialog(opts: OpenDialogOptions = {}): DialogHandle {
   }
   const labels = { ...DEFAULT_LABELS, ...opts.labels };
   const isDismissible = opts.isDismissible ?? true;
-  const id = `km-dialog-${++idCounter}`;
+  const id = createId('km-dialog');
 
   const layer = document.createElement('div');
   layer.className = 'km-dialog-layer';
@@ -218,7 +218,7 @@ export interface PromptDialogOptions extends Pick<OpenDialogOptions, 'title' | '
 export async function promptDialog(opts: PromptDialogOptions = {}): Promise<string | null> {
   if (typeof document === 'undefined') return null;
   const labels = { ...DEFAULT_LABELS, ...opts.labels };
-  const id = `km-dialog-field-${++idCounter}`;
+  const id = createId('km-dialog-field');
   const field = document.createElement('div');
   field.className = 'km-dialog__field';
   if (opts.label) {

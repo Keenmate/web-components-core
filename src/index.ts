@@ -61,6 +61,8 @@ export { createFrameScheduler } from './dom/frame-scheduler.js';
 export type { FrameScheduler } from './dom/frame-scheduler.js';
 export { isMotionOff, readScrollBehavior, readCssDurationMs, readCssLengthPx, parseCssTimeMs } from './dom/css-values.js';
 export { Z_INDEX } from './dom/z-index.js';
+export { isRtl } from './dom/direction.js';
+export { createId } from './dom/create-id.js';
 export { createFocusTrap, getTabbables } from './dom/focus-trap.js';
 export type { FocusTrap, FocusTrapOptions } from './dom/focus-trap.js';
 export type { ZIndexTier } from './dom/z-index.js';

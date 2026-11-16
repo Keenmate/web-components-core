@@ -2404,3 +2404,16 @@ the edges (tabbables on the flat tree), focus goes in and comes back when it was
 `<body>`). Why not native `<dialog>`: the top layer sits above every z-index, so a component's portaled
 dropdown / tooltip would have to mount inside the dialog (`findOverlayContainer` handles that for the
 consumer's own `<dialog>`, §12.2); the tiers (§12.18) keep nesting simple.
+
+### 12.20 Direction + ids — IMPLEMENTED (`src/dom/direction.ts`, `src/dom/create-id.ts`, main index)
+
+**`isRtl(el)`** — the effective CSS `direction` (a `dir` anywhere up the composed tree, `dir="auto"`, a CSS
+`direction` rule); detached / no layout engine → the nearest `dir` attribute across shadow roots.
+`BlissElement.isRtl` and `/menu` (which read only the `[dir]` attribute before) use it. Components had three
+answers: the host's computed style (web-multiselect, web-daterangepicker), the host's own `dir` only
+(web-dropzone), `document.dir` only (web-grid's toolbar).
+
+**`createId(prefix = 'km')`** — `<prefix>-<counter><random>`, a valid id and CSS identifier, unique per page
+even with two bundled copies of core. For ARIA references (`aria-labelledby`, `aria-controls`,
+`aria-activedescendant`), `<label for>`, log instance tags, new tree keys. Replaces web-multiselect's
+`Math.random()` instance id, web-treeview's and web-dropzone's `Date.now()` + random keys.

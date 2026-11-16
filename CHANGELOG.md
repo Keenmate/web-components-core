@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `isRtl(el)` (main index, SPEC §12.20): the effective writing direction — CSS `direction`, so `dir` on any
+  ancestor across shadow roots, `dir="auto"` and CSS rules count; the nearest `dir` attribute when detached.
+  `BlissElement.isRtl` uses it. Components answered three ways (host computed style / host `dir` /
+  `document.dir`).
+- `createId(prefix)` (main index): a page-unique id (`ms-option-1k3j9x2`) for ARIA references, `<label for>`,
+  log tags — unique across two bundled copies of core. web-multiselect, web-treeview and web-dropzone mixed
+  `Math.random()` / `Date.now()` themselves.
 - `startModalSession(panel, { backdrop, onDismiss, trigger, … })` (main index, SPEC §12.19): one call for a
   component's own modal panel — the page behind goes `inert`, Tab cycles inside, focus in and back,
   `role="dialog"` + `aria-modal`, an optional backdrop (`true` = core's, or your element; a click dismisses),
@@ -80,6 +87,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   them by hand after floating its host). pure-css port affected.
 
 ### Changed
+- `/menu`: right-to-left comes from `isRtl(opener)` (the effective CSS direction) instead of the nearest `[dir]`
+  attribute only — a page that sets `direction: rtl` in CSS, or `dir="auto"` on Arabic / Hebrew text, now
+  gets mirrored submenus.
 - `setFormatError(null)` clears only `customError`; it used to reset every validity flag, so it also
   cleared a `valueMissing` the component had set (and the component's own `setValidity({})` cleared a format
   error).

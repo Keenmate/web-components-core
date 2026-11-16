@@ -74,6 +74,7 @@ import { dispatch, type DispatchOptions } from './dispatch.js';
 import { withComponentContext, type ComponentContext, type EmitDetail } from './context.js';
 import { hasRemovalWatchers, notifyRemoval } from './removal-watch.js';
 import { warnUnusedPageStyles } from '../dom/custom-styles.js';
+import { isRtl } from '../dom/direction.js';
 import {
   normalizeEventDefs,
   withCoreEvents,
@@ -1249,10 +1250,10 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * Whether the element currently resolves to right-to-left. Reads the effective
    * CSS `direction`, so it accounts for `dir` on the element, an ancestor, `<html>`,
    * or a CSS `direction` rule — not just this element's own `dir` attribute.
-   * Meaningful only while connected (falls back to `false` under SSR / detached).
+   * Detached / without a layout engine: the nearest `dir` attribute (core `isRtl(el)`, SPEC §12.20).
    */
   protected get isRtl(): boolean {
-    return typeof getComputedStyle === 'function' && getComputedStyle(this).direction === 'rtl';
+    return isRtl(this);
   }
 
   /**

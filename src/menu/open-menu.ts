@@ -12,7 +12,8 @@ import { formatShortcut, matchesShortcut } from '../actions/shortcut.js';
 import { deepActiveElement } from '../dom/active-element.js';
 import { adoptStyles } from '../dom/adopt-styles.js';
 import { animateOut } from '../dom/animate-out.js';
-import { composedClosest, composedParent } from '../dom/composed-tree.js';
+import { composedParent } from '../dom/composed-tree.js';
+import { isRtl as isRtlElement } from '../dom/direction.js';
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { coreLog } from '../logging/element-logger.js';
 import { callSafely } from '../logging/safe-call.js';
@@ -140,7 +141,7 @@ export function openMenu<Ctx, A extends string = string>(
   /** The element the menu was opened from (focus returns there). */
   const opener: Element = opts.returnFocusTo ?? (opts.at instanceof Element ? opts.at : hostElement);
   /** Right-to-left (the opener's `dir`): submenus open to the left and ← / → swap. */
-  const isRtl = composedClosest(opener, '[dir]')?.getAttribute('dir')?.toLowerCase() === 'rtl';
+  const isRtl = isRtlElement(opener);
   /** This menu's place in the page-wide stack of open menus — only the topmost handles keys. */
   const menuToken = {};
   let overlay: OverlayHandle | null = null;

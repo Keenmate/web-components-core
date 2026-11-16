@@ -48,6 +48,12 @@ Tab wrap on the panel's keydown (only at the edges; the middle is the browser's)
 tree (shadowRoot children, slot assigned elements); visibility via `checkVisibility` when present (jsdom: all
 visible). Release returns focus only when it was inside the panel or on `<body>`. `startModalSession` wraps it.
 
+## Direction + ids (`src/dom/direction.ts`, `src/dom/create-id.ts`, SPEC §12.20 — implemented)
+
+`isRtl(el)`: computed `direction` when connected with a view; jsdom answers `''` → falls back to
+`composedClosest(el, '[dir]')`. `BlissElement.isRtl` + `/menu` use it. `createId(prefix)`: module counter (base 36)
++ `crypto.getRandomValues` (Math.random fallback); `/dialog` uses it.
+
 ## Persisted UI state (`src/dom/state-store.ts`, SPEC §12.17 — implemented)
 
 `createStateStore(host, { getKey, getLoadCallback?, getSaveCallback?, toContext? })` → `{ load, save, clear }`.
