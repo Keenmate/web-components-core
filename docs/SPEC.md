@@ -2269,6 +2269,11 @@ are put back. Used by `/menu`'s sheet close; components (row expand / collapse) 
 their own waits — rulebook C-CA-18. CSS transitions remain right for an element that STAYS in the
 DOM (a dropdown, a tooltip toggling a class).
 
+JS that has to follow the resolved level reads it at the element (`src/dom/css-values.ts`, main index):
+`isMotionOff(el)` (`--base-duration-normal` is `0s`), `readScrollBehavior(el, prop?)`, `readCssDurationMs(el, prop,
+fallback)` (a speed token for WAAPI) and `readCssLengthPx(el, prop, fallback)` (a hidden probe resolves the length
+where it applies). Components never probe `getComputedStyle` for these themselves.
+
 base-css-variables carries the same `[data-motion]` presets (the reference for the values; a core
 unit test compares them when the repo sits next to core).
 

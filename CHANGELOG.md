@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wins, `ms <= 0` runs synchronously, `ms` may be a function read per call. `createThrottle(fn, ms)` and
   `createFrameScheduler(fn)` (used inside core for resize / viewport) are now exported too. Six components
   had their own debounce / throttle timers.
+- `isMotionOff(el)`, `readScrollBehavior(el, prop?)`, `readCssDurationMs(el, prop, fallback)`,
+  `readCssLengthPx(el, prop, fallback)`, `parseCssTimeMs(value)` (main index, SPEC §12.16): resolved CSS in
+  JS at the element — "is motion off here", the effective scroll behavior, a speed token for WAAPI, a
+  length variable in px. web-commandpalette, web-multiselect and web-dropzone each probed
+  `getComputedStyle` themselves.
 - `anchor()` (`/positioning`): `maxWidth` / `maxHeight` take `{ cap }` — an author limit kept as
   `min(cap, available)` (web-multiselect re-composed it in `onPlaced`); `referenceWidthVar` publishes the
   reference width as a CSS variable before each computation (on the panel, or `{ name, element }`);

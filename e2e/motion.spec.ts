@@ -126,3 +126,31 @@ test('the OS reduced-motion setting always wins — even over motion="smooth"', 
     { duration: '0s', scroll: 'auto' },
   ]);
 });
+
+test('JS readers: isMotionOff / readScrollBehavior / readCssDurationMs / readCssLengthPx follow the level', async ({ page }) => {
+  const read = () =>
+    page.evaluate(() => {
+      const core = (window as any).core;
+      document.querySelector('#js-readers')?.remove();
+      const box = document.createElement('section');
+      box.id = 'js-readers';
+      box.innerHTML =
+        '<motion-probe style="--probe-len: 2.5rem"></motion-probe><motion-probe motion="none"></motion-probe>' +
+        '<section data-motion="none"><motion-probe></motion-probe></section>';
+      document.body.appendChild(box);
+      return [...box.querySelectorAll('motion-probe')].map((p) => ({
+        off: core.isMotionOff(p),
+        scroll: core.readScrollBehavior(p, '--probe-scroll-behavior'),
+        ms: core.readCssDurationMs(p, '--probe-transition', -1),
+        len: core.readCssLengthPx(p, '--probe-len', -1),
+      }));
+    });
+  // The probe has no --probe-len except the first (inherits nothing): -1 fallback; 2.5rem at 16px root = 40px.
+  expect(await read()).toEqual([
+    { off: false, scroll: 'smooth', ms: 150, len: 40 },
+    { off: true, scroll: 'auto', ms: 0, len: -1 },
+    { off: true, scroll: 'auto', ms: 0, len: -1 },
+  ]);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  expect((await read())[0]).toEqual({ off: true, scroll: 'auto', ms: 0, len: 40 });
+});

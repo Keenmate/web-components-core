@@ -59,6 +59,7 @@ export { createDebounce } from './dom/debounce.js';
 export type { Debounce } from './dom/debounce.js';
 export { createFrameScheduler } from './dom/frame-scheduler.js';
 export type { FrameScheduler } from './dom/frame-scheduler.js';
+export { isMotionOff, readScrollBehavior, readCssDurationMs, readCssLengthPx, parseCssTimeMs } from './dom/css-values.js';
 export { adoptStyles, createStyleSlot } from './dom/adopt-styles.js';
 export { animateOut, EXIT_HEIGHT_VAR, readAnimationMs } from './dom/animate-out.js';
 export type { AnimateOutHandle, AnimateOutOptions } from './dom/animate-out.js';
