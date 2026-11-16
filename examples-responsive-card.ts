@@ -30,6 +30,7 @@ import {
   toEnum,
   toInt,
   toText,
+  Z_INDEX,
 } from './src/index.js';
 import type { ElementSize, InputDef, SheetSession } from './src/index.js';
 import { createPopover, type PopoverHandle } from './src/positioning/index.js';
@@ -250,10 +251,10 @@ const PICKER_STYLES = `
               border: 1px solid var(--kmwc-border-color, GrayText); border-radius: var(--kmwc-radius-sm, 6px);
               background: var(--kmwc-main-bg, Canvas); color: var(--kmwc-text-color-1, CanvasText); }
   .pk-input::after { content: "▾"; color: var(--kmwc-text-color-3, GrayText); }
-  .pk-panel { display: none; z-index: 7600; box-shadow: 0 8px 24px rgb(0 0 0 / .18);
+  .pk-panel { display: none; z-index: ${Z_INDEX.dropdown}; box-shadow: 0 8px 24px rgb(0 0 0 / .18);
               width: min(calc(var(--pk-months, 2) * 15rem), calc(100vw - 2rem)); box-sizing: border-box; }
   .pk-panel.is-open { display: block; }
-  .pk-sheet { position: fixed; inset: 0; z-index: 9001; display: flex; flex-direction: column;
+  .pk-sheet { position: fixed; inset: 0; z-index: ${Z_INDEX.modal}; display: flex; flex-direction: column;
               background: var(--kmwc-main-bg, Canvas); color: var(--kmwc-text-color-1, CanvasText);
               animation: pk-sheet-in var(--base-duration-medium, .25s) ease-out; }
   .pk-sheet .pk { border: 0; border-radius: 0; flex: 1; overflow: auto; width: auto; box-shadow: none; }

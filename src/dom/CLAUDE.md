@@ -33,6 +33,12 @@ owner has a handle). Owner `refresh()` / page write for either tag → child ref
 destroyed / really removed / `getOwner` null or throwing / self → no owner layers. Refresh is
 re-entry-guarded (an owner ↔ child cycle can't loop). `onApply` gets only the child's own layers.
 
+## Stacking tiers (`src/dom/z-index.ts`, SPEC §12.18 — implemented)
+
+`Z_INDEX` = `{ modalBackdrop, modal, dropdown, popover, toast, tooltip }`, each `var(--base-z-*, <default>)`
+(6000 / 7000 / 7500 / 7600 / 8000 / 9000, the base-css-variables values). Dialogs + phone sheets + drawers =
+`modal` (decided 2026-11-16); sub-layers `calc(<tier> + 1)`. `/menu` keeps `calc(tooltip + 1)`.
+
 ## Persisted UI state (`src/dom/state-store.ts`, SPEC §12.17 — implemented)
 
 `createStateStore(host, { getKey, getLoadCallback?, getSaveCallback?, toContext? })` → `{ load, save, clear }`.

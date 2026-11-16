@@ -32,7 +32,7 @@
     { "name": "base-font-size-base", "required": false, "usage": "Phone sheet font size (× --base-rem, default 1.6)" },
     { "name": "base-font-weight-semibold", "required": false, "usage": "Sheet title weight (default 600)" },
     { "name": "base-shadow-color", "required": false, "usage": "Phone sheet shadow tint" },
-    { "name": "base-z-tooltip", "required": false, "usage": "Menu and sheet stacking: one above it (default 9000)" },
+    { "name": "base-z-tooltip", "required": false, "usage": "Menu stacking: one above it, so a menu opens over any tier, a modal-tier sheet included (default 9000)" },
     { "name": "base-font-size-lg", "required": false, "usage": "Sheet title size (× --base-rem, default 1.8)" },
     { "name": "base-icon-close", "required": false, "usage": "Sheet close icon (→ --km-sheet-close-icon)" },
     { "name": "base-duration-medium", "required": false, "usage": "Sheet / drawer open and close animation (→ --km-menu-sheet-duration, default 0.25s)" },
@@ -40,7 +40,7 @@
     { "name": "base-ease-in", "required": false, "usage": "Sheet / drawer close easing" }
   ],
   "componentVariables": [
-    { "name": "km-menu-z-index", "category": "menu", "usage": "Menu and phone sheet stacking order (default calc(--base-z-tooltip + 1) = 9001, the phone-sheet tier)" },
+    { "name": "km-menu-z-index", "category": "menu", "usage": "Menu and phone sheet stacking order (default calc(--base-z-tooltip + 1) = 9001, above every tier: a chooser opens over what opened it)" },
     { "name": "km-menu-min-width", "category": "menu", "usage": "Menu minimum width (default 160px)" },
     { "name": "km-menu-max-width", "category": "menu", "usage": "Menu maximum width (default none)" },
     { "name": "km-menu-padding", "category": "menu", "usage": "Menu padding (default --base-space-xs 0 = 4px 0)" },

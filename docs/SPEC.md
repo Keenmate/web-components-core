@@ -2062,8 +2062,8 @@ Sizes come from the base-css-variables scale too (decided 2026-11-13): radius
 `--base-border-radius-sm` (sheet top corners `-lg`), font size `--base-font-size-sm` (sheet
 `-base`), paddings / gaps `--base-space-*`, title weight `--base-font-weight-semibold`, each
 unitless × `--base-rem` (fallback `10px`, as in every component). Stacking:
-`calc(var(--base-z-tooltip, 9000) + 1)` — the phone-sheet tier the components' own sheets use
-(was a bare `10000`). The sheet hides keyboard-shortcut hints (`__shortcut`); the keys still work.
+`calc(var(--base-z-tooltip, 9000) + 1)` — a menu is a short-lived chooser, so it stacks above whatever
+opened it, a modal-tier sheet included (§12.18; was a bare `10000`). The sheet hides keyboard-shortcut hints (`__shortcut`); the keys still work.
 
 ```css
 :root { --km-menu-bg: #fffbe6; }                 /* every menu on the page */
@@ -2349,3 +2349,27 @@ every other one (its state: `{ entries }`); its per-entry data API (`loadUsageCa
 
 Not UI state: data the page owns (web-treeview's `expandedPaths` / `selectedPaths` / `checkedPaths`
 + their change events) — the page saves those itself.
+
+### 12.18 Stacking tiers — IMPLEMENTED (`src/dom/z-index.ts`, main index)
+
+**The gap.** base-css-variables has had the `--base-z-*` scale for a long time, but there was no tier for a
+phone full-screen sheet, so each component picked a number: web-multiselect and web-treeview tooltip + 1,
+web-daterangepicker 9500–10002, web-dropzone 9999 / 100000, web-grid 999 / 1000, web-commandpalette
+popover + 1, web-editor 1000 / 1100. A picker opened inside another component's sheet could land under it.
+
+**The rule (decided 2026-11-16).** `Z_INDEX` maps each tier onto its token with ONE fallback:
+
+| Tier | Token (fallback) | For |
+|---|---|---|
+| `modalBackdrop` | `--base-z-modal-backdrop` (6000) | the dimmed layer under a dialog / sheet |
+| `modal` | `--base-z-modal` (7000) | dialogs, phone full-screen sheets, drawers — anything that takes over the screen |
+| `dropdown` | `--base-z-dropdown` (7500) | a field's dropdown panel |
+| `popover` | `--base-z-popover` (7600) | other floating panels |
+| `toast` | `--base-z-toast` (8000) | notifications (visible over a dialog) |
+| `tooltip` | `--base-z-tooltip` (9000) | hover / focus hints, the top |
+
+A sheet is the MODAL tier, not "above everything": whatever opens from inside it is a higher tier and
+stacks above with no special case; page tooltips can't show through (the sheet covers what triggers
+them). A component's own sub-layer is `calc(<tier> + 1)`, never a bare number. Components keep their own
+`--<prefix>-z-index-*` variables, defaulting to a tier. `/menu` stays at `calc(tooltip + 1)` (a chooser
+above whatever opened it).

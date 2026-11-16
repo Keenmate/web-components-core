@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `Z_INDEX` (main index, SPEC §12.18): the stacking tiers as `var(--base-z-*, <default>)` strings —
+  `modalBackdrop` 6000, `modal` 7000, `dropdown` 7500, `popover` 7600, `toast` 8000, `tooltip` 9000. Rule:
+  dialogs and phone full-screen sheets are the `modal` tier (what opens inside them stacks above), a
+  component's own sub-layer is `calc(<tier> + 1)`. Components had picked their own numbers (999 … 100000).
 - `createDebounce(fn, ms)` → `{ schedule(...args), flush(), cancel(), isPending }` (main index): last call
   wins, `ms <= 0` runs synchronously, `ms` may be a function read per call. `createThrottle(fn, ms)` and
   `createFrameScheduler(fn)` (used inside core for resize / viewport) are now exported too. Six components
