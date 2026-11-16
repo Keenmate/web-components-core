@@ -546,6 +546,23 @@ tag kept in the label (`web-grid#main`):
 [MULTISELECT:DATA] #1               update  ['searchPlaceholder']
 ```
 
+**An engine class logs through the element's loggers.** A component's plain-class engine (the date
+picker, the tree engine, the upload engine) can't reach `this.log`, so the element hands it over; the
+engine falls back to the type loggers only when it runs on its own:
+
+```ts
+// engine
+type Log = Record<'INIT' | 'DATA' | 'UI', InstanceLogger>;
+constructor(opts: EngineOptions & { log?: Log }) {
+  this.#log = opts.log ?? loggers;           // the bundle's type loggers (standalone use)
+}
+// element
+this.#engine = new Engine({ ...options, log: this.log as Log });
+```
+
+Never import the module-level loggers inside an engine that an element owns: those lines carry no
+instance label and ignore `el.enableLogging()`.
+
 ## Style injection
 
 Two zero-dep helpers (main index) for the shadow-root CSS plumbing components
