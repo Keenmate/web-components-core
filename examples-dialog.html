@@ -1,0 +1,316 @@
+<meta name="kmwc:title" content="Dialogs and modal panels">
+<meta name="kmwc:subtitle" content="Core <code>/dialog</code> (<code>confirmDialog</code>, <code>promptDialog</code>, <code>openDialog</code>) — the styled, translatable replacement for <code>window.confirm</code> / <code>window.prompt</code> — and <code>startModalSession()</code> for a component's own modal panel: the page behind goes inert, Tab stays inside, Escape / Back / the backdrop close it, focus comes back. See <strong>SPEC §12.18–§12.19</strong>.">
+<meta name="kmwc:entry" content="none">
+
+        <!-- ============================================================= -->
+        <!-- DL01 · confirm / prompt                                       -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DL01 · <code>confirmDialog</code> and <code>promptDialog</code> instead of the browser popups</h2>
+            <p>
+                The browser's <code>window.confirm</code> / <code>window.prompt</code> can't be styled or translated and
+                freeze the page's scripts while open. The core versions return a Promise, follow the theme and the
+                motion level, and take their button texts from <code>labels</code>. Under 480px wide they open as a
+                bottom sheet. Try both rows and compare.
+            </p>
+            <div class="controls">
+                <span class="demo-label">Core:</span>
+                <button id="dl01-confirm">confirmDialog (danger)</button>
+                <button id="dl01-prompt">promptDialog (validated URL)</button>
+                <button id="dl01-cz">confirmDialog in Czech</button>
+            </div>
+            <div class="controls">
+                <span class="demo-label">Browser:</span>
+                <button id="dl01-native-confirm" class="btn-outline">window.confirm</button>
+                <button id="dl01-native-prompt" class="btn-outline">window.prompt</button>
+            </div>
+            <div class="log-panel log-panel--dark mt-1" data-empty="Press a button above." id="dl01-log"></div>
+            <div class="code-block" data-language="js"><pre><code>import { confirmDialog, promptDialog } from '@keenmate/web-components-core/dialog';
+
+if (await confirmDialog({ title: 'Delete row?', message: 'This cannot be undone.', isDanger: true, confirmLabel: 'Delete' })) { … }
+
+const url = await promptDialog({
+  title: 'Image URL', value: 'https://',
+  validate: (v) => (/^https:\/\/.+/.test(v) ? null : 'Must start with https://'),  // keeps it open
+});                                                                                // null = cancelled</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- DL02 · openDialog                                             -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DL02 · <code>openDialog</code> — your buttons, your content</h2>
+            <p>
+                Any set of buttons (the dialog resolves with the pressed one's <code>value</code>) and any content node
+                after the message. <code>beforeCloseCallback</code> returning <code>false</code> keeps it open — here the
+                <strong>Save</strong> button is refused until the name is filled in. ✕, Escape, the phone Back gesture
+                and a click on the backdrop resolve <code>null</code>; with <code>isDismissible: false</code> only the
+                buttons close it.
+            </p>
+            <div class="controls">
+                <button id="dl02-open">Unsaved changes…</button>
+                <button id="dl02-form">Rename (content + beforeCloseCallback)</button>
+                <button id="dl02-locked">isDismissible: false</button>
+            </div>
+            <div class="log-panel log-panel--dark mt-1" data-empty="Press a button above." id="dl02-log"></div>
+            <div class="code-block" data-language="js" data-kmwc-snippet><pre><code>import { openDialog } from '@keenmate/web-components-core/dialog';
+
+const choice = await openDialog({
+  title: 'Unsaved changes',
+  message: 'Save before closing?',
+  actions: [
+    { value: 'discard', label: 'Discard', isDanger: true },
+    { value: 'cancel', label: 'Keep editing' },
+    { value: 'save', label: 'Save', isPrimary: true },
+  ],
+}).result;                                  // 'save' | 'discard' | 'cancel' | null</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- DL03 · startModalSession                                      -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DL03 · <code>startModalSession()</code> on a component's own panel</h2>
+            <p>
+                <code>&lt;core-demo-modal&gt;</code> renders its own panel in its shadow root (like a date picker's
+                centered modal). One call does the rest: the page behind goes <code>inert</code> (try clicking or
+                tabbing to it), Tab cycles inside, focus moves in and comes back to the button, page scroll is locked.
+                The panel opens a <strong>dropdown</strong> of its own: Escape closes the dropdown first, the panel on
+                the second press. Core never closes anything itself — <code>onDismiss(reason)</code> tells the
+                component, which closes and calls <code>end()</code>.
+            </p>
+            <div class="controls">
+                <label><input type="checkbox" id="dl03-backdrop" checked> <code>backdrop: true</code></label>
+                <core-demo-modal id="dl03-modal"></core-demo-modal>
+            </div>
+            <div class="log-panel log-panel--dark mt-1" data-empty="Open the panel, then close it any way you like." id="dl03-log"></div>
+            <div class="code-block" data-language="ts"><pre><code>import { startModalSession } from '@keenmate/web-components-core';
+
+open() {
+  this.#panel.hidden = false;                    // z-index: Z_INDEX.modal
+  this.#modal = startModalSession(this.#panel, {
+    backdrop: true,                              // or your own element; omit = none
+    onDismiss: (reason) => this.close(reason),   // 'escape' | 'back' | 'backdrop' | …
+    trigger: this.#button,                       // focus returns here
+  });
+}
+close() {
+  this.#panel.hidden = true;
+  this.#modal?.end();                            // every close path, idempotent
+}</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- DL04 · Stacking tiers                                         -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DL04 · Stacking tiers (<code>Z_INDEX</code>)</h2>
+            <p>
+                One z-index scale for every overlay. A dialog, a phone full-screen sheet or a drawer is the
+                <strong>modal</strong> tier, so whatever opens inside it — the dropdown in DL03, a tooltip, a toast —
+                is a higher tier and stacks above it with no special case.
+            </p>
+            <table class="reference-table">
+                <thead><tr><th>Tier</th><th>Token</th><th>Default</th><th>For</th></tr></thead>
+                <tbody id="dl04-tiers"></tbody>
+            </table>
+            <div class="code-block mt-1" data-language="ts"><pre><code>import { Z_INDEX } from '@keenmate/web-components-core';
+
+const CSS = `.my-sheet { z-index: ${Z_INDEX.modal}; }
+             .my-sheet .hint { z-index: calc(${Z_INDEX.tooltip} + 1); }`;   // a sub-layer: never a bare 9999</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- DL05 · API summary                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DL05 · API summary</h2>
+            <table class="reference-table">
+                <thead><tr><th>Member</th><th>Where</th><th>What</th></tr></thead>
+                <tbody>
+                    <tr><td><code>confirmDialog(opts)</code></td><td><code>/dialog</code></td><td>Cancel / OK → <code>Promise&lt;boolean&gt;</code>. <code>isDanger</code>: red button, focus on Cancel.</td></tr>
+                    <tr><td><code>promptDialog(opts)</code></td><td><code>/dialog</code></td><td>One field → <code>Promise&lt;string | null&gt;</code>. <code>value</code>, <code>label</code>, <code>inputType</code>, <code>validate</code>; Enter = OK.</td></tr>
+                    <tr><td><code>openDialog(opts)</code></td><td><code>/dialog</code></td><td><code>{ result, close(value), panel, body }</code>. <code>title</code>, <code>message</code> (text), <code>content</code> (node), <code>actions</code>, <code>isDismissible</code>, <code>beforeCloseCallback</code>, <code>labels</code>, <code>container</code>.</td></tr>
+                    <tr><td><code>startModalSession(panel, opts)</code></td><td>main index</td><td>Inert page, Tab trap, focus in / back, <code>role="dialog"</code> + <code>aria-modal</code>, backdrop, Escape (overlay tree), Back, scroll lock → <code>{ end, backdrop, rearmBack }</code>.</td></tr>
+                    <tr><td><code>createFocusTrap(panel, opts)</code></td><td>main index</td><td>The trap alone: inert background + Tab cycling + focus in / back → <code>{ release }</code>.</td></tr>
+                    <tr><td><code>getTabbables(container)</code></td><td>main index</td><td>Tabbable elements in flat-tree order (shadow roots and slots included).</td></tr>
+                    <tr><td><code>Z_INDEX</code></td><td>main index</td><td>The tiers as <code>var(--base-z-*, N)</code> strings.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+    <script type="module">
+        import { startModalSession, Z_INDEX } from '/src/index.ts';
+        import { confirmDialog, promptDialog, openDialog } from '/src/dialog/index.ts';
+        import { createPopover } from '/src/positioning/index.ts';
+
+        const logTo = (id) => (text) => {
+            const panel = document.getElementById(id);
+            const line = document.createElement('div');
+            line.textContent = `${new Date().toLocaleTimeString()}  ${text}`;
+            panel.prepend(line);
+        };
+
+        // ── DL01 ───────────────────────────────────────────────────────────
+        const log1 = logTo('dl01-log');
+        document.getElementById('dl01-confirm').onclick = async (e) => {
+            const ok = await confirmDialog({ title: 'Delete row?', message: 'This cannot be undone.', isDanger: true, confirmLabel: 'Delete', trigger: e.currentTarget });
+            log1(`confirmDialog → ${ok}`);
+        };
+        document.getElementById('dl01-prompt').onclick = async (e) => {
+            const url = await promptDialog({
+                title: 'Image URL', label: 'Address of the image', value: 'https://', inputType: 'url', trigger: e.currentTarget,
+                validate: (v) => (/^https:\/\/.+/.test(v) ? null : 'Must start with https:// and have something after it'),
+            });
+            log1(`promptDialog → ${JSON.stringify(url)}`);
+        };
+        document.getElementById('dl01-cz').onclick = async (e) => {
+            const ok = await confirmDialog({
+                title: 'Smazat řádek?', message: 'Tuto akci nelze vrátit.', isDanger: true, confirmLabel: 'Smazat',
+                labels: { cancel: 'Zrušit', close: 'Zavřít' }, trigger: e.currentTarget,
+            });
+            log1(`confirmDialog (cs) → ${ok}`);
+        };
+        document.getElementById('dl01-native-confirm').onclick = () => log1(`window.confirm → ${window.confirm('Delete row?\n\nThis cannot be undone.')}`);
+        document.getElementById('dl01-native-prompt').onclick = () => log1(`window.prompt → ${JSON.stringify(window.prompt('Image URL', 'https://'))}`);
+
+        // ── DL02 ───────────────────────────────────────────────────────────
+        const log2 = logTo('dl02-log');
+        document.getElementById('dl02-open').onclick = async (e) => {
+            const choice = await openDialog({
+                title: 'Unsaved changes', message: 'You changed 3 fields.\nSave them before closing?', trigger: e.currentTarget,
+                actions: [
+                    { value: 'discard', label: 'Discard', isDanger: true },
+                    { value: 'cancel', label: 'Keep editing' },
+                    { value: 'save', label: 'Save', isPrimary: true },
+                ],
+            }).result;
+            log2(`openDialog → ${JSON.stringify(choice)}`);
+        };
+        document.getElementById('dl02-form').onclick = async (e) => {
+            const field = document.createElement('div');
+            field.className = 'km-dialog__field';
+            field.innerHTML = '<label for="dl02-name">New name</label><input id="dl02-name" class="km-dialog__input" value="Quarterly report"><div class="km-dialog__error" id="dl02-error"></div>';
+            const input = field.querySelector('input');
+            const error = field.querySelector('.km-dialog__error');
+            const handle = openDialog({
+                title: 'Rename', content: field, trigger: e.currentTarget, initialFocus: () => input,
+                actions: [{ value: 'cancel', label: 'Cancel' }, { value: 'save', label: 'Save', isPrimary: true }],
+                beforeCloseCallback: (value) => {
+                    if (value !== 'save' || input.value.trim()) return true;
+                    error.textContent = 'The name can’t be empty.';
+                    log2('beforeCloseCallback("save") → false (kept open)');
+                    return false;
+                },
+            });
+            input.select();
+            const choice = await handle.result;
+            log2(`openDialog → ${JSON.stringify(choice)}${choice === 'save' ? `, name = ${JSON.stringify(input.value)}` : ''}`);
+        };
+        document.getElementById('dl02-locked').onclick = async (e) => {
+            const choice = await openDialog({
+                title: 'Accept the terms', message: 'Escape, the backdrop and Back do nothing here — only a button closes it.',
+                isDismissible: false, trigger: e.currentTarget,
+                actions: [{ value: 'decline', label: 'Decline' }, { value: 'accept', label: 'Accept', isPrimary: true }],
+            }).result;
+            log2(`openDialog (isDismissible: false) → ${JSON.stringify(choice)}`);
+        };
+
+        // ── DL03 ───────────────────────────────────────────────────────────
+        const log3 = logTo('dl03-log');
+        const MODAL_CSS = `
+            :host { display: inline-block; }
+            .panel { position: fixed; top: 50%; left: 50%; translate: -50% -50%; z-index: ${Z_INDEX.modal};
+                     box-sizing: border-box; width: min(26rem, calc(100vw - 2rem)); padding: 1rem;
+                     background: var(--base-elevated-bg, var(--base-main-bg, Canvas)); color: var(--base-text-color-1, CanvasText);
+                     border: 1px solid var(--base-border-color, GrayText); border-radius: 8px; box-shadow: 0 12px 40px rgb(0 0 0 / .25); }
+            .panel[hidden] { display: none; }
+            .panel h3 { margin: 0 0 .75rem; font-size: 1.1rem; }
+            .row { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .75rem; justify-content: flex-end; }
+            input { width: 100%; box-sizing: border-box; padding: .4rem; font: inherit; }
+            button { font: inherit; padding: .35rem .75rem; }
+            .dropdown { display: none; z-index: ${Z_INDEX.dropdown}; min-width: 12rem; padding: .25rem;
+                        background: var(--base-dropdown-bg, var(--base-main-bg, Canvas)); color: inherit;
+                        border: 1px solid var(--base-border-color, GrayText); border-radius: 6px; box-shadow: 0 6px 18px rgb(0 0 0 / .2); }
+            .dropdown.is-open { display: block; }
+            .dropdown button { display: block; width: 100%; text-align: start; padding: .4rem .6rem; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; }
+            .dropdown button:hover, .dropdown button:focus-visible { background: var(--base-hover-bg, color-mix(in srgb, currentColor 10%, transparent)); }
+        `;
+        class CoreDemoModal extends HTMLElement {
+            #session = null;
+            #popover = null;
+            connectedCallback() {
+                if (this.shadowRoot) return;
+                const root = this.attachShadow({ mode: 'open' });
+                root.innerHTML = `<style>${MODAL_CSS}</style>
+                    <button type="button" id="open">Open the component's panel</button>
+                    <div class="panel" id="panel" hidden aria-labelledby="title">
+                        <h3 id="title">Booking details</h3>
+                        <label>Guest name <input id="name" value="Jana Nováková"></label>
+                        <div class="row">
+                            <button type="button" id="room">Room type ▾</button>
+                            <button type="button" id="cancel">Cancel</button>
+                            <button type="button" id="ok">OK</button>
+                        </div>
+                        <div class="dropdown" id="dropdown" role="listbox">
+                            <button type="button" role="option">Single</button>
+                            <button type="button" role="option">Double</button>
+                            <button type="button" role="option">Suite</button>
+                        </div>
+                    </div>`;
+                const $ = (id) => root.getElementById(id);
+                $('open').onclick = () => this.open();
+                $('cancel').onclick = () => this.close('cancel button');
+                $('ok').onclick = () => this.close('OK button');
+                // the dropdown lives INSIDE the panel, so it isn't made inert
+                this.#popover = createPopover({
+                    reference: $('room'), panel: $('dropdown'), container: $('panel'),
+                    shouldKeepMounted: true, visibleClass: 'is-open', placement: 'bottom-start',
+                    shouldCloseOnEscape: true, shouldCloseOnOutsideClick: true,
+                    onClose: (reason) => log3(`dropdown closed (${reason})`),
+                });
+                $('room').onclick = () => (this.#popover.isOpen ? this.#popover.close() : this.#popover.open());
+                $('dropdown').onclick = (e) => {
+                    const option = e.target.closest('button');
+                    if (!option) return;
+                    $('room').textContent = `${option.textContent} ▾`;
+                    this.#popover.close();
+                    $('room').focus();
+                };
+            }
+            open() {
+                const root = this.shadowRoot;
+                const panel = root.getElementById('panel');
+                panel.hidden = false;
+                this.#session = startModalSession(panel, {
+                    backdrop: document.getElementById('dl03-backdrop').checked,
+                    onDismiss: (reason) => this.close(`onDismiss('${reason}')`),
+                    trigger: root.getElementById('open'),
+                });
+                log3('opened — try Tab, Escape, clicking the page');
+            }
+            close(how) {
+                if (!this.#session) return;
+                this.#popover?.close();
+                this.shadowRoot.getElementById('panel').hidden = true;
+                this.#session.end();
+                this.#session = null;
+                log3(`closed by ${how}`);
+            }
+        }
+        customElements.define('core-demo-modal', CoreDemoModal);
+
+        // ── DL04 ───────────────────────────────────────────────────────────
+        const FOR = {
+            modalBackdrop: 'the dimmed layer under a dialog / sheet',
+            modal: 'dialogs, phone full-screen sheets, drawers',
+            dropdown: 'a field’s dropdown panel',
+            popover: 'other floating panels',
+            toast: 'notifications (visible over a dialog)',
+            tooltip: 'hover / focus hints, the top',
+        };
+        document.getElementById('dl04-tiers').innerHTML = Object.entries(Z_INDEX).map(([tier, value]) => {
+            const [, token, fallback] = /var\((--[a-z-]+), (\d+)\)/.exec(value);
+            return `<tr><td><code>${tier}</code></td><td><code>${token}</code></td><td>${fallback}</td><td>${FOR[tier]}</td></tr>`;
+        }).join('');
+    </script>

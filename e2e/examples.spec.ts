@@ -17,7 +17,7 @@ const LAZY_TAGS = ['core-demo-pg-early', 'core-demo-pg-late'];
 
 test('index renders a card per registered page and a version badge', async ({ page }) => {
   await page.goto('/index.html');
-  await expect(page.locator('.kmwc-index__card')).toHaveCount(14);
+  await expect(page.locator('.kmwc-index__card')).toHaveCount(PAGES.length);
   await expect(page.locator('[data-kmwc-version]')).toHaveText(/^v\d/);
 });
 

@@ -12,6 +12,7 @@ chapter (IN01, LC02, …) runs the code it shows on small demo elements:
 | [`examples-interaction.html`](../examples-interaction.html) | IA · `emit()` and `on*` twins, `before*Callback`, actions, the shared menu |
 | [`examples-forms.html`](../examples-forms.html) | FO · form-associated elements, disabled state, constraint validation |
 | [`examples-page.html`](../examples-page.html) | PG · `window.components`, logging switches, the loader hook, style injection |
+| [`examples-dialog.html`](../examples-dialog.html) | DL · dialogs (`/dialog`) and `startModalSession()` |
 | [`examples-tooltip.html`](../examples-tooltip.html) | TT · `createTooltip()` |
 | [`examples-popover.html`](../examples-popover.html) | PO · `createPopover()` |
 | [`examples-anchor.html`](../examples-anchor.html) | AN · the `anchor()` primitive |
