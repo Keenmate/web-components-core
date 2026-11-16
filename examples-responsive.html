@@ -358,8 +358,11 @@ aside.filters  { --base-container-narrow: 360px; }   /* components in this sideb
         <div class="card">
             <h2>RS08 · All together: a booking page</h2>
             <p>
-                One page rule with all three axes, four pickers in a real layout. Nothing below is simulated — it reacts
-                to <strong>your</strong> browser:
+                One page rule with all three axes, four date fields in a real layout. <strong>Click a field</strong>: it
+                opens the calendar the way the rules say — a dropdown under the field (<code>floating</code>), or on a phone
+                a full-screen sheet with the shared header, page scroll locked and the phone Back gesture closing it
+                (<code>fullscreen</code>, core <code>startSheetSession</code>). Nothing below is simulated — it reacts to
+                <strong>your</strong> browser:
             </p>
             <ul>
                 <li><strong>breakpoint</strong> — resize the browser window (below 768px it is <code>mobile</code>). The layout

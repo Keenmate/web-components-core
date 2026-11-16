@@ -17,8 +17,22 @@
  *
  * Demo-only — not part of the published package (`files` ships `dist/` only).
  */
-import { BlissElement, define, registerComponent, resolveContainerSize, toBool, toEnum, toInt, toText } from './src/index.js';
-import type { ElementSize, InputDef } from './src/index.js';
+import {
+  adoptStyles,
+  BlissElement,
+  createSheetHeader,
+  define,
+  registerComponent,
+  resolveContainerSize,
+  SHEET_CHROME_CSS,
+  startSheetSession,
+  toBool,
+  toEnum,
+  toInt,
+  toText,
+} from './src/index.js';
+import type { ElementSize, InputDef, SheetSession } from './src/index.js';
+import { createPopover, type PopoverHandle } from './src/positioning/index.js';
 
 // Page tokens (--kmwc-*) inherit into the shadow root, so the card follows light / dark.
 const STYLES = `
@@ -217,22 +231,47 @@ const PICKER_STYLES = `
   :host { display: block; }
   .pk { border: 1px solid var(--kmwc-border-color, GrayText); border-radius: var(--kmwc-radius-md, 10px); padding: .6rem;
         background: var(--kmwc-main-bg, Canvas); color: var(--kmwc-text-color-1, CanvasText); font-size: .85rem; }
-  .pk-head { display: flex; justify-content: space-between; gap: .5rem; font: .75rem var(--kmwc-mono-font-family, ui-monospace, monospace);
+  .pk-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .25rem .75rem;
+             font: .75rem var(--kmwc-mono-font-family, ui-monospace, monospace);
              color: var(--kmwc-text-color-3, GrayText); margin-bottom: .4rem; }
   .pk-head b { color: var(--kmwc-info-color, #0369a1); }
   .pk-months { display: grid; grid-template-columns: repeat(var(--pk-months, 2), minmax(0, 1fr)); gap: .5rem; }
   .pk-month { border-radius: var(--kmwc-radius-sm, 6px); background: var(--kmwc-accent-light-bg, #e0f2fe); padding: .4rem; }
   .pk-month-title { font-weight: 700; text-align: center; margin-bottom: .25rem; }
   .pk-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; font-size: .7rem; text-align: center; }
+  .pk-days button { font: inherit; padding: .25rem 0; border: 0; border-radius: 4px; background: transparent; color: inherit; cursor: pointer; }
+  .pk-days button:hover { background: var(--kmwc-main-bg, Canvas); }
   .pk-foot { display: flex; gap: .4rem; justify-content: flex-end; margin-top: .5rem; }
   .pk-foot button { font: inherit; font-size: .8rem; padding: .2rem .6rem; }
+
+  /* field mode (RS08): a field that OPENS the calendar */
+  .pk-input { display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;
+              font: inherit; font-size: .9rem; padding: .5rem .7rem; cursor: pointer; text-align: start;
+              border: 1px solid var(--kmwc-border-color, GrayText); border-radius: var(--kmwc-radius-sm, 6px);
+              background: var(--kmwc-main-bg, Canvas); color: var(--kmwc-text-color-1, CanvasText); }
+  .pk-input::after { content: "▾"; color: var(--kmwc-text-color-3, GrayText); }
+  .pk-panel { display: none; z-index: 7600; box-shadow: 0 8px 24px rgb(0 0 0 / .18);
+              width: min(calc(var(--pk-months, 2) * 15rem), calc(100vw - 2rem)); box-sizing: border-box; }
+  .pk-panel.is-open { display: block; }
+  .pk-sheet { position: fixed; inset: 0; z-index: 9001; display: flex; flex-direction: column;
+              background: var(--kmwc-main-bg, Canvas); color: var(--kmwc-text-color-1, CanvasText);
+              animation: pk-sheet-in var(--base-duration-medium, .25s) ease-out; }
+  .pk-sheet .pk { border: 0; border-radius: 0; flex: 1; overflow: auto; width: auto; box-shadow: none; }
+  .pk-sheet .pk-days button { padding: .6rem 0; font-size: .95rem; }
+  .pk-sheet .pk-foot button { padding: .6rem 1rem; font-size: 1rem; }
+  @keyframes pk-sheet-in { from { transform: translateY(100%); } }
 `;
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June'];
 
 /**
- * RS07 — a mini date picker for the `container` axis: `months` and the Today / Clear buttons come from
- * rules keyed by its OWN width. It shows the width and bucket it is in (`sizeChanged` + core's
+ * RS07 / RS08 — a mini date picker for the `container` axis: `months`, the Today / Clear buttons and
+ * `presentation` come from rules. It shows the width and bucket it is in (`sizeChanged` + core's
  * `resolveContainerSize`, the same lines the rules use).
+ *
+ * Inline (RS07): the calendar is drawn in place. Field mode (RS08, {@link hasField}): a field that OPENS the
+ * calendar — `presentation: 'floating'` as a dropdown under it (core `createPopover`), `'fullscreen'` as a
+ * full-screen sheet (core `createSheetHeader` + `SHEET_CHROME_CSS` + `startSheetSession`: page scroll
+ * locked, phone Back closes it).
  */
 export class RsPickerCard extends BlissElement {
   protected static override events = ['config-applied'];
@@ -249,21 +288,127 @@ export class RsPickerCard extends BlissElement {
   ];
   #root?: ShadowRoot;
   #width = 0;
+  /** The calendar (`.pk`): in place (inline), or the dropdown panel / the sheet's body (field mode). */
+  #calendar?: HTMLElement;
+  #input?: HTMLButtonElement;
+  #popover?: PopoverHandle;
+  #sheet?: { el: HTMLElement; session: SheetSession };
+
+  /** Field mode: a field that opens the calendar (RS08). */
+  protected get hasField(): boolean {
+    return false;
+  }
+
+  get isOpen(): boolean {
+    return !!this.#popover?.isOpen || !!this.#sheet;
+  }
 
   protected override reinit(): void {
     this.#root ??= this.shadowRoot ?? this.attachShadow({ mode: 'open' });
-    this.#root.innerHTML = `<style>${PICKER_STYLES}</style>
-      <div class="pk"><div class="pk-head"></div><div class="pk-months"></div><div class="pk-foot"></div></div>`;
+    this.close();
+    this.#popover?.destroy();
+    this.#popover = undefined;
+    adoptStyles(this.#root, SHEET_CHROME_CSS);
+    if (this.hasField) {
+      this.#root.innerHTML = `<style>${PICKER_STYLES}</style>
+        <div class="pk-head"></div>
+        <button type="button" class="pk-input" aria-haspopup="dialog">Pick a date…</button>
+        <div class="pk pk-panel"><div class="pk-months"></div><div class="pk-foot"></div></div>`;
+      this.#input = this.#root.querySelector('.pk-input') as HTMLButtonElement;
+      this.#calendar = this.#root.querySelector('.pk-panel') as HTMLElement;
+      this.#input.addEventListener('click', () => (this.isOpen ? this.close() : this.open()));
+      this.#popover = createPopover({
+        reference: this.#input,
+        panel: this.#calendar,
+        container: this.#root,
+        shouldKeepMounted: true,
+        visibleClass: 'is-open',
+        placement: 'bottom-start',
+        shouldFlip: true,
+        maxHeight: { padding: 8 },
+        shouldCloseOnEscape: true,
+        shouldCloseOnOutsideClick: true,
+      });
+    } else {
+      this.#root.innerHTML = `<style>${PICKER_STYLES}</style>
+        <div class="pk"><div class="pk-head"></div><div class="pk-months"></div><div class="pk-foot"></div></div>`;
+      this.#calendar = this.#root.querySelector('.pk') as HTMLElement;
+    }
+    this.#calendar.addEventListener('click', (e) => this.#onCalendarClick(e));
     this.#paint();
     this.emit('config-applied', {});
   }
-  protected override update(): void {
+
+  protected override update(partial: Record<string, unknown>): void {
+    // The way it opens changed while open (a phone rotated, the window resized): close; the next open uses the new one.
+    if ('presentation' in partial && this.isOpen) this.close();
     this.#paint();
     this.emit('config-applied', {});
   }
+
   protected override sizeChanged(size: ElementSize): void {
     this.#width = size.width;
     this.#paintHead();
+  }
+
+  protected override disconnect(): void {
+    this.close();
+  }
+
+  protected override destroyCallback(): void {
+    this.#popover?.destroy();
+  }
+
+  /** Open the calendar the way `presentation` says. */
+  open(): void {
+    if (!this.hasField || this.isOpen || !this.#calendar || !this.#root) return;
+    const { presentation } = this.config as { presentation: string };
+    if (presentation === 'fullscreen') {
+      const sheet = document.createElement('div');
+      sheet.className = 'pk-sheet';
+      sheet.setAttribute('role', 'dialog');
+      sheet.setAttribute('aria-modal', 'true');
+      const { header } = createSheetHeader({ title: 'Pick a date', closeLabel: 'Close', onClose: () => this.close() });
+      this.#calendar.classList.add('is-open');
+      sheet.append(header, this.#calendar);
+      this.#root.append(sheet);
+      // scroll lock + keyboard inset + the phone Back gesture, undone by one end()
+      const session = startSheetSession(sheet, { onBack: () => this.close() });
+      this.#sheet = { el: sheet, session };
+      (header.querySelector('.km-sheet-close') as HTMLElement | null)?.focus();
+    } else {
+      this.#popover?.open();
+    }
+    this.#paintHead();
+  }
+
+  /** Close it (whichever way it is open). */
+  close(): void {
+    if (this.#sheet) {
+      const { el, session } = this.#sheet;
+      this.#sheet = undefined;
+      session.end();
+      // the calendar goes back to its dropdown place
+      this.#calendar?.classList.remove('is-open');
+      if (this.#calendar && this.#root) this.#root.append(this.#calendar);
+      el.remove();
+      this.#input?.focus();
+    }
+    if (this.#popover?.isOpen) this.#popover.close();
+    this.#paintHead();
+  }
+
+  #onCalendarClick(e: Event): void {
+    const button = (e.target as Element).closest('button');
+    if (!button || !this.hasField) return;
+    if (button.dataset.day) this.#pick(`${button.dataset.month} ${button.dataset.day}`);
+    else if (button.hasAttribute('data-today')) this.#pick('Today');
+    else if (button.hasAttribute('data-clear')) this.#pick(null);
+  }
+
+  #pick(text: string | null): void {
+    if (this.#input) this.#input.textContent = text ?? 'Pick a date…';
+    this.close();
   }
 
   #paintHead(): void {
@@ -271,18 +416,23 @@ export class RsPickerCard extends BlissElement {
     if (!head) return;
     const width = Math.round(this.#width || this.offsetWidth);
     const presentation = (this.config as { presentation: string }).presentation;
-    head.innerHTML = `<span>width <b data-width>${width}px</b></span><span>container <b data-bucket>${resolveContainerSize(this, width)}</b></span><span>opens <b data-presentation>${presentation}</b></span>`;
+    const state = this.hasField ? ` <span>${this.isOpen ? 'open' : 'closed'}</span>` : '';
+    head.innerHTML = `<span>width <b data-width>${width}px</b></span><span>container <b data-bucket>${resolveContainerSize(this, width)}</b></span><span>opens <b data-presentation>${presentation}</b>${state}</span>`;
   }
 
   #paint(): void {
     const root = this.#root;
     if (!root) return;
     const cfg = this.config as { months: number; isTodayButtonVisible: boolean; isClearButtonVisible: boolean };
-    const days = Array.from({ length: 28 }, (_, i) => `<span>${i + 1}</span>`).join('');
     const months = root.querySelector('.pk-months') as HTMLElement;
-    months.style.setProperty('--pk-months', String(cfg.months));
+    this.style.setProperty('--pk-months', String(cfg.months));
     months.innerHTML = MONTH_NAMES.slice(0, cfg.months)
-      .map((m) => `<div class="pk-month" data-month><div class="pk-month-title">${m}</div><div class="pk-days">${days}</div></div>`)
+      .map((m) => {
+        const days = Array.from({ length: 28 }, (_, i) =>
+          this.hasField ? `<button type="button" data-month="${m}" data-day="${i + 1}">${i + 1}</button>` : `<span>${i + 1}</span>`,
+        ).join('');
+        return `<div class="pk-month" data-month><div class="pk-month-title">${m}</div><div class="pk-days">${days}</div></div>`;
+      })
       .join('');
     (root.querySelector('.pk-foot') as HTMLElement).innerHTML =
       (cfg.isTodayButtonVisible ? '<button type="button" data-today>Today</button>' : '') +
@@ -290,11 +440,15 @@ export class RsPickerCard extends BlissElement {
     this.#paintHead();
   }
 }
-/** RS08 — the same picker with 3 months by default (its own tag, so its page rule doesn't touch RS07's). */
+
+/** RS08 — the same picker as a FIELD that opens, 3 months by default (its own tag, so its page rule doesn't touch RS07's). */
 export class RsBookingPicker extends RsPickerCard {
   protected static override inputs: readonly InputDef[] = RsPickerCard.inputs.map((row) =>
     row.configKey === 'months' ? { ...row, converter: toInt({ min: 1, max: 3, default: 3 }) } : row,
   );
+  protected override get hasField(): boolean {
+    return true;
+  }
 }
 registerComponent('core-demo-rs-booking', RsBookingPicker as unknown as CustomElementConstructor, {
   config: { name: 'core-demo-rs-booking', version: 'demo' },
