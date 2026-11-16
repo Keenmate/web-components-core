@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wins, `ms <= 0` runs synchronously, `ms` may be a function read per call. `createThrottle(fn, ms)` and
   `createFrameScheduler(fn)` (used inside core for resize / viewport) are now exported too. Six components
   had their own debounce / throttle timers.
+- `anchor()` (`/positioning`): `maxWidth` / `maxHeight` take `{ cap }` — an author limit kept as
+  `min(cap, available)` (web-multiselect re-composed it in `onPlaced`); `referenceWidthVar` publishes the
+  reference width as a CSS variable before each computation (on the panel, or `{ name, element }`);
+  `shouldRestorePlacement` makes `destroy()` put back `position` / `left` / `top` too (web-editor removed
+  them by hand after floating its host). pure-css port affected.
 
 ### Fixed
 - Sheet close chip (`SHEET_CHROME_CSS`): the hover tint applies only with a real pointer

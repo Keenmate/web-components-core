@@ -679,8 +679,12 @@ const tip = createTooltip({ trigger, content: 'Help text', delay: { show: 200 } 
 `anchor(floating, reference, opts)` returns `{ update, destroy }`; options:
 `placement` (default `'bottom-start'`), `strategy` (default `'fixed'`), `offset`,
 `shouldFlip`, `shift`, `matchWidth: 'min' | 'exact' | 'max'`, `lockPlacement: 'initial' | 'freeze' | false`, `shouldAutoUpdate`,
-`inheritThemeFrom` (copies `data-theme` onto portaled layers — C-CS-10), and a
-`platform` escape hatch.
+`inheritThemeFrom` (copies `data-theme` onto portaled layers — C-CS-10), `maxHeight` / `maxWidth`
+(cap to the available space; `{ padding, cap: '40rem' }` keeps your own limit as `min(cap, available)`),
+`referenceWidthVar` (publish the field width as a CSS variable before each computation: `'--xx-field-width'`
+on the panel, or `{ name, element: host }`), `shouldRestorePlacement` (`destroy()` also puts back
+`position` / `left` / `top` — for a persistent element you floated for a while), and a `platform`
+escape hatch.
 
 ## Menu (`@keenmate/web-components-core/menu`)
 

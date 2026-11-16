@@ -138,6 +138,50 @@ describe('anchor', () => {
     expect(floating.style.maxWidth).toBe('300px');
   });
 
+  it('maxWidth / maxHeight { cap } write min(cap, available)', () => {
+    const floating = document.createElement('div');
+    const reference = document.createElement('button');
+    anchor(floating, reference, { maxWidth: { cap: '40rem' }, maxHeight: { cap: '60vh' } });
+    const sizes = mw().filter((m) => m.name === 'size') as unknown as { options: { apply: (a: unknown) => void } }[];
+    sizes[0]!.options.apply({ availableHeight: 500 });
+    sizes[1]!.options.apply({ availableWidth: 300 });
+    expect(floating.style.maxHeight).toBe('min(60vh, 500px)');
+    expect(floating.style.maxWidth).toBe('min(40rem, 300px)');
+  });
+
+  it('referenceWidthVar publishes the reference width before each computation', () => {
+    const host = document.createElement('div');
+    const floating = document.createElement('div');
+    const reference = document.createElement('button');
+    reference.getBoundingClientRect = () => ({ width: 123 }) as DOMRect;
+    document.body.append(host, floating, reference);
+    anchor(floating, reference, { referenceWidthVar: '--xx-field-width' });
+    expect(floating.style.getPropertyValue('--xx-field-width')).toBe('123px');
+    anchor(floating, reference, { referenceWidthVar: { name: '--xx-field-width', element: host } });
+    expect(host.style.getPropertyValue('--xx-field-width')).toBe('123px');
+  });
+
+  it('shouldRestorePlacement puts back position / left / top on destroy; default keeps them', async () => {
+    const floating = document.createElement('div');
+    const reference = document.createElement('button');
+    document.body.append(floating, reference);
+    floating.style.position = 'relative';
+    const kept = anchor(floating, reference);
+    await Promise.resolve();
+    kept.destroy();
+    expect(floating.style.position).toBe('fixed');
+    expect(floating.style.left).toBe('10px');
+    floating.style.position = 'relative';
+    floating.style.left = '';
+    floating.style.top = '';
+    const restored = anchor(floating, reference, { shouldRestorePlacement: true });
+    await Promise.resolve();
+    restored.destroy();
+    expect(floating.style.position).toBe('relative');
+    expect(floating.style.left).toBe('');
+    expect(floating.style.top).toBe('');
+  });
+
   it('passes flipPadding through to flip()', () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');

@@ -128,16 +128,33 @@ export interface AnchorOptions {
    * viewport — a calendar/dropdown that should stay on-screen. `true` uses no
    * extra inset; `{ padding }` insets from the viewport edges. The floating
    * element needs its own inner scroll region (this only sets `max-height`).
+   * `{ cap }` keeps an author limit too (any CSS length: `'40rem'`, `'60vh'`): the written value is
+   * `min(cap, available)` — the inline style would otherwise beat the panel's own CSS `max-height`.
    */
-  maxHeight?: boolean | { padding?: number };
+  maxHeight?: boolean | { padding?: number; cap?: string };
   /**
    * Cap the floating element's width to the space available on the resolved side
    * (floating-ui `size()`), so a user-resizable panel can't be dragged past the
    * viewport edge (and long content wraps instead of overflowing horizontally).
    * `true` uses no extra inset; `{ padding }` insets from the viewport edges.
-   * Mirrors {@link maxHeight}; only sets `max-width`.
+   * Mirrors {@link maxHeight}; only sets `max-width`. `{ cap }` keeps an author limit:
+   * `min(cap, available)`.
    */
-  maxWidth?: boolean | { padding?: number };
+  maxWidth?: boolean | { padding?: number; cap?: string };
+  /**
+   * Publish the reference's width (`<n>px`) as a CSS custom property before every computation, so a
+   * themeable panel width can default to the field width (`width: var(--xx-dropdown-width,
+   * var(--xx-field-width))`). A string = the property name, set on the floating element; `{ name,
+   * element }` sets it on another element (the host, when the variable that reads it is declared on
+   * `:host`). Left in place on `destroy()`.
+   */
+  referenceWidthVar?: string | { name: string; element: HTMLElement };
+  /**
+   * `destroy()` also puts back the floating element's own inline `position` / `left` / `top` (a
+   * persistent element the anchor floated for a while, e.g. an inline editor host). Default `false`:
+   * a panel that animates out after `destroy()` keeps its place. `createPopover()` restores them itself.
+   */
+  shouldRestorePlacement?: boolean;
   /**
    * Render an arrow that points at the reference. Core adds floating-ui's
    * `arrow()` middleware and, each frame, positions `element` along the resolved
@@ -170,7 +187,8 @@ export interface AnchorHandle {
   /**
    * Stop `autoUpdate` and release listeners. Puts back the inline sizes the anchor wrote
    * (`width` / `min-width` / `max-width` / `max-height` from `matchWidth`, `maxWidth`,
-   * `maxHeight`) and the copied theme. Position (`left` / `top`) stays. Idempotent.
+   * `maxHeight`) and the copied theme. Position (`position` / `left` / `top`) stays unless
+   * {@link AnchorOptions.shouldRestorePlacement}. Idempotent.
    */
   destroy(): void;
 }

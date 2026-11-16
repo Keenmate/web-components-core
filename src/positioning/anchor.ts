@@ -67,6 +67,13 @@ function createSizeWriter(floating: HTMLElement): { set(prop: SizeProperty, valu
   };
 }
 
+/** The available space in px, or `min(<author cap>, <available>)` when the option carries a `cap`. */
+function capped(opt: AnchorOptions['maxWidth'], available: number): string {
+  const px = `${Math.max(0, available)}px`;
+  const cap = typeof opt === 'object' ? opt.cap?.trim() : undefined;
+  return cap ? `min(${cap}, ${px})` : px;
+}
+
 /**
  * Build the middleware stack in the canonical order: offset → size → flip → shift.
  * `flipEnabled` lets the caller drop `flip` after freezing (`lockPlacement: 'freeze'`).
@@ -115,7 +122,7 @@ function buildMiddleware(
       sizeMiddleware({
         padding,
         apply({ availableHeight }) {
-          sizes.set('maxHeight', `${Math.max(0, availableHeight)}px`);
+          sizes.set('maxHeight', capped(opts.maxHeight, availableHeight));
         },
       }),
     );
@@ -129,7 +136,7 @@ function buildMiddleware(
       sizeMiddleware({
         padding,
         apply({ availableWidth }) {
-          sizes.set('maxWidth', `${Math.max(0, availableWidth)}px`);
+          sizes.set('maxWidth', capped(opts.maxWidth, availableWidth));
         },
       }),
     );
@@ -156,9 +163,17 @@ export function anchor(
 
   const restoreTheme = opts.inheritThemeFrom ? inheritTheme(opts.inheritThemeFrom, floating) : undefined;
 
+  const ownPlacement = opts.shouldRestorePlacement
+    ? { position: floating.style.position, left: floating.style.left, top: floating.style.top }
+    : undefined;
   floating.style.position = strategy;
   floating.style.left = '0';
   floating.style.top = '0';
+
+  const widthVar = typeof opts.referenceWidthVar === 'string' ? { name: opts.referenceWidthVar, element: floating } : opts.referenceWidthVar;
+  /** The reference as an element (a virtual one's `contextElement`), when there is one. */
+  const referenceElement: Element | undefined =
+    reference instanceof Element ? reference : (reference as { contextElement?: Element }).contextElement;
 
   // `placement`/`middleware` are mutable so `lockPlacement: 'freeze'` can pin the
   // first resolved placement and drop `flip` for every subsequent frame.
@@ -166,7 +181,7 @@ export function anchor(
   let flipEnabled = opts.shouldFlip ?? true;
   const sizes = createSizeWriter(floating);
   // No `offset` given: the page's field → panel gap (`--base-dropdown-offset`), read once where it opens.
-  const defaultOffset = opts.offset === undefined ? readDropdownOffset(reference instanceof Element ? reference : (reference as { contextElement?: Element }).contextElement ?? floating) : 0;
+  const defaultOffset = opts.offset === undefined ? readDropdownOffset(referenceElement ?? floating) : 0;
   let middleware = buildMiddleware(opts, flipEnabled, sizes, defaultOffset);
   const freeze = opts.lockPlacement === 'freeze';
   let frozen = false;
@@ -187,6 +202,9 @@ export function anchor(
   let isDestroyed = false;
   const run = (): void => {
     if (isDestroyed) return;
+    if (widthVar && referenceElement) {
+      widthVar.element.style.setProperty(widthVar.name, `${referenceElement.getBoundingClientRect().width}px`);
+    }
     if (opts.beforeComputeCallback) callSafely(opts.beforeComputeCallback, { source: floating, message: 'anchor beforeComputeCallback threw' });
     void computePosition(reference, floating, {
       placement,
@@ -247,6 +265,7 @@ export function anchor(
       cleanup = undefined;
       restoreTheme?.();
       sizes.restore();
+      if (ownPlacement) Object.assign(floating.style, ownPlacement);
     },
   };
 }
