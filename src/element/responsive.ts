@@ -8,6 +8,7 @@
  * window.components.responsive = { device: { mobile: { presentation: 'fullscreen' } } };
  * window.components.responsiveCallback = (ctx) => (ctx.env.orientation === 'landscape' ? { … } : undefined);
  * window.components['web-multiselect'].responsive = { breakpoint: { tablet: { presentation: 'modal' } } };
+ * window.components['web-daterangepicker'].responsive = { container: { narrow: { months: 1 } } };   // its own width
  * el.responsive = { device: { tablet: { presentation: 'floating' } } };   // also <x responsive='{"device":{"tablet":{…}}}'>
  * el.responsiveCallback = (ctx) => ({ … });
  * ```
@@ -21,29 +22,41 @@
  */
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import type { DeviceClass, EnvironmentSnapshot } from '../environment/environment.js';
+import type { ContainerSize } from '../environment/container-size.js';
 import { coreLog } from '../logging/element-logger.js';
 import { resolveFromProperty } from '../inputs/apply.js';
 import type { InputDef } from '../inputs/types.js';
 
 /**
- * The declarative form of a responsive rule — partial configs on two explicit axes:
- * - `device` — keyed by `classifyDevice(env)` (capability first, then the short side);
- * - `breakpoint` — keyed by `env.breakpoint` (window-width buckets, 768 / 1024 lines).
+ * The declarative form of a responsive rule — partial configs on three explicit axes:
+ * - `breakpoint` — keyed by `env.breakpoint` (WINDOW-width buckets, 768 / 1024 lines);
+ * - `container` — keyed by the component's OWN width (`narrow` / `medium` / `wide`, lines from
+ *   `--base-container-narrow` / `-medium` read at the element, 480 / 768 by default);
+ * - `device` — keyed by `classifyDevice(env)` (capability first, then the short side).
  *
- * Within one map the `breakpoint` entry applies first, then the `device` entry over
- * it (device wins on the same key). A `null` entry in an INSTANCE map = ignore every
+ * Within one map the `breakpoint` entry applies first, then `container`, then `device`
+ * (later wins on the same key). A `null` entry in an INSTANCE map = ignore every
  * page rule for this element; in a page map it means nothing.
  */
 export type ResponsiveMap<C = Record<string, unknown>> = {
   device?: Partial<Record<DeviceClass, Partial<C> | null>>;
   breakpoint?: Partial<Record<string, Partial<C> | null>>;
+  container?: Partial<Record<ContainerSize, Partial<C> | null>>;
 };
 
 /** The top-level keys of a {@link ResponsiveMap}. */
-export type ResponsiveMapAxis = 'device' | 'breakpoint';
+export type ResponsiveMapAxis = 'device' | 'breakpoint' | 'container';
 
 /** Allowed top-level keys of a {@link ResponsiveMap}, in merge order (later wins). */
-export const RESPONSIVE_MAP_AXES: readonly ResponsiveMapAxis[] = ['breakpoint', 'device'];
+export const RESPONSIVE_MAP_AXES: readonly ResponsiveMapAxis[] = ['breakpoint', 'container', 'device'];
+
+/** The key per axis for one evaluation (what the element is right now). */
+export type ResponsiveKeys = Record<ResponsiveMapAxis, string>;
+
+/** Does any of these maps use the `container` axis (so the element has to watch its own width)? */
+export function usesContainerAxis(...maps: (ResponsiveMap | null | undefined)[]): boolean {
+  return maps.some((m) => !!m && typeof m === 'object' && m.container != null);
+}
 
 /** What a {@link ResponsiveCallback} receives. */
 export interface ResponsiveContext<C = Record<string, unknown>> {
@@ -51,8 +64,12 @@ export interface ResponsiveContext<C = Record<string, unknown>> {
   env: EnvironmentSnapshot;
   /** `classifyDevice(env)` — the key the maps use. */
   deviceClass: DeviceClass;
-  /** `env.breakpoint` — the width bucket (from `--base-breakpoint-*` / `configureBreakpoints`). */
+  /** `env.breakpoint` — the window-width bucket (from `--base-breakpoint-*` / `configureBreakpoints`). */
   breakpoint: string;
+  /** The component's own width bucket (`--base-container-*` lines at the element). */
+  container: ContainerSize;
+  /** The component's own border-box width, in px. */
+  width: number;
   /** The component host. */
   element: HTMLElement;
   /** The component tag, lowercase (`'web-multiselect'`). */
@@ -279,7 +296,7 @@ export function __resetResponsive(): void {
 // ---------------------------------------------------------------------------
 
 /** What a `responsive` setting accepts (for warnings). */
-export const RESPONSIVE_MAP_EXPECTED = 'an object { device?, breakpoint? }, or null';
+export const RESPONSIVE_MAP_EXPECTED = 'an object { device?, breakpoint?, container? }, or null';
 /** What a `responsiveCallback` setting accepts (for warnings). */
 export const RESPONSIVE_CALLBACK_EXPECTED = 'a function, or null';
 
@@ -386,8 +403,8 @@ function mergeBatchValues(
 }
 
 /**
- * Merge one responsive map into `out`: the `breakpoint` entry (width bucket) first, then
- * the `device` entry (`classifyDevice`) over it — device wins on the same key. Any other
+ * Merge one responsive map into `out`: the `breakpoint` entry (window bucket) first, then the
+ * `container` entry (own width), then the `device` entry (`classifyDevice`) — later wins on the same key. Any other
  * top-level key (e.g. the pre-rc15 `{ mobile: … }` shape) warns and is ignored; a
  * non-object axis likewise. Returns `true` when either axis entry is `null` (the instance
  * opt-out signal; the caller decides if it counts).
@@ -395,8 +412,7 @@ function mergeBatchValues(
 export function mergeResponsiveMap(
   ctx: ResponsiveMergeContext,
   map: ResponsiveMap,
-  deviceClass: string,
-  breakpoint: string,
+  keys: ResponsiveKeys,
   label: string,
   out: Record<string, unknown>,
   isGlobal = false,
@@ -404,15 +420,12 @@ export function mergeResponsiveMap(
   const unknown = Object.keys(map).filter((key) => !(RESPONSIVE_MAP_AXES as readonly string[]).includes(key));
   if (unknown.length > 0) {
     ctx.warn(
-      `${label}: unknown top-level key(s) ${unknown.map((k) => `"${k}"`).join(', ')} ignored — a responsive map is { device?: { <deviceClass>: {…} }, breakpoint?: { <breakpoint>: {…} } }`,
+      `${label}: unknown top-level key(s) ${unknown.map((k) => `"${k}"`).join(', ')} ignored — a responsive map is { device?: { <deviceClass>: {…} }, breakpoint?: { <breakpoint>: {…} }, container?: { narrow | medium | wide: {…} } }`,
     );
   }
   let isNull = false;
-  const axes: Array<[ResponsiveMapAxis, string]> = [
-    ['breakpoint', breakpoint],
-    ['device', deviceClass],
-  ];
-  for (const [axis, key] of axes) {
+  for (const axis of RESPONSIVE_MAP_AXES) {
+    const key = keys[axis];
     const entries = map[axis];
     if (entries == null) continue;
     if (!isResponsiveMap(entries)) {

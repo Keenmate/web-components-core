@@ -17,7 +17,7 @@
  *
  * Demo-only — not part of the published package (`files` ships `dist/` only).
  */
-import { BlissElement, define, registerComponent, toBool, toEnum, toInt, toText } from './src/index.js';
+import { BlissElement, define, registerComponent, resolveContainerSize, toBool, toEnum, toInt, toText } from './src/index.js';
 import type { ElementSize, InputDef } from './src/index.js';
 
 // Page tokens (--kmwc-*) inherit into the shadow root, so the card follows light / dark.
@@ -212,3 +212,75 @@ export class RsSizeCard extends BlissElement {
 }
 
 define('core-demo-rs-size', RsSizeCard as unknown as CustomElementConstructor);
+
+const PICKER_STYLES = `
+  :host { display: block; }
+  .pk { border: 1px solid var(--kmwc-border-color, GrayText); border-radius: var(--kmwc-radius-md, 10px); padding: .6rem;
+        background: var(--kmwc-main-bg, Canvas); color: var(--kmwc-text-color-1, CanvasText); font-size: .85rem; }
+  .pk-head { display: flex; justify-content: space-between; gap: .5rem; font: .75rem var(--kmwc-mono-font-family, ui-monospace, monospace);
+             color: var(--kmwc-text-color-3, GrayText); margin-bottom: .4rem; }
+  .pk-head b { color: var(--kmwc-info-color, #0369a1); }
+  .pk-months { display: grid; grid-template-columns: repeat(var(--pk-months, 2), minmax(0, 1fr)); gap: .5rem; }
+  .pk-month { border-radius: var(--kmwc-radius-sm, 6px); background: var(--kmwc-accent-light-bg, #e0f2fe); padding: .4rem; }
+  .pk-month-title { font-weight: 700; text-align: center; margin-bottom: .25rem; }
+  .pk-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; font-size: .7rem; text-align: center; }
+  .pk-foot { display: flex; gap: .4rem; justify-content: flex-end; margin-top: .5rem; }
+  .pk-foot button { font: inherit; font-size: .8rem; padding: .2rem .6rem; }
+`;
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June'];
+
+/**
+ * RS07 — a mini date picker for the `container` axis: `months` and the Today / Clear buttons come from
+ * rules keyed by its OWN width. It shows the width and bucket it is in (`sizeChanged` + core's
+ * `resolveContainerSize`, the same lines the rules use).
+ */
+export class RsPickerCard extends BlissElement {
+  protected static override inputs: readonly InputDef[] = [
+    { configKey: 'months', attribute: 'months', converter: toInt({ min: 1, max: 3, default: 2 }), on: 'update' },
+    { configKey: 'isTodayButtonVisible', attribute: 'show-today', converter: toBool('default-true'), on: 'update' },
+    { configKey: 'isClearButtonVisible', attribute: 'show-clear', converter: toBool('default-true'), on: 'update' },
+  ];
+  #root?: ShadowRoot;
+  #width = 0;
+
+  protected override reinit(): void {
+    this.#root ??= this.shadowRoot ?? this.attachShadow({ mode: 'open' });
+    this.#root.innerHTML = `<style>${PICKER_STYLES}</style>
+      <div class="pk"><div class="pk-head"></div><div class="pk-months"></div><div class="pk-foot"></div></div>`;
+    this.#paint();
+  }
+  protected override update(): void {
+    this.#paint();
+  }
+  protected override sizeChanged(size: ElementSize): void {
+    this.#width = size.width;
+    this.#paintHead();
+  }
+
+  #paintHead(): void {
+    const head = this.#root?.querySelector('.pk-head');
+    if (!head) return;
+    const width = Math.round(this.#width || this.offsetWidth);
+    head.innerHTML = `<span>width <b data-width>${width}px</b></span><span>container <b data-bucket>${resolveContainerSize(this, width)}</b></span>`;
+  }
+
+  #paint(): void {
+    const root = this.#root;
+    if (!root) return;
+    const cfg = this.config as { months: number; isTodayButtonVisible: boolean; isClearButtonVisible: boolean };
+    const days = Array.from({ length: 28 }, (_, i) => `<span>${i + 1}</span>`).join('');
+    const months = root.querySelector('.pk-months') as HTMLElement;
+    months.style.setProperty('--pk-months', String(cfg.months));
+    months.innerHTML = MONTH_NAMES.slice(0, cfg.months)
+      .map((m) => `<div class="pk-month" data-month><div class="pk-month-title">${m}</div><div class="pk-days">${days}</div></div>`)
+      .join('');
+    (root.querySelector('.pk-foot') as HTMLElement).innerHTML =
+      (cfg.isTodayButtonVisible ? '<button type="button" data-today>Today</button>' : '') +
+      (cfg.isClearButtonVisible ? '<button type="button" data-clear>Clear</button>' : '');
+    this.#paintHead();
+  }
+}
+// Registered so the per-tag page rule `window.components['core-demo-rs-picker'].responsive` exists.
+registerComponent('core-demo-rs-picker', RsPickerCard as unknown as CustomElementConstructor, {
+  config: { name: 'core-demo-rs-picker', version: 'demo' },
+});

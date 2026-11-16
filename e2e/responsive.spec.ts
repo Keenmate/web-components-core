@@ -308,3 +308,84 @@ test.describe('phone (iPhone 13 profile)', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   });
 });
+
+// The `container` axis: keyed by the component's OWN width (narrow < 480 ≤ medium < 768 ≤ wide), lines from
+// --base-container-narrow / -medium read at the element (inherited), re-evaluated live when the box changes.
+test.describe('container axis (own width)', () => {
+  /** Put a fresh fx-rs-map with `map` into a box of `width`px; returns its id. */
+  async function boxed(page: Page, map: unknown, width: number, boxStyle = ''): Promise<void> {
+    await page.evaluate(
+      ({ map, width, boxStyle }) => {
+        document.getElementById('ct-box')?.remove();
+        const box = document.createElement('div');
+        box.id = 'ct-box';
+        box.setAttribute('style', `width: ${width}px; ${boxStyle}`);
+        const el = document.createElement('fx-rs-map');
+        el.id = 'ct';
+        el.setAttribute('responsive', JSON.stringify(map));
+        box.append(el);
+        document.body.append(box);
+      },
+      { map, width, boxStyle },
+    );
+  }
+  const cfg = (page: Page) => page.evaluate(() => {
+    const el = document.getElementById('ct') as unknown as { layout: string; columns: number; presentation: string };
+    return { layout: el.layout, columns: el.columns, presentation: el.presentation };
+  });
+  const resize = (page: Page, width: number) =>
+    page.evaluate((w) => (document.getElementById('ct-box')!.style.width = `${w}px`), width);
+
+  const MAP = { container: { narrow: { layout: 'stack', columns: 1 }, medium: { columns: 2 } } };
+
+  test('the bucket follows the element box, live, on the same window', async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await open(page, RESP);
+    await boxed(page, MAP, 300);
+    await expect.poll(() => cfg(page)).toEqual({ layout: 'stack', columns: 1, presentation: 'floating' });
+    await resize(page, 600);
+    await expect.poll(() => cfg(page)).toEqual({ layout: 'grid', columns: 2, presentation: 'floating' });
+    await resize(page, 900);
+    await expect.poll(() => cfg(page)).toEqual({ layout: 'grid', columns: 3, presentation: 'floating' }); // wide: base
+    await resize(page, 200);
+    await expect.poll(() => cfg(page)).toEqual({ layout: 'stack', columns: 1, presentation: 'floating' });
+  });
+
+  test('order in one map: breakpoint → container → device (later wins)', async ({ page }) => {
+    await page.setViewportSize({ width: 700, height: 900 }); // window bucket mobile, mouse = desktop device
+    await open(page, RESP);
+    await boxed(
+      page,
+      {
+        breakpoint: { mobile: { columns: 5, layout: 'list', presentation: 'modal' } },
+        container: { narrow: { columns: 1, layout: 'stack' } },
+        device: { desktop: { columns: 4 } },
+      },
+      300,
+    );
+    await expect.poll(() => cfg(page)).toEqual({ layout: 'stack', columns: 4, presentation: 'modal' });
+  });
+
+  test('the lines are CSS variables read at the element: a section moves them', async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await open(page, RESP);
+    await boxed(page, MAP, 600, '--base-container-narrow: 40rem');   // 640px at a 16px root
+    await expect.poll(() => cfg(page)).toEqual({ layout: 'stack', columns: 1, presentation: 'floating' });
+    await page.evaluate(() => document.getElementById('ct-box')!.style.removeProperty('--base-container-narrow'));
+    await resize(page, 610); // a size change re-reads the lines
+    await expect.poll(() => cfg(page)).toEqual({ layout: 'grid', columns: 2, presentation: 'floating' });
+  });
+
+  test('a callback gets ctx.container and ctx.width and re-runs as the box changes', async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await open(page, RESP);
+    await boxed(page, {}, 500);
+    await page.evaluate(() => {
+      (document.getElementById('ct') as unknown as { responsiveCallback: unknown }).responsiveCallback = (ctx: { container: string; width: number }) =>
+        ({ columns: ctx.width < 400 ? 1 : 2, layout: ctx.container === 'medium' ? 'list' : 'grid' });
+    });
+    await expect.poll(() => cfg(page)).toEqual({ layout: 'list', columns: 2, presentation: 'floating' });
+    await resize(page, 350);
+    await expect.poll(() => cfg(page)).toEqual({ layout: 'grid', columns: 1, presentation: 'floating' });
+  });
+});

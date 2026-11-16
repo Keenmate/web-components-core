@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   JS at the element — "is motion off here", the effective scroll behavior, a speed token for WAAPI, a
   length variable in px. web-commandpalette, web-multiselect and web-dropzone each probed
   `getComputedStyle` themselves.
+- Responsive rules (SPEC §6.7): a third map axis, `container` — keyed by the component's OWN width (`narrow` <
+  480px ≤ `medium` < 768px ≤ `wide`), so a component in a sidebar adapts on a wide monitor. The lines are the
+  CSS variables `--base-container-narrow` / `--base-container-medium`, read at the element (they inherit: page,
+  section, one element). Order in one map: `breakpoint` → `container` → `device`. Live: the element watches its
+  own size while a rule uses the axis (or a callback applies). `ResponsiveContext` gains `container` and `width`.
+  `resolveContainerSize(el, width)`, `readContainerLines(el)`, `CONTAINER_SIZES`, `CONTAINER_SIZE_TOKENS`,
+  `DEFAULT_CONTAINER_SIZES` (main index). Replaces per-component thresholds (web-daterangepicker `compact-below`,
+  web-editor's `@media (max-width: 720px)`). Demo: examples-responsive RS07.
 - `startSheetSession(panel, { onBack })` → `{ end(), rearmBack() }` (main index, SPEC §12.9): a full-screen
   sheet's whole open state in one call — page scroll lock, the keyboard inset, the phone Back entry — with one
   idempotent `end()` for every close path, plus a one-time warning when an ancestor (`transform`, `filter`, …)

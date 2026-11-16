@@ -296,10 +296,67 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
         </div>
 
         <!-- ============================================================= -->
-        <!-- RS07 · API summary                                            -->
+        <!-- RS07 · container: the component's own width                    -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>RS07 · API summary</h2>
+            <h2>RS07 · <code>container</code>: the component's own width</h2>
+            <p>
+                The third axis of a responsive map is keyed by the component's <strong>own</strong> width, not the
+                window's: <code>narrow</code> (&lt; 480px) · <code>medium</code> (&lt; 768px) · <code>wide</code>.
+                The same picker can be wide in the main content and narrow in a sidebar on the same monitor. One rule,
+                written once for every picker on the page:
+            </p>
+            <div class="code-block" data-language="js"><pre><code>window.components['core-demo-rs-picker'].responsive = {
+  container: {
+    narrow: { months: 1, isTodayButtonVisible: false },   // the picker is &lt; 480px
+    medium: { months: 2 },
+  },
+};</code></pre></div>
+            <div class="controls">
+                <label><input type="checkbox" id="rs07-rule" checked> page rule on</label>
+                <label>sidebar <input type="range" id="rs07-sidebar" min="220" max="900" step="10" value="320">
+                    <span class="mono" id="rs07-sidebar-out">320px</span></label>
+            </div>
+            <p class="muted">Drag the slider (or the bottom-right corner of the first box): the picker inside switches
+                from 2 months to 1 and loses its Today button the moment <em>its</em> width crosses 480px — the window
+                doesn't change.</p>
+            <div class="grid" style="--grid-min: 14rem; --grid-gap: 1rem">
+                <div>
+                    <div class="demo-label">A sidebar (resizable)</div>
+                    <div id="rs07-box" class="demo-area" style="width: 320px; max-width: 100%; resize: horizontal; overflow: auto">
+                        <core-demo-rs-picker id="rs07-a"></core-demo-rs-picker>
+                    </div>
+                </div>
+            </div>
+            <div class="demo-label mt-1">The main content (full width)</div>
+            <div class="demo-area">
+                <core-demo-rs-picker id="rs07-b"></core-demo-rs-picker>
+            </div>
+            <p>
+                The lines are CSS variables read <strong>at the component</strong>, so they inherit: <code>:root</code>
+                moves them for the page, a section for the components inside it, an element for itself. Below, the
+                section sets <code>--base-container-narrow: 600px</code> — the same picker at the same width is
+                <code>narrow</code> here:
+            </p>
+            <div class="demo-area" style="--base-container-narrow: 600px">
+                <core-demo-rs-picker id="rs07-c" style="max-width: 560px"></core-demo-rs-picker>
+            </div>
+            <div class="code-block" data-language="css"><pre><code>:root          { --base-container-narrow: 400px; }   /* the whole page */
+aside.filters  { --base-container-narrow: 360px; }   /* components in this sidebar */
+#trip          { --base-container-narrow: 600px; }   /* one component */</code></pre></div>
+            <p class="muted">
+                Order inside one map: <code>breakpoint</code> (the window) → <code>container</code> (its own width) →
+                <code>device</code> — a later axis wins on the same key. A <code>responsiveCallback</code> gets
+                <code>ctx.container</code> and <code>ctx.width</code> too. Plain restyling (padding, a label turning into an
+                icon) stays in CSS <code>@container</code>; this axis is for structural changes (the month count, a panel).
+            </p>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- RS08 · API summary                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>RS08 · API summary</h2>
             <table class="reference-table">
                 <thead><tr><th>API</th><th>What it does</th></tr></thead>
                 <tbody>
@@ -338,6 +395,17 @@ el.responsiveCallback = (ctx) =&gt; { show(ctx.config); return undefined; };  //
             TABLET_MIN_SHORT_SIDE, resolvePresentation, escapeHtml,
         } from '/src/index.ts';
         import '/examples-responsive-card.ts';
+
+        // ── RS07 · container axis ───────────────────────────────────────────
+        const pickerRule = { container: { narrow: { months: 1, isTodayButtonVisible: false }, medium: { months: 2 } } };
+        window.components['core-demo-rs-picker'].responsive = pickerRule;
+        document.getElementById('rs07-rule').addEventListener('change', (e) => {
+            window.components['core-demo-rs-picker'].responsive = e.target.checked ? pickerRule : null;
+        });
+        document.getElementById('rs07-sidebar').addEventListener('input', (e) => {
+            document.getElementById('rs07-box').style.width = `${e.target.value}px`;
+            document.getElementById('rs07-sidebar-out').textContent = `${e.target.value}px`;
+        });
 
         const $ = (id) => document.getElementById(id);
         const time = () => new Date().toLocaleTimeString();

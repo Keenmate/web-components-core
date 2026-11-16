@@ -646,7 +646,7 @@ multiselect resets to the markup's `selected` options, daterangepicker to its `v
 attribute, dropzone clears its files. `formStateRestoreCallback` is intentionally absent:
 components submit through light-DOM hidden inputs (no `setFormValue` state to restore).
 
-### 6.7 Responsive rules — partial configs per device class / breakpoint (page / tag / instance)
+### 6.7 Responsive rules — partial configs per device class / breakpoint / container (page / tag / instance)
 
 Components decide behaviour from the environment, but apps want to tune those
 decisions page-wide and per instance (e.g. "on a tablet, every multiselect opens
@@ -664,17 +664,18 @@ el.responsive = { device: { tablet: { presentation: 'modal' } } };   // also <x 
 el.responsiveCallback = (ctx) => ({ … });
 ```
 
-Types (main entry): `ResponsiveMap<C>`, `ResponsiveMapAxis` (`'device' | 'breakpoint'`),
-`ResponsiveContext<C>` (`{ env, deviceClass, breakpoint, element, component, config }` —
+Types (main entry): `ResponsiveMap<C>`, `ResponsiveMapAxis` (`'device' | 'breakpoint' | 'container'`),
+`ResponsiveContext<C>` (`{ env, deviceClass, breakpoint, container, width, element, component, config }` —
 `config` is the frozen **base** config), `ResponsiveCallback<C>`
 (`(ctx) => Partial<C> | null | undefined`).
 
-**A map has two explicit axes:**
+**A map has three explicit axes:**
 
 ```ts
 type ResponsiveMap<C> = {
   device?:     Partial<Record<DeviceClass, Partial<C> | null>>;  // classifyDevice: capability first, then short side
   breakpoint?: Partial<Record<string, Partial<C> | null>>;       // env.breakpoint: window-width buckets (768 / 1024 lines)
+  container?:  Partial<Record<ContainerSize, Partial<C> | null>>; // the component's OWN width: narrow | medium | wide
 };
 ```
 
@@ -684,8 +685,15 @@ type ResponsiveMap<C> = {
 - `breakpoint` is keyed by the width bucket (`env.breakpoint`, the
   `--base-breakpoint-*` lines / `configureBreakpoints()`): a narrowed desktop window
   is `mobile` below 768 px.
-- Within one map the **breakpoint entry applies first, then the device entry over
-  it** — device wins on the same key. Then that level's callback over the map (the
+- `container` (decided 2026-11-16) is keyed by the component's own border-box width: `narrow` <
+  `--base-container-narrow` (480px) ≤ `medium` < `--base-container-medium` (768px) ≤ `wide`. The lines are
+  CSS custom properties read AT the element (`readCssLengthPx`), so they inherit — `:root` for the page, a
+  section, one element; no JS configuration. The element watches its own size (`observeElementSize`, shared
+  observer) only while a rule uses the axis or a callback layer applies; a map re-runs when the bucket
+  changes, a callback on every (throttled) width change (`ctx.width`). Structural changes only — restyling
+  stays in CSS `@container`. Replaces per-component width thresholds (web-daterangepicker `compact-below`).
+- Within one map the **breakpoint entry applies first, then container, then the device entry** —
+  a later axis wins on the same key. Then that level's callback over the map (the
   precedence order below is unchanged).
 - Any other top-level key (e.g. the pre-rc15 device-keyed `{ mobile: … }`) warns
   once per element (`INIT` logger) and is ignored; a non-object axis likewise.

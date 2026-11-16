@@ -145,8 +145,10 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    `window.components.responsive*` (page, non-enumerable) → `window.components[tag].responsive*`
    → instance attributes/properties → `el.responsive` (JSON attr) → `el.responsiveCallback`
    (later wins, key by key; instance `null` = ignore page rules). A map is
-   `{ device?: {<deviceClass>: …}, breakpoint?: {<bucket>: …} }` — breakpoint entry first, device
-   entry over it (device wins); other top-level keys warn once + ignored. `this.config` / getters =
+   `{ device?: {<deviceClass>: …}, breakpoint?: {<bucket>: …}, container?: {narrow|medium|wide: …} }` —
+   breakpoint entry first, then container (the element's OWN width; lines = CSS vars
+   `--base-container-narrow` / `-medium` read at the element, 480 / 768), then device (later wins);
+   other top-level keys warn once + ignored. Own-size watch only while a rule uses `container` or a callback applies. `this.config` / getters =
    EFFECTIVE, `ctx.config` = base (`#base`); overrides never reflect, never explicit
    (persistent `#explicit` set). Diffed re-run on discrete env change / layer change / every
    flush, + the continuous `observeViewport` channel while a callback layer applies (maps =

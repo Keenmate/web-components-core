@@ -87,17 +87,33 @@ describe('mergeResponsiveMap', () => {
     mergeResponsiveMap(
       ctx,
       { breakpoint: { mobile: { layout: 'list', columns: 2 } }, device: { tablet: { columns: 4 } } },
-      'tablet',
-      'mobile',
+      { device: 'tablet', breakpoint: 'mobile', container: 'wide' },
       'map',
       out,
     );
     expect(out).toEqual({ layout: 'list', columns: 4 });
   });
 
+  it('container entry between breakpoint and device', () => {
+    const { ctx } = context();
+    const out: Record<string, unknown> = {};
+    mergeResponsiveMap(
+      ctx,
+      {
+        breakpoint: { mobile: { layout: 'list', columns: 2 } },
+        container: { narrow: { layout: 'grid', columns: 1 } },
+        device: { tablet: { columns: 4 } },
+      },
+      { device: 'tablet', breakpoint: 'mobile', container: 'narrow' },
+      'map',
+      out,
+    );
+    expect(out).toEqual({ layout: 'grid', columns: 4 });
+  });
+
   it('warns about unknown top-level keys and a non-object axis; a null entry opts out', () => {
     const { ctx, warnings } = context();
-    expect(mergeResponsiveMap(ctx, { mobile: {}, device: 'x', breakpoint: { mobile: null } } as never, 'mobile', 'mobile', 'map', {})).toBe(true);
+    expect(mergeResponsiveMap(ctx, { mobile: {}, device: 'x', breakpoint: { mobile: null } } as never, { device: 'mobile', breakpoint: 'mobile', container: 'wide' }, 'map', {})).toBe(true);
     expect(warnings).toEqual([
       expect.stringContaining('map: unknown top-level key(s) "mobile" ignored'),
       'map.device must be an object; ignored',

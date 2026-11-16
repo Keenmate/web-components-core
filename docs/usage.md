@@ -316,10 +316,10 @@ el.responsive = { breakpoint: { mobile: { presentation: 'modal' } } };  // insta
 el.responsiveCallback = (ctx) => null;                                   // instance null = ignore the page rules
 ```
 
-A map has two axes: `device` (keyed by `classifyDevice` — capability first, then the short side; a
-mouse device is `desktop` at any width) and `breakpoint` (keyed by the window-width bucket, the
-768 / 1024 lines). Within one map the breakpoint entry applies first and the device entry over it —
-**device wins** on the same key:
+A map has three axes: `device` (keyed by `classifyDevice` — capability first, then the short side; a
+mouse device is `desktop` at any width), `breakpoint` (keyed by the window-width bucket, the
+768 / 1024 lines) and `container` (keyed by the component's OWN width, below). Within one map the
+breakpoint entry applies first, then container, then device — **a later axis wins** on the same key:
 
 | Situation | deviceClass | breakpoint | `shouldAlignNodeIcons` |
 |---|---|---|---|
@@ -328,6 +328,27 @@ mouse device is `desktop` at any width) and `breakpoint` (keyed by the window-wi
 | iPad portrait (768 wide) | `tablet` | `mobile` | `true` — `device.tablet` beats `breakpoint.mobile` |
 
 Any other top-level map key (the old `{ mobile: … }` shape) warns once and is ignored.
+
+**`container` — the component's own width.** The same component can be wide in the main content and
+narrow in a sidebar on one monitor; `container` is keyed by its own box: `narrow` (< 480px) · `medium`
+(< 768px) · `wide`.
+
+```js
+window.components['web-daterangepicker'].responsive = {
+  container: { narrow: { months: 1, isTodayButtonVisible: false } },   // the picker is < 480px
+};
+```
+
+```css
+/* the lines are CSS variables read at the component, so they inherit */
+:root          { --base-container-narrow: 400px; }   /* the whole page */
+aside.filters  { --base-container-narrow: 360px; }   /* components in this sidebar */
+#trip          { --base-container-narrow: 600px; }   /* one component */
+```
+
+It switches live when the box crosses a line (the window doesn't have to change). A callback gets
+`ctx.container` and `ctx.width`. Use it for structural changes (the month count, a panel shown or not);
+restyling stays in CSS `@container`. No component has its own width-threshold input.
 
 Precedence, key by key: global map → global callback → per-tag map → per-tag callback →
 **attributes / properties set on the element** → instance map → instance callback. An attribute on
@@ -338,7 +359,7 @@ value. Own widths or combinations go in a callback (`ctx.deviceClass`, `ctx.brea
 Rules re-run on device / breakpoint / orientation flips and rule changes — callbacks also on every
 (throttled) viewport-size change — diffed, as one `update()`/`reinit()` batch; the first build already gets them. Set the page rules before the
 component scripts load if you like — `registerComponent()` adopts them. Types: `ResponsiveMap<C>`,
-`ResponsiveMapAxis`, `ResponsiveCallback<C>`, `ResponsiveContext<C>`.
+`ResponsiveMapAxis`, `ResponsiveCallback<C>`, `ResponsiveContext<C>`, `ContainerSize`.
 
 ## Motion level (none / snappy / smooth)
 

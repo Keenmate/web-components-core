@@ -48,6 +48,7 @@ import {
   type EnvironmentSnapshot,
 } from '../environment/environment.js';
 import { observeElementSize, type ElementSize } from '../environment/element-size.js';
+import { resolveContainerSize, type ContainerSize } from '../environment/container-size.js';
 import {
   observeThemeContext,
   THEME_CONTEXT_ATTRIBUTE,
@@ -86,6 +87,7 @@ import {
   isResponsiveMap,
   isResponsiveMapSetting,
   mergeResponsiveMap,
+  usesContainerAxis,
   mergeResponsiveRule,
   onResponsiveChange,
   readPageRules,
@@ -265,6 +267,12 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * callback layer applies (a callback may read `env.viewportWidth`; maps can't).
    */
   #responsiveViewportUnsub?: () => void;
+  /** Own-width watch for the `container` axis; set only while connected AND a rule may use the width. */
+  #responsiveSizeUnsub?: () => void;
+  /** The last own border-box width seen (NaN = not measured yet). */
+  #containerWidth = Number.NaN;
+  /** The container bucket the rules were last evaluated with. */
+  #containerSize?: ContainerSize;
   /** Responsive warnings already logged (each once per element). */
   #responsiveWarned?: Set<string>;
   readonly #byConfigKey = new Map<string, InputDef>();
@@ -813,11 +821,12 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   // ── responsive rules (SPEC §6.7) ───────────────────────────────────────────
 
   /**
-   * This instance's responsive map: partial configs on two axes — `device`
-   * (keyed by `classifyDevice`: `mobile` / `tablet` / `desktop`) and `breakpoint`
-   * (keyed by the window-width bucket), e.g.
-   * `{ device: { tablet: { presentation: 'modal' } }, breakpoint: { mobile: { … } } }`.
-   * The breakpoint entry applies first, the device entry over it (device wins).
+   * This instance's responsive map: partial configs on three axes — `breakpoint`
+   * (keyed by the window-width bucket), `container` (keyed by this element's own width:
+   * `narrow` / `medium` / `wide`) and `device` (keyed by `classifyDevice`: `mobile` /
+   * `tablet` / `desktop`), e.g.
+   * `{ device: { tablet: { presentation: 'modal' } }, container: { narrow: { … } } }`.
+   * Applied in that order — a later axis wins on the same key.
    * Also the JSON attribute `responsive`. Instance rules beat everything else —
    * the page rules and this element's own attributes/properties. An entry of
    * `null` (either axis) ignores every page rule while it matches. Overrides never reflect to
@@ -2080,10 +2089,10 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       isInvalid = true;
     });
     if (isInvalid) {
-      const reason = 'expected a JSON object { "device"?, "breakpoint"? }';
+      const reason = 'expected a JSON object { "device"?, "breakpoint"?, "container"? }';
       this.#reject(
         { configKey: 'responsive', attribute: RESPONSIVE_ATTRIBUTE, value: raw, reason, kept: this.responsive, source: 'attribute' },
-        `rejected invalid value for attribute ${RESPONSIVE_ATTRIBUTE}="${raw}" (a JSON object { "device"?, "breakpoint"? }); keeping previous value`,
+        `rejected invalid value for attribute ${RESPONSIVE_ATTRIBUTE}="${raw}" (a JSON object { "device"?, "breakpoint"?, "container"? }); keeping previous value`,
       );
       return;
     }
@@ -2125,7 +2134,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     const hasAny = !!(this.#responsiveMap || this.#responsiveCallback) || hasPageRules(page);
     const hasCallback = !!(this.#responsiveCallback || page.globalCallback || page.tagCallback);
     const hadOverrides = Object.keys(this.#ruleInstance).length > 0 || Object.keys(this.#rulePage).length > 0;
-    this.#syncResponsiveEnv(hasAny, hasCallback);
+    const usesWidth = hasCallback || usesContainerAxis(this.#responsiveMap, page.globalMap, page.tagMap);
+    this.#syncResponsiveEnv(hasAny, hasCallback, usesWidth);
     if (!hasAny && !hadOverrides) return;
 
     const instance: Record<string, unknown> = {};
@@ -2135,17 +2145,24 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       const merge = this.#mergeContext();
       const env = getEnvironment();
       const deviceClass = classifyDevice(env);
+      if (Number.isNaN(this.#containerWidth)) this.#containerWidth = this.offsetWidth;
+      const width = this.#containerWidth;
+      const container = resolveContainerSize(this, width);
+      this.#containerSize = container;
+      const keys = { breakpoint: env.breakpoint, container, device: deviceClass };
       const ctx: ResponsiveContext = {
         env,
         deviceClass,
         breakpoint: env.breakpoint,
+        container,
+        width,
         element: this,
         component: tag,
         config: Object.freeze({ ...this.#base }),
       };
       // Instance layers first (they decide the opt-out): map → callback.
       if (this.#responsiveMap) {
-        if (mergeResponsiveMap(merge, this.#responsiveMap, deviceClass, env.breakpoint, `<${tag}> responsive`, instance)) isOptOut = true;
+        if (mergeResponsiveMap(merge, this.#responsiveMap, keys, `<${tag}> responsive`, instance)) isOptOut = true;
       }
       if (this.#responsiveCallback) {
         const label = `<${tag}> responsiveCallback`;
@@ -2155,14 +2172,14 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
         // Page layers, later wins: global map → global callback → per-tag map → per-tag callback.
         // A page-level `null` is the same as `undefined`.
         if (page.globalMap) {
-          mergeResponsiveMap(merge, page.globalMap, deviceClass, env.breakpoint, 'window.components.responsive', pageOut, true);
+          mergeResponsiveMap(merge, page.globalMap, keys, 'window.components.responsive', pageOut, true);
         }
         if (page.globalCallback) {
           const label = 'window.components.responsiveCallback';
           mergeResponsiveRule(merge, this.#runRuleCallback(page.globalCallback, ctx, label), label, pageOut, true);
         }
         if (page.tagMap) {
-          mergeResponsiveMap(merge, page.tagMap, deviceClass, env.breakpoint, `window.components['${tag}'].responsive`, pageOut);
+          mergeResponsiveMap(merge, page.tagMap, keys, `window.components['${tag}'].responsive`, pageOut);
         }
         if (page.tagCallback) {
           const label = `window.components['${tag}'].responsiveCallback`;
@@ -2196,8 +2213,25 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * test `env.viewportWidth`, which moves between breakpoint lines. Maps are keyed
    * by device class / breakpoint — both discrete — so they stay on the discrete channel.
    */
-  #syncResponsiveEnv(hasAny: boolean, hasCallback: boolean): void {
+  #syncResponsiveEnv(hasAny: boolean, hasCallback: boolean, usesWidth: boolean): void {
     const isLive = this.isConnected && !this.#isDestroyed;
+    // Own width (the `container` axis, and a callback's ctx.width): re-run when the bucket changes,
+    // or on every (throttled) width change while a callback layer applies.
+    if (usesWidth && hasAny && isLive) {
+      this.#responsiveSizeUnsub ??= observeElementSize(
+        this,
+        (size) => {
+          this.#containerWidth = size.width;
+          const hasCallbackNow = !!this.#responsiveCallback || !!readPageRules(this.localName).globalCallback || !!readPageRules(this.localName).tagCallback;
+          if (hasCallbackNow || resolveContainerSize(this, size.width) !== this.#containerSize) this.#refreshResponsive();
+        },
+        { shouldFireImmediately: false },
+      );
+    } else if (this.#responsiveSizeUnsub) {
+      this.#responsiveSizeUnsub();
+      this.#responsiveSizeUnsub = undefined;
+      this.#containerWidth = Number.NaN;
+    }
     if (hasAny && isLive) {
       this.#responsiveEnvUnsub ??= observeEnvironment(() => this.#refreshResponsive(), { shouldFireImmediately: false });
     } else if (this.#responsiveEnvUnsub) {
@@ -2220,6 +2254,9 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#responsiveEnvUnsub = undefined;
     this.#responsiveViewportUnsub?.();
     this.#responsiveViewportUnsub = undefined;
+    this.#responsiveSizeUnsub?.();
+    this.#responsiveSizeUnsub = undefined;
+    this.#containerWidth = Number.NaN;
   }
 
   /** Cancel any queued microtask and flush pending changes synchronously now. */

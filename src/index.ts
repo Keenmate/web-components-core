@@ -103,6 +103,8 @@ export type {
 // element-box companion to observeViewport. Prefer CSS container queries when
 // the reflow is presentational; use this for structural (JS) reflow.
 export { observeElementSize, createElementSizeObserver } from './environment/element-size.js';
+export { CONTAINER_SIZES, CONTAINER_SIZE_TOKENS, DEFAULT_CONTAINER_SIZES, readContainerLines, resolveContainerSize } from './environment/container-size.js';
+export type { ContainerSize } from './environment/container-size.js';
 export type { ElementSize, ElementSizeListener, ElementSizeObserver, ObserveElementSizeOptions } from './environment/element-size.js';
 // Theme context (SPEC §12.10): dark/light detected once per page (or per
 // `theme-source` element) and mirrored onto every BlissElement host as
