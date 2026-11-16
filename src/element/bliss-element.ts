@@ -1432,6 +1432,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * isn't form-associated.
    */
   protected setValidityFlag(flag: keyof ValidityStateFlags, message: string | null, anchor?: HTMLElement): void {
+    this.#setValidityFlag(flag, message, anchor, 'setValidityFlag');
+  }
+
+  /** {@link setValidityFlag}, with the public method's name for the anchor warning. */
+  #setValidityFlag(flag: keyof ValidityStateFlags, message: string | null, anchor: HTMLElement | undefined, caller: string): void {
     const internals = this.#formInternals;
     if (!internals || typeof internals.setValidity !== 'function') return;
     if (message === null) this.#validityFlags.delete(flag);
@@ -1450,7 +1455,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       internals.setValidity(flags, first.message, first.anchor);
     } catch (anchorError) {
       // NotFoundError: the anchor isn't a shadow-including descendant of the host.
-      coreLog(this, 'UI', 'ELEMENT').warn('setValidityFlag: anchor rejected, validity set without it', anchorError);
+      coreLog(this, 'UI', 'ELEMENT').warn(`${caller}: anchor rejected, validity set without it`, anchorError);
       internals.setValidity(flags, first.message);
     }
   }
@@ -1469,7 +1474,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    */
   protected setFormatError(error: unknown | null, message?: string, anchor?: HTMLElement): void {
     if (error === null || error === undefined) {
-      this.setValidityFlag('customError', null);
+      this.#setValidityFlag('customError', null, undefined, 'setFormatError');
       return;
     }
     const text =
@@ -1477,7 +1482,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       (error instanceof Error && error.message) ||
       (typeof error === 'string' && error) ||
       'The value is invalid.';
-    this.setValidityFlag('customError', text, anchor);
+    this.#setValidityFlag('customError', text, anchor, 'setFormatError');
   }
 
   /**
