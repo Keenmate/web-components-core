@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createPerfLogger } from './perf-logger.js';
+import { createLoggers } from './create-loggers.js';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -61,5 +62,50 @@ describe('createPerfLogger — growth and nesting', () => {
   it('measure() still times a throwing function', () => {
     const perf = createPerfLogger('PERFTHROW');
     expect(() => perf.measure('boom', () => { throw new Error('x'); })).toThrow('x');
+  });
+});
+
+describe('createPerfLogger — items, metadata, threshold, async, counters, summaries', () => {
+  const lines = (spy: ReturnType<typeof vi.spyOn>) => spy.mock.calls.map((c) => c.slice(2).join(' '));
+
+  it('itemCount adds per-item time and items/sec; metadata is appended', () => {
+    createLoggers('PERFITEMS', ['PERF'] as const).enableLogging('debug');
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const perf = createPerfLogger('PERFITEMS');
+    expect(perf.isEnabled).toBe(true);
+    perf.start('index', { tree: 'a' });
+    perf.end('index', 1000);
+    const [line] = lines(log);
+    expect(line).toMatch(/^index took [\d.]+ms \| 1\D?000 items \| [\d.]+ms\/item \| .+ items\/sec \| \{"tree":"a"\}$/);
+  });
+
+  it('a threshold hides short spans', () => {
+    createLoggers('PERFTHRESH', ['PERF'] as const).enableLogging('debug');
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const perf = createPerfLogger('PERFTHRESH', { thresholdMs: 1e9 });
+    perf.measure('fast', () => 1);
+    expect(log).not.toHaveBeenCalled();
+    perf.setThreshold(0);
+    perf.measure('fast', () => 1);
+    expect(log).toHaveBeenCalledOnce();
+  });
+
+  it('measureAsync times until the promise settles and returns its value', async () => {
+    const perf = createPerfLogger('PERFASYNC');
+    await expect(perf.measureAsync('load', async () => 7)).resolves.toBe(7);
+    await expect(perf.measureAsync('fail', async () => { throw new Error('x'); })).rejects.toThrow('x');
+  });
+
+  it('count() and summarize() report through summary lines', () => {
+    createLoggers('PERFCOUNT', ['PERF'] as const).enableLogging('debug');
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const perf = createPerfLogger('PERFCOUNT');
+    perf.count('lookup');
+    perf.count('lookup', 2);
+    perf.summary('grid');
+    expect(lines(log).join('\n')).toContain('lookup: ×2 (2.00ms)');
+    log.mockClear();
+    perf.summarize('tree #a', { parse: 10, render: 30 }, 4);
+    expect(lines(log)[0]).toBe('tree #a — 40.00ms total | 4 items | 10.00ms/item | 100 items/sec: parse 10.00ms, render 30.00ms');
   });
 });
