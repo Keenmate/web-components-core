@@ -1096,7 +1096,12 @@ anchor(floating: HTMLElement, reference: HTMLElement | VirtualElement, opts: {
   onPlaced?(placement: Placement): void;
 }): { update(): void; destroy(): void };
 
-createTooltip(opts: { trigger; container; content; placement?; offset?; delay?; cssClass?; visibleClass? }): TooltipHandle;
+createTooltip(opts: { trigger; selector?; container; content; placement?; offset?; delay?; cssClass?; visibleClass?;
+                      arrow?; shouldToggleOnTap?; beforeShowCallback?(target): boolean | void }): TooltipHandle;
+// content: string | HTMLElement | (target) => string | HTMLElement | null — resolved at every show; empty = no tooltip.
+// selector (delegated mode): `trigger` is the ROOT (an element or a shadow root); ONE tooltip serves every
+// `closest(selector)` target inside it — hover (show delay once, then it switches at once), keyboard focus,
+// Escape; handle.target / show(target) / refresh(). shouldToggleOnTap: a tap toggles, emulated hover ignored.
 createPopover(opts: { reference: Reference | (() => Reference); panel; shouldKeepMounted?; isAnchored?;
   container?: HTMLElement | ShadowRoot; inheritThemeFrom?: HTMLElement | false;
   visibleClass?; shouldCloseOnEscape?; shouldCloseOnOutsideClick?; getInsideElements?; returnFocusTo?;

@@ -24,6 +24,7 @@
         #basic        { left: 200px; top: 480px; width: 140px; height: 44px; }
         #focus-basic  { left: 200px; top: 560px; width: 140px; height: 44px; }
         #host-card    { left: 200px; top: 640px; width: 180px; height: 44px; }
+        #cells        { position: absolute; left: 600px; top: 300px; }
 
         .tt {
             position: fixed;
@@ -59,6 +60,9 @@
     <!-- a BlissElement that owns its tooltip: built in connect(), rebuilt on an on:'reinit' input. -->
     <fx-tooltip-host class="trigger" id="host-card" tooltip-text="A core tooltip">component trigger</fx-tooltip-host>
 
+    <!-- delegated: ONE tooltip for the cells of a component's shadow root; cell 3 has no tooltip. -->
+    <fx-cells id="cells"></fx-cells>
+
     <script type="module">
         import { createTooltip } from '/src/positioning/index.ts';
         import { BlissElement, define, toText } from '/src/index.ts';
@@ -77,6 +81,33 @@
             disconnect() { this.#tip?.destroy(); this.#tip = undefined; }
         }
         define('fx-tooltip-host', FxTooltipHost);
+
+        // Delegated tooltip over a shadow root; `?tap` turns on toggle-on-tap (the phone test).
+        class FxCells extends HTMLElement {
+            connectedCallback() {
+                const root = this.attachShadow({ mode: 'open' });
+                root.innerHTML = `<style>
+                    .row { display: flex; gap: 4px; }
+                    .cell { width: 60px; height: 40px; display: grid; place-items: center; background: #fde68a; }
+                    .tt { position: fixed; top: 0; left: 0; background: #111827; color: #fff; padding: 2px 6px; opacity: 0; pointer-events: none; }
+                    .tt.is-visible { opacity: 1; }
+                </style><div class="row">
+                    <span class="cell" tabindex="0" data-tip="tip 1">1</span>
+                    <span class="cell" tabindex="0" data-tip="tip 2"><b>2</b></span>
+                    <span class="cell" tabindex="0">3</span>
+                </div>`;
+                window.cellsTip = createTooltip({
+                    trigger: root,
+                    selector: '.cell',
+                    content: (cell) => cell.dataset.tip,
+                    container: root,
+                    cssClass: 'tt cells-tt',
+                    delay: { show: 300 },
+                    shouldToggleOnTap: location.search.includes('tap'),
+                });
+            }
+        }
+        customElements.define('fx-cells', FxCells);
 
         createTooltip({
             trigger: document.getElementById('follow-delay'),

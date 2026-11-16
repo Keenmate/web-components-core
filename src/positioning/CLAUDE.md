@@ -13,7 +13,7 @@ read once per anchor on the reference element (else the panel) via `dropdown-off
 page / section / component host can override it; `4` when unset. Tooltips keep their own `8`; a point menu `0`.
 `createTooltip()` (hover/focus + delay + `shouldFollowCursor` via `VirtualElement`;
 `beforeShowCallback` to dismiss an overlapping tooltip; `ShadowRoot` container for
-shadow-scoped tooltip CSS/vars) and `createPopover()` are thin wrappers. `createPopover()`
+shadow-scoped tooltip CSS/vars; delegated mode `selector` = ONE tooltip for every `closest(selector)` target under a root (element or shadow root), `content(target)` resolved per show, empty = none, `beforeShowCallback` → `false` cancels, `shouldToggleOnTap` ignores the emulated hover after a touch) and `createPopover()` are thin wrappers. `createPopover()`
 keeps three things apart: OPEN (state, overlay tree, `visibleClass` + inline `visibility: hidden`
 until the first placement), MOUNTED (append / remove per open, or `shouldKeepMounted`) and
 ANCHORED (`setAnchored()` / `reanchor()`; un-anchoring restores the panel's own position / left /

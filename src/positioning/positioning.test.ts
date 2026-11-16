@@ -597,6 +597,149 @@ describe('createTooltip', () => {
   });
 });
 
+describe('createTooltip — content resolver, veto, delegated mode, tap', () => {
+  function grid(): { root: HTMLElement; cells: HTMLElement[] } {
+    const root = document.createElement('div');
+    root.innerHTML = '<span class="cell" data-tip="A">a</span><span class="cell" data-tip="B"><b>b</b></span><span class="cell">c</span><span class="other">x</span>';
+    document.body.append(root);
+    return { root, cells: [...root.querySelectorAll<HTMLElement>('span')] };
+  }
+  const over = (el: Element, relatedTarget: Element | null = null) =>
+    el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, relatedTarget }));
+
+  it('a content function is resolved at show; empty = no tooltip', () => {
+    const trigger = document.createElement('button');
+    document.body.append(trigger);
+    let text = 'one';
+    const tip = createTooltip({ trigger, content: () => text });
+    tip.show();
+    expect(tip.element.textContent).toBe('one');
+    tip.hide();
+    text = '';
+    tip.show();
+    expect(tip.isVisible).toBe(false);
+    tip.destroy();
+  });
+
+  it('beforeShowCallback returning false cancels the show', () => {
+    const trigger = document.createElement('button');
+    document.body.append(trigger);
+    const before = vi.fn(() => false);
+    const tip = createTooltip({ trigger, content: 'x', beforeShowCallback: before });
+    tip.show();
+    expect(before).toHaveBeenCalledWith(trigger);
+    expect(tip.isVisible).toBe(false);
+    tip.destroy();
+  });
+
+  it('delegated: one tooltip follows the hovered target, content per target, skips targets without content', () => {
+    const { root, cells } = grid();
+    const tip = createTooltip({ trigger: root, selector: '.cell', content: (t) => t.dataset.tip });
+    over(cells[0]!);
+    expect(tip.target).toBe(cells[0]);
+    expect(tip.element.textContent).toBe('A');
+    expect(cells[0]!.getAttribute('aria-describedby')).toBe(tip.element.id);
+    over(cells[1]!.firstElementChild!); // the <b> inside the second cell
+    expect(tip.target).toBe(cells[1]);
+    expect(tip.element.textContent).toBe('B');
+    expect(cells[0]!.hasAttribute('aria-describedby')).toBe(false);
+    over(cells[2]!); // no data-tip
+    expect(tip.isVisible).toBe(false);
+    over(cells[0]!);
+    over(cells[3]!); // not a target
+    expect(tip.isVisible).toBe(false);
+    over(cells[1]!);
+    cells[1]!.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body }));
+    expect(tip.isVisible).toBe(false);
+    tip.destroy();
+  });
+
+  it('delegated: the show delay applies once; moving to the next target switches at once', () => {
+    vi.useFakeTimers();
+    try {
+      const { root, cells } = grid();
+      const tip = createTooltip({ trigger: root, selector: '.cell', content: (t) => t.dataset.tip, delay: { show: 300 } });
+      over(cells[0]!);
+      expect(tip.isVisible).toBe(false);
+      vi.advanceTimersByTime(300);
+      expect(tip.target).toBe(cells[0]);
+      over(cells[1]!);
+      expect(tip.target).toBe(cells[1]);
+      tip.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('delegated: keyboard focus on a target shows it; focus leaving hides it', () => {
+    const { root, cells } = grid();
+    cells[0]!.tabIndex = 0;
+    const tip = createTooltip({ trigger: root, selector: '.cell', content: (t) => t.dataset.tip });
+    cells[0]!.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    expect(tip.target).toBe(cells[0]);
+    cells[0]!.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: document.body }));
+    expect(tip.isVisible).toBe(false);
+    tip.destroy();
+  });
+
+  it('delegated inside a shadow root', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const shadow = host.attachShadow({ mode: 'open' });
+    shadow.innerHTML = '<span class="cell" data-tip="S">s</span>';
+    const cell = shadow.querySelector<HTMLElement>('.cell')!;
+    const tip = createTooltip({ trigger: shadow, selector: '.cell', content: (t) => t.dataset.tip, container: shadow });
+    over(cell);
+    expect(tip.target).toBe(cell);
+    expect(shadow.contains(tip.element)).toBe(true);
+    tip.destroy();
+  });
+
+  it('refresh() re-reads the content of the shown target', () => {
+    const { root, cells } = grid();
+    const tip = createTooltip({ trigger: root, selector: '.cell', content: (t) => t.dataset.tip });
+    tip.show(cells[0]);
+    cells[0]!.dataset.tip = 'A2';
+    tip.refresh();
+    expect(tip.element.textContent).toBe('A2');
+    delete cells[0]!.dataset.tip;
+    tip.refresh();
+    expect(tip.isVisible).toBe(false);
+    tip.destroy();
+  });
+
+  it('shouldToggleOnTap: a tap toggles, the emulated hover is ignored, a tap outside closes', () => {
+    const { root, cells } = grid();
+    const tip = createTooltip({ trigger: root, selector: '.cell', content: (t) => t.dataset.tip, shouldToggleOnTap: true });
+    const tap = (el: Element) => {
+      el.dispatchEvent(Object.assign(new MouseEvent('pointerdown', { bubbles: true, composed: true }), { pointerType: 'touch' }));
+      over(el); // the browser's emulated hover
+      el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    };
+    tap(cells[0]!);
+    expect(tip.target).toBe(cells[0]);
+    tap(cells[0]!);
+    expect(tip.isVisible).toBe(false);
+    tap(cells[1]!);
+    expect(tip.target).toBe(cells[1]);
+    document.body.dispatchEvent(Object.assign(new MouseEvent('pointerdown', { bubbles: true, composed: true }), { pointerType: 'touch' }));
+    expect(tip.isVisible).toBe(false);
+    tip.destroy();
+  });
+
+  it('arrow stays the last child across content changes', () => {
+    const { root, cells } = grid();
+    const arrow = document.createElement('i');
+    const tip = createTooltip({ trigger: root, selector: '.cell', content: (t) => t.dataset.tip, arrow });
+    tip.show(cells[0]);
+    expect(tip.element.lastChild).toBe(arrow);
+    tip.show(cells[1]);
+    expect(tip.element.lastChild).toBe(arrow);
+    expect(tip.element.textContent).toBe('B');
+    tip.destroy();
+  });
+});
+
 describe('createPopover', () => {
   it('opens (mounts + anchors) and closes (unmounts)', async () => {
     const reference = document.createElement('button');

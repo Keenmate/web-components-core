@@ -105,3 +105,50 @@ test("a BlissElement-owned tooltip shows on hover and rebuilds when its on:'rein
   await host.hover();
   await expect(page.locator('.host-tt.is-visible')).toHaveText('Reconfigured!', { timeout: 2000 });
 });
+
+// Delegated mode: ONE tooltip for many targets in a component's shadow root (calendar days, grid cells).
+test.describe('delegated tooltip (selector)', () => {
+  const tip = (page: import('@playwright/test').Page) => page.locator('fx-cells .cells-tt');
+  const cell = (page: import('@playwright/test').Page, n: number) => page.locator('fx-cells .cell').nth(n - 1);
+
+  test('hover: the show delay once, then it follows the pointer from cell to cell; a cell without content shows none', async ({ page }) => {
+    await cell(page, 1).hover();
+    await expect(tip(page)).toHaveText('tip 1');
+    await expect(tip(page)).toHaveClass(/is-visible/);
+    const first = (await tip(page).boundingBox())!;
+    await cell(page, 2).hover();
+    await expect(tip(page)).toHaveText('tip 2', { timeout: 150 }); // no second delay
+    const second = (await tip(page).boundingBox())!;
+    expect(second.x).toBeGreaterThan(first.x); // re-anchored to the second cell
+    await cell(page, 3).hover();
+    await expect(tip(page)).toHaveCount(0);
+    await page.mouse.move(0, 0);
+    await expect(tip(page)).toHaveCount(0);
+  });
+
+  test('keyboard focus shows the focused cell\'s tooltip', async ({ page }) => {
+    await cell(page, 2).focus();
+    await expect(tip(page)).toHaveText('tip 2');
+    await expect(cell(page, 2)).toHaveAttribute('aria-describedby', /km-tooltip-/);
+    await page.keyboard.press('Escape');
+    await expect(tip(page)).toHaveCount(0);
+  });
+});
+
+test.describe('delegated tooltip, toggle on tap (phone)', () => {
+  test.use({ viewport: { width: 900, height: 900 }, isMobile: true, hasTouch: true });
+  test('a tap toggles, another cell switches, a tap outside closes', async ({ page }) => {
+    await page.goto(`${PAGE}?tap`);
+    const tip = page.locator('fx-cells .cells-tt');
+    const cell = (n: number) => page.locator('fx-cells .cell').nth(n - 1);
+    await cell(1).tap();
+    await expect(tip).toHaveText('tip 1');
+    await cell(1).tap();
+    await expect(tip).toHaveCount(0);
+    await cell(1).tap();
+    await cell(2).tap();
+    await expect(tip).toHaveText('tip 2');
+    await page.touchscreen.tap(20, 850);
+    await expect(tip).toHaveCount(0);
+  });
+});

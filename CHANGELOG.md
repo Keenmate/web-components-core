@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   JS at the element — "is motion off here", the effective scroll behavior, a speed token for WAAPI, a
   length variable in px. web-commandpalette, web-multiselect and web-dropzone each probed
   `getComputedStyle` themselves.
+- `createTooltip()` (`/positioning`) delegated mode: `selector` makes `trigger` the root (an element or a
+  shadow root) and ONE tooltip serves every matching target inside it — hover (the show delay once, then it
+  switches between targets at once), keyboard focus, Escape, `aria-describedby` on the shown target.
+  `content` may be a function of the target, resolved at every show (`null` / `''` = no tooltip);
+  `beforeShowCallback(target)` returning `false` cancels a show; `arrow`; `shouldUseFixedContainingBlock`;
+  `shouldToggleOnTap` (touch: a tap toggles, the emulated hover is ignored, a tap outside closes); handle
+  `target`, `show(target)`, `refresh()`. web-daterangepicker (days / badges) and web-grid (cells) built their
+  own tooltip layer over `anchor()`; web-treeview hid an empty one on a microtask.
 - `anchor()` (`/positioning`): `maxWidth` / `maxHeight` take `{ cap }` — an author limit kept as
   `min(cap, available)` (web-multiselect re-composed it in `onPlaced`); `referenceWidthVar` publishes the
   reference width as a CSS variable before each computation (on the panel, or `{ name, element }`);

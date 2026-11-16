@@ -688,7 +688,21 @@ dropdown.close();  // unmount + stop
 
 // tooltip — hover/focus with a delay; shouldFollowCursor: true to track the pointer
 const tip = createTooltip({ trigger, content: 'Help text', delay: { show: 200 } });
+
+// ONE tooltip for many targets (calendar days, grid cells, tree nodes) — delegated over a root
+const cellTip = createTooltip({
+  trigger: this.shadowRoot,                 // the root the targets live in
+  selector: '.xx__cell',
+  content: (cell) => cell.dataset.tooltip,  // resolved at every show; null / '' = no tooltip
+  container: this.shadowRoot,
+  delay: { show: 400 },                     // once; moving to the next cell switches at once
+  shouldToggleOnTap: true,                  // touch: a tap toggles (for targets a tap does nothing else on)
+});
 ```
+
+`content` may be a function in both modes; `beforeShowCallback(target)` returning `false` cancels a show;
+`arrow` takes an arrow element; `handle.refresh()` re-reads the content of the shown target. Keyboard focus
+on a target shows its tooltip, Escape hides it. No component builds its own tooltip layer over `anchor()`.
 
 `anchor(floating, reference, opts)` returns `{ update, destroy }`; options:
 `placement` (default `'bottom-start'`), `strategy` (default `'fixed'`), `offset`,
