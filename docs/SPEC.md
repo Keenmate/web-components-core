@@ -2229,13 +2229,18 @@ Every level sets the scroll behaviour too, so a level nested inside another (`sm
 base-css-variables, so a later page stylesheet can win there; core's adopted copy comes after the
 page's styles, so on pages with components the level holds.
 
-**What `motion` covers (decided 2026-11-15).** Every *decorative* animation — one that shows a change
-happening: appear / disappear, expand / collapse, a size change, a highlight fade, smooth scrolling.
-At `none` (or OS reduced motion) they are instant. They are timed ONLY by `--<prefix>-transition-*` →
-`--base-duration-*`. Not covered: **timers** (a delay before something happens — feedback time,
-debounce, tooltip delay, auto-close) keep their time; **activity indicators** (a loader) keep moving —
-the only sign something runs — slower under OS reduced motion. A visual OF a timer (a countdown bar)
-is decorative: hidden at `none` as under reduced motion.
+**What `motion` switches off, and what it never touches (decided 2026-11-15).** Components DO animate
+by default; `motion` decides how fast, and `none` (or OS reduced motion) makes these animations instant.
+Two groups, nothing in between:
+
+| Group | Examples | Default (`auto`) | `motion="none"` / OS reduced motion |
+|---|---|---|---|
+| **Decorative animations** — they show a change happening | appear / disappear (a panel, a sheet, a toast), **expand / collapse** (a tree node's rows, an accordion), a size change, a highlight fade, smooth scrolling, the visual OF a timer (a countdown bar) | **animate**, timed by the motion tokens | **instant** (a countdown bar is hidden) |
+| **Not animations — `motion` never changes them** | **timers**: a delay before something happens (feedback time, debounce, tooltip delay, auto-close); **activity indicators**: a loader | run as configured | timers keep their time; a loader keeps moving (slower under OS reduced motion — it is the only sign something runs) |
+
+So a tree's expand / collapse animates, and `motion="none"` turns it off; a tooltip's 500ms delay stays
+500ms at every level. Decorative animations are timed ONLY by `--<prefix>-transition-*` →
+`--base-duration-*`.
 
 **One switch, no per-feature properties.** `motion` is the only "animate or not" setting — no
 `isRowAnimationEnabled` / `isContextMenuAnimationEnabled`, no animations object (rulebook

@@ -143,11 +143,12 @@ el.motion = 'snappy';</code></pre></div>
         <div class="card">
             <h2>MO03 · Animating out, and switching off one animation</h2>
             <p>
-                <code>motion</code> is the one "animate or not" switch. It covers every <strong>decorative</strong>
-                animation, i.e. one that shows a change happening: appear / disappear, expand / collapse, a size change,
-                a highlight fade, smooth scrolling. It does <strong>not</strong> touch <strong>timers</strong> (a feedback
-                time, a debounce, a tooltip delay keep their time) or <strong>activity indicators</strong> (a loader keeps
-                spinning — the only sign something runs). Components have no <code>is…AnimationEnabled</code> properties.
+                <code>motion</code> is the one "animate or not" switch. Components animate by default; at
+                <code>none</code> (or OS reduced motion) every <strong>decorative</strong> animation, i.e. one that shows
+                a change happening, becomes instant: appear / disappear, <strong>expand / collapse</strong>, a size change,
+                a highlight fade, smooth scrolling. <code>motion</code> <strong>never</strong> changes <strong>timers</strong>
+                (a feedback time, a debounce, a tooltip delay keep their time) or <strong>activity indicators</strong> (a
+                loader keeps spinning — the only sign something runs). Components have no <code>is…AnimationEnabled</code> properties.
             </p>
             <p>
                 To switch off just <strong>one</strong> animation, set its duration token to <code>0s</code>, anywhere

@@ -356,11 +356,16 @@ page (core writes `window.components.motion` on `<html data-motion>`) → the co
                                                          left on auto outside the section -->
 ```
 
-### What `motion` covers, and switching off one animation
+### What `motion` switches off, and switching off one animation
 
 `motion` is the ONE "animate or not" setting — components have no `is…AnimationEnabled` properties.
-It covers every decorative animation (appear / disappear, expand / collapse, size changes, highlight
-fades, smooth scrolling); timers (feedback time, debounce, tooltip delay) and loaders keep running.
+
+- **Animates by default; `motion="none"` / OS reduced motion makes it instant:** appear / disappear,
+  **expand / collapse** (tree rows, accordions), size changes, highlight fades, smooth scrolling, a
+  countdown bar (hidden).
+- **`motion` never changes it:** timers (feedback time, debounce, tooltip delay, auto-close keep their
+  time) and loaders (keep moving — the only sign something runs).
+
 To switch off just ONE animation, set its duration token to `0s`, anywhere the cascade reaches:
 
 ```css
