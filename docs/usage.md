@@ -714,6 +714,29 @@ on the panel, or `{ name, element: host }`), `shouldRestorePlacement` (`destroy(
 `position` / `left` / `top` — for a persistent element you floated for a while), and a `platform`
 escape hatch.
 
+## Keyboard shortcuts (`@keenmate/web-components-core/actions`)
+
+An action item's `shortcut` uses ONE syntax: chords joined by `+` (`'Ctrl+D'`, `'Shift+F3'`), `Mod` = ⌘ on
+Apple / Ctrl elsewhere (`'Mod+S'`), a sequence separated by a space (`'g f'`); key names are
+`KeyboardEvent.key` names (`'Delete'`, `'F2'`, `'ArrowUp'`, `'Plus'`, `'Space'`). Menus show it formatted
+and run the item on it while open.
+
+```ts
+import { bindShortcuts, formatShortcut, shortcutKeycaps } from '@keenmate/web-components-core/actions';
+
+// bind: one keydown listener, sequences, skips plain keys while typing, ignores IME composition
+const unbind = bindShortcuts(this.shadowRoot!, () =>
+  this.toolbarItems.map((item) => ({ shortcut: item.shortcut, run: () => this.runItem(item), isEnabled: () => !item.isDisabled })),
+);
+
+formatShortcut('Mod+Shift+Z');   // 'Ctrl+Shift+Z' — Apple '⇧⌘Z'
+shortcutKeycaps('Ctrl+K');       // [['Ctrl', 'K']] — one <kbd> per cap
+```
+
+`matchesShortcut(event, 'Ctrl+D')` / `parseShortcut(text)` / `isTypingTarget(event)` are there for a
+component's own keydown handler. Modifiers match exactly; a bare single character ignores Shift (`'?'`).
+No component parses key combos itself.
+
 ## Menu (`@keenmate/web-components-core/menu`)
 
 The shared context / dropdown menu over `/actions` entries: rendering, (lazy)
@@ -891,7 +914,7 @@ explain the main ones; [SPEC](SPEC.md) has the design notes.
 | Entry point | Exports |
 |---|---|
 | `/positioning` | `anchor`, `createPopover`, `createTooltip`, `findOverlayContainer(trigger)` (where a portaled panel goes), `getFixedPositionOffsetParent` / `detectFixedDrift` / `findContainingBlockCulprit` / `describeContainingBlockProps` (fixed containing blocks and drift), `platform` (Floating UI's, for a custom one) |
-| `/actions` | `runAction`, `resolveActionItem`, `resolveMenuEntries`, `getMenuChildren`, `normalizeActionItems` (string shorthand → items), `readActionDataset(trigger)`, `isActionBusy`, `createMenuDivider` / `isMenuDivider` |
+| `/actions` | `runAction`, `resolveActionItem`, `resolveMenuEntries`, `getMenuChildren`, `normalizeActionItems` (string shorthand → items), `readActionDataset(trigger)`, `isActionBusy`, `createMenuDivider` / `isMenuDivider`, shortcuts: `bindShortcuts`, `matchesShortcut`, `parseShortcut`, `formatShortcut`, `shortcutKeycaps`, `isTypingTarget` |
 | `/menu` | `openMenu(entries, ctx, opts)`, `MENU_CSS` |
 | `/search` | `normalizeSearchText`, `prepareSearchTerm` / `matchesSearchTerm` / `NO_SEARCH_TERM`, `findTextMatches` / `matchesText`, `findRegexMatches` / `createRegexCompiler` / `statelessRegex`, `findHighlightRanges` / `wrapRanges` / `highlightHtml` / `escapeHtml` |
 | `/testing` | `mount`, `mountBeforeUpgrade`, `cleanup`, `defineOnce`, `uniqueTag`, `nextTick`, `nextFrame`, `listen` (event spy), `waitForEvent`, `captureConsole`, `resetPageState` |

@@ -1912,6 +1912,15 @@ meanwhile (`aria-busy`, a second activation ignored). The detail (`ActionEventDe
 authors (a `showMessage` body) participates via `data-action="custom"
 data-id="…"`; internal controls use a prefixed attribute so they can't collide.
 
+
+**Shortcuts (`src/actions/shortcut.ts`).** `shortcut` has one syntax: `+`-joined chords, `Mod` (⌘ on Apple,
+else Ctrl), space-separated sequences, `KeyboardEvent.key` names (aliases `Plus`, `Space`, `Esc`, `Del`, `Up`…;
+ProseMirror `Mod-Shift-z` read too; free text with other characters is not a shortcut and shows as is).
+`parseShortcut` / `matchesShortcut(event, s)` (modifiers exact, a bare single character ignores Shift, letters /
+digits also match by `event.code` for macOS Option) / `formatShortcut` (`Ctrl+Shift+Z`, Apple `⇧⌘Z`) /
+`shortcutKeycaps` / `isTypingTarget` / `bindShortcuts(target, bindings | () => bindings, { sequenceTimeoutMs })`
+(sequences, plain keys skipped while typing unless `shouldFireWhileTyping`, `run()` returning `false` keeps the
+default). `/menu` formats item shortcuts and matches them with it.
 ### 12.13 Menu (context / dropdown menus) — IMPLEMENTED (`src/menu/`, subpath `/menu`)
 
 **The gap.** web-treeview, web-grid and web-editor each rendered their own context

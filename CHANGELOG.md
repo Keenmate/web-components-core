@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   JS at the element — "is motion off here", the effective scroll behavior, a speed token for WAAPI, a
   length variable in px. web-commandpalette, web-multiselect and web-dropzone each probed
   `getComputedStyle` themselves.
+- Keyboard shortcuts (`/actions`): `parseShortcut`, `matchesShortcut(event, shortcut)`, `formatShortcut`
+  (`Ctrl+Shift+Z`, Apple `⇧⌘Z`), `shortcutKeycaps`, `isTypingTarget`, and `bindShortcuts(target, bindings)`
+  (one keydown listener, sequences like `'g f'`, plain keys skipped while typing, IME-safe). One syntax for
+  an action item's `shortcut`: `+`-joined chords, `Mod` = ⌘ / Ctrl, space-separated sequences. web-grid,
+  web-treeview, web-editor and web-commandpalette each parsed and matched key combos themselves.
 - `createTooltip()` (`/positioning`) delegated mode: `selector` makes `trigger` the root (an element or a
   shadow root) and ONE tooltip serves every matching target inside it — hover (the show delay once, then it
   switches between targets at once), keyboard focus, Escape, `aria-describedby` on the shown target.
@@ -30,6 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reference width as a CSS variable before each computation (on the panel, or `{ name, element }`);
   `shouldRestorePlacement` makes `destroy()` put back `position` / `left` / `top` too (web-editor removed
   them by hand after floating its host). pure-css port affected.
+
+### Changed
+- `/menu` shows an item's `shortcut` formatted for the platform (`'c'` → `C`, `'Mod+C'` → `Ctrl+C` / `⌘C`)
+  and, while open, runs the item on a chord too (`Ctrl+C`), not only on a bare letter / key name.
 
 ### Fixed
 - Sheet close chip (`SHEET_CHROME_CSS`): the hover tint applies only with a real pointer

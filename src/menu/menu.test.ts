@@ -147,9 +147,9 @@ describe('rendering', () => {
       prepareItemCallback: (item) => (item.action === 'copy' ? { ...item, shortcut: 'c' } : item),
     });
     expect(items()[0]!.querySelector('.km-menu__label')!.textContent).toBe('Copy!');
-    expect(items()[0]!.querySelector('.km-menu__shortcut')!.textContent).toBe('c');
+    expect(items()[0]!.querySelector('.km-menu__shortcut')!.textContent).toBe('C');
     byId('more').click();
-    expect(items(levels()[1])[0]!.querySelector('.km-menu__shortcut')!.textContent).toBe('c');
+    expect(items(levels()[1])[0]!.querySelector('.km-menu__shortcut')!.textContent).toBe('C');
   });
 
   it('renderMenuCallback takes over the root; core still positions and dismisses it', () => {

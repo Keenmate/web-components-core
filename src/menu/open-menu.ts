@@ -8,6 +8,7 @@
  */
 import { getMenuChildren, isMenuDivider, resolveMenuEntries } from '../actions/resolve.js';
 import type { MenuEntry, MenuItem, ResolvedActionItem } from '../actions/types.js';
+import { formatShortcut, matchesShortcut } from '../actions/shortcut.js';
 import { deepActiveElement } from '../dom/active-element.js';
 import { adoptStyles } from '../dom/adopt-styles.js';
 import { animateOut } from '../dom/animate-out.js';
@@ -263,7 +264,7 @@ export function openMenu<Ctx, A extends string = string>(
         if (resolved.shortcut) {
           const shortcut = document.createElement('span');
           shortcut.className = `${BLOCK}__shortcut`;
-          shortcut.textContent = resolved.shortcut;
+          shortcut.textContent = formatShortcut(resolved.shortcut);
           itemEl.appendChild(shortcut);
         }
       }
@@ -543,9 +544,6 @@ export function openMenu<Ctx, A extends string = string>(
 
   // ── Keyboard ───────────────────────────────────────────────────────────
 
-  const matchesShortcut = (shortcut: string | undefined, event: KeyboardEvent): boolean =>
-    !!shortcut && (shortcut === event.key || shortcut.toLowerCase() === event.key.toLowerCase());
-
   const onKeydown = (event: KeyboardEvent): void => {
     if (!isOpen || event.isComposing) return;
     // Two menus open (a context menu over a pinned one): only the topmost one handles keys.
@@ -623,11 +621,10 @@ export function openMenu<Ctx, A extends string = string>(
           else activate(focused, event);
           break;
         default: {
-          if (event.ctrlKey || event.metaKey || event.altKey) return;
-          // An item's shortcut (a letter, case-insensitive, or a key name like `F2`):
-          // the current level first, then its ancestors.
+          // An item's shortcut (`/actions` syntax: a letter, case-insensitive, a key name like `F2`, or a
+          // chord like `Ctrl+C`): the current level first, then its ancestors.
           for (let d = depth; d >= 0; d--) {
-            const hit = enabledItems(chain[d]!).find((el) => matchesShortcut(records.get(el)?.resolved.shortcut, event));
+            const hit = enabledItems(chain[d]!).find((el) => matchesShortcut(event, records.get(el)?.resolved.shortcut));
             if (!hit) continue;
             if (records.get(hit)!.hasChildren) openSubmenu(d, hit, true);
             else activate(hit, event);

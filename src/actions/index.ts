@@ -26,3 +26,14 @@ export {
 } from './resolve.js';
 export type { ResolvedMenuEntry, RunActionOptions } from './resolve.js';
 export type { ComponentContext } from '../element/context.js';
+export {
+  bindShortcuts,
+  formatShortcut,
+  isTypingTarget,
+  matchesKeyChord,
+  matchesShortcut,
+  parseKeyChord,
+  parseShortcut,
+  shortcutKeycaps,
+} from './shortcut.js';
+export type { BindShortcutsOptions, KeyChord, ShortcutBinding, ShortcutOptions } from './shortcut.js';

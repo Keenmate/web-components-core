@@ -35,7 +35,11 @@ export interface ActionItem<Ctx = ComponentContext, A extends string = string> {
   /** Icon — the component's icon convention (class name, glyph, or markup). */
   icon?: string;
   tooltip?: string;
-  /** Display hint for the key chord (`'Ctrl+D'`). Whether it is also bound is the component's call. */
+  /**
+   * The key chord (`'Ctrl+D'`, `'Mod+S'`, `'F2'`, a sequence `'g f'` — the `/actions` shortcut syntax). Menus
+   * show it formatted for the platform (`formatShortcut`) and run the item on it while open; binding it
+   * page- or component-wide is the component's call (`bindShortcuts`). Free text (`'right-click'`) shows as is.
+   */
   shortcut?: string;
   /** Extra CSS classes on the item. */
   cssClass?: string;
