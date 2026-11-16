@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `createDebounce(fn, ms)` → `{ schedule(...args), flush(), cancel(), isPending }` (main index): last call
+  wins, `ms <= 0` runs synchronously, `ms` may be a function read per call. `createThrottle(fn, ms)` and
+  `createFrameScheduler(fn)` (used inside core for resize / viewport) are now exported too. Six components
+  had their own debounce / throttle timers.
+
 ### Fixed
 - Sheet close chip (`SHEET_CHROME_CSS`): the hover tint applies only with a real pointer
   (`@media (hover: hover)`), and pressing tints it (`:active`). On touch the circle used to stick
