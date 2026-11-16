@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   JS at the element — "is motion off here", the effective scroll behavior, a speed token for WAAPI, a
   length variable in px. web-commandpalette, web-multiselect and web-dropzone each probed
   `getComputedStyle` themselves.
+- `BlissElement.setValidityFlag(flag, message | null, anchor?)` (protected, SPEC §6.6): one validity flag at
+  a time (`valueMissing`, `rangeUnderflow`, …), the others kept. web-dropzone set `valueMissing` (min file
+  count) with a raw `internals.setValidity()`.
 - `registerOverlay()`: `beforeEscapeCallback()` — return `false` to handle Escape inside the overlay (step
   back a level) instead of closing; the press is consumed. `deactivate({ shouldReturnFocus: true })` returns
   focus to `returnFocusTo` / the trigger on a component's own close paths, as an Escape close does
@@ -41,6 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   them by hand after floating its host). pure-css port affected.
 
 ### Changed
+- `setFormatError(null)` clears only `customError`; it used to reset every validity flag, so it also
+  cleared a `valueMissing` the component had set (and the component's own `setValidity({})` cleared a format
+  error).
 - `/menu` shows an item's `shortcut` formatted for the platform (`'c'` → `C`, `'Mod+C'` → `Ctrl+C` / `⌘C`)
   and, while open, runs the item on a chord too (`Ctrl+C`), not only on a bare letter / key name.
 

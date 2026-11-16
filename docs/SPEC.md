@@ -625,10 +625,14 @@ value the component could not produce (e.g. a throwing `getValueFormatCallback`)
   empty message for an invalid state. `anchor` (a shadow-including descendant,
   e.g. the visible input) positions the browser's validation bubble; an anchor
   the browser rejects is dropped with a warning (`UI` / `CORE:ELEMENT`).
-- `error` `null` → `internals.setValidity({})` — valid again. Clearing resets ALL
-  validity flags; a component with other constraints sets them through
-  `internals` itself.
+- `error` `null` → clears `customError` only — other flags stay.
 - No-op on a non-form-associated class.
+
+**`setValidityFlag(flag, message | null, anchor?)`** (protected) — one validity flag at a time
+(`'valueMissing'` for a required / min-count rule, `'rangeUnderflow'`, `'tooLong'`, …): set with a message,
+clear with `null`; the others are kept, so independent constraints never clear each other (a raw
+`internals.setValidity({})` would). The shown message is the earliest flag still set. `setFormatError` is
+its `customError` case. Components don't call `internals.setValidity` themselves.
 
 While invalid, the form refuses to submit (`invalid` fires instead of `submit`)
 unless `<form novalidate>`, and `:invalid` matches the host. Typical component

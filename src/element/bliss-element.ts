@@ -1410,27 +1410,57 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     return this.#formInternals?.reportValidity() ?? true;
   }
 
+  /** The validity flags set through {@link setValidityFlag} / {@link setFormatError}, in the order set. */
+  #validityFlags = new Map<keyof ValidityStateFlags, { message: string; anchor?: HTMLElement }>();
+
   /**
-   * Marks the host invalid because its value could not be produced (e.g. a
-   * throwing `getValueFormatCallback`), or clears that state (SPEC §6.6).
-   *
-   * - `error` non-null → `internals.setValidity({ customError: true }, message,
-   *   anchor)`. The message is `message`, else the error's own message, else a
-   *   generic fallback (the platform rejects an empty message for an invalid
-   *   state). `anchor` (a shadow-including descendant) positions the browser's
-   *   validation bubble; an anchor the browser rejects is dropped with a warning.
-   * - `error` `null` → `internals.setValidity({})` — the element is valid again.
-   *
-   * The form then refuses to submit (unless `<form novalidate>`) and `:invalid`
-   * matches. No-op when the class isn't form-associated or internals are
-   * unavailable. Clearing resets ALL validity flags — a component tracking other
-   * constraints sets them through {@link internals} itself.
+   * Sets or clears ONE validity flag (SPEC §6.6) — `'valueMissing'` (a required / min-count rule),
+   * `'rangeUnderflow'`, `'tooLong'`, `'customError'` … — keeping the others: a component with several
+   * constraints sets each on its own and none clears another (a raw `internals.setValidity({})` would).
+   * `message` `null` clears the flag; a non-empty message sets it (the platform needs one). The shown
+   * message is the earliest flag still set. `anchor` positions the browser's validation bubble (a
+   * shadow-including descendant; one the browser rejects is dropped with a warning). No-op when the class
+   * isn't form-associated.
    */
-  protected setFormatError(error: unknown | null, message?: string, anchor?: HTMLElement): void {
+  protected setValidityFlag(flag: keyof ValidityStateFlags, message: string | null, anchor?: HTMLElement): void {
     const internals = this.#formInternals;
     if (!internals || typeof internals.setValidity !== 'function') return;
-    if (error === null || error === undefined) {
+    if (message === null) this.#validityFlags.delete(flag);
+    else this.#validityFlags.set(flag, { message: message || 'The value is invalid.', ...(anchor ? { anchor } : {}) });
+    const first = this.#validityFlags.values().next().value;
+    if (!first) {
       internals.setValidity({});
+      return;
+    }
+    const flags = Object.fromEntries([...this.#validityFlags.keys()].map((k) => [k, true])) as ValidityStateFlags;
+    if (!first.anchor) {
+      internals.setValidity(flags, first.message);
+      return;
+    }
+    try {
+      internals.setValidity(flags, first.message, first.anchor);
+    } catch (anchorError) {
+      // NotFoundError: the anchor isn't a shadow-including descendant of the host.
+      coreLog(this, 'UI', 'ELEMENT').warn('setValidityFlag: anchor rejected, validity set without it', anchorError);
+      internals.setValidity(flags, first.message);
+    }
+  }
+
+  /**
+   * Marks the host invalid because its value could not be produced (e.g. a
+   * throwing `getValueFormatCallback`), or clears that state (SPEC §6.6): the
+   * `customError` flag through {@link setValidityFlag}, so other flags (a
+   * `valueMissing` the component set) stay.
+   *
+   * The message is `message`, else the error's own message, else a generic
+   * fallback (the platform rejects an empty message for an invalid state).
+   * `anchor` (a shadow-including descendant) positions the browser's validation
+   * bubble. The form then refuses to submit (unless `<form novalidate>`) and
+   * `:invalid` matches. No-op when the class isn't form-associated.
+   */
+  protected setFormatError(error: unknown | null, message?: string, anchor?: HTMLElement): void {
+    if (error === null || error === undefined) {
+      this.setValidityFlag('customError', null);
       return;
     }
     const text =
@@ -1438,17 +1468,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       (error instanceof Error && error.message) ||
       (typeof error === 'string' && error) ||
       'The value is invalid.';
-    if (!anchor) {
-      internals.setValidity({ customError: true }, text);
-      return;
-    }
-    try {
-      internals.setValidity({ customError: true }, text, anchor);
-    } catch (anchorError) {
-      // NotFoundError: the anchor isn't a shadow-including descendant of the host.
-      coreLog(this, 'UI', 'ELEMENT').warn('setFormatError: anchor rejected, validity set without it', anchorError);
-      internals.setValidity({ customError: true }, text);
-    }
+    this.setValidityFlag('customError', text, anchor);
   }
 
   /**

@@ -44,6 +44,9 @@ class FormatField extends BlissElement {
   fail(error: unknown | null, message?: string, anchor?: HTMLElement): void {
     this.setFormatError(error, message, anchor);
   }
+  flag(flag: keyof ValidityStateFlags, message: string | null): void {
+    this.setValidityFlag(flag, message);
+  }
 }
 define('format-field-element', FormatField as unknown as CustomElementConstructor);
 
@@ -137,5 +140,22 @@ describe('form validity API (SPEC §6.6)', () => {
     expect(() => el.fail(new Error('x'))).not.toThrow();
     expect(el.validity).toBeUndefined();
     expect(el.checkValidity()).toBe(true);
+  });
+
+  it('setValidityFlag keeps each flag on its own: clearing one never clears another', () => {
+    const { el } = make();
+    el.flag('valueMissing', 'Add at least 2 files.');
+    expect(el.validity?.valueMissing).toBe(true);
+    expect(el.validationMessage).toBe('Add at least 2 files.');
+    el.fail(new Error('bad format'));
+    expect(el.validity?.customError).toBe(true);
+    expect(el.validity?.valueMissing).toBe(true);
+    expect(el.validationMessage).toBe('Add at least 2 files.'); // the earliest flag still set
+    el.fail(null); // clearing the format error keeps valueMissing
+    expect(el.validity?.customError).toBeFalsy();
+    expect(el.validity?.valueMissing).toBe(true);
+    el.flag('valueMissing', null);
+    expect(el.validity?.valid).toBe(true);
+    expect(el.validationMessage).toBe('');
   });
 });

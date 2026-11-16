@@ -138,7 +138,8 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    (via `internals`; "no constraint" answers when not form-associated). The
    protected **`setFormatError(error | null, message?, anchor?)`** marks the host
    invalid (`customError`) when a value can't be produced, `null` clears it —
-   blocks submit unless `<form novalidate>`.
+   blocks submit unless `<form novalidate>`. Other constraints (`valueMissing`, …) go through
+   **`setValidityFlag(flag, message | null, anchor?)`** — one flag at a time, none clears another.
 
    **Responsive rules (SPEC §6.7), every component with an input table:**
    `window.components.responsive*` (page, non-enumerable) → `window.components[tag].responsive*`
