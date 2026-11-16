@@ -242,25 +242,26 @@ type is `Presentation` (`'auto' | 'floating' | 'modal' | 'fullscreen'`).
 ### Phone sheet session (scroll lock + keyboard inset + Back)
 
 The one way a full-screen sheet / modal runs while open — never a component's own `pushState()`
-(rulebook C-RO-6):
+(rulebook C-RO-6), never the three pieces wired by hand:
 
 ```ts
-import { claimBackEntry, lockBodyScroll, observeKeyboardInset } from '@keenmate/web-components-core';
+import { startSheetSession } from '@keenmate/web-components-core';
 
-// on open (fullscreen / modal tier)
-const unlock = lockBodyScroll();
-const unobserve = observeKeyboardInset(panel);
-const releaseBack = claimBackEntry(() => this.close('back'));   // phone Back closes it
-// one level up instead: claimBackEntry again from inside onBack (re-arms the entry)
+// on open (fullscreen / modal tier), once the panel is mounted
+this.#sheet = startSheetSession(panel, {
+  onBack: () => this.close('back'),          // phone Back closes it
+  // one level up instead: call this.#sheet.rearmBack() from inside onBack
+});
 
-// on EVERY close (✕, Escape, a pick, Back — releasing twice is a no-op)
-releaseBack();
-unobserve();
-unlock();
+// on EVERY close (✕, Escape, a pick, Back, disconnect — ending twice is a no-op)
+this.#sheet?.end();
 ```
 
-One history entry for the whole page; closing any other way gives it back one task later (a sheet
-that opens right after adopts it), and the page keeps its scroll position (no jump to the top).
+It locks page scroll (`lockBodyScroll`), tracks the virtual keyboard (`observeKeyboardInset`), holds one
+history entry for the whole page (`claimBackEntry`; closing any other way gives it back one task later, and
+the page keeps its scroll position), and warns once when an ancestor with `transform` / `filter` / … traps
+the fixed panel in its own box. `shouldLockScroll` / `shouldObserveKeyboardInset` /
+`shouldCheckContainingBlock: false` switch a piece off; the three helpers stay exported for anything else.
 
 ### Sheet header (title + close button)
 
@@ -278,7 +279,9 @@ const { header, title, close } = createSheetHeader({
   closeLabel: this.labels.close,                         // from the component's labels
   onClose: () => this.close('close-button'),
 });
-header.classList.add('xx__sheet-header');                // your own hooks; add fields as children
+header.classList.add('xx__sheet-header');                // your own hooks
+// a search field instead of a title: createSheetHeader({ title: null, content: searchField, … })
+//   (`content` goes between the title and the close button; give it flex: 1)
 panel.prepend(header);
 ```
 
@@ -923,7 +926,7 @@ explain the main ones; [SPEC](SPEC.md) has the design notes.
 | Environment | `getEnvironment`, `observeEnvironment`, `observeViewport`, `observeElementSize`, `createElementSizeObserver(listener)` (`observe` / `unobserve` / `disconnect` — one listener for a changing set of elements, shared observer), `configureBreakpoints` / `BREAKPOINTS_CHANGE_EVENT`, `classifyDevice` / `TABLET_MIN_SHORT_SIDE` |
 | Theme | `getThemeContext`, `observeThemeContext`, `setThemeMode` / `getThemeMode` (force dark / light page-wide), `readThemeSignal(el)`, `resolveThemeSource(host, source)`, `THEME_CONTEXT_ATTRIBUTE`, `THEME_SOURCE_ATTRIBUTE` |
 | Motion | `getPageMotion`, `observePageMotion`, `adoptMotionStyles(node)`, `MOTION_CSS`, `MOTION_PRESETS`, `MOTION_VALUES`, `MOTION_ATTRIBUTE`, `MOTION_DATA_ATTRIBUTE` |
-| Overlays | `resolvePresentation` / `DEFAULT_PRESENTATION_MAP` / `createPresentationContext` (floating panel vs fullscreen sheet), `lockBodyScroll()` (shared ref-counted lock), `observeKeyboardInset(panel)`, `claimBackEntry(onBack)` (phone Back closes the sheet), `SHEET_CHROME_CSS` / `createSheetHeader()` (the sheet header + close button), `registerOverlay` / `notifyOverlayActivated` / `onOverlayActivated` / `dismissAllOverlays` / `OVERLAY_ACTIVATE_EVENT` / `ALL_GROUPS` (one overlay open at a time, nesting, Escape routing) |
+| Overlays | `resolvePresentation` / `DEFAULT_PRESENTATION_MAP` / `createPresentationContext` (floating panel vs fullscreen sheet), `lockBodyScroll()` (shared ref-counted lock), `observeKeyboardInset(panel)`, `startSheetSession(panel, { onBack })` (scroll lock + keyboard inset + Back + containing-block check, one `end()`), `claimBackEntry(onBack)` (phone Back closes the sheet), `SHEET_CHROME_CSS` / `createSheetHeader()` (the sheet header + close button), `registerOverlay` / `notifyOverlayActivated` / `onOverlayActivated` / `dismissAllOverlays` / `OVERLAY_ACTIVATE_EVENT` / `ALL_GROUPS` (one overlay open at a time, nesting, Escape routing) |
 | Logging | `createLoggers(namespace, categories?)`, `createPerfLogger(namespace, { thresholdMs })` (spans + item counts + metadata, `measureAsync`, `count`, `summarize`), `getGlobalLogging()` (= `window.components.logging`), `getCoreLogging()` / `coreLogging` / `CORE_LOG_CATEGORIES` (core's own messages), `setLogPersistKeyPrefix` / `getLogPersistKeyPrefix`, `isLogLevel`, `toLogLevelNumber`, `LOG_LEVELS`, `DEFAULT_CATEGORIES`, `DEFAULT_LOG_LEVEL`, `DEFAULT_ENABLED_LEVEL` |
 
 ### Subpaths

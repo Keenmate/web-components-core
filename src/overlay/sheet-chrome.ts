@@ -134,6 +134,11 @@ export const SHEET_CHROME_CSS = `
 export interface SheetHeaderOptions {
   /** Title text; `null` / omitted = no title element (a header holding a search field, say). */
   title?: string | null;
+  /**
+   * Your own controls between the title and the close button (a search field, a match navigator); they
+   * get the space the title would take when there is no title.
+   */
+  content?: Node | readonly Node[];
   /** The close button's accessible name (from the component's `labels`). */
   closeLabel: string;
   /** Runs on a close-button click. */
@@ -147,7 +152,7 @@ export interface SheetHeader {
 }
 
 /**
- * Builds `.km-sheet-header` > [`.km-sheet-title`] + `.km-sheet-close` (a `type=button` with an
+ * Builds `.km-sheet-header` > [`.km-sheet-title`] + [your `content`] + `.km-sheet-close` (a `type=button` with an
  * `aria-label`, no text: the ✕ is the CSS mask). Add your own classes / children as needed;
  * adopt `SHEET_CHROME_CSS` into the root it ends up in.
  */
@@ -161,6 +166,7 @@ export function createSheetHeader(opts: SheetHeaderOptions): SheetHeader {
     title.textContent = opts.title;
     header.append(title);
   }
+  if (opts.content) header.append(...(Array.isArray(opts.content) ? opts.content : [opts.content as Node]));
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'km-sheet-close';

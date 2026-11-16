@@ -142,6 +142,8 @@ export { lockBodyScroll, type ScrollLockState } from './overlay/scroll-lock.js';
 export { observeKeyboardInset } from './overlay/keyboard-inset.js';
 // The phone Back gesture for a sheet: one history entry while it is open (SPEC §12.9).
 export { claimBackEntry } from './overlay/back-entry.js';
+export { startSheetSession } from './overlay/sheet-session.js';
+export type { SheetSession, SheetSessionOptions } from './overlay/sheet-session.js';
 // The phone sheet chrome (header + title + close button) every sheet shares (SPEC §12.9).
 export { SHEET_CHROME_CSS, createSheetHeader } from './overlay/sheet-chrome.js';
 export type { SheetHeaderOptions, SheetHeader } from './overlay/sheet-chrome.js';

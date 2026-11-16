@@ -25,9 +25,9 @@ on the same DOM: `--drawer` + physical `--left` / `--right`. Close removal is de
 close — the shared `createSheetHeader()` / `SHEET_CHROME_CSS`, `src/overlay/sheet-chrome.ts`) over a `.km-menu-sheet-backdrop`, levels inside it with only the deepest shown (`syncSheet()`
 — call it whenever the chain changes); drilled-in levels get a Back row (`backRows`, part of
 `enabledItems()` but not of `records` — guard `records.get()` with `?.`). Hover never opens a
-submenu there. Backdrop closes on `click`, not `pointerdown`; no scroll close; `lockBodyScroll()`
-+ one history entry (core `claimBackEntry()`, `src/overlay/back-entry.ts`) per open sheet, both undone in `close()` via
-`endSheetSession`. Tests: `sheet.test.ts` (mocks `getEnvironment`), e2e `menu-sheet.spec.ts`.
+submenu there. Backdrop closes on `click`, not `pointerdown`; no scroll close; one core
+`startSheetSession()` per open sheet (`src/overlay/sheet-session.ts`: scroll lock + Back entry, `rearmBack()` for a
+submenu Back), ended in `close()` via `endSheetSession`. Tests: `sheet.test.ts` (mocks `getEnvironment`), e2e `menu-sheet.spec.ts`.
 
 Consumers: web-treeview, web-editor, web-grid (cell + header menus; built-in submenus via
 `prepareItemCallback`). All three map their `--<prefix>-context-menu-*` onto `--_km-menu-*`.

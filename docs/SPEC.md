@@ -1702,6 +1702,11 @@ the page to the top after the lock put it back. Replaces the private copies in w
 (`pushOverlayHistory`), web-daterangepicker (same) and web-grid (`claimHistoryEntry`); `/menu`'s
 sheet uses it too (`src/overlay/back-entry.ts`).
 
+`startSheetSession(panel, { onBack, shouldLockScroll, shouldObserveKeyboardInset, shouldCheckContainingBlock,
+logSource })` (`src/overlay/sheet-session.ts`) composes `lockBodyScroll` + `observeKeyboardInset` + `claimBackEntry`
+(+ a one-time containing-block warning via `getFixedPositionOffsetParent`) behind one idempotent `end()`;
+`rearmBack()` re-claims from inside `onBack`. Components start their full-screen sheet with it.
+
 **Sheet chrome (`SHEET_CHROME_CSS` + `createSheetHeader()`, decided 2026-11-13).** Every phone
 sheet / full-screen panel has ONE header bar: `.km-sheet-header` > `.km-sheet-title` (optional) +
 `.km-sheet-close`. The close is a fixed-size round chip (`--base-touch-target-min`) with the

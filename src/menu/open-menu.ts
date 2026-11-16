@@ -19,12 +19,11 @@ import { callSafely } from '../logging/safe-call.js';
 import { classifyDevice, getEnvironment, observeEnvironment, type DeviceClass } from '../environment/environment.js';
 import { adoptMotionStyles } from '../environment/motion.js';
 import { registerOverlay, type OverlayHandle } from '../overlay/active-overlay.js';
-import { lockBodyScroll } from '../overlay/scroll-lock.js';
 import { anchor } from '../positioning/anchor.js';
 import { inheritTheme } from '../positioning/inherit-theme.js';
 import { watchScrollClose } from '../positioning/scroll-close.js';
 import type { AnchorHandle } from '../positioning/types.js';
-import { claimBackEntry } from '../overlay/back-entry.js';
+import { startSheetSession } from '../overlay/sheet-session.js';
 import { MENU_CSS } from './styles.js';
 import { createSheetHeader, SHEET_CHROME_CSS } from '../overlay/sheet-chrome.js';
 import type {
@@ -835,20 +834,19 @@ export function openMenu<Ctx, A extends string = string>(
     // Durations come from the motion tokens: make sure OS reduced motion / data-motion reach them.
     adoptMotionStyles(sheet);
     syncSheet();
-    const unlock = lockBodyScroll();
-    // Phone Back: up one submenu level (the entry is re-armed), else close the menu.
-    const onBack = (): void => {
-      if (!isOpen) return;
-      if (chain.length > 1) {
-        goUp(chain.length - 1);
-        releaseEntry = claimBackEntry(onBack);
-      } else close('back');
-    };
-    let releaseEntry = claimBackEntry(onBack);
-    endSheetSession = () => {
-      releaseEntry();
-      unlock();
-    };
+    // Scroll lock + the phone Back entry: up one submenu level (the entry is re-armed), else close.
+    const session = startSheetSession(sheet, {
+      shouldObserveKeyboardInset: false, // no text field in a menu
+      logSource: host instanceof ShadowRoot ? host.host : host instanceof Element ? host : undefined,
+      onBack: () => {
+        if (!isOpen) return;
+        if (chain.length > 1) {
+          goUp(chain.length - 1);
+          session.rearmBack();
+        } else close('back');
+      },
+    });
+    endSheetSession = session.end;
     // Modal: focus moves into the sheet (and returns to `returnFocusTo` on close).
     if (!opts.shouldFocusFirst) rootLevel.el.focus({ preventScroll: true });
   }

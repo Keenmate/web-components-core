@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   JS at the element — "is motion off here", the effective scroll behavior, a speed token for WAAPI, a
   length variable in px. web-commandpalette, web-multiselect and web-dropzone each probed
   `getComputedStyle` themselves.
+- `startSheetSession(panel, { onBack })` → `{ end(), rearmBack() }` (main index, SPEC §12.9): a full-screen
+  sheet's whole open state in one call — page scroll lock, the keyboard inset, the phone Back entry — with one
+  idempotent `end()` for every close path, plus a one-time warning when an ancestor (`transform`, `filter`, …)
+  traps the fixed panel. web-multiselect, web-daterangepicker and web-grid wired the three by hand;
+  web-commandpalette never handled Back and web-dropzone neither Back nor the scroll lock. The `/menu` sheet uses it.
+  `createSheetHeader({ content })`: your own controls (a search field) between the title and the close button.
 - `createElementSizeObserver(listener, opts)` → `{ observe(el), unobserve(el), disconnect() }` (main index):
   one listener for a changing set of elements (every label of a list) over core's shared `ResizeObserver`,
   with `observeElementSize`'s immediate fire, throttle and dedup per element; an element that left the page is
