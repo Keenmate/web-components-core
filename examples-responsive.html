@@ -353,10 +353,74 @@ aside.filters  { --base-container-narrow: 360px; }   /* components in this sideb
         </div>
 
         <!-- ============================================================= -->
-        <!-- RS08 · API summary                                            -->
+        <!-- RS08 · All together: a booking page                           -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>RS08 · API summary</h2>
+            <h2>RS08 · All together: a booking page</h2>
+            <p>
+                One page rule with all three axes, four pickers in a real layout. Nothing below is simulated — it reacts
+                to <strong>your</strong> browser:
+            </p>
+            <ul>
+                <li><strong>breakpoint</strong> — resize the browser window (below 768px it is <code>mobile</code>). The layout
+                    reflows too: the sidebar drops under the main column and gets <em>wider</em>, so its picker changes
+                    <code>container</code> at the same time.</li>
+                <li><strong>container</strong> — each picker's own width; Departure / Return share one row, so they are
+                    narrower than Trip dates.</li>
+                <li><strong>device</strong> — open the devtools device toolbar (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd>), pick a
+                    phone and reload: <code>device</code> becomes <code>mobile</code> and every picker opens full-screen.</li>
+            </ul>
+            <div class="code-block" data-language="js"><pre><code>window.components['core-demo-rs-booking'].responsive = {
+  // the WINDOW: how many months the page can afford
+  breakpoint: { tablet: { months: 2 }, mobile: { months: 1 } },
+  // the PICKER's own box: a narrow one is a compact one (overrides the window on the same key)
+  container: {
+    narrow: { months: 1, isTodayButtonVisible: false, isClearButtonVisible: false },
+    medium: { isClearButtonVisible: false },
+  },
+  // a PHONE: open full-screen — there is room for Today again (overrides both)
+  device: { mobile: { presentation: 'fullscreen', isTodayButtonVisible: true } },
+};
+// order: breakpoint → container → device — a later axis wins on the same key.
+// The picker's own default: 3 months, Today + Clear shown, opens floating.</code></pre></div>
+            <div class="output"><pre id="rs08-env"></pre></div>
+            <div class="demo-area">
+                <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start">
+                    <div style="flex: 999 1 520px; min-width: 0">
+                        <div class="demo-label">Main column · Trip dates</div>
+                        <core-demo-rs-booking id="rs08-trip"></core-demo-rs-booking>
+                        <pre class="mono" style="white-space: pre-wrap" data-decided-by="rs08-trip"></pre>
+                        <div style="display: flex; flex-wrap: wrap; gap: 1rem">
+                            <div style="flex: 1 1 220px; min-width: 0">
+                                <div class="demo-label">Departure</div>
+                                <core-demo-rs-booking id="rs08-dep"></core-demo-rs-booking>
+                                <pre class="mono" style="white-space: pre-wrap" data-decided-by="rs08-dep"></pre>
+                            </div>
+                            <div style="flex: 1 1 220px; min-width: 0">
+                                <div class="demo-label">Return</div>
+                                <core-demo-rs-booking id="rs08-ret"></core-demo-rs-booking>
+                                <pre class="mono" style="white-space: pre-wrap" data-decided-by="rs08-ret"></pre>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="flex: 1 0 260px; min-width: 0">
+                        <div class="demo-label">Sidebar · Filter: created</div>
+                        <core-demo-rs-booking id="rs08-filter"></core-demo-rs-booking>
+                        <pre class="mono" style="white-space: pre-wrap" data-decided-by="rs08-filter"></pre>
+                    </div>
+                </div>
+            </div>
+            <p class="muted">
+                Under each picker: every value and the rule entry that set it (<code>default</code> = the picker's own
+                value, no rule applies). Values set on an element itself would beat every page rule — none are set here.
+            </p>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- RS09 · API summary                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>RS09 · API summary</h2>
             <table class="reference-table">
                 <thead><tr><th>API</th><th>What it does</th></tr></thead>
                 <tbody>
@@ -392,7 +456,7 @@ aside.filters  { --base-container-narrow: 360px; }   /* components in this sideb
     <script type="module">
         import {
             getEnvironment, observeEnvironment, observeViewport, classifyDevice, configureBreakpoints,
-            TABLET_MIN_SHORT_SIDE, resolvePresentation, escapeHtml,
+            TABLET_MIN_SHORT_SIDE, resolvePresentation, escapeHtml, resolveContainerSize, createElementSizeObserver,
         } from '/src/index.ts';
         import '/examples-responsive-card.ts';
 
@@ -402,6 +466,41 @@ aside.filters  { --base-container-narrow: 360px; }   /* components in this sideb
         document.getElementById('rs07-rule').addEventListener('change', (e) => {
             window.components['core-demo-rs-picker'].responsive = e.target.checked ? pickerRule : null;
         });
+        // ── RS08 · all together ─────────────────────────────────────────────
+        const bookingRule = {
+            breakpoint: { tablet: { months: 2 }, mobile: { months: 1 } },
+            container: {
+                narrow: { months: 1, isTodayButtonVisible: false, isClearButtonVisible: false },
+                medium: { isClearButtonVisible: false },
+            },
+            device: { mobile: { presentation: 'fullscreen', isTodayButtonVisible: true } },
+        };
+        window.components['core-demo-rs-booking'].responsive = bookingRule;
+        const BOOKING_KEYS = ['months', 'isTodayButtonVisible', 'isClearButtonVisible', 'presentation'];
+        const renderDecidedBy = (el) => {
+            const env = getEnvironment();
+            const keys = { breakpoint: env.breakpoint, container: resolveContainerSize(el, el.offsetWidth), device: classifyDevice(env) };
+            const lines = BOOKING_KEYS.map((key) => {
+                let from = 'default';
+                for (const axis of ['breakpoint', 'container', 'device']) {
+                    const entry = bookingRule[axis]?.[keys[axis]];
+                    if (entry && key in entry) from = `${axis}.${keys[axis]}`;
+                }
+                return `${key} = ${JSON.stringify(el[key])}  ← ${from}`;
+            });
+            document.querySelector(`[data-decided-by="${el.id}"]`).textContent = lines.join('\n');
+        };
+        const renderBookingEnv = () => {
+            const env = getEnvironment();
+            document.getElementById('rs08-env').innerHTML = `window <b>${env.viewportWidth}px</b> → breakpoint <b>${env.breakpoint}</b> · device <b>${classifyDevice(env)}</b>`;
+        };
+        const bookingPickers = [...document.querySelectorAll('core-demo-rs-booking')];
+        for (const el of bookingPickers) el.addEventListener('config-applied', () => renderDecidedBy(el));
+        // A width change inside a bucket changes no value (no event): refresh the lines on every resize too.
+        const bookingSizes = createElementSizeObserver((_size, el) => renderDecidedBy(el));
+        for (const el of bookingPickers) bookingSizes.observe(el);
+        observeViewport(renderBookingEnv);
+
         document.getElementById('rs07-sidebar').addEventListener('input', (e) => {
             document.getElementById('rs07-box').style.width = `${e.target.value}px`;
             document.getElementById('rs07-sidebar-out').textContent = `${e.target.value}px`;

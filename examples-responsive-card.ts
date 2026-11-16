@@ -235,10 +235,17 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June'];
  * `resolveContainerSize`, the same lines the rules use).
  */
 export class RsPickerCard extends BlissElement {
+  protected static override events = ['config-applied'];
   protected static override inputs: readonly InputDef[] = [
     { configKey: 'months', attribute: 'months', converter: toInt({ min: 1, max: 3, default: 2 }), on: 'update' },
     { configKey: 'isTodayButtonVisible', attribute: 'show-today', converter: toBool('default-true'), on: 'update' },
     { configKey: 'isClearButtonVisible', attribute: 'show-clear', converter: toBool('default-true'), on: 'update' },
+    {
+      configKey: 'presentation',
+      attribute: 'presentation',
+      converter: toEnum(['floating', 'fullscreen'] as const, { default: 'floating' }),
+      on: 'update',
+    },
   ];
   #root?: ShadowRoot;
   #width = 0;
@@ -248,9 +255,11 @@ export class RsPickerCard extends BlissElement {
     this.#root.innerHTML = `<style>${PICKER_STYLES}</style>
       <div class="pk"><div class="pk-head"></div><div class="pk-months"></div><div class="pk-foot"></div></div>`;
     this.#paint();
+    this.emit('config-applied', {});
   }
   protected override update(): void {
     this.#paint();
+    this.emit('config-applied', {});
   }
   protected override sizeChanged(size: ElementSize): void {
     this.#width = size.width;
@@ -261,7 +270,8 @@ export class RsPickerCard extends BlissElement {
     const head = this.#root?.querySelector('.pk-head');
     if (!head) return;
     const width = Math.round(this.#width || this.offsetWidth);
-    head.innerHTML = `<span>width <b data-width>${width}px</b></span><span>container <b data-bucket>${resolveContainerSize(this, width)}</b></span>`;
+    const presentation = (this.config as { presentation: string }).presentation;
+    head.innerHTML = `<span>width <b data-width>${width}px</b></span><span>container <b data-bucket>${resolveContainerSize(this, width)}</b></span><span>opens <b data-presentation>${presentation}</b></span>`;
   }
 
   #paint(): void {
@@ -280,6 +290,16 @@ export class RsPickerCard extends BlissElement {
     this.#paintHead();
   }
 }
+/** RS08 — the same picker with 3 months by default (its own tag, so its page rule doesn't touch RS07's). */
+export class RsBookingPicker extends RsPickerCard {
+  protected static override inputs: readonly InputDef[] = RsPickerCard.inputs.map((row) =>
+    row.configKey === 'months' ? { ...row, converter: toInt({ min: 1, max: 3, default: 3 }) } : row,
+  );
+}
+registerComponent('core-demo-rs-booking', RsBookingPicker as unknown as CustomElementConstructor, {
+  config: { name: 'core-demo-rs-booking', version: 'demo' },
+});
+
 // Registered so the per-tag page rule `window.components['core-demo-rs-picker'].responsive` exists.
 registerComponent('core-demo-rs-picker', RsPickerCard as unknown as CustomElementConstructor, {
   config: { name: 'core-demo-rs-picker', version: 'demo' },
