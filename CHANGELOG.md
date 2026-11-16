@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   JS at the element — "is motion off here", the effective scroll behavior, a speed token for WAAPI, a
   length variable in px. web-commandpalette, web-multiselect and web-dropzone each probed
   `getComputedStyle` themselves.
+- `createElementSizeObserver(listener, opts)` → `{ observe(el), unobserve(el), disconnect() }` (main index):
+  one listener for a changing set of elements (every label of a list) over core's shared `ResizeObserver`,
+  with `observeElementSize`'s immediate fire, throttle and dedup per element; an element that left the page is
+  dropped. web-treeview ran its own `ResizeObserver` for its labels.
 - `createPerfLogger(namespace, { thresholdMs })`: `start(label, metadata)`, `end(label, itemCount)` /
   `measure(label, fn, itemCount)` (per-item time + items/sec), `measureAsync`, `count(label, ms)` (hot-path
   counters in `summary()`), `summary(title)`, `summarize(title, timings, totalItems)`, `setThreshold`,

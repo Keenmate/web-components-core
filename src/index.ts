@@ -102,8 +102,8 @@ export type {
 // Per-element size reactivity (own box, via a shared ResizeObserver) — the
 // element-box companion to observeViewport. Prefer CSS container queries when
 // the reflow is presentational; use this for structural (JS) reflow.
-export { observeElementSize } from './environment/element-size.js';
-export type { ElementSize, ElementSizeListener, ObserveElementSizeOptions } from './environment/element-size.js';
+export { observeElementSize, createElementSizeObserver } from './environment/element-size.js';
+export type { ElementSize, ElementSizeListener, ElementSizeObserver, ObserveElementSizeOptions } from './environment/element-size.js';
 // Theme context (SPEC §12.10): dark/light detected once per page (or per
 // `theme-source` element) and mirrored onto every BlissElement host as
 // `data-context-theme`; `setThemeMode()` forces it globally.

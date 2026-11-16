@@ -188,6 +188,54 @@ export function observeElementSize(
   });
 }
 
+/** A set of elements watched by one listener — see {@link createElementSizeObserver}. */
+export interface ElementSizeObserver {
+  /** Start watching `el` (no-op when already watched). */
+  observe(el: Element): void;
+  /** Stop watching `el`. */
+  unobserve(el: Element): void;
+  /** Stop watching everything. */
+  disconnect(): void;
+}
+
+/**
+ * One listener for a changing SET of elements (every label of a list, every cell of a column) over
+ * the shared observer: `observe(el)` / `unobserve(el)` / `disconnect()`, with the same immediate fire,
+ * throttle and dedup per element as {@link observeElementSize}. An element that left the page is dropped
+ * at its next resize entry. Replaces a component's own `new ResizeObserver()` for "watch all of these".
+ */
+export function createElementSizeObserver(listener: ElementSizeListener, opts: ObserveElementSizeOptions = {}): ElementSizeObserver {
+  const watched = new Map<Element, () => void>();
+  const unobserve = (el: Element): void => {
+    watched.get(el)?.();
+    watched.delete(el);
+  };
+  return {
+    observe(el) {
+      if (watched.has(el)) return;
+      watched.set(
+        el,
+        observeElementSize(
+          el,
+          (size, target) => {
+            if (!target.isConnected && watched.has(target)) {
+              unobserve(target);
+              return;
+            }
+            listener(size, target);
+          },
+          opts,
+        ),
+      );
+    },
+    unobserve,
+    disconnect() {
+      for (const stop of watched.values()) stop();
+      watched.clear();
+    },
+  };
+}
+
 /** Test-only: disconnect the shared observer and drop all subscriptions. */
 export function __resetElementSizeObservers(): void {
   if (ro) {
