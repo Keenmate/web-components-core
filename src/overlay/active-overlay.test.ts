@@ -356,6 +356,39 @@ describe('active-overlay routing (step 2)', () => {
     expect(escape().defaultPrevented).toBe(false); // nothing left to close
   });
 
+  it('beforeEscapeCallback returning false keeps the overlay open and consumes the press', () => {
+    const reasons: string[] = [];
+    const modal = openPanel({ name: 'modal', reasons });
+    let level = 2;
+    const el = document.createElement('div');
+    document.body.append(el);
+    const palette = registerOverlay((reason) => reasons.push(`palette:${reason}`), undefined, {
+      getElement: () => el,
+      shouldCloseOnEscape: true,
+      beforeEscapeCallback: () => (level > 0 ? (level--, false) : undefined),
+    });
+    palette.activate({ trigger: modal.inner });
+    expect(escape().defaultPrevented).toBe(true);
+    expect(escape().defaultPrevented).toBe(true);
+    expect(reasons).toEqual([]); // two steps back, nothing closed (not even the modal below)
+    escape();
+    expect(reasons).toEqual(['palette:escape']);
+  });
+
+  it('deactivate({ shouldReturnFocus }) returns focus from inside the panel to the trigger', () => {
+    const reasons: string[] = [];
+    const { inner, trigger, handle } = openPanel({ name: 'p', reasons });
+    inner.focus();
+    handle.deactivate({ shouldReturnFocus: true });
+    expect(document.activeElement).toBe(trigger);
+    const other = openPanel({ name: 'q', reasons });
+    const outside = document.createElement('input');
+    document.body.append(outside);
+    outside.focus();
+    other.handle.deactivate({ shouldReturnFocus: true });
+    expect(document.activeElement).toBe(outside); // focus elsewhere stays where it is
+  });
+
   it('a press inside the modal (outside the dropdown) closes the dropdown and its menu, not the modal', () => {
     const reasons: string[] = [];
     const modal = openPanel({ name: 'modal', reasons });

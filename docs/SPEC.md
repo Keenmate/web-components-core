@@ -1670,8 +1670,12 @@ it first; the routing key is versioned, see below) routes
 `dismissAllOverlays`), `'parent'` (the overlay it was opened from closed), `'escape'`,
 `'outside-click'`. `registerOverlay()` options: `shouldCloseOnEscape` / `shouldCloseOnOutsideClick`
 (a boolean or a function asked at each key / press), `getInsideElements` (more elements a press
-on doesn't count as outside); `activate({ returnFocusTo })` overrides the trigger as the focus
-target (`null` = none). `createPopover({ shouldCloseOnEscape, shouldCloseOnOutsideClick,
+on doesn't count as outside), `beforeEscapeCallback()` (return `false` = the overlay handled Escape itself —
+stepped back a level — and stays open; the press is consumed); `activate({ returnFocusTo })` overrides the
+trigger as the focus target (`null` = none); `deactivate({ shouldReturnFocus: true })` returns focus the same
+way on the component's own close paths (✕, a pick), when it was inside the panel. A sub-panel that is not a
+popover (an inline year selector) joins the tree the same way to get outside-click / Escape — no own
+document click manager. `createPopover({ shouldCloseOnEscape, shouldCloseOnOutsideClick,
 getInsideElements, returnFocusTo, overlayGroup, onClose })` joins the tree with them. `/menu` keeps its own keyboard and
 dismiss handling (its submenus are levels of ONE overlay) but is a node of the tree;
 components move their own dropdown dismissal onto the stack when they next touch it.

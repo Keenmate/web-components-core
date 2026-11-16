@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   JS at the element — "is motion off here", the effective scroll behavior, a speed token for WAAPI, a
   length variable in px. web-commandpalette, web-multiselect and web-dropzone each probed
   `getComputedStyle` themselves.
+- `registerOverlay()`: `beforeEscapeCallback()` — return `false` to handle Escape inside the overlay (step
+  back a level) instead of closing; the press is consumed. `deactivate({ shouldReturnFocus: true })` returns
+  focus to `returnFocusTo` / the trigger on a component's own close paths, as an Escape close does
+  (web-commandpalette ran its own Escape and focus restore for these two).
 - Keyboard shortcuts (`/actions`): `parseShortcut`, `matchesShortcut(event, shortcut)`, `formatShortcut`
   (`Ctrl+Shift+Z`, Apple `⇧⌘Z`), `shortcutKeycaps`, `isTypingTarget`, and `bindShortcuts(target, bindings)`
   (one keydown listener, sequences like `'g f'`, plain keys skipped while typing, IME-safe). One syntax for

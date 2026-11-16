@@ -90,6 +90,12 @@ export interface RegisterOverlayOptions {
    */
   shouldCloseOnEscape?: boolean | (() => boolean);
   /**
+   * Runs when an Escape press would close this overlay (it is the deepest that takes part). Return
+   * `false` to keep it open — the overlay handled the key itself (stepped back a level, cleared its
+   * search); the press is consumed either way, so nothing below closes.
+   */
+  beforeEscapeCallback?(): boolean | void;
+  /**
    * Close on a click outside the panel: a press that STARTED outside and a click that ENDED
    * outside, decided once that click has finished (after the page's own click handlers), like the
    * browser's popover light dismiss. Everything above the overlay that was clicked in closes
@@ -127,8 +133,12 @@ export interface OverlayHandle {
    * except its ancestors (see the module notes on nesting).
    */
   activate(opts?: ActivateOverlayOptions): void;
-  /** This overlay closed: the overlays opened inside it are dismissed too (deepest first). */
-  deactivate(): void;
+  /**
+   * This overlay closed: the overlays opened inside it are dismissed too (deepest first).
+   * `shouldReturnFocus` moves focus back to `returnFocusTo` / the trigger when it was inside the panel
+   * (or lost to `<body>`) — what an Escape close does, for the component's own close paths (✕, a pick).
+   */
+  deactivate(opts?: { shouldReturnFocus?: boolean }): void;
   /**
    * Keep this overlay open through the click being handled right now: call it from an API
    * method a page control may invoke (`scrollToIndex()`, `refresh()` from a button outside the
@@ -162,6 +172,8 @@ interface OpenOverlay {
   /** Overrides `trigger` as the focus target after Escape; `null` = none. */
   readonly returnFocusTo?: HTMLElement | null;
   readonly shouldCloseOnEscape?: boolean | (() => boolean);
+  /** Added after rc24 (optional: older copies of core don't write it). */
+  readonly beforeEscapeCallback?: () => boolean | void;
   /**
    * Written by copies of core older than the click-time rule: their routers close on the
    * `pointerdown`. This copy's router honours it too (at click time).
@@ -246,15 +258,33 @@ function onRoutedKeydown(event: KeyboardEvent): void {
   const hit = deepestOpen((e) => isOn(e.shouldCloseOnEscape));
   if (!hit) return;
   const [source, entry] = hit;
-  const panel = entry.getElement?.();
-  const active = deepActiveElement();
-  const hadFocus = !!panel && !!active && (panel === active || panel.contains(active) || active === document.body);
-  closeRouted(source, entry, 'escape');
-  // Focus goes back to what opened it — if it was inside the closed panel (or lost to <body>).
-  const focusTarget = entry.returnFocusTo === undefined ? entry.trigger : entry.returnFocusTo;
-  if (hadFocus && focusTarget instanceof HTMLElement && focusTarget.isConnected) focusTarget.focus({ preventScroll: true });
   event.preventDefault();
   event.stopPropagation();
+  let shouldClose = true;
+  if (entry.beforeEscapeCallback) {
+    try {
+      shouldClose = entry.beforeEscapeCallback() !== false;
+    } catch (error) {
+      coreLog(null, 'UI', 'ELEMENT').error('overlay beforeEscapeCallback threw', error);
+    }
+  }
+  if (!shouldClose) return;
+  const hadFocus = hasFocusInside(entry);
+  closeRouted(source, entry, 'escape');
+  if (hadFocus) returnFocus(entry);
+}
+
+/** Focus is inside the overlay's panel (or was lost to `<body>`). */
+function hasFocusInside(entry: OpenOverlay): boolean {
+  const panel = entry.getElement?.();
+  const active = deepActiveElement();
+  return !!panel && !!active && (panel === active || panel.contains(active) || active === document.body);
+}
+
+/** Focus goes back to what opened the overlay (`returnFocusTo`, else the trigger; `null` = nowhere). */
+function returnFocus(entry: OpenOverlay): void {
+  const focusTarget = entry.returnFocusTo === undefined ? entry.trigger : entry.returnFocusTo;
+  if (focusTarget instanceof HTMLElement && focusTarget.isConnected) focusTarget.focus({ preventScroll: true });
 }
 
 /** The open overlays with an outside-click rule that an event with this `path` is outside of. */
@@ -467,11 +497,14 @@ export function registerOverlay(
   participants.add(participant);
   ensureListening();
 
-  const deactivate = (): void => {
+  const deactivate = (deactivateOpts?: { shouldReturnFocus?: boolean }): void => {
     const open = openOverlays();
-    if (!open.has(participant.id)) return;
+    const entry = open.get(participant.id);
+    if (!entry) return;
+    const hadFocus = !!deactivateOpts?.shouldReturnFocus && hasFocusInside(entry);
     open.delete(participant.id);
     dismissDescendants(participant.id); // closing a parent closes its subtree
+    if (hadFocus) returnFocus(entry);
   };
 
   return {
@@ -484,6 +517,7 @@ export function registerOverlay(
         trigger: activateOpts?.trigger ?? null,
         ...(activateOpts?.returnFocusTo !== undefined ? { returnFocusTo: activateOpts.returnFocusTo } : {}),
         shouldCloseOnEscape: opts.shouldCloseOnEscape,
+        ...(opts.beforeEscapeCallback ? { beforeEscapeCallback: opts.beforeEscapeCallback } : {}),
         outsideClickRule: opts.shouldCloseOnOutsideClick,
         getInsideElements: opts.getInsideElements,
       });
