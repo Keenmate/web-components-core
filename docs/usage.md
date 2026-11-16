@@ -263,6 +263,61 @@ the page keeps its scroll position), and warns once when an ancestor with `trans
 the fixed panel in its own box. `shouldLockScroll` / `shouldObserveKeyboardInset` /
 `shouldCheckContainingBlock: false` switch a piece off; the three helpers stay exported for anything else.
 
+### Modal session (dialog / centered picker / full-screen sheet)
+
+A **modal** blocks the page until it closes. `startModalSession` is the one way a component runs its own
+modal panel ([SPEC §12.19](SPEC.md)) — never a hand-written Tab trap or backdrop listener:
+
+```ts
+import { startModalSession, Z_INDEX } from '@keenmate/web-components-core';
+
+// on open, once the panel is mounted (its z-index: Z_INDEX.modal)
+this.#modal = startModalSession(panel, {
+  backdrop: true,                         // core adds a dimmed <div> before the panel; or your own element; omit = none
+  onDismiss: (reason) => this.close(reason),  // 'escape' | 'back' | 'backdrop' | 'overlay' | 'parent'
+  trigger: this.#input,                   // focus returns here on end()
+  // shouldObserveKeyboardInset: true,    // a FULL-SCREEN sheet: size to the visual viewport
+});
+
+// on EVERY close
+this.#modal?.end();
+```
+
+While open: the page behind is `inert` (clicks, focus and screen readers stay in the panel; overlays mounted
+later — a dropdown portaled to `<body>` from inside — still work), Tab cycles inside, focus moves in
+(`[autofocus]` → first tabbable → the panel), `role="dialog"` + `aria-modal="true"`, page scroll locked,
+Escape through the overlay tree (a dropdown opened inside closes first), the phone Back gesture.
+`createFocusTrap(panel, opts)` → `{ release() }` is the trap alone (inert + Tab cycling + focus in / back);
+`getTabbables(container)` lists the tabbable elements in flat-tree order (shadow roots and slots included).
+
+### Ready-made dialogs (`@keenmate/web-components-core/dialog`)
+
+The styled, translatable replacement for `window.confirm` / `window.prompt` — never those in a component:
+
+```ts
+import { confirmDialog, promptDialog, openDialog } from '@keenmate/web-components-core/dialog';
+
+if (await confirmDialog({ title: 'Delete row?', message: 'This cannot be undone.', isDanger: true, confirmLabel: 'Delete' })) …
+
+const url = await promptDialog({
+  title: 'Image URL', value: 'https://',
+  validate: (v) => (/^https:\/\/.+/.test(v) ? null : 'Must start with https://'),   // keeps it open + shows the message
+});                                                    // null = cancelled
+
+const choice = await openDialog({
+  title: 'Unsaved changes',
+  message: 'Save before closing?',                     // text (escaped); content: aNode for your own markup
+  actions: [{ value: 'discard', label: 'Discard', isDanger: true }, { value: 'save', label: 'Save', isPrimary: true }],
+  labels: { ok: 'OK', cancel: 'Cancel', close: 'Close' },   // from your component's labels
+}).result;                                             // 'save' | 'discard' | null (✕ / Escape / Back / backdrop)
+```
+
+A centered card (a bottom sheet under 480px wide) in its own layer on `<body>` (`container` to move it), over
+a backdrop, the shared sheet header on top. `isDismissible: false` = only the buttons close it;
+`beforeCloseCallback(value)` returning `false` keeps it open. Danger confirms start focus on Cancel. Theme:
+`--km-dialog-*` on `:root` (width, bg, border, radius, shadow, padding, duration), the `--base-*` tokens
+underneath; `--km-modal-backdrop-bg` for the backdrop.
+
 ### Sheet header (title + close button)
 
 A **sheet** is a panel that covers the page on a phone — a bottom sheet, a side drawer, a full-screen
@@ -961,7 +1016,7 @@ explain the main ones; [SPEC](SPEC.md) has the design notes.
 | Element | `BlissElement`, `INPUT_REJECTED_EVENT` (`'input-rejected'`, a refused write), `define(tag, Class)` (define once), `dispatch(target, name, detail)` (the free event helper under `emit()`), `defaultEventProperty(name)` (`'node-select'` → `'onNodeSelect'`), `withComponentContext(detail, controller, element, extras?)` / `COMPONENT_CONTEXT_KEYS` (the non-enumerable `controller` / `element`); `normalizeEventDefs` is internal plumbing |
 | Before-callbacks | `runBeforeCallback` (async; `false` cancels, a value replaces), `runBeforeCallbackSync`, `runBeforeCallbackEager` (stays synchronous for a sync hook) |
 | Registration | `registerComponent(tag, Class, opts)` (`window.components[tag]`), `getInstances(tag)`, `getRegisteredTags()` — page-wide, across copies of core |
-| DOM | `adoptStyles(root, ...css)` / `createStyleSlot(root)` (style injection), `renderLoader(host, container, context, opts)` / `publishLoaderHook()` (loading states), `scrollIntoContainer` / `findScrollContainer` (container scroll), `scrollContainerToBox` / `getScrollTopForBox` (a virtual-list row by index), `createStateStore` (persisted UI state), `deepActiveElement()` (the focused element inside shadow roots), `escapeHtml(text)` (also on `/search`), `createMicrotaskScheduler()` (coalesce a burst into one run), `createDebounce(fn, ms)` (`schedule(...args)` / `flush()` / `cancel()`; last call wins, `ms <= 0` = synchronous, `ms` may be a function), `createThrottle(fn, ms)` (leading + one trailing run), `createFrameScheduler(fn)` (one run per animation frame), `isMotionOff` / `readScrollBehavior` / `readCssDurationMs` / `readCssLengthPx` (resolved CSS in JS), `Z_INDEX` (stacking tiers), `resolveEnumAttribute(raw, values, fallback)` |
+| DOM | `adoptStyles(root, ...css)` / `createStyleSlot(root)` (style injection), `renderLoader(host, container, context, opts)` / `publishLoaderHook()` (loading states), `scrollIntoContainer` / `findScrollContainer` (container scroll), `scrollContainerToBox` / `getScrollTopForBox` (a virtual-list row by index), `createStateStore` (persisted UI state), `deepActiveElement()` (the focused element inside shadow roots), `escapeHtml(text)` (also on `/search`), `createMicrotaskScheduler()` (coalesce a burst into one run), `createDebounce(fn, ms)` (`schedule(...args)` / `flush()` / `cancel()`; last call wins, `ms <= 0` = synchronous, `ms` may be a function), `createThrottle(fn, ms)` (leading + one trailing run), `createFrameScheduler(fn)` (one run per animation frame), `isMotionOff` / `readScrollBehavior` / `readCssDurationMs` / `readCssLengthPx` (resolved CSS in JS), `Z_INDEX` (stacking tiers), `createFocusTrap` / `getTabbables` (focus trap), `resolveEnumAttribute(raw, values, fallback)` |
 | CSS-variable lint | `extractConsumedCssVars`, `extractDeclaredCssVars`, `lintCssVars` (read vs declared `--prefix-*` names), `suggestCssVars` (likely target of a typo) |
 | Environment | `getEnvironment`, `observeEnvironment`, `observeViewport`, `observeElementSize`, `createElementSizeObserver(listener)` (`observe` / `unobserve` / `disconnect` — one listener for a changing set of elements, shared observer), `configureBreakpoints` / `BREAKPOINTS_CHANGE_EVENT`, `classifyDevice` / `TABLET_MIN_SHORT_SIDE` |
 | Theme | `getThemeContext`, `observeThemeContext`, `setThemeMode` / `getThemeMode` (force dark / light page-wide), `readThemeSignal(el)`, `resolveThemeSource(host, source)`, `THEME_CONTEXT_ATTRIBUTE`, `THEME_SOURCE_ATTRIBUTE` |
@@ -976,6 +1031,7 @@ explain the main ones; [SPEC](SPEC.md) has the design notes.
 | `/positioning` | `anchor`, `createPopover`, `createTooltip`, `findOverlayContainer(trigger)` (where a portaled panel goes), `getFixedPositionOffsetParent` / `detectFixedDrift` / `findContainingBlockCulprit` / `describeContainingBlockProps` (fixed containing blocks and drift), `platform` (Floating UI's, for a custom one) |
 | `/actions` | `runAction`, `resolveActionItem`, `resolveMenuEntries`, `getMenuChildren`, `normalizeActionItems` (string shorthand → items), `readActionDataset(trigger)`, `isActionBusy`, `createMenuDivider` / `isMenuDivider`, shortcuts: `bindShortcuts`, `matchesShortcut`, `parseShortcut`, `formatShortcut`, `shortcutKeycaps`, `isTypingTarget` |
 | `/menu` | `openMenu(entries, ctx, opts)`, `MENU_CSS` |
+| `/dialog` | `openDialog(opts)` → `{ result, close, panel, body }`, `confirmDialog(opts)` → `Promise<boolean>`, `promptDialog(opts)` → `Promise<string \| null>`, `DIALOG_CSS` |
 | `/search` | `normalizeSearchText`, `prepareSearchTerm` / `matchesSearchTerm` / `NO_SEARCH_TERM`, `findTextMatches` / `matchesText`, `findRegexMatches` / `createRegexCompiler` / `statelessRegex`, `findHighlightRanges` / `wrapRanges` / `highlightHtml` / `escapeHtml` |
 | `/testing` | `mount`, `mountBeforeUpgrade`, `cleanup`, `defineOnce`, `uniqueTag`, `nextTick`, `nextFrame`, `listen` (event spy), `waitForEvent`, `captureConsole`, `resetPageState` |
 | `/cem` | `blissAnalyzerConfig`, `blissInputsPlugin`, `cssVariablesFromManifestPlugin`, `withCoreDeclared` / `CORE_DECLARED_API` / `CORE_DECLARED_INPUTS` / `CORE_DECLARED_EVENTS`, `extractBlissClass` / `extractBlissClasses` / `extractRegistrations` / `parseRegisterComponentCall` |

@@ -1,0 +1,141 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+let backHandler: (() => void) | undefined;
+vi.mock('./scroll-lock.js', () => ({ lockBodyScroll: () => () => {} }));
+vi.mock('./back-entry.js', () => ({
+  claimBackEntry: (onBack: () => void) => {
+    backHandler = onBack;
+    return () => (backHandler = undefined);
+  },
+}));
+
+import { startModalSession, type ModalDismissReason } from './modal-session.js';
+import { __resetOverlays, registerOverlay } from './active-overlay.js';
+
+afterEach(() => {
+  __resetOverlays();
+  backHandler = undefined;
+  document.body.replaceChildren();
+});
+
+const escape = (): void => {
+  document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+};
+
+function setup(): { opener: HTMLButtonElement; page: HTMLElement; panel: HTMLElement } {
+  const opener = document.createElement('button');
+  const page = document.createElement('main');
+  const panel = document.createElement('div');
+  panel.innerHTML = '<button id="ok">ok</button>';
+  document.body.append(opener, page, panel);
+  opener.focus();
+  return { opener, page, panel };
+}
+
+describe('startModalSession', () => {
+  it('ARIA, inert page, focus in; end() restores everything and returns focus', () => {
+    const { opener, page, panel } = setup();
+    const session = startModalSession(panel, { onDismiss: () => {} });
+    expect(panel.getAttribute('role')).toBe('dialog');
+    expect(panel.getAttribute('aria-modal')).toBe('true');
+    expect(page.hasAttribute('inert')).toBe(true);
+    expect(document.activeElement?.id).toBe('ok');
+    session.end();
+    session.end();
+    expect(panel.hasAttribute('role')).toBe(false);
+    expect(panel.hasAttribute('aria-modal')).toBe(false);
+    expect(page.hasAttribute('inert')).toBe(false);
+    expect(document.activeElement).toBe(opener);
+    expect(session.isEnded).toBe(true);
+  });
+
+  it('keeps a role the panel already has', () => {
+    const { panel } = setup();
+    panel.setAttribute('role', 'alertdialog');
+    startModalSession(panel, { onDismiss: () => {} }).end();
+    expect(panel.getAttribute('role')).toBe('alertdialog');
+  });
+
+  it('backdrop: true creates one before the panel (interactive), a click dismisses, end() removes it', () => {
+    const { panel } = setup();
+    const reasons: ModalDismissReason[] = [];
+    const session = startModalSession(panel, { backdrop: true, onDismiss: (r) => reasons.push(r) });
+    const backdrop = session.backdrop!;
+    expect(backdrop.className).toBe('km-modal-backdrop');
+    expect(backdrop.nextElementSibling).toBe(panel);
+    expect(backdrop.hasAttribute('inert')).toBe(false);
+    expect(backdrop.style.zIndex).toContain('--base-z-modal-backdrop');
+    backdrop.click();
+    expect(reasons).toEqual(['backdrop']);
+    session.end();
+    expect(backdrop.isConnected).toBe(false);
+  });
+
+  it('your own backdrop element: wired, never removed; shouldCloseOnBackdropClick: false ignores clicks', () => {
+    const { panel } = setup();
+    const own = document.createElement('div');
+    document.body.append(own);
+    const reasons: ModalDismissReason[] = [];
+    const session = startModalSession(panel, { backdrop: own, onDismiss: (r) => reasons.push(r) });
+    own.click();
+    session.end();
+    expect(own.isConnected).toBe(true);
+    expect(reasons).toEqual(['backdrop']);
+
+    const s2 = startModalSession(panel, { backdrop: own, shouldCloseOnBackdropClick: false, onDismiss: (r) => reasons.push(r) });
+    own.click();
+    s2.end();
+    expect(reasons).toEqual(['backdrop']);
+  });
+
+  it('Escape and Back ask to dismiss; a dropdown opened inside closes first on Escape', () => {
+    const { panel } = setup();
+    const reasons: string[] = [];
+    const session = startModalSession(panel, { onDismiss: (r) => reasons.push(r) });
+
+    const inner = panel.querySelector('button')!;
+    const dropdown = document.createElement('div');
+    document.body.append(dropdown);
+    const child = registerOverlay((r) => reasons.push(`dropdown:${r}`), undefined, {
+      getElement: () => dropdown,
+      shouldCloseOnEscape: true,
+    });
+    child.activate({ trigger: inner });
+    expect(reasons).toEqual([]); // a child opening never dismisses the modal
+
+    escape();
+    expect(reasons).toEqual(['dropdown:escape']);
+    escape();
+    expect(reasons).toEqual(['dropdown:escape', 'escape']);
+
+    backHandler?.();
+    expect(reasons.at(-1)).toBe('back');
+    session.end();
+  });
+
+  it('a page overlay opening elsewhere does not dismiss it (modal group)', () => {
+    const { panel } = setup();
+    const reasons: string[] = [];
+    startModalSession(panel, { onDismiss: (r) => reasons.push(r) });
+    registerOverlay(() => {}).activate();
+    expect(reasons).toEqual([]);
+  });
+
+  it('beforeEscapeCallback false keeps it open; shouldCloseOnEscape false ignores Escape', () => {
+    const { panel } = setup();
+    const reasons: string[] = [];
+    const s = startModalSession(panel, { onDismiss: (r) => reasons.push(r), beforeEscapeCallback: () => false });
+    escape();
+    s.end();
+    const s2 = startModalSession(panel, { onDismiss: (r) => reasons.push(r), shouldCloseOnEscape: false });
+    escape();
+    s2.end();
+    expect(reasons).toEqual([]);
+  });
+
+  it('shouldCloseOnBack: false claims no Back entry', () => {
+    const { panel } = setup();
+    startModalSession(panel, { onDismiss: () => {}, shouldCloseOnBack: false });
+    expect(backHandler).toBeUndefined();
+  });
+});

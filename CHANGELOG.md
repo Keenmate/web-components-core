@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `startModalSession(panel, { backdrop, onDismiss, trigger, … })` (main index, SPEC §12.19): one call for a
+  component's own modal panel — the page behind goes `inert`, Tab cycles inside, focus in and back,
+  `role="dialog"` + `aria-modal`, an optional backdrop (`true` = core's, or your element; a click dismisses),
+  Escape through the overlay tree (a dropdown opened inside closes first), phone Back, scroll lock; one `end()`.
+  `createFocusTrap(panel, opts)` and `getTabbables(container)` (flat tree) are exported on their own.
+  web-daterangepicker, web-commandpalette and web-grid each wired their modals by hand; none trapped focus.
+- `/dialog` subpath: `openDialog({ title, message, content, actions })` → `{ result, close }`,
+  `confirmDialog()` → `Promise<boolean>`, `promptDialog({ value, validate })` → `Promise<string | null>` — a
+  styled, translatable dialog (a bottom sheet on narrow screens) to replace `window.confirm` / `window.prompt`
+  (web-editor). Theme: `--km-dialog-*`, `--km-modal-backdrop-bg`.
 - `Z_INDEX` (main index, SPEC §12.18): the stacking tiers as `var(--base-z-*, <default>)` strings —
   `modalBackdrop` 6000, `modal` 7000, `dropdown` 7500, `popover` 7600, `toast` 8000, `tooltip` 9000. Rule:
   dialogs and phone full-screen sheets are the `modal` tier (what opens inside them stacks above), a

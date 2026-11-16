@@ -19,6 +19,7 @@ describe('entry points import without a DOM', () => {
     ['./actions', './actions/index.js'],
     ['./search', './search/index.js'],
     ['./menu', './menu/index.js'],
+    ['./dialog', './dialog/index.js'],
   ])('%s', async (_subpath, file) => {
     const mod = await import(file);
     expect(Object.keys(mod).length).toBeGreaterThan(0);

@@ -37,6 +37,10 @@
       "types": "./dist/menu/index.d.ts",
       "import": "./dist/menu/index.js"
     },
+    "./dialog": {
+      "types": "./dist/dialog/index.d.ts",
+      "import": "./dist/dialog/index.js"
+    },
     "./component-variables.manifest.json": "./component-variables.manifest.json",
     "./package.json": "./package.json"
   },

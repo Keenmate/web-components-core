@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test — modal session + /dialog</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+    <style>
+        .dropdown { position: fixed; left: 40px; top: 40px; padding: 8px; background: #ffd; border: 1px solid #aa0;
+                    z-index: var(--base-z-dropdown, 7500); }
+        /* a long page: scroll lock is visible */
+        .tall { height: 2000px; }
+    </style>
+</head>
+<body>
+    <h1>modal fixture</h1>
+    <p>Targeted by <code>e2e/modal.spec.ts</code>: <code>startModalSession</code> on a component's own panel (in a
+        shadow root, with a dropdown opened from inside it), and the <code>/dialog</code> helpers.</p>
+    <button id="page-button">page button</button>
+    <button id="open-own">open own modal</button>
+    <button id="open-prompt">prompt</button>
+    <button id="open-confirm">confirm (danger)</button>
+    <output id="result"></output>
+    <fx-modal-host id="host"></fx-modal-host>
+    <div class="tall"></div>
+
+    <script type="module">
+        import { startModalSession, registerOverlay } from '/src/index.ts';
+        import { promptDialog, confirmDialog } from '/src/dialog/index.ts';
+
+        const result = document.getElementById('result');
+        const log = [];
+        window.__log = log;
+
+        // A component that renders its own modal panel in its shadow root.
+        class FxModalHost extends HTMLElement {
+            constructor() {
+                super();
+                this.attachShadow({ mode: 'open' }).innerHTML = `
+                    <input id="field" placeholder="behind (in the shadow root)">
+                    <div id="own-panel" hidden>
+                        <style>#own-panel{position:fixed;inset:0;margin:auto;width:320px;height:fit-content;padding:12px;background:#fff;border:1px solid #888;z-index:var(--base-z-modal,7000)}</style>
+                        <button id="first">first</button>
+                        <button id="open-dropdown">open dropdown</button>
+                        <button id="last">last</button>
+                    </div>`;
+            }
+            open(trigger) {
+                const panel = this.shadowRoot.getElementById('own-panel');
+                panel.hidden = false;
+                const close = (reason) => {
+                    log.push(`dismiss:${reason}`);
+                    panel.hidden = true;
+                    this.dropdown?.close();
+                    session.end();
+                };
+                const session = startModalSession(panel, { backdrop: true, onDismiss: close, trigger });
+                this.session = session;
+                this.shadowRoot.getElementById('open-dropdown').onclick = (e) => this.openDropdown(e.currentTarget);
+            }
+            // a dropdown portaled to <body> (mounted AFTER the modal started: not inert)
+            openDropdown(trigger) {
+                const el = document.createElement('div');
+                el.className = 'dropdown';
+                el.id = 'dropdown';
+                el.innerHTML = '<button id="dropdown-item">dropdown item</button>';
+                document.body.append(el);
+                const overlay = registerOverlay((r) => { log.push(`dropdown:${r}`); close(); }, undefined, {
+                    getElement: () => el, shouldCloseOnEscape: true,
+                });
+                const close = () => { overlay.destroy(); el.remove(); this.dropdown = null; };
+                overlay.activate({ trigger });
+                this.dropdown = { close };
+                el.querySelector('button').focus();
+            }
+        }
+        customElements.define('fx-modal-host', FxModalHost);
+
+        document.getElementById('open-own').onclick = (e) => document.getElementById('host').open(e.currentTarget);
+        document.getElementById('page-button').onclick = () => log.push('page-button');
+        document.getElementById('open-prompt').onclick = async (e) => {
+            result.textContent = String(await promptDialog({
+                title: 'Image URL', value: 'https://', trigger: e.currentTarget,
+                validate: (v) => (/^https:\/\/.+/.test(v) ? null : 'Must start with https://'),
+            }));
+        };
+        document.getElementById('open-confirm').onclick = async (e) => {
+            result.textContent = String(await confirmDialog({
+                title: 'Delete row?', message: 'This cannot be undone.', isDanger: true, confirmLabel: 'Delete', trigger: e.currentTarget,
+            }));
+        };
+    </script>
+</body>
+</html>

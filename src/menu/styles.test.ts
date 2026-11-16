@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { MENU_CSS } from './styles.js';
 import { SHEET_CHROME_CSS } from '../overlay/sheet-chrome.js';
+import { DIALOG_CSS } from '../dialog/styles.js';
+import { MODAL_BACKDROP_STYLE } from '../overlay/modal-session.js';
 
 interface Row {
   name: string;
@@ -13,8 +15,8 @@ const manifest = JSON.parse(readFileSync(resolve(process.cwd(), 'component-varia
   componentVariables: Row[];
 };
 
-// The manifest covers every stylesheet core ships: the menu + the shared sheet chrome.
-const ALL_CSS = MENU_CSS + SHEET_CHROME_CSS;
+// The manifest covers every stylesheet core ships: the menu, the shared sheet chrome, the dialog + modal backdrop.
+const ALL_CSS = MENU_CSS + SHEET_CHROME_CSS + DIALOG_CSS + MODAL_BACKDROP_STYLE;
 const names = (re: RegExp): Set<string> => new Set([...ALL_CSS.matchAll(re)].map((m) => m[1]!));
 const sorted = (s: Iterable<string>): string[] => [...s].sort();
 
@@ -43,7 +45,7 @@ describe('MENU_CSS variable chain (SPEC §12.13)', () => {
 
   it('component-variables.manifest.json lists exactly the variables the stylesheet reads', () => {
     expect(manifest.prefix).toBe('km');
-    expect(sorted(manifest.componentVariables.map((r) => r.name))).toEqual(sorted(names(/var\(--(km-(?:menu|sheet)-[a-z0-9-]+)/g)));
+    expect(sorted(manifest.componentVariables.map((r) => r.name))).toEqual(sorted(names(/var\(--(km-(?:menu|sheet|dialog|modal)-[a-z0-9-]+)/g)));
     expect(sorted(manifest.baseVariables.map((r) => r.name))).toEqual(sorted(names(/var\(--(base-[a-z0-9-]+)/g)));
   });
 });

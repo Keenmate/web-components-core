@@ -39,6 +39,15 @@ re-entry-guarded (an owner ↔ child cycle can't loop). `onApply` gets only the 
 (6000 / 7000 / 7500 / 7600 / 8000 / 9000, the base-css-variables values). Dialogs + phone sheets + drawers =
 `modal` (decided 2026-11-16); sub-layers `calc(<tier> + 1)`. `/menu` keeps `calc(tooltip + 1)`.
 
+## Focus trap (`src/dom/focus-trap.ts`, SPEC §12.19 — implemented)
+
+`createFocusTrap(panel, { initialFocus, returnFocusTo, shouldMakeBackgroundInert, keepInteractive })` → `{ release({
+shouldReturnFocus }), isReleased }`. Inert = `setAttribute('inert')` on each sibling along the path panel → `<body>`
+(shadow root → host), skipping style/script/template, `keepInteractive`, and already-inert ones (never removed).
+Tab wrap on the panel's keydown (only at the edges; the middle is the browser's). `getTabbables` walks the flat
+tree (shadowRoot children, slot assigned elements); visibility via `checkVisibility` when present (jsdom: all
+visible). Release returns focus only when it was inside the panel or on `<body>`. `startModalSession` wraps it.
+
 ## Persisted UI state (`src/dom/state-store.ts`, SPEC §12.17 — implemented)
 
 `createStateStore(host, { getKey, getLoadCallback?, getSaveCallback?, toContext? })` → `{ load, save, clear }`.

@@ -260,6 +260,17 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | Tooltip on a trigger in the dialog renders above it | ✓ | `dialog.spec.ts` | `dialog.html` |
 | Menu hosted in the dialog: items clickable | ✓ | `dialog.spec.ts` | `dialog.html` |
 
+## 13g. Modal session + `/dialog`
+
+| Feature | Status | Spec | Fixture |
+| ------- | :----: | ---- | ------- |
+| Own panel in a shadow root: focus in, Tab / Shift+Tab cycle, page + shadow siblings inert, backdrop click / Escape close, focus returns | ✓ | `modal.spec.ts` | `modal.html` |
+| Dropdown portaled to `<body>` from inside: not inert, clickable, closes first on Escape | ✓ | `modal.spec.ts` | `modal.html` |
+| Page scroll locked while open | ✓ | `modal.spec.ts` | `modal.html` |
+| `promptDialog`: validation message, Enter submits, focus returns | ✓ | `modal.spec.ts` | `modal.html` |
+| `confirmDialog` danger: focus on Cancel, Escape = false, Delete = true | ✓ | `modal.spec.ts` | `modal.html` |
+| Desktop centered card sized to content, `z-index` 7000; phone bottom sheet | ✓ | `modal.spec.ts` | `modal.html` |
+
 ## 13g. Overlay tree (`overlay-tree.spec.ts`)
 
 | Feature | Status | Spec | Fixture |

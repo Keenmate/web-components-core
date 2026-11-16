@@ -221,6 +221,12 @@ migration is tracked in `docs/interaction-model-plan.md`.
 The shared context / dropdown menu lives in `src/menu/` (subpath `/menu`, SPEC
 §12.13): `openMenu(entries, ctx, opts)` over `/actions` + `/positioning`.
 
+Modals go through `startModalSession(panel, { backdrop, onDismiss })` (`src/overlay/modal-session.ts`,
+main index, SPEC §12.19: inert page + Tab trap via `createFocusTrap`, Escape / Back / backdrop → `onDismiss`,
+the component closes + `end()`); ready-made `openDialog` / `confirmDialog` / `promptDialog` in `src/dialog/`
+(subpath `/dialog`) — never `window.prompt` / `confirm` or a hand-written trap. Stacking via `Z_INDEX`
+(§12.18): dialogs and phone sheets are the modal tier.
+
 Loading states go through `renderLoader(host, container, context, { label, prefix })`
 (`src/dom/render-loader.ts`, main index, SPEC §12.14): instance `renderLoadingCallback`
 > page-wide `window.components.renderLoadingCallback` (non-enumerable accessor, state on
@@ -233,7 +239,7 @@ element, never the page; components call it instead of `scrollIntoView()`.
 
 Per-module design notes live next to the code and load when working there:
 `src/logging/`, `src/cem/`, `src/testing/`, `src/positioning/`, `src/dom/`,
-`src/search/`, `src/menu/` (each has a `CLAUDE.md`).
+`src/search/`, `src/menu/`, `src/dialog/` (each has a `CLAUDE.md`).
 
 **No direct `console.*` in core** (SPEC §12.1). Core messages with an element
 behind them (input validation → `INIT`, actions / menus / twins / before-callbacks

@@ -2373,3 +2373,34 @@ stacks above with no special case; page tooltips can't show through (the sheet c
 them). A component's own sub-layer is `calc(<tier> + 1)`, never a bare number. Components keep their own
 `--<prefix>-z-index-*` variables, defaulting to a tier. `/menu` stays at `calc(tooltip + 1)` (a chooser
 above whatever opened it).
+
+### 12.19 Modal session + dialogs — IMPLEMENTED (`src/dom/focus-trap.ts`, `src/overlay/modal-session.ts`, subpath `/dialog`)
+
+**The gap.** Every modal wrote its own plumbing: web-daterangepicker's centered modal (backdrop, scroll lock,
+Back, focus return by hand), web-commandpalette (its own Tab trap), web-grid (its own dialog), and
+web-editor used `window.prompt` / `window.confirm` (unstyled, untranslatable). No focus trap anywhere kept
+Tab or a screen reader out of the page behind.
+
+**Decided 2026-11-16: two layers.**
+
+1. **`startModalSession(panel, opts)`** (main index) — for a component's OWN modal markup. `backdrop:
+   boolean | HTMLElement` (`true` = core inserts `.km-modal-backdrop` before the panel at `Z_INDEX.modalBackdrop`,
+   removed on end; an element = the component's, only its click is wired; omitted = none). Core never closes
+   anything: `onDismiss(reason)` (`'escape' | 'back' | 'backdrop' | 'overlay' | 'parent'`) → the component
+   closes and calls `end()`. Pieces: `createFocusTrap` (below), `role="dialog"` unless set + `aria-modal`,
+   `startSheetSession` (scroll lock, Back; keyboard inset OFF by default — it sizes the panel to the visual
+   viewport, right only for a full-screen sheet), `registerOverlay` in a modal-only group (a page dropdown
+   opening never dismisses a modal; a dropdown opened inside is its child and closes first on Escape).
+2. **`/dialog`** — `openDialog({ title, message, content, actions, isDismissible, beforeCloseCallback, labels,
+   container, trigger })` → `{ result: Promise<string | null>, close, panel, body }`, `confirmDialog()` →
+   `Promise<boolean>`, `promptDialog({ value, label, validate, inputType })` → `Promise<string | null>`. Own layer
+   (`div.km-dialog-layer` + shadow root, `DIALOG_CSS` + `SHEET_CHROME_CSS` + motion) on `<body>`; `message` is
+   text, `content` a node; a bottom sheet under 480px.
+
+**`createFocusTrap(panel, { initialFocus, returnFocusTo, shouldMakeBackgroundInert, keepInteractive })`**: like
+`showModal()` without the top layer — every sibling along the panel's path up to `<body>` (across shadow roots)
+gets `inert` (only what it set is removed again; overlays mounted later stay live), Tab / Shift+Tab wrap at
+the edges (tabbables on the flat tree), focus goes in and comes back when it was still inside (or lost to
+`<body>`). Why not native `<dialog>`: the top layer sits above every z-index, so a component's portaled
+dropdown / tooltip would have to mount inside the dialog (`findOverlayContainer` handles that for the
+consumer's own `<dialog>`, §12.2); the tiers (§12.18) keep nesting simple.

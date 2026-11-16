@@ -61,6 +61,8 @@ export { createFrameScheduler } from './dom/frame-scheduler.js';
 export type { FrameScheduler } from './dom/frame-scheduler.js';
 export { isMotionOff, readScrollBehavior, readCssDurationMs, readCssLengthPx, parseCssTimeMs } from './dom/css-values.js';
 export { Z_INDEX } from './dom/z-index.js';
+export { createFocusTrap, getTabbables } from './dom/focus-trap.js';
+export type { FocusTrap, FocusTrapOptions } from './dom/focus-trap.js';
 export type { ZIndexTier } from './dom/z-index.js';
 export { adoptStyles, createStyleSlot } from './dom/adopt-styles.js';
 export { animateOut, EXIT_HEIGHT_VAR, readAnimationMs } from './dom/animate-out.js';
@@ -148,6 +150,8 @@ export { observeKeyboardInset } from './overlay/keyboard-inset.js';
 export { claimBackEntry } from './overlay/back-entry.js';
 export { startSheetSession } from './overlay/sheet-session.js';
 export type { SheetSession, SheetSessionOptions } from './overlay/sheet-session.js';
+export { startModalSession } from './overlay/modal-session.js';
+export type { ModalDismissReason, ModalSession, ModalSessionOptions } from './overlay/modal-session.js';
 // The phone sheet chrome (header + title + close button) every sheet shares (SPEC §12.9).
 export { SHEET_CHROME_CSS, createSheetHeader } from './overlay/sheet-chrome.js';
 export type { SheetHeaderOptions, SheetHeader } from './overlay/sheet-chrome.js';
