@@ -472,6 +472,34 @@ Per key: the instance `labels` → the page-wide labels → English. Assigning r
 frozen); every live component re-renders. `parseNumber(text, { locale })` reads a number the user typed with the
 same separators.
 
+## Keyboard navigation (`@keenmate/web-components-core/a11y`)
+
+Two patterns for lists, trees, grids and toolbars ([SPEC §12.25](SPEC.md)); the roles, `aria-selected` and the
+highlight stay yours:
+
+```ts
+import { createActiveDescendant, createRovingFocus } from '@keenmate/web-components-core/a11y';
+
+// A combobox / search field: focus stays in the input, the arrows move a highlighted option.
+#nav = createActiveDescendant(this.#input, this.#listbox, {
+  getItems: () => [...this.#listbox.querySelectorAll('[role="option"]')],
+  onActiveChange: (item) => this.#paintHighlight(item),       // your class; aria-activedescendant is core's
+  onActivate: (item) => this.#select(item.dataset.value),     // Enter
+});
+this.#nav.refresh();                                          // after re-rendering the options
+
+// A toolbar / tree / calendar grid: one tab stop, the arrows move real focus.
+#roving = createRovingFocus(this.#grid, {
+  getItems: () => [...this.#grid.querySelectorAll('[role="gridcell"]')],
+  orientation: 'grid', columns: 7,                            // Left / Right follow the writing direction
+  hasTypeahead: false,
+  onFocusItem: (cell) => this.#announceDay(cell),
+});
+```
+
+Handle your own extra keys (tree expand / collapse, PageUp = previous month) in a keydown listener that runs
+first and calls `preventDefault()` — the helpers skip a handled event. `destroy()` in `destroyCallback()`.
+
 ## Responsive rules (page / per-tag / instance)
 
 Apps tune what components do per device class / width bucket in one place — no app-side
@@ -1133,6 +1161,7 @@ explain the main ones; [SPEC](SPEC.md) has the design notes.
 | `/positioning` | `anchor`, `createPopover`, `createTooltip`, `findOverlayContainer(trigger)` (where a portaled panel goes), `getFixedPositionOffsetParent` / `detectFixedDrift` / `findContainingBlockCulprit` / `describeContainingBlockProps` (fixed containing blocks and drift), `platform` (Floating UI's, for a custom one) |
 | `/actions` | `runAction`, `resolveActionItem`, `resolveMenuEntries`, `getMenuChildren`, `normalizeActionItems` (string shorthand → items), `readActionDataset(trigger)`, `isActionBusy`, `createMenuDivider` / `isMenuDivider`, shortcuts: `bindShortcuts`, `matchesShortcut`, `parseShortcut`, `formatShortcut`, `shortcutKeycaps`, `isTypingTarget` |
 | `/menu` | `openMenu(entries, ctx, opts)`, `MENU_CSS` |
+| `/a11y` | `createActiveDescendant(input, listbox, opts)` → `{ active, activeIndex, setActive, move, refresh, destroy }`, `createRovingFocus(container, opts)` → `{ current, currentIndex, focusItem, refresh, destroy }`, `createTypeahead(ms)`, `isPrintableKey`, `TYPEAHEAD_TIMEOUT_MS` |
 | `/locale` | `createLabels(host, defaults, getOwn, { getLocale })` → `{ template, text, html, all }`, `resolveLabel`, `formatLabel`, `resolveLocale`, `getLocaleSettings`, `getDateFormat` / `getTimeFormat` / `getWeekStartDay` / `getNumberSeparators`, `getMonthNames` / `getWeekdayNames`, `formatNumber` / `parseNumber`, `getPageLocale` / `getPageSecurity` / `observeLocale` / `publishLocaleHooks` |
 | `/dialog` | `openDialog(opts)` → `{ result, close, panel, body }`, `confirmDialog(opts)` → `Promise<boolean>`, `promptDialog(opts)` → `Promise<string \| null>`, `DIALOG_CSS` |
 | `/search` | `normalizeSearchText`, `prepareSearchTerm` / `matchesSearchTerm` / `NO_SEARCH_TERM`, `findTextMatches` / `matchesText`, `findRegexMatches` / `createRegexCompiler` / `statelessRegex`, `findHighlightRanges` / `wrapRanges` / `highlightHtml` / `escapeHtml` |

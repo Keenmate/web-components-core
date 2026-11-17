@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test — /a11y</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+    <style>
+        #lb { max-height: 90px; overflow: auto; margin: 0; padding: 0; list-style: none; border: 1px solid #999; }
+        #lb li { height: 28px; }
+        #lb li.is-active { background: #cde; }
+        #grid { display: grid; grid-template-columns: repeat(3, 60px); gap: 4px; }
+    </style>
+</head>
+<body>
+    <h1>a11y fixture</h1>
+    <p>Targeted by <code>e2e/a11y.spec.ts</code>: <code>createActiveDescendant</code> (a combobox in a shadow root),
+        <code>createRovingFocus</code> (a toolbar and a grid).</p>
+    <button id="before">before</button>
+    <fx-combo id="combo"></fx-combo>
+    <div id="toolbar" role="toolbar" aria-label="Format">
+        <button>Bold</button><button>Italic</button><button>Underline</button><button>Strike</button>
+    </div>
+    <div id="grid" role="grid"></div>
+    <button id="after">after</button>
+    <output id="picked"></output>
+
+    <script type="module">
+        import { createActiveDescendant, createRovingFocus } from '/src/a11y/index.ts';
+
+        class FxCombo extends HTMLElement {
+            connectedCallback() {
+                const root = this.attachShadow({ mode: 'open' });
+                root.innerHTML = `<style>${document.querySelector('style').textContent}</style>
+                    <input id="in" role="combobox" aria-expanded="true" aria-label="Fruit">
+                    <ul id="lb" role="listbox">${['Apple', 'Banana', 'Cherry', 'Date', 'Elder', 'Fig', 'Grape']
+                        .map((f, i) => `<li role="option" aria-selected="false"${i === 1 ? ' aria-disabled="true"' : ''}>${f}</li>`).join('')}</ul>`;
+                const input = root.getElementById('in');
+                const listbox = root.getElementById('lb');
+                createActiveDescendant(input, listbox, {
+                    getItems: () => [...listbox.children],
+                    onActiveChange: (item) => {
+                        for (const li of listbox.children) {
+                            li.classList.toggle('is-active', li === item);
+                            li.setAttribute('aria-selected', String(li === item));
+                        }
+                    },
+                    onActivate: (item) => { document.getElementById('picked').textContent = item.textContent; },
+                });
+            }
+        }
+        customElements.define('fx-combo', FxCombo);
+
+        const toolbar = document.getElementById('toolbar');
+        createRovingFocus(toolbar, { getItems: () => [...toolbar.children], orientation: 'horizontal', hasTypeahead: true });
+
+        const grid = document.getElementById('grid');
+        grid.innerHTML = Array.from({ length: 8 }, (_, i) => `<button role="gridcell">${i + 1}</button>`).join('');
+        createRovingFocus(grid, { getItems: () => [...grid.children], orientation: 'grid', columns: 3 });
+    </script>
+</body>
+</html>

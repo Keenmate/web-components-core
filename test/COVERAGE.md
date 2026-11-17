@@ -274,6 +274,14 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | `announce()`: one shared `role=status` region, visually hidden, never inert while a modal makes the page inert; the same text twice is cleared + rewritten | ✓ | `modal.spec.ts` | `modal.html` |
 | `createFormInputs` + `formatFormValue` through a real GET submit: json / array (`name[]`) / text, disabled + cleared name submit nothing, inputs reused, two same-name fields without ids, throwing callback submits `''` | ✓ | `form-inputs.spec.ts` | `form-inputs.html` |
 
+## 13k. Keyboard navigation (`a11y.spec.ts`)
+
+| Feature | Status | Spec | Fixture |
+| ------- | :----: | ---- | ------- |
+| Active descendant inside a shadow root: focus stays in the input, disabled option skipped, option exposed + `aria-selected`, scrolled into the list (page doesn't move), Enter activates | ✓ | `a11y.spec.ts` | `a11y.html` |
+| Roving toolbar: one tab stop, Left / Right, type-to-find, Tab leaves, Shift+Tab returns to the remembered item | ✓ | `a11y.spec.ts` | `a11y.html` |
+| Roving grid: rows / columns, Home / End per row, no wrap past the last row, Ctrl+End, Tab leaves | ✓ | `a11y.spec.ts` | `a11y.html` |
+
 ## 13j. Locale + labels (`locale.spec.ts`)
 
 | Feature | Status | Spec | Fixture |

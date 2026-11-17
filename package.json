@@ -45,6 +45,10 @@
       "types": "./dist/locale/index.d.ts",
       "import": "./dist/locale/index.js"
     },
+    "./a11y": {
+      "types": "./dist/a11y/index.d.ts",
+      "import": "./dist/a11y/index.js"
+    },
     "./component-variables.manifest.json": "./component-variables.manifest.json",
     "./package.json": "./package.json"
   },

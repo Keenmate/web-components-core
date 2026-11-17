@@ -39,7 +39,7 @@ Single-package **library** repo, everything at root. Core is not a component: it
 - **`./dist/`** — gitignored. Produced by `npm run build` (`tsc -p tsconfig.build.json` → ESM + `.d.ts`). Never staged.
 - **`./component-variables.manifest.json`** — published (the `--km-menu-*` / `--base-*` surface core's modules read). Edit it if that surface changes.
 - **No Custom Elements Manifest of its own** — core defines no element. It ships the CEM *tooling* (`./cem`) the components run.
-- **Subpath exports:** `.`, `./testing`, `./cem`, `./positioning`, `./actions`, `./search`, `./menu`, `./dialog`, `./locale` — each must resolve to a built file under `dist/` after the build.
+- **Subpath exports:** `.`, `./testing`, `./cem`, `./positioning`, `./actions`, `./search`, `./menu`, `./dialog`, `./locale`, `./a11y` — each must resolve to a built file under `dist/` after the build.
 
 ## CHANGELOG convention in this repo [canonical]
 
@@ -183,6 +183,7 @@ After build, do a quick smoke check on the emitted artifacts — every export-ma
 - `dist/menu/index.js` + `.d.ts`
 - `dist/dialog/index.js` + `.d.ts`
 - `dist/locale/index.js` + `.d.ts`
+- `dist/a11y/index.js` + `.d.ts`
 
 There is no Custom Elements Manifest to regenerate: core defines no element (the spec's CEM bullet is N/A for this library).
 

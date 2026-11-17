@@ -237,6 +237,9 @@ components copy the drawing rule from §12.14.
 Form submission goes through `createFormInputs` + `formatFormValue`, async loading through
 `createAsyncRunner`, screen-reader announcements through `announce()` (`src/dom/`, main index, SPEC §12.21–§12.23).
 
+List / tree / grid / toolbar keys go through core `/a11y` (`src/a11y/`, SPEC §12.25): `createActiveDescendant`
+(input keeps focus) or `createRovingFocus` (one tab stop); roles + `aria-selected` stay the component's.
+
 UI strings + locale go through core `/locale` (`src/locale/`, SPEC §12.24): `createLabels(host, DEFAULT_LABELS,
 () => this.config.labels)` (`.text` / `.html`), `getLocaleSettings` / `resolveLocale`, `formatNumber` /
 `parseNumber`; page-wide `window.components.locale` / `.security`; the opt-in `localeChanged()` hook re-renders.
@@ -247,7 +250,7 @@ element, never the page; components call it instead of `scrollIntoView()`.
 
 Per-module design notes live next to the code and load when working there:
 `src/logging/`, `src/cem/`, `src/testing/`, `src/positioning/`, `src/dom/`,
-`src/search/`, `src/menu/`, `src/dialog/`, `src/locale/` (each has a `CLAUDE.md`).
+`src/search/`, `src/menu/`, `src/dialog/`, `src/locale/`, `src/a11y/` (each has a `CLAUDE.md`).
 
 **No direct `console.*` in core** (SPEC §12.1). Core messages with an element
 behind them (input validation → `INIT`, actions / menus / twins / before-callbacks

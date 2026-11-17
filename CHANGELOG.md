@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `/a11y` subpath (SPEC §12.25): `createActiveDescendant(input, listbox, { getItems, onActivate, onActiveChange })`
+  — focus stays in the input, the arrows move `aria-activedescendant` over the options (disabled skipped, scrolled
+  into the list, never the page, Enter activates); `createRovingFocus(container, { getItems, orientation, columns,
+  hasTypeahead })` — one tab stop, arrows / Home / End / Ctrl+Home / End move real focus in a list, toolbar or grid
+  (RTL-aware), type-to-find; `createTypeahead()`. Roles and `aria-selected` stay the component's.
 - `/locale` subpath (SPEC §12.24): page-wide `window.components.locale` (`locale`, `dateFormat`, `timeFormat`,
   `weekStartDay`, `decimalSeparator`, `thousandsSeparator`, per-tag `labels`, `formatLabelCallback`) and
   `window.components.security.shouldEscapeLabels`. `createLabels(host, defaults, getOwn)` resolves every UI

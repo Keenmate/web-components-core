@@ -2503,3 +2503,31 @@ every element. Decided 2026-10-26 / 10-27 / 10-28 (rulebook D-NC-24), built 2026
   revision counter).
 - Not in core: a component's `locale` input (only the components that format dates / numbers declare one),
   language packs (`/locales/cs` later, if ever), a byte formatter (web-dropzone's stays until a second copy).
+
+### 12.25 Keyboard navigation — IMPLEMENTED (`src/a11y/`, subpath `/a11y`)
+
+The audit (2026-11-16, B8) found every list / tree / grid with its own keys and half of them without ARIA:
+web-multiselect moved a highlight with no `aria-activedescendant`, web-commandpalette had its own, the
+web-daterangepicker day grid and web-treeview moved real focus their own way, web-editor's toolbar had no arrows.
+Decided 2026-11-17 — two patterns, roles stay per component:
+
+- **`createActiveDescendant(input, listbox, { getItems, onActivate, onActiveChange, isWrapping, isSkipped,
+  hasHomeEnd, pageSize, shouldScroll })`** → `{ active, activeIndex, setActive, move, refresh, destroy }`. Focus
+  stays in the input; ArrowUp / Down (PageUp / Down by `pageSize`, Home / End only with `hasHomeEnd` — they are
+  the caret's otherwise) move over the items, skipping `aria-disabled="true"`; nothing active + ArrowUp starts at
+  the last. Core sets `aria-activedescendant`, ids (`createId`), `aria-controls`, `tabindex="-1"` on the listbox
+  (Chromium makes a scroller a tab stop), and scrolls the item into the listbox (or its nearest scroller —
+  never the page). Enter → `onActivate(item, index, event)`. `refresh()` after a re-render keeps the active item
+  by element or id, else clears. Composing / modified keys pass through. Input + listbox in the same root (warns
+  otherwise — an id reference doesn't cross a shadow boundary).
+- **`createRovingFocus(container, { getItems, orientation, columns, isWrapping, hasTypeahead, getItemText,
+  isSkipped, onFocusItem })`** → `{ current, currentIndex, focusItem, refresh, destroy }`. One tab stop
+  (`tabindex` 0 / -1); `vertical` / `horizontal` / `grid` (`columns`, number or function); Left / Right follow
+  `isRtl(container)`; Home / End (row in a grid), Ctrl+Home / End; grid columns never wrap; a click / focus on an
+  item makes it the stop. Disabled items stay focusable unless `isSkipped` says otherwise (APG).
+- **`createTypeahead(timeoutMs = 500)`**: printable keys within the timeout form one prefix; a repeated letter
+  cycles; used by roving focus, exported for list widgets that keep their own focus model.
+- Not in core: roles, `aria-selected` / `aria-checked`, the highlight class, tree expand / collapse keys
+  (ArrowRight / Left on a parent), the date grid's PageUp / Down month jumps — the component handles those
+  keys before (the helpers skip a `defaultPrevented` event). `/menu` keeps its level-based model (all items
+  `-1`, submenus / drill-in back rows).
