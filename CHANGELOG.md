@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `createControllerFacade(target, spec)` (main index, SPEC §12.34): the frozen public controller a
+  `createController()` returns — methods forwarded to the current engine (empty answers before the first build),
+  live read-only / writable state, nothing else reachable. Replaces six hand-built facades.
 - `renderIcon(icon, { prefix })` + `ICON_CSS` (main index, SPEC §12.33): one reading of an icon string — markup
   raw, an ASCII name masked from `--base-icon-<name>` in `currentColor` (nothing drawn when the token is unset),
   anything else escaped text. From web-commandpalette.

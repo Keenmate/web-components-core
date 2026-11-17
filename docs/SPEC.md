@@ -2679,3 +2679,18 @@ web-multiselect each their own. Decided 2026-11-17 — **`renderIcon(icon, { pre
 
 `ICON_CSS` (`.km-icon`, `@layer component`, forced-colors aware) is adopted where named icons render; `/menu`
 adopts it and renders item icons through `renderIcon` (a name used to come out as its text).
+
+### 12.34 Controller facade — IMPLEMENTED (`src/element/controller-facade.ts`, main index)
+
+`createController()` (§12.5) returns the component's public imperative API — never the engine. Audit B23: six
+hand-built copies (web-treeview / web-dropzone factories, web-multiselect / web-daterangepicker `call()` maps,
+web-editor / web-commandpalette object literals), each forwarding methods to an engine that exists only after the
+first build, answering state with empties before that, some frozen, some not. Decided 2026-11-17:
+
+- **`createControllerFacade<C>(target, spec)`** → a FROZEN object. `target` = the object or a function returning
+  it (the component's `() => { this.flush(); return this.#engine; }`), read on every call so a rebuilt engine is
+  picked up.
+- `spec` = an array of method names, or `{ methods, state, writable, emptyResults }`: methods forwarded with
+  `this` = the target (no target → `emptyResults[name]?.()`); `state` = live read-only getters (`name → empty value
+  or factory` while there is no target); `writable` = forwarded getter + setter (a set without target is
+  dropped). Nothing else of the target is reachable.

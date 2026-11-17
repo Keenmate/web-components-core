@@ -472,6 +472,23 @@ Per key: the instance `labels` → the page-wide labels → English. Assigning r
 frozen); every live component re-renders. `parseNumber(text, { locale })` reads a number the user typed with the
 same separators.
 
+## The controller (`createControllerFacade`)
+
+`el.controller` / `detail.controller` is your public API, not your engine ([SPEC §12.34](SPEC.md)):
+
+```ts
+import { createControllerFacade } from '@keenmate/web-components-core';
+
+protected override createController(): TreeController {
+  return createControllerFacade<TreeController>(() => { this.flush(); return this.#engine; }, {
+    methods: ['expandAll', 'collapseAll', 'getNodeByPath'],
+    state: { selectedPaths: () => [], focusedNode: null },   // answered before the first build
+    writable: ['selectionAnchor'],
+    emptyResults: { getNodeByPath: () => null },
+  });
+}
+```
+
 ## Icons
 
 Icons on items / options / nodes are data — read them with one rule ([SPEC §12.33](SPEC.md)):
@@ -1292,7 +1309,7 @@ explain the main ones; [SPEC](SPEC.md) has the design notes.
 |---|---|
 | Converters | `toBool`, `toBytes`, `toCssLength`, `toCustom`, `toEnum`, `toFloat`, `toFunction`, `toInt`, `toList`, `toObject`, `toObjectArray`, `toText`, `toValue` |
 | Input plumbing (engine / test code) | `resolveFromAttribute` / `resolveFromProperty` (run one value through a row's converter), `collectEngineConfig` (config for an engine, keeping meaningful `null`s), `deriveClearableKeys` / `isClearableInput` / `isClearableConverter` (which inputs a `null` clears) |
-| Element | `BlissElement`, `INPUT_REJECTED_EVENT` (`'input-rejected'`, a refused write), `define(tag, Class)` (define once), `dispatch(target, name, detail)` (the free event helper under `emit()`), `defaultEventProperty(name)` (`'node-select'` → `'onNodeSelect'`), `withComponentContext(detail, controller, element, extras?)` / `COMPONENT_CONTEXT_KEYS` (the non-enumerable `controller` / `element`); `normalizeEventDefs` is internal plumbing |
+| Element | `BlissElement`, `INPUT_REJECTED_EVENT` (`'input-rejected'`, a refused write), `define(tag, Class)` (define once), `dispatch(target, name, detail)` (the free event helper under `emit()`), `defaultEventProperty(name)` (`'node-select'` → `'onNodeSelect'`), `withComponentContext(detail, controller, element, extras?)` / `COMPONENT_CONTEXT_KEYS` (the non-enumerable `controller` / `element`), `createControllerFacade(target, spec)` (the frozen public controller over a lazy engine); `normalizeEventDefs` is internal plumbing |
 | Before-callbacks | `runBeforeCallback` (async; `false` cancels, a value replaces), `runBeforeCallbackSync`, `runBeforeCallbackEager` (stays synchronous for a sync hook) |
 | Registration | `registerComponent(tag, Class, opts)` (`window.components[tag]`), `getInstances(tag)`, `getRegisteredTags()` — page-wide, across copies of core |
 | DOM | `adoptStyles(root, ...css)` / `createStyleSlot(root)` (style injection), `renderLoader(host, container, context, opts)` / `publishLoaderHook()` (loading states), `scrollIntoContainer` / `findScrollContainer` (container scroll), `scrollContainerToBox` / `getScrollTopForBox` (a virtual-list row by index), `createVirtualWindow` (a virtual list over fixed-height rows), `createSelection` (selected keys + anchor, click / Ctrl / Shift rules), `createPointerDrag` / `deepElementFromPoint` (mouse + touch drag), `onTextInput` / `isImeEnter` (IME-safe typed text), `keepScrollAcrossMove` (scroll positions across a DOM move), `copyText` / `readPasteText` (clipboard), `renderIcon` / `ICON_CSS` (icon strings: markup / token name / text), `watchPageDrag` / `applyArmedState` (page-wide file drag), `createStateStore` (persisted UI state), `deepActiveElement()` (the focused element inside shadow roots), `escapeHtml(text)` (also on `/search`), `createMicrotaskScheduler()` (coalesce a burst into one run), `createDebounce(fn, ms)` (`schedule(...args)` / `flush()` / `cancel()`; last call wins, `ms <= 0` = synchronous, `ms` may be a function), `createThrottle(fn, ms)` (leading + one trailing run), `createFrameScheduler(fn)` (one run per animation frame), `isMotionOff` / `readScrollBehavior` / `readCssDurationMs` / `readCssLengthPx` (resolved CSS in JS), `Z_INDEX` (stacking tiers), `isRtl(el)` (effective writing direction, across shadow roots), `createId(prefix)` (page-unique id for ARIA references / `for`), `createFocusTrap` / `getTabbables` (focus trap), `createFormInputs` / `formatFormValue` (form submission), `createAsyncRunner` (latest-request-wins loading), `announce(text)` (screen-reader live region), `guardGhostClick` (a tap's trailing click), `resolveEnumAttribute(raw, values, fallback)` |

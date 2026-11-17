@@ -34,6 +34,9 @@ export { define } from './element/define.js';
 export { withComponentContext, COMPONENT_CONTEXT_KEYS } from './element/context.js';
 export type { ComponentContext, EmitDetail, WithoutComponentContext } from './element/context.js';
 export { runBeforeCallback, runBeforeCallbackEager, runBeforeCallbackSync } from './element/before-callback.js';
+// The public controller: forwarded methods + live state over a lazy engine, frozen (SPEC §12.34).
+export { createControllerFacade } from './element/controller-facade.js';
+export type { ControllerFacadeSpec } from './element/controller-facade.js';
 export type { BeforeCallbackResult } from './element/before-callback.js';
 // Responsive rules (SPEC §6.7): page-wide / per-tag / instance partial configs per device class.
 export type { ResponsiveMap, ResponsiveMapAxis, ResponsiveContext, ResponsiveCallback } from './element/responsive.js';

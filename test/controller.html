@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test — createControllerFacade</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>controller fixture</h1>
+    <p>Targeted by <code>e2e/controller.spec.ts</code>.</p>
+    <fx-counter id="counter" defer></fx-counter>
+
+    <script type="module">
+        import { BlissElement, define, createControllerFacade } from '/src/index.ts';
+        class Engine {
+            count = 0;
+            increment() { return ++this.count; }
+        }
+        class FxCounter extends BlissElement {
+            static inputs = [];
+            static events = [{ name: 'changed', description: 'count changed' }];
+            #engine = null;
+            reinit() { this.#engine = new Engine(); }
+            createController() {
+                return createControllerFacade(() => { this.flush(); return this.#engine; }, {
+                    methods: ['increment'],
+                    state: { count: 0 },
+                    emptyResults: { increment: () => -1 },
+                });
+            }
+            bump() { this.emit('changed', { count: this.controller.increment() }); }
+        }
+        define('fx-counter', FxCounter);
+    </script>
+</body>
+</html>
