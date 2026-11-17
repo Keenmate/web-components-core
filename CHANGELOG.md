@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `startPanelSession(panel, { onDismiss, … })` (main index, SPEC §12.19): the non-modal sibling of
+  `startModalSession` — Escape through the overlay tree, a click outside and Back dismiss; no backdrop, inert page,
+  focus trap or scroll lock. For a drawer the page stays usable around (web-dropzone's upload drawer).
 - `renderSlot(container, result, { renderDefault, memoKey })` (main index, SPEC §12.35): one contract for every
   `render*Callback` result — a string is HTML, a node is mounted, `null` draws the default, `false` hides; a
   matching `memoKey` skips the hook and the DOM, a same string isn't rewritten (focus survives).

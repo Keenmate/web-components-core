@@ -191,6 +191,8 @@ export { startSheetSession } from './overlay/sheet-session.js';
 export type { SheetSession, SheetSessionOptions } from './overlay/sheet-session.js';
 export { startModalSession } from './overlay/modal-session.js';
 export type { ModalDismissReason, ModalSession, ModalSessionOptions } from './overlay/modal-session.js';
+export { startPanelSession } from './overlay/panel-session.js';
+export type { PanelDismissReason, PanelSession, PanelSessionOptions } from './overlay/panel-session.js';
 export { guardGhostClick } from './overlay/ghost-click.js';
 export type { GhostClickGuardOptions } from './overlay/ghost-click.js';
 // The phone sheet chrome (header + title + close button) every sheet shares (SPEC §12.9).

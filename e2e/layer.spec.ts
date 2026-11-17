@@ -50,6 +50,24 @@ test('drawer preset: on the end edge, full height, modal; Escape slides it out a
   await expect(page.locator('#open-drawer')).toBeFocused();
 });
 
+test('non-modal drawer (startPanelSession): the page stays usable; a click outside and Escape close it', async ({ page }) => {
+  await page.click('#open-panel-drawer');
+  const drawer = page.locator('#panel-drawer');
+  await expect(drawer).toBeVisible();
+  expect(await drawer.getAttribute('role')).toBe('dialog');
+  expect(await drawer.getAttribute('aria-modal')).toBeNull();
+  expect(await page.locator('#page-field').evaluate((el) => !!el.closest('[inert]'))).toBe(false);
+  await expect(page.locator('.km-modal-backdrop')).toHaveCount(0);
+  await page.locator('#page-field').click(); // the page works: the click lands, and it is outside → closes
+  await expect(page.locator('#page-field')).toBeFocused();
+  await expect(drawer).toHaveCount(0);
+  await page.click('#open-panel-drawer');
+  await expect(page.locator('#panel-drawer')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#panel-drawer')).toHaveCount(0);
+  expect(await page.evaluate(() => (window as unknown as { __panelReasons: string[] }).__panelReasons)).toEqual(['outside-click', 'escape']);
+});
+
 test('drawer preset: --start in RTL sits on the right edge', async ({ page }) => {
   await page.click('#open-drawer-rtl');
   await page.waitForTimeout(400); // the slide-in (from the right in RTL)

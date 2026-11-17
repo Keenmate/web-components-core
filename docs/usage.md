@@ -584,13 +584,24 @@ The host's theme comes along. Instance tokens set on the host don't inherit into
 CSS reads in `cssVars` (their computed values are copied; `syncTheme()` re-reads them). Your `:host` rules beat
 core's reset even inside `@layer component`.
 
-A **drawer** is a modal panel on one edge — the preset classes in `SHEET_CHROME_CSS` plus a modal session:
+A **drawer** is a panel on one edge — the preset classes in `SHEET_CHROME_CSS` plus a modal session (or a panel
+session when the page must stay usable, below):
 
 ```ts
 adoptStyles(this.shadowRoot!, SHEET_CHROME_CSS);
 panel.classList.add('km-drawer', 'km-drawer--end');      // --start / --end follow the writing direction; --top / --bottom
 const session = startModalSession(panel, { backdrop: true, onDismiss: () => close() });
 const close = () => { session.end(); animateOut([panel], { className: 'km-drawer--closing', onDone: () => panel.remove() }); };
+```
+
+A **non-modal** drawer (the page stays usable — an upload monitor, an inspector) swaps the session; the rest is
+the same:
+
+```ts
+import { startPanelSession } from '@keenmate/web-components-core';
+
+const session = startPanelSession(panel, { onDismiss: () => close(), trigger: button });
+// Escape (a dropdown inside closes first), a click outside, Back → onDismiss; no backdrop / inert / trap
 ```
 
 ## Drag (`createPointerDrag`, `watchPageDrag`)

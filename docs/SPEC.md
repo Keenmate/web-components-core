@@ -2393,6 +2393,13 @@ Tab or a screen reader out of the page behind.
    `startSheetSession` (scroll lock, Back; keyboard inset OFF by default — it sizes the panel to the visual
    viewport, right only for a full-screen sheet), `registerOverlay` in a modal-only group (a page dropdown
    opening never dismisses a modal; a dropdown opened inside is its child and closes first on Escape).
+   Its non-modal sibling **`startPanelSession(panel, { onDismiss, shouldCloseOnEscape, shouldCloseOnOutsideClick,
+   shouldCloseOnBack, trigger, returnFocusTo, initialFocus, isOpenedByPointer })`** (decided 2026-11-17, from
+   web-dropzone's upload drawer) is a panel the page stays usable around: Escape (overlay tree), a click outside
+   and Back → `onDismiss('escape' | 'outside-click' | 'back' | 'overlay' | 'parent')`; `role="dialog"` without
+   `aria-modal`; no backdrop, no inert, no trap, no scroll lock; focus stays unless `initialFocus`; `end()` returns
+   focus only with `shouldReturnFocus: true`. Own overlay group (a page dropdown doesn't dismiss it; a second
+   panel does, unless opened from inside it). A separate function, not a `startModalSession` flag.
 2. **`/dialog`** — `openDialog({ title, message, content, actions, isDismissible, beforeCloseCallback, labels,
    container, trigger })` → `{ result: Promise<string | null>, close, panel, body }`, `confirmDialog()` →
    `Promise<boolean>`, `promptDialog({ value, label, validate, inputType })` → `Promise<string | null>`. Own layer
@@ -2634,7 +2641,8 @@ Decided 2026-11-17:
   one edge (start / end follow the panel's writing direction), the modal tier, safe-area padding, slide in / out on
   `--km-sheet-drawer-duration` (→ `--base-duration-medium`, so `data-motion` / reduced motion apply),
   `--km-sheet-drawer-size | -max-height | -bg | -color | -shadow | -border-radius`. A component's drawer =
-  its panel with those classes + `startModalSession(panel, { backdrop: true, onDismiss })`; closing =
+  its panel with those classes + `startModalSession(panel, { backdrop: true, onDismiss })` — or, for a drawer the
+  page stays usable around (an upload monitor), `startPanelSession(panel, { onDismiss })`; closing =
   `session.end()` + `animateOut(panel, { className: 'km-drawer--closing' })`. `/menu`'s drawer presentation keeps
   its own `.km-menu-sheet--drawer` (same look, its own variables).
 

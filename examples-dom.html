@@ -72,7 +72,9 @@ this.#stopArmed();</code></pre></div>
                 DH02 zone and 16 px beyond it — nothing around it can clip or cover it.
                 A <strong>drawer</strong> is a modal panel on one edge: the <code>.km-drawer km-drawer--&lt;side&gt;</code>
                 preset from <code>SHEET_CHROME_CSS</code> plus <code>startModalSession</code> (inert page, Tab trap, Escape /
-                backdrop close). <code>--start</code> / <code>--end</code> follow the writing direction.
+                backdrop close) — or <code>startPanelSession</code> for a drawer the page stays usable around (Escape or a
+                click outside closes it; no backdrop, nothing inert). <code>--start</code> / <code>--end</code> follow the
+                writing direction.
             </p>
             <div class="controls">
                 <button id="dh03-cover">Cover the DH02 zone for 2 s</button>
@@ -81,6 +83,7 @@ this.#stopArmed();</code></pre></div>
                 <button data-side="end">end</button>
                 <button data-side="top">top</button>
                 <button data-side="bottom">bottom</button>
+                <button id="dh03-panel">end, non-modal (<code>startPanelSession</code>)</button>
                 <label><input type="checkbox" id="dh03-rtl"> <code>dir="rtl"</code></label>
             </div>
             <div class="code-block" data-language="js"><pre><code>import { createLayer } from '@keenmate/web-components-core/positioning';
@@ -237,6 +240,7 @@ protected override createController() {
                     <tr><td><code>deepElementFromPoint(document, x, y)</code></td><td>The innermost element at a point, through open shadow roots.</td></tr>
                     <tr><td><code>watchPageDrag({ types, onChange })</code> · <code>applyArmedState(host, internals, isArmed)</code></td><td>Files (or other types) dragged over the window, one shared listener set; returns a stop function. The <code>armed</code> attribute + <code>:state(armed)</code>.</td></tr>
                     <tr><td><code>createLayer(host, { css, className, zIndex, isInteractive, container })</code> (<code>/positioning</code>)</td><td>A themed panel in the overlay container with its own shadow root: <code>{ element, layer, place(rect), syncTheme, destroy }</code>.</td></tr>
+                    <tr><td><code>startPanelSession(panel, { onDismiss, shouldCloseOnEscape, shouldCloseOnOutsideClick, shouldCloseOnBack, trigger, initialFocus })</code></td><td>A non-modal panel: Escape / a click outside / Back → <code>onDismiss(reason)</code>; no backdrop, inert page or focus trap. <code>{ end, rearmBack, isEnded }</code>.</td></tr>
                     <tr><td><code>.km-drawer</code> · <code>--start</code> / <code>--end</code> / <code>--top</code> / <code>--bottom</code> / <code>--closing</code> (<code>SHEET_CHROME_CSS</code>)</td><td>An edge drawer; <code>--km-sheet-drawer-size</code> / <code>-max-height</code> / <code>-bg</code> / <code>-color</code> / <code>-shadow</code> / <code>-border-radius</code> / <code>-duration</code>.</td></tr>
                     <tr><td><code>copyText(text)</code> · <code>readPasteText(event, { type, shouldNormalizeNewlines })</code></td><td>Copy with the Clipboard API or the <code>execCommand</code> fallback (→ <code>Promise&lt;boolean&gt;</code>); a paste's text, CRLF → LF.</td></tr>
                     <tr><td><code>renderIcon(icon, { prefix })</code> · <code>ICON_CSS</code></td><td>Markup raw, an ASCII name → a <code>--base-icon-&lt;name&gt;</code> mask, anything else escaped text.</td></tr>
@@ -249,7 +253,7 @@ protected override createController() {
     <script type="module" src="examples-dom-card.ts"></script>
 
     <script type="module">
-        import { copyText, readPasteText, renderIcon, renderSlot, ICON_CSS, SHEET_CHROME_CSS, adoptStyles, escapeHtml, startModalSession, animateOut } from '/src/index.ts';
+        import { copyText, readPasteText, renderIcon, renderSlot, ICON_CSS, SHEET_CHROME_CSS, adoptStyles, escapeHtml, startModalSession, startPanelSession, animateOut } from '/src/index.ts';
         import { createLayer } from '/src/positioning/index.ts';
         await Promise.all(['core-demo-sortable', 'core-demo-drop', 'core-demo-counter'].map((t) => customElements.whenDefined(t)));
         const $ = (id) => document.getElementById(id);
@@ -300,6 +304,23 @@ protected override createController() {
                 panel.querySelector('[data-close]').addEventListener('click', close);
             });
         }
+
+        $('dh03-panel').addEventListener('click', (e) => {
+            const panel = document.createElement('div');
+            panel.className = 'km-drawer km-drawer--end';
+            if ($('dh03-rtl').checked) panel.dir = 'rtl';
+            panel.setAttribute('aria-label', 'Uploads');
+            panel.innerHTML = `<div class="container"><h3>Non-modal drawer</h3>
+                <p>The page stays usable — scroll it, click a button. A click outside or Escape closes this.</p>
+                <div class="controls"><button data-close>Close</button></div></div>`;
+            document.body.append(panel);
+            const close = () => {
+                session.end();
+                animateOut([panel], { className: 'km-drawer--closing', onDone: () => panel.remove() });
+            };
+            const session = startPanelSession(panel, { onDismiss: close, trigger: e.currentTarget, isOpenedByPointer: e.detail > 0 });
+            panel.querySelector('[data-close]').addEventListener('click', close);
+        });
 
         // DH04 — the user's own clipboard, on the user's click only
         $('dh04-copy').addEventListener('click', async () => {
