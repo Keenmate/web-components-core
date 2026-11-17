@@ -21,6 +21,8 @@ chapter (IN01, LC02, …) runs the code it shows on small demo elements:
 | [`examples-search.html`](../examples-search.html) | SE · search normalization, match modes, highlighting |
 | [`examples-scroll.html`](../examples-scroll.html) | SC · `scrollIntoContainer()` |
 | [`examples-motion.html`](../examples-motion.html) | MO · motion level |
+| [`examples-lists.html`](../examples-lists.html) | LI · `/a11y` keyboard navigation, `onTextInput`, `createSelection`, `createVirtualWindow`, `keepScrollAcrossMove` |
+| [`examples-dom.html`](../examples-dom.html) | DH · `createPointerDrag`, `watchPageDrag`, `createLayer` + drawers, clipboard, `renderIcon`, `renderSlot`, `createControllerFacade` |
 
 The full API behind each pattern is in [usage.md](usage.md).
 

@@ -1,0 +1,389 @@
+<meta name="kmwc:title" content="DOM helpers">
+<meta name="kmwc:subtitle" content="Small helpers every component used to write its own way: in-page drag with mouse and touch (<code>createPointerDrag</code>) and a drop target that lights up while files are over the page (<code>watchPageDrag</code>, SPEC §12.28), layers and edge drawers (<code>createLayer</code>, <code>.km-drawer</code>, §12.29), the clipboard (<code>copyText</code> / <code>readPasteText</code>, §12.32), icon strings (<code>renderIcon</code>, §12.33), render-callback results (<code>renderSlot</code>, §12.35) and the public controller (<code>createControllerFacade</code>, §12.34). The demos are small demo elements (<code>examples-dom-card.ts</code>) or plain page markup.">
+<meta name="kmwc:entry" content="none">
+<style>
+    /* DH05 · named icon tokens — what @keenmate/base-css-variables defines on :root (any mask image works). */
+    :root {
+        --base-icon-star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z'/%3E%3C/svg%3E");
+        --base-icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'/%3E%3C/svg%3E");
+    }
+</style>
+
+        <!-- ============================================================= -->
+        <!-- DH01 · createPointerDrag + a layer ghost                      -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DH01 · Reorder: <code>createPointerDrag</code></h2>
+            <p>
+                Drag a row to a new place — with a mouse, or with a finger: hold for 300 ms, then drag (moving earlier
+                scrolls the list, as a phone user expects). Near the list's edge it auto-scrolls; Escape cancels. The
+                hit test sees through shadow roots (<code>deepElementFromPoint</code>). The list's box clips its
+                overflow, so the drag ghost is a <strong>layer</strong> (<code>createLayer(this, { isInteractive: false })</code>,
+                DH03) — outside the component, never clipped, invisible to the hit test.
+            </p>
+            <div class="demo-area">
+                <core-demo-sortable id="dh01-list"></core-demo-sortable>
+                <div class="log-panel log-panel--dark mt-1" data-empty="Drag a row." id="dh01-log"></div>
+            </div>
+            <div class="code-block" data-language="js"><pre><code>import { createPointerDrag } from '@keenmate/web-components-core';
+
+this.#drag = createPointerDrag(this.#list, {
+  getSource: (target) =&gt; target.closest('li'),       // null = not draggable here
+  longPressMs: 300,                                  // touch: hold, then drag
+  onStart: ({ source }) =&gt; this.#canDrag(source),    // false refuses
+  onMove: ({ target, x, y }) =&gt; this.#showDropIndicator(target, x, y),
+  onDrop: ({ source, target }) =&gt; this.#move(source, target),
+  onCancel: () =&gt; this.#hideDropIndicator(),         // Escape
+});</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- DH02 · watchPageDrag                                          -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DH02 · Files over the page: <code>watchPageDrag</code></h2>
+            <p>
+                Drag a file from your desktop over <em>any part of this page</em>: the zone arms as soon as the files enter
+                the window (not only when they reach it) and disarms when they leave, are dropped or the drag is
+                cancelled. One shared set of window listeners serves every watcher; <code>applyArmedState</code> sets the
+                <code>armed</code> attribute and <code>:state(armed)</code> on the host for the component's CSS.
+            </p>
+            <div class="demo-area">
+                <core-demo-drop id="dh02-drop"></core-demo-drop>
+                <div class="log-panel log-panel--dark mt-1" data-empty="Drag a file over the page." id="dh02-log"></div>
+            </div>
+            <div class="code-block" data-language="js"><pre><code>import { watchPageDrag, applyArmedState } from '@keenmate/web-components-core';
+
+// connect()
+this.#stopArmed = watchPageDrag({ types: ['Files'], onChange: (isArmed) =&gt; applyArmedState(this, this.internals, isArmed) });
+// disconnect()
+this.#stopArmed();</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- DH03 · createLayer + drawers                                  -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DH03 · Layers and drawers: <code>createLayer</code>, <code>.km-drawer</code></h2>
+            <p>
+                A <strong>layer</strong> is a styled panel outside the component — its own shadow root with your CSS, in
+                the overlay container, above the page (<code>Z_INDEX</code>), following the host's theme.
+                <code>place(rect)</code> takes viewport coordinates. Here a "drop files here" cover is placed over the
+                DH02 zone and 16 px beyond it — nothing around it can clip or cover it.
+                A <strong>drawer</strong> is a modal panel on one edge: the <code>.km-drawer km-drawer--&lt;side&gt;</code>
+                preset from <code>SHEET_CHROME_CSS</code> plus <code>startModalSession</code> (inert page, Tab trap, Escape /
+                backdrop close). <code>--start</code> / <code>--end</code> follow the writing direction.
+            </p>
+            <div class="controls">
+                <button id="dh03-cover">Cover the DH02 zone for 2 s</button>
+                <strong class="muted">drawer</strong>
+                <button data-side="start">start</button>
+                <button data-side="end">end</button>
+                <button data-side="top">top</button>
+                <button data-side="bottom">bottom</button>
+                <label><input type="checkbox" id="dh03-rtl"> <code>dir="rtl"</code></label>
+            </div>
+            <div class="code-block" data-language="js"><pre><code>import { createLayer } from '@keenmate/web-components-core/positioning';
+import { adoptStyles, SHEET_CHROME_CSS, startModalSession, animateOut } from '@keenmate/web-components-core';
+
+const layer = createLayer(this, { css: COVER_CSS, className: 'dz-cover' });
+layer.element.textContent = 'Drop files here';
+layer.place(this.getBoundingClientRect());
+layer.destroy();
+
+adoptStyles(this.shadowRoot, SHEET_CHROME_CSS);
+panel.classList.add('km-drawer', 'km-drawer--end');
+const session = startModalSession(panel, { backdrop: true, onDismiss: () =&gt; close() });
+const close = () =&gt; { session.end(); animateOut([panel], { className: 'km-drawer--closing', onDone: () =&gt; panel.remove() }); };</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- DH04 · Clipboard                                              -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DH04 · Clipboard: <code>copyText</code> and <code>readPasteText</code></h2>
+            <p>
+                <code>copyText(text)</code> uses the Clipboard API and falls back to a hidden, selected textarea +
+                <code>execCommand('copy')</code> (an http page, an old browser); it resolves <code>true</code> /
+                <code>false</code> and never throws. <code>readPasteText(event)</code> reads <code>text/plain</code> from a
+                paste and turns Windows line ends into <code>\n</code> — a block copied from Excel arrives as rows of
+                tab-separated cells. Copy the table, then paste into the box below.
+            </p>
+            <div class="controls">
+                <button id="dh04-copy">Copy a 3 × 2 block (TSV)</button>
+            </div>
+            <div class="form-group">
+                <label for="dh04-paste">Paste here (Ctrl + V)</label>
+                <textarea id="dh04-paste" rows="3" placeholder="Paste anything — even a block from a spreadsheet"></textarea>
+            </div>
+            <div class="log-panel log-panel--dark mt-1" data-empty="Copy, then paste." id="dh04-log"></div>
+            <div class="code-block" data-language="js"><pre><code>import { copyText, readPasteText } from '@keenmate/web-components-core';
+
+const isCopied = await copyText(rows.map((r) =&gt; r.join('\t')).join('\n'));
+cell.addEventListener('paste', (e) =&gt; {
+  const text = readPasteText(e);             // text/plain, CRLF → LF
+  if (!text) return;
+  e.preventDefault();
+  this.#pasteBlock(text.split('\n').map((line) =&gt; line.split('\t')));
+});</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- DH05 · renderIcon                                             -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DH05 · Icon strings: <code>renderIcon</code></h2>
+            <p>
+                An item's <code>icon</code> is data, read with one rule: markup (it starts with <code>&lt;</code>) goes in
+                raw, an ASCII name becomes a <code>.km-icon</code> glyph masked from the <code>--base-icon-&lt;name&gt;</code>
+                token in <code>currentColor</code> (this page defines <code>star</code> and <code>check</code>; an unknown
+                name draws nothing), anything else (an emoji, a letter) is escaped text.
+                <code>ICON_CSS</code> is the drawing rule.
+            </p>
+            <div class="controls">
+                <label>icon <input id="dh05-icon" class="w-md" value="star"></label>
+                <button data-icon="star">star</button>
+                <button data-icon="check">check</button>
+                <button data-icon="🚀">🚀</button>
+                <button data-icon='&lt;svg viewBox="0 0 10 10" width="1em" height="1em"&gt;&lt;circle cx="5" cy="5" r="4" fill="currentColor"/&gt;&lt;/svg&gt;'>&lt;svg&gt;</button>
+                <button data-icon="&lt;b&gt;">a stray <code>&lt;b&gt;</code> (raw)</button>
+            </div>
+            <div class="output">
+                <span class="output-label">rendered</span> <strong id="dh05-out"></strong>
+                <pre id="dh05-html"></pre>
+            </div>
+            <div class="code-block" data-language="js"><pre><code>import { renderIcon, ICON_CSS, adoptStyles } from '@keenmate/web-components-core';
+
+adoptStyles(this.shadowRoot, ICON_CSS);
+cell.innerHTML = renderIcon(item.icon, { prefix: 'grid' });</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- DH06 · renderSlot                                             -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DH06 · Render callbacks: <code>renderSlot</code></h2>
+            <p>
+                Every <code>render*Callback</code> that returns content is read the same way: a string is HTML, a node
+                is mounted, <code>null</code> draws the built-in look, <code>false</code> hides the slot. The three cards
+                below repaint every 500 ms, like a busy grid. Pick "an input", type into it and watch: with
+                <code>memoKey</code> the hook isn't even called while the key is the same; without it the hook runs on
+                every repaint, but a same string isn't rewritten — the input keeps its focus and value either way.
+                "a new node" returns a fresh element each time: that one does lose focus without a key.
+            </p>
+            <div class="controls">
+                <strong class="muted">the hook returns</strong>
+                <label><input type="radio" name="dh06-mode" value="null" checked> <code>null</code> (default)</label>
+                <label><input type="radio" name="dh06-mode" value="string"> a string</label>
+                <label><input type="radio" name="dh06-mode" value="input"> an input</label>
+                <label><input type="radio" name="dh06-mode" value="node"> a new node</label>
+                <label><input type="radio" name="dh06-mode" value="false"> <code>false</code></label>
+                <label><input type="checkbox" id="dh06-memo" checked> <code>memoKey</code></label>
+            </div>
+            <div class="card-grid" id="dh06-cards">
+                <div class="demo-card" data-id="1"></div>
+                <div class="demo-card" data-id="2"></div>
+                <div class="demo-card" data-id="3"></div>
+            </div>
+            <div class="output mt-1"><pre id="dh06-readout"></pre></div>
+            <div class="code-block" data-language="js"><pre><code>import { renderSlot } from '@keenmate/web-components-core';
+
+renderSlot(cellEl, () =&gt; this.config.renderCellCallback?.(this.withContext({ row, column })), {
+  memoKey: `${row.id}@${row.version}@${column.field}`,   // unchanged → the hook isn't even called
+  renderDefault: (el) =&gt; (el.textContent = format(row[column.field])),
+});
+// string → HTML · Node → mounted · null / undefined → renderDefault · false → hidden</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- DH07 · createControllerFacade                                 -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DH07 · The controller: <code>createControllerFacade</code></h2>
+            <p>
+                <code>el.controller</code> (and <code>detail.controller</code> on every event) is the component's public
+                API, not its engine: a frozen object with the listed methods and state, reading the engine lazily. Before
+                the first build it answers with the declared defaults (<code>count: 0</code>, <code>increment()</code> →
+                <code>-1</code>) instead of throwing; the engine's other members aren't reachable.
+            </p>
+            <div class="controls">
+                <button id="dh07-create">Create a detached <code>&lt;core-demo-counter&gt;</code></button>
+                <button id="dh07-inc"><code>controller.increment()</code></button>
+                <button id="dh07-attach">Append it (first build)</button>
+                <button id="dh07-probe">Probe: frozen? <code>secret</code>? write <code>count</code>?</button>
+            </div>
+            <div class="field-row" id="dh07-stage"></div>
+            <div class="log-panel log-panel--dark mt-1" data-empty="Create, call, append, call again." id="dh07-log"></div>
+            <div class="code-block" data-language="js"><pre><code>import { createControllerFacade } from '@keenmate/web-components-core';
+
+protected override createController() {
+  return createControllerFacade(() =&gt; { this.flush(); return this.#engine; }, {
+    methods: ['increment', 'reset'],
+    state: { count: 0 },                         // answered before the first build
+    emptyResults: { increment: () =&gt; -1 },
+  });
+}</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- DH08 · API summary                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DH08 · API summary</h2>
+            <table class="reference-table">
+                <thead><tr><th>API</th><th>What it does</th></tr></thead>
+                <tbody>
+                    <tr><td><code>createPointerDrag(container, { getSource, threshold, longPressMs, autoScroll, onStart, onMove, onDrop, onCancel })</code></td><td>Mouse + touch drags inside a component: threshold, touch long press, edge auto-scroll, Escape; the context has <code>source</code>, <code>x</code>, <code>y</code>, <code>target</code> (through shadow roots), <code>pointerType</code>. Returns <code>{ isDragging, cancel, destroy }</code>.</td></tr>
+                    <tr><td><code>deepElementFromPoint(document, x, y)</code></td><td>The innermost element at a point, through open shadow roots.</td></tr>
+                    <tr><td><code>watchPageDrag({ types, onChange })</code> · <code>applyArmedState(host, internals, isArmed)</code></td><td>Files (or other types) dragged over the window, one shared listener set; returns a stop function. The <code>armed</code> attribute + <code>:state(armed)</code>.</td></tr>
+                    <tr><td><code>createLayer(host, { css, className, zIndex, isInteractive, container })</code> (<code>/positioning</code>)</td><td>A themed panel in the overlay container with its own shadow root: <code>{ element, layer, place(rect), syncTheme, destroy }</code>.</td></tr>
+                    <tr><td><code>.km-drawer</code> · <code>--start</code> / <code>--end</code> / <code>--top</code> / <code>--bottom</code> / <code>--closing</code> (<code>SHEET_CHROME_CSS</code>)</td><td>An edge drawer; <code>--km-sheet-drawer-size</code> / <code>-max-height</code> / <code>-bg</code> / <code>-color</code> / <code>-shadow</code> / <code>-border-radius</code> / <code>-duration</code>.</td></tr>
+                    <tr><td><code>copyText(text)</code> · <code>readPasteText(event, { type, shouldNormalizeNewlines })</code></td><td>Copy with the Clipboard API or the <code>execCommand</code> fallback (→ <code>Promise&lt;boolean&gt;</code>); a paste's text, CRLF → LF.</td></tr>
+                    <tr><td><code>renderIcon(icon, { prefix })</code> · <code>ICON_CSS</code></td><td>Markup raw, an ASCII name → a <code>--base-icon-&lt;name&gt;</code> mask, anything else escaped text.</td></tr>
+                    <tr><td><code>renderSlot(container, result | () =&gt; result, { renderDefault, memoKey })</code></td><td>String = HTML, node = mounted, <code>null</code> = default, <code>false</code> = hidden; a same <code>memoKey</code> skips the hook. Returns <code>'custom' | 'default' | 'hidden'</code>.</td></tr>
+                    <tr><td><code>createControllerFacade(target | () =&gt; target, methods | { methods, state, writable, emptyResults })</code></td><td>A frozen public controller over a lazily-read engine.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+    <script type="module" src="examples-dom-card.ts"></script>
+
+    <script type="module">
+        import { copyText, readPasteText, renderIcon, renderSlot, ICON_CSS, SHEET_CHROME_CSS, adoptStyles, escapeHtml, startModalSession, animateOut } from '/src/index.ts';
+        import { createLayer } from '/src/positioning/index.ts';
+        await Promise.all(['core-demo-sortable', 'core-demo-drop', 'core-demo-counter'].map((t) => customElements.whenDefined(t)));
+        const $ = (id) => document.getElementById(id);
+        /** One log line; `tone` is a kit log-line tone (ok / info / warn / err / muted / action). */
+        const log = (panel, text, tone = '') => {
+            const line = document.createElement('div');
+            line.className = tone ? `log-line log-line--${tone}` : 'log-line';
+            line.textContent = text;
+            panel.appendChild(line);
+            panel.scrollTop = panel.scrollHeight;
+        };
+
+        // DH01
+        $('dh01-list').addEventListener('drag-log', (e) => log($('dh01-log'), e.detail.text, e.detail.tone));
+
+        // DH02
+        const drop = $('dh02-drop');
+        drop.addEventListener('armed-change', (e) => log($('dh02-log'), e.detail.isArmed ? 'armed (files over the page)' : 'disarmed', e.detail.isArmed ? 'info' : 'muted'));
+        drop.addEventListener('files', (e) => log($('dh02-log'), `dropped: ${e.detail.names.join(', ') || '(nothing)'}`, 'ok'));
+
+        // DH03
+        $('dh03-cover').addEventListener('click', () => {
+            const css = `.cover { display: grid; place-items: center; border-radius: 12px; font: 600 1.1rem system-ui, sans-serif;
+                                  color: #fff; background: color-mix(in srgb, #2563eb 85%, transparent); }`;
+            const layer = createLayer(drop, { css, className: 'cover' });
+            layer.element.textContent = 'Drop files here';
+            const r = drop.getBoundingClientRect();
+            layer.place({ top: r.top - 16, left: r.left - 16, width: r.width + 32, height: r.height + 32 });
+            setTimeout(() => layer.destroy(), 2000);
+        });
+        adoptStyles(document, SHEET_CHROME_CSS);
+        for (const button of document.querySelectorAll('[data-side]')) {
+            button.addEventListener('click', (e) => {
+                const panel = document.createElement('div');
+                panel.className = `km-drawer km-drawer--${button.dataset.side}`;
+                if ($('dh03-rtl').checked) panel.dir = 'rtl';
+                panel.setAttribute('role', 'dialog');
+                panel.setAttribute('aria-label', 'Drawer');
+                panel.innerHTML = `<div class="container"><h3>km-drawer--${button.dataset.side}</h3>
+                    <p>Escape, the backdrop or the button closes it. Tab stays inside.</p>
+                    <div class="controls"><button>A focusable button</button><button data-close>Close</button></div></div>`;
+                document.body.append(panel);
+                const close = () => {
+                    session.end();
+                    animateOut([panel], { className: 'km-drawer--closing', onDone: () => panel.remove() });
+                };
+                const session = startModalSession(panel, { backdrop: true, onDismiss: close, isOpenedByPointer: e.detail > 0 });
+                panel.querySelector('[data-close]').addEventListener('click', close);
+            });
+        }
+
+        // DH04 — the user's own clipboard, on the user's click only
+        $('dh04-copy').addEventListener('click', async () => {
+            const tsv = 'Name\tQty\r\nApples\t3\r\nPears\t5';
+            const isCopied = await copyText(tsv);
+            log($('dh04-log'), isCopied ? 'copyText → true (3 rows × 2 tab-separated cells, CRLF line ends)' : 'copyText → false', isCopied ? 'ok' : 'err');
+        });
+        $('dh04-paste').addEventListener('paste', (e) => {
+            const text = readPasteText(e);
+            const rows = text ? text.split('\n').map((line) => line.split('\t')) : [];
+            log($('dh04-log'), `readPasteText → ${JSON.stringify(text)}`, 'info');
+            if (rows.length) log($('dh04-log'), `→ ${rows.length} row(s) × ${Math.max(...rows.map((r) => r.length))} cell(s)`, 'ok');
+        });
+
+        // DH05
+        adoptStyles(document, ICON_CSS);
+        const showIcon = () => {
+            const html = renderIcon($('dh05-icon').value, { prefix: 'demo' });
+            $('dh05-out').innerHTML = html;
+            $('dh05-html').textContent = html;
+        };
+        $('dh05-icon').addEventListener('input', showIcon);
+        for (const b of document.querySelectorAll('[data-icon]')) {
+            b.addEventListener('click', () => { $('dh05-icon').value = b.dataset.icon; showIcon(); });
+        }
+        showIcon();
+
+        // DH06
+        let calls = 0;
+        let tick = 0;
+        const mode = () => document.querySelector('input[name="dh06-mode"]:checked').value;
+        const hook = (id) => {
+            calls++;
+            switch (mode()) {
+                case 'string': return `<strong>Card ${id}</strong> — custom HTML`;
+                case 'input': return `<label>Card ${id} <input aria-label="Card ${id} note" placeholder="type here"></label>`;
+                case 'node': { const el = document.createElement('input'); el.placeholder = `a new node, card ${id}`; el.setAttribute('aria-label', `Card ${id}`); return el; }
+                case 'false': return false;
+                default: return null;
+            }
+        };
+        const kinds = {};
+        const paint = () => {
+            tick++;
+            for (const card of $('dh06-cards').children) {
+                const id = card.dataset.id;
+                kinds[id] = renderSlot(card, () => hook(id), {
+                    memoKey: $('dh06-memo').checked ? `${id}@${mode()}` : undefined,
+                    renderDefault: (el) => (el.textContent = `Card ${id} — the built-in look`),
+                });
+            }
+            $('dh06-readout').textContent = `repaint #${tick} · hook calls ${calls} · ${Object.entries(kinds).map(([k, v]) => `${k}: ${v}`).join(' · ')}`;
+        };
+        paint();
+        const timer = setInterval(paint, 500);
+        window.addEventListener('pagehide', () => clearInterval(timer));
+
+        // DH07
+        let counter = null;
+        const describe = () => `count = ${counter.controller.count}`;
+        $('dh07-create').addEventListener('click', () => {
+            counter?.remove();
+            counter = document.createElement('core-demo-counter');
+            log($('dh07-log'), `created, not built · ${describe()}`, 'action');
+        });
+        $('dh07-inc').addEventListener('click', () => {
+            if (!counter) return log($('dh07-log'), 'create one first', 'warn');
+            log($('dh07-log'), `controller.increment() → ${counter.controller.increment()} · ${describe()}`, counter.isConnected ? 'ok' : 'muted');
+        });
+        $('dh07-attach').addEventListener('click', async () => {
+            if (!counter) return log($('dh07-log'), 'create one first', 'warn');
+            $('dh07-stage').append(counter);
+            await counter.whenReady();
+            log($('dh07-log'), `appended + built · ${describe()}`, 'info');
+        });
+        $('dh07-probe').addEventListener('click', () => {
+            if (!counter) return log($('dh07-log'), 'create one first', 'warn');
+            const c = counter.controller;
+            log($('dh07-log'), `Object.isFrozen(controller) → ${Object.isFrozen(c)} · keys: ${Object.keys(c).join(', ')} · 'secret' in controller → ${'secret' in c}`, 'info');
+            try {
+                c.count = 99;
+                log($('dh07-log'), 'controller.count = 99 → accepted?!', 'err');
+            } catch (err) {
+                log($('dh07-log'), `controller.count = 99 → ${err.constructor.name} (not writable)`, 'ok');
+            }
+        });
+    </script>

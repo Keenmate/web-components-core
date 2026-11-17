@@ -1,0 +1,239 @@
+<meta name="kmwc:title" content="Lists, keys and selection">
+<meta name="kmwc:subtitle" content="The pieces every list, tree, grid and picker shares: keyboard navigation from <code>/a11y</code> — <code>createActiveDescendant</code> for a combobox, <code>createRovingFocus</code> for a toolbar or a calendar grid (SPEC §12.25) — IME-safe typed text (<code>onTextInput</code> / <code>isImeEnter</code>, §12.30), file-manager selection (<code>createSelection</code>, §12.27), virtual rows (<code>createVirtualWindow</code>, §12.26) and scroll positions that survive a DOM move (<code>keepScrollAcrossMove</code>, §12.31). Roles, <code>aria-selected</code> and the highlight stay the component's; the demos are small demo elements (<code>examples-lists-card.ts</code>).">
+<meta name="kmwc:entry" content="none">
+
+        <!-- ============================================================= -->
+        <!-- LI01 · createActiveDescendant + onTextInput                   -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>LI01 · A combobox: <code>createActiveDescendant</code> and <code>onTextInput</code></h2>
+            <p>
+                Focus never leaves the input. ↓ / ↑ / Home / End / PageDown move the highlighted option, core writes
+                <code>aria-activedescendant</code>, the option ids, <code>aria-controls</code> and scrolls the
+                <em>listbox only</em> (never the page); the highlight class is the component's
+                (<code>onActiveChange</code>). Enter picks (<code>onActivate</code>). The filter listens through
+                <code>onTextInput</code>: with an IME (Japanese, Chinese, Korean) it runs once per confirmed word, not for
+                every half-typed syllable, and the Enter that confirms a candidate (<code>isImeEnter</code>) doesn't pick.
+            </p>
+            <div class="demo-area">
+                <core-demo-combo id="li01-combo"></core-demo-combo>
+                <div class="log-panel log-panel--dark mt-1" data-empty="Type, then use the arrows and Enter." id="li01-log"></div>
+            </div>
+            <div class="code-block" data-language="js"><pre><code>import { createActiveDescendant } from '@keenmate/web-components-core/a11y';
+import { onTextInput, isImeEnter } from '@keenmate/web-components-core';
+
+this.#nav = createActiveDescendant(this.#input, this.#listbox, {
+  getItems: () =&gt; [...this.#listbox.querySelectorAll('[role="option"]')],
+  onActiveChange: (item) =&gt; this.#paintHighlight(item),   // your class; aria-activedescendant is core's
+  onActivate: (item) =&gt; this.#select(item.dataset.value), // Enter
+});
+this.#stopText = onTextInput(this.#input, (term) =&gt; { this.#render(term); this.#nav.refresh(); });
+this.#input.addEventListener('keydown', (e) =&gt; { if (isImeEnter(e)) return; /* … */ });</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- LI02 · createRovingFocus                                      -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>LI02 · One tab stop: <code>createRovingFocus</code></h2>
+            <p>
+                A toolbar and a calendar grid are each <strong>one</strong> Tab stop; inside, the arrows move real focus
+                (roving <code>tabindex</code>). The toolbar is horizontal with typeahead — type <kbd>t</kbd> or
+                <kbd>st</kbd> to jump. The grid has 7 columns: ↑ / ↓ move a week, Home / End go to the row's ends, and
+                every Saturday is <code>isSkipped</code> (disabled). Left / Right follow the writing direction — switch
+                the section to <code>dir="rtl"</code> and they flip.
+            </p>
+            <div class="controls">
+                <label><input type="checkbox" id="li02-rtl"> <code>dir="rtl"</code></label>
+            </div>
+            <div class="demo-area" id="li02-area">
+                <div class="grid-2">
+                    <div><span class="demo-label">toolbar</span><core-demo-roving id="li02-toolbar" layout="toolbar"></core-demo-roving></div>
+                    <div><span class="demo-label">grid, 7 columns</span><core-demo-roving id="li02-grid" layout="grid"></core-demo-roving></div>
+                </div>
+                <div class="log-panel log-panel--dark mt-1" data-empty="Tab into a box, then use the arrows." id="li02-log"></div>
+            </div>
+            <div class="code-block" data-language="js"><pre><code>import { createRovingFocus } from '@keenmate/web-components-core/a11y';
+
+this.#roving = createRovingFocus(this.#grid, {
+  getItems: () =&gt; [...this.#grid.querySelectorAll('[role="gridcell"]')],
+  orientation: 'grid', columns: 7,          // 'horizontal' | 'vertical' | 'grid'
+  hasTypeahead: false,                      // the toolbar: true
+  isSkipped: (cell) =&gt; cell.ariaDisabled === 'true',
+  onFocusItem: (cell) =&gt; this.#announceDay(cell),
+});</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- LI03 · createSelection                                        -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>LI03 · Selection: <code>createSelection</code></h2>
+            <p>
+                The rules users know from a file manager, in one model: click selects one, Ctrl / ⌘ + click toggles,
+                Shift + click selects the range from the anchor (in <em>display order</em>), Ctrl + Shift + click adds
+                the range. With the keyboard: ↑ / ↓ move, Shift + ↑ / ↓ extend, Space toggles, Ctrl + A selects all,
+                Escape clears. Rows ending in 7 are not selectable (<code>isSelectable</code>) — a range skips them.
+                <code>single</code> mode keeps at most one.
+            </p>
+            <div class="controls">
+                <label><input type="radio" name="li03-mode" value="multi" checked> <code>multi</code></label>
+                <label><input type="radio" name="li03-mode" value="single"> <code>single</code></label>
+            </div>
+            <div class="demo-area">
+                <core-demo-biglist id="li03-list" count="40"></core-demo-biglist>
+                <div class="log-panel log-panel--dark mt-1" data-empty="Click, Ctrl + click, Shift + click." id="li03-log"></div>
+            </div>
+            <div class="code-block" data-language="js"><pre><code>import { createSelection } from '@keenmate/web-components-core';
+
+this.#selection = createSelection({
+  mode: () =&gt; this.config.selectionMode,                    // 'multi' | 'single'
+  getOrderedKeys: () =&gt; this.#visibleRows.map((r) =&gt; r.id), // display order
+  isSelectable: (id) =&gt; !this.#rowsById.get(id).isDisabled,
+  onChange: ({ added, removed, values }) =&gt; this.emit('selection-change', { added, removed, values }),
+});
+row.addEventListener('click', (e) =&gt; this.#selection.click(id, e));   // the modifiers come from the event
+this.#selection.extendTo(nextId);                                      // Shift + Arrow
+this.#selection.set(this.config.value, { isSilent: true });            // the value input: no event</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- LI04 · createVirtualWindow                                    -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>LI04 · A long list: <code>createVirtualWindow</code></h2>
+            <p>
+                100 000 fixed-height rows; only the visible ones (plus <code>overscan</code>) exist in the DOM. Core adds
+                a spacer of the full height with the row window inside it and calls your <code>render</code> with the
+                range whenever it changes. <code>scrollToIndex</code> scrolls the list only; the selection from LI03
+                works the same here (Shift + click across thousands of rows).
+            </p>
+            <div class="controls">
+                <label>row <input id="li04-row" type="number" class="w-sm" min="0" max="99999" value="54321"></label>
+                <button id="li04-go"><code>scrollToIndex()</code></button>
+                <span class="muted" id="li04-range"></span>
+            </div>
+            <div class="demo-area">
+                <core-demo-biglist id="li04-list" count="100000"></core-demo-biglist>
+            </div>
+            <div class="code-block" data-language="js"><pre><code>import { createVirtualWindow } from '@keenmate/web-components-core';
+
+this.#virtual = createVirtualWindow(this.#scroller, {      // the overflow: auto element
+  getCount: () =&gt; this.#rows.length,
+  rowHeight: 28,                                           // fixed; a function when density can change
+  overscan: 5,
+  render: ({ start, end, window }) =&gt; {
+    window.innerHTML = this.#rows.slice(start, end).map((row, i) =&gt; this.#rowHtml(row, start + i)).join('');
+  },
+});
+this.#virtual.refresh();                                   // the rows (or the selection) changed
+this.#virtual.scrollToIndex(index, { block: 'nearest' });  // keyboard / "go to row"</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- LI05 · keepScrollAcrossMove                                   -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>LI05 · Scroll kept across a DOM move: <code>keepScrollAcrossMove</code></h2>
+            <p>
+                A DOM move (a dashboard reorder, a panel re-parented) keeps a <code>BlissElement</code>'s state — no
+                rebuild — but the browser resets every scroll position inside it to 0. Scroll both lists, then move them
+                into the other column: the one with <code>keepScrollAcrossMove(this, () =&gt; [scroller])</code> comes back
+                where it was.
+            </p>
+            <div class="controls">
+                <button id="li05-move">Move both lists to the other column</button>
+            </div>
+            <div class="grid-2" id="li05-cols">
+                <div id="li05-col-a">
+                    <span class="demo-label">without</span>
+                    <core-demo-biglist id="li05-plain" count="500"></core-demo-biglist>
+                    <span class="demo-label">with <code>keepScrollAcrossMove</code></span>
+                    <core-demo-biglist id="li05-kept" count="500" has-keep-scroll></core-demo-biglist>
+                </div>
+                <div id="li05-col-b"></div>
+            </div>
+            <div class="log-panel log-panel--dark mt-1" data-empty="Scroll both lists, then move them." id="li05-log"></div>
+            <div class="code-block" data-language="js"><pre><code>import { keepScrollAcrossMove } from '@keenmate/web-components-core';
+
+keepScrollAcrossMove(this, () =&gt; [this.#body, this.#sidebar]);   // read on every scroll / reconnect</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- LI06 · API summary                                            -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>LI06 · API summary</h2>
+            <table class="reference-table">
+                <thead><tr><th>API</th><th>What it does</th></tr></thead>
+                <tbody>
+                    <tr><td><code>createActiveDescendant(input, listbox, { getItems, onActivate, onActiveChange, isWrapping, isSkipped, hasHomeEnd, pageSize, shouldScroll })</code> (<code>/a11y</code>)</td><td>Focus stays in <code>input</code>; arrows / Home / End / PageUp / PageDown move the active item; <code>aria-activedescendant</code>, ids, <code>aria-controls</code>, <code>tabindex=-1</code> on the listbox; scrolls inside the listbox only. Returns <code>{ active, activeIndex, setActive, move, refresh, destroy }</code>.</td></tr>
+                    <tr><td><code>createRovingFocus(container, { getItems, orientation, columns, isWrapping, hasTypeahead, getItemText, isSkipped, onFocusItem })</code> (<code>/a11y</code>)</td><td>One tab stop; arrows move real focus (<code>horizontal</code> / <code>vertical</code> / <code>grid</code>, RTL-aware). Returns <code>{ current, currentIndex, focusItem, refresh, destroy }</code>.</td></tr>
+                    <tr><td><code>createTypeahead</code> · <code>isPrintableKey</code> · <code>TYPEAHEAD_TIMEOUT_MS</code> (<code>/a11y</code>)</td><td>The type-to-jump buffer both helpers use, on its own.</td></tr>
+                    <tr><td><code>onTextInput(input, cb)</code> · <code>isImeEnter(e)</code></td><td>Typed text, once per confirmed IME word; returns a stop function. Is this Enter the IME confirming a candidate?</td></tr>
+                    <tr><td><code>createSelection({ mode, getOrderedKeys, isSelectable, onChange })</code></td><td><code>click(key, modifiers)</code> · <code>toggle</code> · <code>extendTo</code> · <code>selectAll</code> · <code>clear</code> · <code>set(keys, { isSilent })</code> · <code>has</code> · <code>values</code> · <code>size</code> · <code>anchor</code> · <code>setAnchor</code>.</td></tr>
+                    <tr><td><code>createVirtualWindow(scroller, { getCount, rowHeight, overscan, render, insetTop, hasStructure })</code></td><td>Renders the visible range into <code>.km-virtual-window</code> inside a full-height <code>.km-virtual-spacer</code>. Returns <code>{ range, window, refresh, scrollToIndex, indexAt, destroy }</code>.</td></tr>
+                    <tr><td><code>keepScrollAcrossMove(host, () =&gt; scrollers)</code></td><td>Remembers each scroller's position and restores it after a DOM move; returns a stop function.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+    <script type="module" src="examples-lists-card.ts"></script>
+
+    <script type="module">
+        await Promise.all(['core-demo-combo', 'core-demo-roving', 'core-demo-biglist'].map((t) => customElements.whenDefined(t)));
+        const $ = (id) => document.getElementById(id);
+        /** One log line; `tone` is a kit log-line tone (ok / info / warn / err / muted / action). */
+        const log = (panel, text, tone = '') => {
+            const line = document.createElement('div');
+            line.className = tone ? `log-line log-line--${tone}` : 'log-line';
+            line.textContent = text;
+            panel.appendChild(line);
+            panel.scrollTop = panel.scrollHeight;
+        };
+
+        // LI01
+        const combo = $('li01-combo');
+        combo.addEventListener('text', (e) => log($('li01-log'), `onTextInput → "${e.detail.term}"`, 'muted'));
+        combo.addEventListener('active', (e) => log($('li01-log'), `active → ${e.detail.value ?? '(none)'}  aria-activedescendant="${e.detail.id ?? ''}"`, 'info'));
+        combo.addEventListener('pick', (e) => log($('li01-log'), `pick → ${e.detail.value}`, 'ok'));
+
+        // LI02
+        for (const id of ['li02-toolbar', 'li02-grid']) {
+            $(id).addEventListener('focus-item', (e) => log($('li02-log'), `${id.slice(5)}: focus → ${e.detail.label} (#${e.detail.index})`, 'info'));
+        }
+        $('li02-rtl').addEventListener('change', (e) => { $('li02-area').dir = e.target.checked ? 'rtl' : ''; });
+
+        // LI03
+        const list3 = $('li03-list');
+        list3.addEventListener('selection-change', (e) => {
+            const { added, removed, size } = e.detail;
+            log($('li03-log'), `selection-change  +[${added.join(', ')}${added.length === 5 ? ', …' : ''}]  −[${removed.join(', ')}${removed.length === 5 ? ', …' : ''}]  size ${size}`, 'info');
+        });
+        for (const r of document.querySelectorAll('input[name="li03-mode"]')) {
+            r.addEventListener('change', () => { list3.selectionMode = r.value; log($('li03-log'), `selection-mode = ${r.value} (cleared)`, 'action'); });
+        }
+
+        // LI04
+        const list4 = $('li04-list');
+        list4.addEventListener('range', (e) => {
+            const { start, end, total } = e.detail;
+            $('li04-range').textContent = `rows ${start}–${end - 1} rendered: ${list4.renderedRows} of ${total.toLocaleString()} in the DOM`;
+        });
+        $('li04-go').addEventListener('click', () => list4.goTo(Number($('li04-row').value)));
+        await list4.whenReady();
+        list4.goTo(0);
+
+        // LI05
+        $('li05-move').addEventListener('click', () => {
+            const plain = $('li05-plain'), kept = $('li05-kept');
+            const box = (el) => el.shadowRoot.querySelector('[role="listbox"]');
+            const before = [box(plain).scrollTop, box(kept).scrollTop];
+            const to = plain.closest('#li05-col-a') ? $('li05-col-b') : $('li05-col-a');
+            const labels = plain.parentElement.querySelectorAll('.demo-label');
+            to.append(labels[0], plain, labels[1], kept);
+            requestAnimationFrame(() => log($('li05-log'),
+                `moved — without: ${before[0]} → ${box(plain).scrollTop} px · with: ${before[1]} → ${box(kept).scrollTop} px`,
+                box(kept).scrollTop === before[1] ? 'ok' : 'warn'));
+        });
+    </script>

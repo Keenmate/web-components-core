@@ -174,6 +174,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`@media (hover: hover)`), and pressing tints it (`:active`). On touch the circle used to stick
   after a tap, and a sheet opening under a resting mouse showed it at once.
 
+### Docs
+- **Two new example pages.** `examples-lists.html` (LI): a combobox on `createActiveDescendant` + `onTextInput`,
+  a toolbar with typeahead and a 7-column calendar grid on `createRovingFocus` (RTL switch), `createSelection`
+  on a list with disabled rows, 100 000 rows through `createVirtualWindow` and `keepScrollAcrossMove` across a
+  column move. `examples-dom.html` (DH): `createPointerDrag` reordering a clipped list with a `createLayer`
+  ghost, a `watchPageDrag` drop zone, edge drawers, `copyText` / `readPasteText`, `renderIcon`, `renderSlot`
+  keeping a focused input through repaints, and the `createControllerFacade` controller. New PG07
+  (`examples-page.html`, API summary now PG08): page-wide locale and labels.
+
 ## [1.0.0-rc24] - 2026-11-15
 
 Includes 1.0.0-rc23 (dated 2026-11-13), which was never published.
