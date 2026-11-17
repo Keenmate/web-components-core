@@ -187,6 +187,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and, while open, runs the item on a chord too (`Ctrl+C`), not only on a bare letter / key name.
 
 ### Fixed
+- `createPointerDrag`: `longPressMs` / `threshold` may be functions (read per press — a component input that
+  changes between drags), and `autoScroll.isEnabled(ctx)` holds the edge scroll still for a drag the component
+  keeps but refuses (a locked tree node) — found in web-treeview's touch-drag pass.
 - `createActiveDescendant(el, el, …)` (one element as input and listbox — a tree body): no self-pointing
   `aria-controls`, and its tab stop is left alone (it set `tabindex=-1` on an element without one).
 - `createPerfLogger` keeps at most `maxSpans` (default 1000) spans for `summary()` — the newest; the summary

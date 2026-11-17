@@ -139,6 +139,22 @@ describe('createPointerDrag', () => {
     expect(calls).toEqual(['start:a', 'move', 'drop:10,40']);
   });
 
+  it('longPressMs / threshold may be functions, read per press (a component input that changes between drags)', () => {
+    vi.useFakeTimers();
+    let delay = 300;
+    const { a, drag } = setup({ longPressMs: () => delay });
+    a.dispatchEvent(pointer('pointerdown', { pointerType: 'touch' }));
+    vi.advanceTimersByTime(300);
+    expect(drag.isDragging).toBe(true);
+    window.dispatchEvent(pointer('pointerup', { pointerType: 'touch' }));
+    delay = 800;
+    a.dispatchEvent(pointer('pointerdown', { pointerType: 'touch' }));
+    vi.advanceTimersByTime(400);
+    expect(drag.isDragging).toBe(false); // the new delay applies to this press
+    vi.advanceTimersByTime(400);
+    expect(drag.isDragging).toBe(true);
+  });
+
   it('Escape / pointercancel cancel; onStart false refuses; right button ignored; destroy', () => {
     const { a, drag, calls } = setup();
     a.dispatchEvent(pointer('pointerdown', { button: 2 }));

@@ -2620,10 +2620,11 @@ events — nothing on a phone except web-treeview's own touch-event copy. Decide
   onDrop, onCancel })`** → `{ isDragging, cancel(), destroy() }`. Pointer events for mouse, pen and touch. Mouse /
   pen start after `threshold` px; touch must rest `longPressMs` (an earlier move = a scroll, the drag never
   starts; `longPressMs: 0` = armed at pointerdown, the page doesn't scroll, and the drag starts past `threshold`
-  like a mouse — no timer race with the first move), then a non-passive `touchmove` is prevented (no page scroll) and the long-press context menu is
+  like a mouse — no timer race with the first move; `longPressMs` / `threshold` may be functions, read per press),
+  then a non-passive `touchmove` is prevented (no page scroll) and the long-press context menu is
   suppressed. Callbacks get `{ source, x, y, target, pointerType, event }`; `target` = `deepElementFromPoint`
   (through open shadow roots — the drag image needs `pointer-events: none`). `onStart` returning `false`
-  refuses. Auto-scroll near the edges of `findScrollContainer(source)` (or `autoScroll.container`), `onMove`
+  refuses. Auto-scroll near the edges of `findScrollContainer(source)` (or `autoScroll.container`; `autoScroll.isEnabled(ctx)` per frame — `false` holds still), `onMove`
   re-run as content slides under the pointer. Escape / `pointercancel` → `onCancel`. The click that ends a drop
   is swallowed (`guardGhostClick`). Pointer capture on the container.
 - Not in core: the drag image / drop indicator, drop rules, cross-window HTML5 DnD (a component may keep

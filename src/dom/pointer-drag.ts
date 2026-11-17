@@ -30,12 +30,15 @@ export interface PointerDragContext {
 export interface PointerDragOptions {
   /** Which element a press starts a drag on (`null` = not draggable here); default: the container. */
   getSource?: (target: Element, event: PointerEvent) => HTMLElement | null;
-  /** Movement (px) before a mouse / pen drag starts, and that cancels a touch long press (default `5`). */
-  threshold?: number;
-  /** Touch hold before the drag starts (default `300`). */
-  longPressMs?: number;
-  /** Scroll the container near its edges while dragging (default on: `{ edge: 40, maxSpeed: 16 }`); `false` = off. */
-  autoScroll?: false | { edge?: number; maxSpeed?: number; container?: HTMLElement | null };
+  /** Movement (px) before a mouse / pen drag starts, and that cancels a touch long press (default `5`). Read per press. */
+  threshold?: number | (() => number);
+  /** Touch hold before the drag starts (default `300`). A function is read per press (a component input). */
+  longPressMs?: number | (() => number);
+  /**
+   * Scroll the container near its edges while dragging (default on: `{ edge: 40, maxSpeed: 16 }`); `false` = off.
+   * `isEnabled(ctx)` is asked per frame — `false` holds still (a drag the component keeps but refuses: a locked node).
+   */
+  autoScroll?: false | { edge?: number; maxSpeed?: number; container?: HTMLElement | null; isEnabled?: (ctx: PointerDragContext) => boolean };
   /** The drag starts; `false` refuses it. */
   onStart?: (ctx: PointerDragContext) => boolean | void;
   onMove?: (ctx: PointerDragContext) => void;
@@ -63,7 +66,13 @@ export function deepElementFromPoint(doc: Document, x: number, y: number): Eleme
 }
 
 export function createPointerDrag(container: HTMLElement, options: PointerDragOptions): PointerDrag {
-  const { threshold = 5, longPressMs = 300 } = options;
+  const readOption = (value: number | (() => number) | undefined, fallback: number): number => {
+    const n = typeof value === 'function' ? value() : value;
+    return typeof n === 'number' && Number.isFinite(n) ? n : fallback;
+  };
+  // per press: a component input (touchDragDelay) may change between drags
+  let threshold = readOption(options.threshold, 5);
+  let longPressMs = readOption(options.longPressMs, 300);
   const getSource = options.getSource ?? ((): HTMLElement => container);
   const doc = container.ownerDocument;
   const view = doc.defaultView ?? window;
@@ -102,7 +111,14 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
   const autoScroll = (): void => {
     scrollFrame = 0;
     if (!isDragging || !scroller || options.autoScroll === false) return;
-    const { edge = 40, maxSpeed = 16 } = options.autoScroll ?? {};
+    const { edge = 40, maxSpeed = 16, isEnabled } = options.autoScroll ?? {};
+    if (isEnabled) {
+      const allowed = callSafely(() => isEnabled(context(null)), { source: container, message: 'autoScroll.isEnabled threw' });
+      if (allowed.isOk && allowed.value === false) {
+        scrollFrame = view.requestAnimationFrame(autoScroll); // ask again next frame
+        return;
+      }
+    }
     const r = scroller.getBoundingClientRect();
     const speed = (d: number): number => (d < edge ? Math.ceil(((edge - d) / edge) * maxSpeed) : 0);
     const dy = speed(lastY - r.top) ? -speed(lastY - r.top) : speed(r.bottom - lastY);
@@ -207,6 +223,8 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
     if (source || !event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return;
     const found = getSource(event.target as Element, event);
     if (!found) return;
+    threshold = readOption(options.threshold, 5);
+    longPressMs = readOption(options.longPressMs, 300);
     source = found;
     pointerId = event.pointerId;
     pointerType = event.pointerType;

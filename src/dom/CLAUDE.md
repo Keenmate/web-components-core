@@ -79,7 +79,8 @@ jsdom: the unit test fakes `clientHeight` / `scrollTop` / rects; `e2e/virtual-wi
 listeners while any watcher exists, `Date.now()` heartbeat (fake-timer friendly); Escape sets `isDismissed` — same-drag `dragover`s (gaps ≤ the
 timeout) are ignored until a `dragenter`, a pulse pause, `drop` / `dragend` or the last unsubscribe. `createPointerDrag`: pointerdown
 on the container → window capture listeners for move / up / cancel / keydown; touch adds a non-passive
-`touchmove` + `contextmenu` blocker and the long-press timer; `longPressMs <= 0` arms touch at pointerdown (no timer). `start()` sets pointer capture and finds the
+`touchmove` + `contextmenu` blocker and the long-press timer; `longPressMs <= 0` arms touch at pointerdown (no timer); `longPressMs` / `threshold` re-read per press
+(`readOption`); `autoScroll.isEnabled(ctx)` asked per frame (false → skip this frame, keep the loop). `start()` sets pointer capture and finds the
 auto-scroll container; `call()` unwraps `callSafely` (an `onStart` returning `false` refuses). jsdom has no
 PointerEvent / DragEvent / `elementFromPoint`: the unit test dispatches plain events with the fields;
 `e2e/drag.spec.ts` covers mouse, CDP touch (long press vs swipe), auto-scroll, shadow hit test, file drag.
