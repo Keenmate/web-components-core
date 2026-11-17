@@ -1335,6 +1335,13 @@ free functions taking a root + CSS strings, NOT `BlissElement` methods.
   else the component's own `createCustomStyles` option (default `true`). Assigning either
   re-syncs every live handle. CSP: the URL was already loaded by the shadow `@import` (same
   `style-src`); a conditional import's head `<style>` is inline like every custom-CSS slot.
+  **Extra roots (`shouldShareLayers: false`, 2026-11-17, from web-dropzone's overlay layer):** a component that
+  renders into a second root of its own (a `createLayer` overlay, a portaled panel) creates a second handle for
+  it with the same inputs and `shouldShareLayers: false`: same page + instance CSS in that root, but it is not the
+  host's registered layers — its `refresh()` / `destroy()` never notify or unregister what managed children read
+  from the host's MAIN handle (one shared entry per host; the extra one used to replace it, and its `destroy()`
+  dropped the children's owner layers).
+
   **Managed children (`getOwner`, decided 2026-11-10, Q24):** an element a component mounts
   and owns (web-dropzone's bulk-mode satellites — picker / summary / queue bound to one store)
   also takes its OWNER's layers. The child's handle gets `getOwner: () => HTMLElement | null`

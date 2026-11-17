@@ -185,6 +185,25 @@ describe('createCustomStyles', () => {
       expect(styles(owner.root)).toEqual(['o--page: .owner-page {}', 'o: .owner-inst {}']); // the owner is unchanged
     });
 
+    it('shouldShareLayers: false — an extra root (an overlay layer) gets the same CSS; its destroy() leaves the children alone', () => {
+      const ownerTag = registeredTag({ customStyles: '.owner-page {}' });
+      const childTag = registeredTag();
+      const owner = host(ownerTag);
+      const child = host(childTag);
+      createCustomStyles(owner.el, owner.root, { cssClass: 'o', ...plain('.owner-inst {}') });
+      createCustomStyles(child.el, child.root, { cssClass: 'c', ...plain(null), getOwner: () => owner.el });
+      const overlayRoot = document.createElement('div').attachShadow({ mode: 'open' });
+      const extra = createCustomStyles(owner.el, overlayRoot, { cssClass: 'o', ...plain('.overlay-inst {}'), shouldShareLayers: false });
+      expect(styles(overlayRoot)).toEqual(['o--page: .owner-page {}', 'o: .overlay-inst {}']);
+      // the child still reads the MAIN handle's layers, before and after the extra root goes away
+      expect(styles(child.root)).toContain('c--owner: .owner-inst {}');
+      extra.destroy();
+      expect(styles(overlayRoot)).toEqual([]);
+      expect(styles(child.root)).toContain('c--owner: .owner-inst {}');
+      window.components![ownerTag]!.customStyles = '.owner-page2 {}';
+      expect(styles(child.root)).toContain('c--owner-page: .owner-page2 {}');
+    });
+
     it("position 'first' keeps the four slots in order at the top", () => {
       const ownerTag = registeredTag({ customStyles: '.op {}' });
       const childTag = registeredTag({ customStyles: '.cp {}' });

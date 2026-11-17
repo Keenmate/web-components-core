@@ -1070,6 +1070,14 @@ this.#customStyles = createCustomStyles(this, this.shadowRoot!, {
 // re-bound to another store → this.#customStyles.refresh()
 ```
 
+A second root of your own (a `createLayer` overlay) gets the same custom CSS from a second handle that stays out of
+the host's shared entry:
+
+```ts
+const overlayStyles = createCustomStyles(this, layer.layer.shadowRoot!, { ...sameOptions, shouldShareLayers: false });
+// layer closes → overlayStyles.destroy()  (the main handle and the satellites are untouched)
+```
+
 ## Persisted UI state
 
 What the user arranged — a popover's size, column widths / order — survives a reload the same way in

@@ -182,6 +182,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and, while open, runs the item on a chord too (`Ctrl+C`), not only on a bare letter / key name.
 
 ### Fixed
+- `createCustomStyles({ shouldShareLayers: false })` for an extra root of the same host (a `createLayer` overlay):
+  a second handle used to replace the host's shared entry, and its `destroy()` dropped the owner layers of the
+  host's managed children (found in web-dropzone's pass).
 - `watchPageDrag`: Escape stays dismissed — the same drag's next `dragover` used to re-arm the target at
   once (web-dropzone's overlay came back ~100 ms after Escape; its e2e failed about 1 run in 4).
 - `copyText`'s fallback gives focus back to the element focused inside a shadow root (`deepActiveElement`), not

@@ -25,7 +25,8 @@ a conditional one (`layer()` / `supports()` / media) is a head `<style>` with th
 Released on real removal too (`watchRemoval`, `src/element/removal-watch.ts`, driven by
 BlissElement's removal check). Page decides: `window.components[tag].shouldHoistImports` >
 `window.components.shouldHoistImports` (non-enumerable) > the component option.
-Managed child (`getOwner?: () => HTMLElement | null`, SPEC §12.8, Q24): two more slots
+`shouldShareLayers: false` = an extra root of the same host (overlay layer): not written to / deleted from
+`layers`, no `notifyDependents`. Managed child (`getOwner?: () => HTMLElement | null`, SPEC §12.8, Q24): two more slots
 (`--owner-page`, `--owner`); order child page → owner page → owner instance → child instance.
 The owner's CSS = what the owner's own live handle last wrote (shared state `layers`: host →
 resolved layers; `dependents`: owner host → child handles, WeakRefs, registered even before the

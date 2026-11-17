@@ -73,6 +73,12 @@ export interface CustomStylesOptions<Ctx = any> {
    * `onApply` doesn't see the owner layers (the owner's own `onApply` did).
    */
   getOwner?: () => HTMLElement | null | undefined;
+  /**
+   * `false` = an EXTRA root of the same host (a `createLayer` overlay, a portaled panel): the handle writes the
+   * same page + instance custom CSS into `root`, but it isn't the host's registered layers — its `refresh()` /
+   * `destroy()` never touch what the host's managed children read from the host's main handle. Default `true`.
+   */
+  shouldShareLayers?: boolean;
 }
 
 /** The handle a component keeps (see {@link createCustomStyles}). */
@@ -382,6 +388,7 @@ export function createCustomStyles<Ctx = any>(
   let isRefreshing = false;
   /** What this handle exposes to its own managed children. */
   const exposed: OwnerLayers = { page: null, instance: null, isRemoved: false };
+  const isShared = opts.shouldShareLayers ?? true;
   publishHoistSetting();
   const doc = typeof ShadowRoot !== 'undefined' && root instanceof ShadowRoot ? root.ownerDocument : null;
   /** Removed from the page (core's removal check): hold no imports until it returns. */
@@ -470,7 +477,7 @@ export function createCustomStyles<Ctx = any>(
         exposed.isRemoved = isRemoved;
         if (pageCss) opts.onApply?.(pageCss, 'page');
         if (instanceCss) opts.onApply?.(instanceCss, 'instance');
-        notifyDependents(host); // inside the guard: a child that (wrongly) owns its owner can't loop
+        if (isShared) notifyDependents(host); // inside the guard: a child that (wrongly) owns its owner can't loop
       } finally {
         isRefreshing = false;
       }
@@ -483,14 +490,14 @@ export function createCustomStyles<Ctx = any>(
       page = instance = ownerPage = ownerInstance = null;
       state().listeners.get(tag)?.delete(ref);
       bindOwner(null);
-      if (state().layers?.get(host) === exposed) {
+      if (isShared && state().layers?.get(host) === exposed) {
         state().layers!.delete(host);
         notifyDependents(host);
       }
     },
   };
   (state().hosts ??= new WeakSet()).add(host);
-  (state().layers ??= new WeakMap()).set(host, exposed);
+  if (isShared) (state().layers ??= new WeakMap()).set(host, exposed);
   const unwatch = watchRemoval(host, {
     onRemoved() {
       isRemoved = true;
