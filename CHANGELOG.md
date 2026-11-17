@@ -72,7 +72,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   string instance → page → English, `.text()` for text / attributes, `.html()` for markup (values escaped, or the
   whole label with `shouldEscapeLabels`), `formatLabelCallback` for ICU / i18next. `getLocaleSettings` /
   `resolveLocale` derive the rest from `Intl` (date pattern, 12 / 24 h, week start, separators);
-  `getMonthNames` / `getWeekdayNames`; `formatNumber` / `parseNumber` with the resolved separators.
+  `getMonthNames` / `getWeekdayNames`; `formatNumber` / `parseNumber` with the resolved separators. A number
+  label param is shown locale-formatted by `createLabels` itself (components pass raw numbers); `formatLabelCallback`
+  gets the raw number for plural rules.
 - `BlissElement.localeChanged()` hook (opt-in by override): a page-wide locale / security assignment or a browser
   language change re-renders the texts; a change while detached fires on reconnect. `resetPageState()` (`/testing`)
   also resets the page locale.

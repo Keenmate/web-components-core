@@ -465,6 +465,8 @@ window.components.locale = {
   labels: { 'web-dropzone': { cancelFile: 'Zrušit {name}' } },
   formatLabelCallback: ({ component, key, params }) => i18next.t(`${component}.${key}`, params),
 };
+// components pass counts as numbers: `{count}` shows as `12 345` in Czech, the callback gets 12345
+
 window.components.security = { shouldEscapeLabels: true };   // labels are plain text, not HTML
 ```
 

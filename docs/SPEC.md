@@ -2512,7 +2512,11 @@ every element. Decided 2026-10-26 / 10-27 / 10-28 (rulebook D-NC-24), built 2026
   `formatLabelCallback({ component, key, template, params, locale })` (a throw / non-string → logged, default
   `{name}` replacement). `text()` is for `textContent` / attributes — never escaped. `html()` is for `innerHTML`:
   `shouldEscapeLabels` off (default) → string param values escaped before formatting, the template stays HTML;
-  on → the finished label escaped once. Plural pairs (`day` / `days`) stay component keys.
+  on → the finished label escaped once. Plural pairs (`day` / `days`) stay component keys. A NUMBER param is
+  displayed through `formatNumber` (resolved locale + separators — components pass raw numbers, never pre-formatted
+  strings), while `formatLabelCallback` receives the raw number (ICU / i18next plural rules need it); a string param
+  (a year, an id) is shown as given. Decided 2026-11-17 (web-commandpalette's pass: pre-formatted counts reached the
+  callback as `"12 345"`).
 - **Live:** `observeLocale(listener)` hears page-locale / security assignments and the browser `languagechange`;
   BlissElement's opt-in `localeChanged()` hook (override = subscribed while connected) re-renders texts. Not
   called on the first connect (`reinit()` read the locale); a change while detached fires on reconnect (a

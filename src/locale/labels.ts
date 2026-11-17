@@ -4,7 +4,9 @@
  * Per key: the instance `labels` (partial; a string — `''` included — wins) → the page-wide
  * `window.components.locale.labels[tag]` → the component's built-in English default. Then
  * formatting: `window.components.locale.formatLabelCallback` (ICU / FormatJS / i18next) or the
- * default `{name}` replacement. Then escaping:
+ * default `{name}` replacement — a NUMBER param is shown through `formatNumber` (the resolved locale and
+ * separators: `12 345` in Czech), while `formatLabelCallback` gets the raw number (ICU / i18next plurals need it).
+ * Pass a string for a number that mustn't be grouped (a year, an id). Then escaping:
  *
  * - {@link Labels.text} — for `textContent` / attributes: nothing is escaped (text can't inject).
  * - {@link Labels.html} — for `innerHTML`: with `window.components.security.shouldEscapeLabels`
@@ -16,6 +18,7 @@ import { escapeHtml } from '../dom/escape-html.js';
 import { callSafely } from '../logging/safe-call.js';
 import { getPageLocale, getPageSecurity } from './page-locale.js';
 import { resolveLocale } from './settings.js';
+import { formatNumber } from './numbers.js';
 
 export type LabelParams = Readonly<Record<string, unknown>>;
 
@@ -88,7 +91,13 @@ export function createLabels<L extends object>(
         ? Object.fromEntries(Object.entries(params).map(([name, v]) => [name, typeof v === 'string' ? escapeHtml(v) : v]))
         : params;
     const callback = getPageLocale()?.formatLabelCallback;
-    let out = formatLabel(raw, values);
+    // The default display formats numbers for the locale; the callback below gets the raw values.
+    const shown = values
+      ? Object.fromEntries(
+          Object.entries(values).map(([name, v]) => [name, typeof v === 'number' && Number.isFinite(v) ? formatNumber(v, { locale: options.getLocale?.() ?? undefined }) : v]),
+        )
+      : values;
+    let out = formatLabel(raw, shown);
     if (typeof callback === 'function') {
       const result = callSafely(
         () => callback({ component: tag, key, template: raw, params: values ?? {}, locale: resolveLocale(options.getLocale?.(), host) }),

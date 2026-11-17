@@ -167,6 +167,18 @@ describe('labels', () => {
     expect(labels.text('cancel', { name: 'f' })).toBe('Cancel f');
   });
 
+  it('a number param is shown locale-formatted; formatLabelCallback gets the raw number; a string stays as is', () => {
+    const labels = createLabels(host, DEFAULTS, () => null, { getLocale: () => 'en-US' });
+    expect(labels.text('count', { count: 12345 })).toBe('12,345 files');
+    expect(labels.text('count', { count: '2026' })).toBe('2026 files'); // a string: not grouped
+    page().locale = { thousandsSeparator: ' ' };
+    expect(labels.text('count', { count: 12345 })).toBe('12 345 files');
+    let seen: unknown;
+    page().locale = { formatLabelCallback: (ctx: { params: Record<string, unknown> }) => ((seen = ctx.params.count), 'x') };
+    labels.text('count', { count: 12345 });
+    expect(seen).toBe(12345);
+  });
+
   it('formatLabel leaves unknown placeholders', () => {
     expect(formatLabel('{a} {b}', { a: 1 })).toBe('1 {b}');
   });
