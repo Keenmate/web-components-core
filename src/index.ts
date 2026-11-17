@@ -106,7 +106,7 @@ export type { ReadPasteOptions } from './dom/clipboard.js';
 export { keepScrollAcrossMove } from './dom/keep-scroll.js';
 // Typed text, IME-safe: one callback per committed change; the IME's own Enter (SPEC §12.30).
 export { onTextInput, isImeEnter } from './dom/text-input.js';
-export type { TextInputElement } from './dom/text-input.js';
+export type { TextInputElement, TextInputOptions } from './dom/text-input.js';
 // Drag: page-wide armed state for drop targets + pointer drags that work with a finger (SPEC §12.28).
 export { watchPageDrag, applyArmedState } from './dom/page-drag.js';
 export type { WatchPageDragOptions } from './dom/page-drag.js';
@@ -116,8 +116,8 @@ export type { PointerDrag, PointerDragContext, PointerDragOptions } from './dom/
 export { createSelection } from './selection/selection.js';
 export type { Selection, SelectionChange, SelectionMode, SelectionOptions } from './selection/selection.js';
 // Virtual window over fixed-height rows: range math, spacer + window, index jump, hit test (SPEC §12.26).
-export { createVirtualWindow } from './dom/virtual-window.js';
-export type { VirtualRange, VirtualRenderContext, VirtualWindow, VirtualWindowOptions } from './dom/virtual-window.js';
+export { computeVirtualRange, createVirtualWindow } from './dom/virtual-window.js';
+export type { VirtualRange, VirtualRangeInput, VirtualRenderContext, VirtualWindow, VirtualWindowOptions } from './dom/virtual-window.js';
 export type { FindScrollContainerOptions, ScrollAxis, ScrollBox, ScrollContainerToBoxOptions, ScrollIntoContainerOptions } from './dom/scroll-container.js';
 export { extractConsumedCssVars, extractDeclaredCssVars, suggestCssVars, lintCssVars } from './dom/css-var-lint.js';
 export type { CssVarFinding } from './dom/css-var-lint.js';

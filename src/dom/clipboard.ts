@@ -9,6 +9,8 @@
  *   normalized to LF; `''` when there is none.
  */
 
+import { deepActiveElement } from './active-element.js';
+
 /** Copy `text`; `true` when it reached the clipboard. Call it from a user gesture (a click, a keydown). */
 export async function copyText(text: string): Promise<boolean> {
   if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText && (typeof window === 'undefined' || window.isSecureContext !== false)) {
@@ -24,7 +26,8 @@ export async function copyText(text: string): Promise<boolean> {
 
 function copyWithTextarea(text: string): boolean {
   if (typeof document === 'undefined' || typeof document.execCommand !== 'function') return false;
-  const active = document.activeElement as HTMLElement | null;
+  // The focused element inside shadow roots (a grid cell), not the host `document.activeElement` reports.
+  const active = deepActiveElement() as HTMLElement | null;
   const selection = document.getSelection();
   const ranges = selection ? Array.from({ length: selection.rangeCount }, (_, i) => selection.getRangeAt(i)) : [];
   const area = document.createElement('textarea');

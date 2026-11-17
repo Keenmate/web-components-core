@@ -68,7 +68,8 @@ Ghost click lives in `src/overlay/ghost-click.ts` (`startModalSession({ isOpened
 `createVirtualWindow`: spacer (`block-size`) + window (`translateY`) appended to the scroller; the list top is the
 spacer's rect minus the scroller's (+ `scrollTop`), so content above it counts. `compute()` caches the last
 non-zero `clientHeight` (a hidden scroller keeps the last known size; never seen → `2 × overscan + 1` rows).
-`render` via `callSafely`. Scroll listener passive; `observeElementSize` with `shouldFireImmediately: false`.
+`render` via `callSafely`; `getPinned` (via `callSafely`) → `pinned` outside the range, a change of the joined list
+repaints; `computeVirtualRange` is the pure math `compute()` uses. Scroll listener passive; `observeElementSize` with `shouldFireImmediately: false`.
 jsdom: the unit test fakes `clientHeight` / `scrollTop` / rects; `e2e/virtual-window.spec.ts` is the real check.
 
 ## Drag (`src/dom/page-drag.ts`, `src/dom/pointer-drag.ts`, SPEC §12.28 — implemented)
@@ -76,7 +77,7 @@ jsdom: the unit test fakes `clientHeight` / `scrollTop` / rects; `e2e/virtual-wi
 `watchPageDrag`: module-level watcher set (per core copy — the state needn't be page-wide), window capture
 listeners while any watcher exists, `Date.now()` heartbeat (fake-timer friendly). `createPointerDrag`: pointerdown
 on the container → window capture listeners for move / up / cancel / keydown; touch adds a non-passive
-`touchmove` + `contextmenu` blocker and the long-press timer; `start()` sets pointer capture and finds the
+`touchmove` + `contextmenu` blocker and the long-press timer; `longPressMs <= 0` arms touch at pointerdown (no timer). `start()` sets pointer capture and finds the
 auto-scroll container; `call()` unwraps `callSafely` (an `onStart` returning `false` refuses). jsdom has no
 PointerEvent / DragEvent / `elementFromPoint`: the unit test dispatches plain events with the fields;
 `e2e/drag.spec.ts` covers mouse, CDP touch (long press vs swipe), auto-scroll, shadow hit test, file drag.
@@ -84,7 +85,8 @@ PointerEvent / DragEvent / `elementFromPoint`: the unit test dispatches plain ev
 ## IME-safe text (`src/dom/text-input.ts`, SPEC §12.30 — implemented)
 
 `onTextInput`: skip `input` with `isComposing`; `compositionend` delivers and remembers the value until a
-`setTimeout(0)` (Firefox's duplicate `input` comes in the same task — a microtask would clear too early, between
+`setTimeout(0)` (delegated `{ selector }`: target = `composedPath()[0].closest(selector)` inside the container,
+the duplicate check is per target) (Firefox's duplicate `input` comes in the same task — a microtask would clear too early, between
 the two dispatches). `isImeEnter` = `isComposing || keyCode === 229`. e2e drives a real composition through CDP
 `Input.imeSetComposition` / `Input.insertText` (Chromium only).
 
@@ -99,7 +101,7 @@ before a child's disconnect — the test resets the fake offsets in the host's `
 ## Clipboard (`src/dom/clipboard.ts`, SPEC §12.32 — implemented)
 
 `copyText`: API only when `isSecureContext !== false`; the fallback textarea must be FOCUSED before `select()`
-(execCommand copies the focused selection); focus + ranges restored. The e2e never touches the system clipboard
+(execCommand copies the focused selection); focus (`deepActiveElement`) + ranges restored. The e2e never touches the system clipboard
 (headless Chromium on Windows shares it): the fixture captures `writeText` / `execCommand`, a paste is a constructed
 `ClipboardEvent` with a `DataTransfer`.
 

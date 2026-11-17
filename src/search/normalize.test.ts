@@ -5,6 +5,14 @@ const NFD_C_CARON = 'c\u030C'; // c + combining caron
 const NFC_C_CARON = '\u010D'; // č
 
 describe('normalizeSearchText', () => {
+  it('the ASCII fast path answers what the full fold does (and a mark after an ASCII letter still folds)', () => {
+    for (const behavior of ['normalized', 'case-insensitive', 'exact'] as const) {
+      expect(normalizeSearchText('Hello World 42 _-+', behavior)).toBe(behavior === 'exact' ? 'Hello World 42 _-+' : 'hello world 42 _-+');
+    }
+    expect(normalizeSearchText('Cafe\u0301 \u00c9COLE')).toBe('cafe ecole');
+    expect(normalizeSearchText('1\u0301', 'normalized')).toBe('1\u0301'); // a mark after a digit isn't a diacritic
+  });
+
   it('defaults to normalized: lowercase, diacritics stripped', () => {
     expect(normalizeSearchText('Český Krumlov')).toBe('cesky krumlov');
     expect(normalizeSearchText('Müller')).toBe('muller');

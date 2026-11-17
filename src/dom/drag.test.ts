@@ -106,6 +106,18 @@ describe('createPointerDrag', () => {
     expect(touchmove.defaultPrevented).toBe(true); // the page doesn't scroll under the finger
   });
 
+  it('touch with longPressMs: 0 — armed at once (no scroll), starts past the threshold like a mouse, no timer race', () => {
+    const { a, drag, calls } = setup({ longPressMs: 0 });
+    a.dispatchEvent(pointer('pointerdown', { pointerType: 'touch', clientX: 10, clientY: 10 }));
+    const touchmove = new Event('touchmove', { bubbles: true, cancelable: true });
+    a.dispatchEvent(touchmove);
+    expect(touchmove.defaultPrevented).toBe(true);
+    window.dispatchEvent(pointer('pointermove', { pointerType: 'touch', clientX: 10, clientY: 30 })); // the first move, same task
+    expect(drag.isDragging).toBe(true);
+    window.dispatchEvent(pointer('pointerup', { pointerType: 'touch', clientX: 10, clientY: 40 }));
+    expect(calls).toEqual(['start:a', 'move', 'drop:10,40']);
+  });
+
   it('Escape / pointercancel cancel; onStart false refuses; right button ignored; destroy', () => {
     const { a, drag, calls } = setup();
     a.dispatchEvent(pointer('pointerdown', { button: 2 }));

@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `render*Callback` result — a string is HTML, a node is mounted, `null` draws the default, `false` hides; a
   matching `memoKey` skips the hook and the DOM, a same string isn't rewritten (focus survives).
   `renderSlotHtml(result, renderDefault?)` → `{ html, kind }` is the string form for rows built as HTML strings.
+- `createVirtualWindow({ getPinned })` keeps rows rendered while scrolled away (`render` gets `pinned`), and
+  `computeVirtualRange()` exports the bare range math (found in web-grid's pass).
+- `onTextInput(container, cb, { selector })`: delegated — one subscription covers re-rendered inputs.
 - `createActiveDescendant(…, { shouldHandleKeys: false })`: ARIA only — no keydown listener; a component with
   its own keys (and `before*Callback`s) drives `move()` / `setActive()` (found in web-multiselect's pass).
 - `createControllerFacade(target, spec)` (main index, SPEC §12.34): the frozen public controller a
@@ -174,6 +177,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and, while open, runs the item on a chord too (`Ctrl+C`), not only on a bare letter / key name.
 
 ### Fixed
+- `copyText`'s fallback gives focus back to the element focused inside a shadow root (`deepActiveElement`), not
+  to its host — a grid cell kept its focus only with the Clipboard API.
+- `createPointerDrag` with `longPressMs: 0`: touch is armed at pointerdown and starts past the threshold like a
+  mouse; the zero-delay timer used to race the first move, which then counted as a scroll.
+- `normalizeSearchText` (and the highlight fold) take an ASCII fast path: about 100× faster on ASCII values, 4–5×
+  on mixed text, same results — web-grid's filter row can use `/search` on 100k rows.
 - `readCssLengthPx` resolves inside a `display: none` subtree (the probe's computed width) instead of returning
   the fallback — a panel measured before it is shown got 0.
 - Sheet close chip (`SHEET_CHROME_CSS`): the hover tint applies only with a real pointer

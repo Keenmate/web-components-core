@@ -1883,6 +1883,8 @@ uses compatibility decomposition (ligatures, full-width forms, no-break spaces f
 strips combining marks only after Latin / Greek / Cyrillic letters — Devanagari vowel signs
 and kana dakuten are part of the letter and stay; `case-insensitive` folds `ß` → `ss` and
 `İ` → `i`. Word boundaries are per code point, and a combining mark is part of the word.
+ASCII takes a fast path with the same result (a whole-ASCII string is one `toLowerCase()`; inside the fold an
+ASCII code point skips the Unicode work), so normalizing 100k grid values costs about what `toLowerCase` does.
 
 **API** (`@keenmate/web-components-core/search`, not re-exported from the root):
 `normalizeSearchText`, `findTextMatches`, `matchesText`, `findRegexMatches`,
@@ -2548,6 +2550,11 @@ positioned div per row), web-treeview (scroller → spacer → translated conten
   end, offsetTop, totalHeight, window })` — the component fills `window` with rows `start … end - 1`. A
   `<table>` passes `hasStructure: false` (`window: null`) and sizes its spacer rows from `offsetTop` /
   `totalHeight`.
+- `getPinned: () => number[]` keeps rows rendered while scrolled away (web-grid: the row being edited keeps its
+  input and focus): `render` gets `pinned`, the valid indexes OUTSIDE the range, ascending; a change of that list
+  re-renders. The component keeps their elements alive (placed at `index × rowHeight`, or a table row between its
+  spacer rows). `computeVirtualRange({ scrollTop, viewport, count, rowHeight, overscan })` is the pure range math,
+  for a component that measures and renders on its own schedule.
 - Renders on scroll (passive, only when the range changes), on the scroller's own resize (`observeElementSize`)
   and on `refresh()` (always — the data changed). `rowHeight` / `insetTop` may be functions, read per compute.
   A scroller with no height yet (a hidden dropdown) renders `2 × overscan + 1` rows until its size arrives.
@@ -2591,7 +2598,8 @@ events — nothing on a phone except web-treeview's own touch-event copy. Decide
 - **`createPointerDrag(container, { getSource, threshold = 5, longPressMs = 300, autoScroll, onStart, onMove,
   onDrop, onCancel })`** → `{ isDragging, cancel(), destroy() }`. Pointer events for mouse, pen and touch. Mouse /
   pen start after `threshold` px; touch must rest `longPressMs` (an earlier move = a scroll, the drag never
-  starts), then a non-passive `touchmove` is prevented (no page scroll) and the long-press context menu is
+  starts; `longPressMs: 0` = armed at pointerdown, the page doesn't scroll, and the drag starts past `threshold`
+  like a mouse — no timer race with the first move), then a non-passive `touchmove` is prevented (no page scroll) and the long-press context menu is
   suppressed. Callbacks get `{ source, x, y, target, pointerType, event }`; `target` = `deepElementFromPoint`
   (through open shadow roots — the drag image needs `pointer-events: none`). `onStart` returning `false`
   refuses. Auto-scroll near the edges of `findScrollContainer(source)` (or `autoScroll.container`), `onMove`
@@ -2636,7 +2644,9 @@ with suggestions); web-multiselect, web-treeview, web-grid and web-editor search
 - **`onTextInput(input, callback(value, event))`** → unsubscribe: `input` events with `isComposing` are skipped,
   `compositionend` delivers the committed text, and Firefox's plain `input` right after `compositionend` (same
   value, same task) is dropped; a same-value `input` later is a real edit. Works on an input, a textarea or a
-  contenteditable (`textContent`).
+  contenteditable (`textContent`). Delegated: `onTextInput(container, cb, { selector })` — one subscription on an
+  element / shadow root covers every matching descendant, including ones re-rendered later (web-grid's filter
+  row); the callback's third argument is the matched element.
 - **`isImeEnter(event)`**: `isComposing` or `keyCode === 229` (Safari's confirming Enter arrives after
   `compositionend` with `isComposing: false`) — a keydown handler returns early on it.
 - Debouncing stays with the caller (`createAsyncRunner` / `createDebounce`).
@@ -2665,7 +2675,8 @@ read `clipboardData.getData('text')` each their own way. Decided 2026-11-17:
 
 - **`copyText(text)`** → `Promise<boolean>`: the async Clipboard API when present in a secure context, else a
   hidden, focused, selected `<textarea>` + `execCommand('copy')` inside the same user gesture; the previous focus
-  and selection are put back; never throws (`false` = not copied — show the component's own message).
+  and selection are put back — focus via `deepActiveElement()`, so a focused grid cell inside a shadow root gets
+  it back, not its host; never throws (`false` = not copied — show the component's own message).
 - **`readPasteText(event, { type = 'text/plain', shouldNormalizeNewlines = true })`** → the pasted text (`''`
   when none): falls back to the legacy `'text'` alias, CRLF / CR → LF so a pasted spreadsheet block splits the
   same on every OS.

@@ -65,7 +65,19 @@ export function foldWithSourceMap(nfc: string, behavior: SearchBehavior): { fold
   const start: number[] = [];
   const end: number[] = [];
   let afterDiacriticBase = false;
+  const isExact = behavior === 'exact';
   for (let i = 0; i < nfc.length; ) {
+    const code = nfc.charCodeAt(i);
+    if (code < 0x80) {
+      // ASCII fast path — what foldCodePoint answers for it: lowercased (unless exact), a letter is a Latin base.
+      const ch = nfc[i]!;
+      folded += isExact ? ch : ch.toLowerCase();
+      start.push(i);
+      end.push(i + 1);
+      afterDiacriticBase = (code >= 0x41 && code <= 0x5a) || (code >= 0x61 && code <= 0x7a);
+      i += 1;
+      continue;
+    }
     const ch = String.fromCodePoint(nfc.codePointAt(i)!);
     const [f, base] = foldCodePoint(ch, behavior, afterDiacriticBase);
     afterDiacriticBase = base;
@@ -93,7 +105,11 @@ export function foldWithSourceMap(nfc: string, behavior: SearchBehavior): { fold
  * Every mode applies Unicode NFC first, so a composed `č` and a decomposed `c` + combining
  * caron compare equal.
  */
+const ASCII_RE = /^[\x00-\x7f]*$/;
+
 export function normalizeSearchText(text: string, behavior: SearchBehavior = 'normalized'): string {
+  // ASCII is its own NFC / NFKD and has no marks: every behavior is a lowercase (or nothing) — ~100× faster.
+  if (ASCII_RE.test(text)) return behavior === 'exact' ? text : text.toLowerCase();
   const nfc = text.normalize('NFC');
   if (behavior === 'exact') return nfc;
   return foldWithSourceMap(nfc, behavior).folded;

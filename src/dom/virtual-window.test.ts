@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createVirtualWindow, type VirtualRenderContext } from './virtual-window.js';
+import { computeVirtualRange, createVirtualWindow, type VirtualRenderContext } from './virtual-window.js';
 
 /** jsdom has no layout: a scroller with a fake viewport height and scrollTop. */
 function fakeScroller(height: number): HTMLElement & { setScroll(top: number): void } {
@@ -60,6 +60,32 @@ describe('createVirtualWindow', () => {
     expect(vw.range).toEqual({ start: 48, end: 62 });
     expect(calls.at(-1)!.offsetTop).toBe(960);
     expect(vw.window!.style.transform).toBe('translateY(960px)');
+  });
+
+  it('getPinned keeps an edited row rendered while scrolled away; a change of the pins re-renders', () => {
+    let pinned: number[] = [];
+    const { scroller, calls, vw } = setup(1000, { getPinned: () => pinned });
+    expect(calls.at(-1)!.pinned).toEqual([]);
+    pinned = [3, 3, 5000, -1];
+    scroller.setScroll(1010); // rows 48-62: row 3 is outside, 5000 / -1 invalid
+    expect(calls.at(-1)!.pinned).toEqual([3]);
+    const before = calls.length;
+    scroller.setScroll(1015); // same range, same pins: no render
+    expect(calls.length).toBe(before);
+    pinned = [3, 50]; // 50 is inside the range: not listed
+    scroller.setScroll(1016);
+    expect(calls.length).toBe(before); // pins as listed didn't change ([3])
+    pinned = [];
+    scroller.setScroll(1017); // the pin was released: re-render without it
+    expect(calls.at(-1)!.pinned).toEqual([]);
+    expect(calls.length).toBe(before + 1);
+    vw.destroy();
+  });
+
+  it('computeVirtualRange: the pure math', () => {
+    expect(computeVirtualRange({ scrollTop: 1000, viewport: 200, count: 1000, rowHeight: 20, overscan: 2 })).toEqual({ start: 48, end: 62 });
+    expect(computeVirtualRange({ scrollTop: -50, viewport: 100, count: 3, rowHeight: 20 })).toEqual({ start: 0, end: 3 });
+    expect(computeVirtualRange({ scrollTop: 0, viewport: 0, count: 0, rowHeight: 0 })).toEqual({ start: 0, end: 0 });
   });
 
   it('refresh always renders; the count is clamped', () => {

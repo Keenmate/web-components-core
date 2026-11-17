@@ -33,6 +33,20 @@ describe('copyText', () => {
     vi.unstubAllGlobals();
   });
 
+  it('the fallback gives focus back to the element focused inside a shadow root, not to its host', async () => {
+    vi.stubGlobal('navigator', { ...navigator, clipboard: undefined });
+    const host = document.createElement('div');
+    document.body.append(host);
+    const cell = document.createElement('div');
+    cell.tabIndex = 0;
+    host.attachShadow({ mode: 'open' }).append(cell);
+    cell.focus();
+    (document as unknown as { execCommand: unknown }).execCommand = vi.fn(() => true);
+    expect(await copyText('x')).toBe(true);
+    expect(host.shadowRoot!.activeElement).toBe(cell);
+    vi.unstubAllGlobals();
+  });
+
   it('nothing works → false, never throws', async () => {
     vi.stubGlobal('navigator', { ...navigator, clipboard: undefined });
     (document as unknown as { execCommand: unknown }).execCommand = () => {

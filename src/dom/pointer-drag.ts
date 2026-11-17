@@ -157,10 +157,11 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
     lastY = event.clientY;
     const moved = Math.hypot(lastX - startX, lastY - startY);
     if (!isDragging) {
-      if (pointerType === 'touch') {
-        if (!isArmed && moved > threshold) reset(); // a scroll, not a drag
+      if (pointerType === 'touch' && !isArmed) {
+        if (moved > threshold) reset(); // a scroll, not a drag
         return;
       }
+      // armed touch (`longPressMs: 0`) drags like a mouse: past the threshold
       if (moved > threshold) start(event);
       return;
     }
@@ -218,7 +219,9 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
     if (pointerType === 'touch') {
       container.addEventListener('touchmove', onTouchMove, { passive: false });
       container.addEventListener('contextmenu', onContextMenu, true);
-      pressTimer = setTimeout(() => {
+      // No long press: armed at once (the page doesn't scroll), the drag starts past the threshold like a mouse.
+      if (longPressMs <= 0) isArmed = true;
+      else pressTimer = setTimeout(() => {
         pressTimer = null;
         isArmed = true;
         start(null);

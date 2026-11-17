@@ -49,6 +49,25 @@ describe('onTextInput', () => {
     expect(cb.mock.calls.map((c) => c[0])).toEqual(['漢', '漢']);
   });
 
+  it('delegated ({ selector }): one subscription on a shadow root covers re-rendered inputs; the target comes along', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = host.attachShadow({ mode: 'open' });
+    const cb = vi.fn();
+    const stop = onTextInput(root, cb, { selector: 'input.filter' });
+    root.innerHTML = '<input class="filter" data-col="a"><input class="other">';
+    type(root.querySelector('.filter')!, 'x');
+    type(root.querySelector('.other')!, 'ignored');
+    root.innerHTML = '<input class="filter" data-col="b">'; // re-rendered
+    const fresh = root.querySelector<HTMLInputElement>('.filter')!;
+    type(fresh, 'か', true);
+    fresh.value = '漢';
+    fresh.dispatchEvent(new CompositionEvent('compositionend', { data: '漢', bubbles: true, composed: true }));
+    expect(cb.mock.calls.map((c) => [c[0], (c[2] as HTMLElement).dataset.col])).toEqual([['x', 'a'], ['漢', 'b']]);
+    stop();
+    host.remove();
+  });
+
   it('unsubscribe stops it', () => {
     const el = document.createElement('input');
     const cb = vi.fn();

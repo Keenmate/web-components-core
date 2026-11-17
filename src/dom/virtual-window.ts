@@ -36,6 +36,12 @@ export interface VirtualRenderContext extends VirtualRange {
   totalHeight: number;
   /** Where the rows go (`null` with `hasStructure: false`). */
   window: HTMLElement | null;
+  /**
+   * `getPinned()` indexes OUTSIDE `start … end - 1` (ascending, `< count`): rows that must stay in the DOM while
+   * scrolled away (a row being edited keeps its focus / input). The component keeps their elements alive —
+   * e.g. absolutely placed at `index × rowHeight` in the spacer, or a table row between its spacer rows.
+   */
+  pinned: number[];
 }
 
 export interface VirtualWindowOptions {
@@ -54,6 +60,30 @@ export interface VirtualWindowOptions {
   hasStructure?: boolean;
   /** Log source for a throwing `render` (default: the scroller). */
   logSource?: unknown;
+  /** Indexes that stay rendered outside the visible range (see `VirtualRenderContext.pinned`); read on every compute. */
+  getPinned?: () => readonly number[];
+}
+
+export interface VirtualRangeInput {
+  /** The scroller's `scrollTop` minus the list's top in its content, px. */
+  scrollTop: number;
+  /** The visible height, px. */
+  viewport: number;
+  count: number;
+  rowHeight: number;
+  overscan?: number;
+}
+
+/**
+ * The pure range math under `createVirtualWindow` — for a component that measures and renders on its own
+ * schedule: the rows in `[scrollTop, scrollTop + viewport]`, `overscan` more on each side, clamped to `count`.
+ */
+export function computeVirtualRange({ scrollTop, viewport, count, rowHeight, overscan = 5 }: VirtualRangeInput): VirtualRange {
+  const n = Math.max(0, Math.floor(count));
+  const h = Math.max(1, rowHeight);
+  const first = Math.floor(Math.max(0, scrollTop) / h);
+  const last = Math.ceil(Math.max(0, scrollTop + viewport) / h);
+  return { start: Math.max(0, Math.min(n, first - overscan)), end: Math.max(0, Math.min(n, last + overscan)) };
 }
 
 export interface VirtualWindow {
@@ -112,14 +142,22 @@ export function createVirtualWindow(scroller: HTMLElement, options: VirtualWindo
     const viewport = scroller.clientHeight || lastViewport;
     if (scroller.clientHeight) lastViewport = scroller.clientHeight;
     if (!viewport) return { start: 0, end: Math.min(n, overscan * 2 + 1) }; // hidden / not laid out yet
-    const top = scroller.scrollTop - listTop();
-    const first = Math.floor(Math.max(0, top) / h);
-    const last = Math.ceil(Math.max(0, top + viewport) / h);
-    return { start: Math.max(0, Math.min(n, first - overscan)), end: Math.max(0, Math.min(n, last + overscan)) };
+    return computeVirtualRange({ scrollTop: scroller.scrollTop - listTop(), viewport, count: n, rowHeight: h, overscan });
   };
 
-  const paint = (next: VirtualRange): void => {
+  /** Pinned indexes outside `r`, valid and ascending. */
+  const pinnedFor = (r: VirtualRange): number[] => {
+    if (!options.getPinned) return [];
+    const n = count();
+    const list = callSafely(() => options.getPinned!(), { source: logSource, message: 'virtual window getPinned threw' });
+    const raw = list.isOk && Array.isArray(list.value) ? list.value : [];
+    return [...new Set(raw.map((i) => Math.floor(i)))].filter((i) => i >= 0 && i < n && (i < r.start || i >= r.end)).sort((a, b) => a - b);
+  };
+  let pinnedKey = '';
+
+  const paint = (next: VirtualRange, pinned: number[] = pinnedFor(next)): void => {
     range = next;
+    pinnedKey = pinned.join(',');
     const h = rowHeight();
     const totalHeight = count() * h;
     const offsetTop = next.start * h;
@@ -127,13 +165,14 @@ export function createVirtualWindow(scroller: HTMLElement, options: VirtualWindo
       spacer.style.blockSize = `${totalHeight}px`;
       windowEl.style.transform = `translateY(${offsetTop}px)`;
     }
-    callSafely(() => render({ ...next, offsetTop, totalHeight, window: windowEl }), { source: logSource, message: 'virtual window render threw' });
+    callSafely(() => render({ ...next, offsetTop, totalHeight, window: windowEl, pinned }), { source: logSource, message: 'virtual window render threw' });
   };
 
   const update = (isForced: boolean): void => {
     if (isDestroyed) return;
     const next = compute();
-    if (isForced || next.start !== range.start || next.end !== range.end) paint(next);
+    const pinned = pinnedFor(next);
+    if (isForced || next.start !== range.start || next.end !== range.end || pinned.join(',') !== pinnedKey) paint(next, pinned);
   };
 
   const onScroll = (): void => update(false);

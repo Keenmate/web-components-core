@@ -15,6 +15,8 @@ Invariants (multiselect's e2e suite depends on them — a change here is a behav
 - Highlight ranges index into the RETURNED text (NFC for text terms), not the input.
 - Word char = `[\p{L}\p{N}\p{M}]` per code point (astral letters and combining marks are part
   of a word); text matches are non-overlapping.
+- ASCII fast paths (whole string in `normalizeSearchText`, per code point in the fold) must answer exactly what
+  `foldCodePoint` would — an ASCII letter is a Latin diacritic base, a digit isn't.
 - One fold routine (`foldWithSourceMap`) backs both `normalizeSearchText` and highlighting,
   so the two never disagree. `normalized` strips only diacritics on Latin / Greek / Cyrillic
   letters (Indic vowel signs, kana dakuten are kept); `case-insensitive` folds `ß` → `ss`, `İ` → `i`.
