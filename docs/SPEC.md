@@ -2549,7 +2549,8 @@ positioned div per row), web-treeview (scroller → spacer → translated conten
   so a header before it (sticky or not) stays. The range is measured from the spacer's own top. `render({ start,
   end, offsetTop, totalHeight, window })` — the component fills `window` with rows `start … end - 1`. A
   `<table>` passes `hasStructure: false` (`window: null`) and sizes its spacer rows from `offsetTop` /
-  `totalHeight`.
+  `totalHeight`; its `listTop` (px or a function) says where row 0 starts in the scroller's content (a `<thead>`
+  inside the scroller), so the range, `scrollToIndex` and `indexAt` count from there.
 - `getPinned: () => number[]` keeps rows rendered while scrolled away (web-grid: the row being edited keeps its
   input and focus): `render` gets `pinned`, the valid indexes OUTSIDE the range, ascending; a change of that list
   re-renders. The component keeps their elements alive (placed at `index × rowHeight`, or a table row between its

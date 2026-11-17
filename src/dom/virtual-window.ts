@@ -58,6 +58,11 @@ export interface VirtualWindowOptions {
   insetTop?: number | (() => number);
   /** Build the spacer + window (default `true`); `false` = the component lays the rows out itself. */
   hasStructure?: boolean;
+  /**
+   * With `hasStructure: false`: where row 0 starts in the scroller's content, px (a `<thead>` inside the scroller
+   * pushes the rows down by its height). Default `0`. With the structure core measures the spacer instead.
+   */
+  listTop?: number | (() => number);
   /** Log source for a throwing `render` (default: the scroller). */
   logSource?: unknown;
   /** Indexes that stay rendered outside the visible range (see `VirtualRenderContext.pinned`); read on every compute. */
@@ -130,7 +135,7 @@ export function createVirtualWindow(scroller: HTMLElement, options: VirtualWindo
   const count = (): number => Math.max(0, Math.floor(read(getCount(), 0)));
   /** The list's top in the scroller's content (a header above the spacer inside the scroller). */
   const listTop = (): number => {
-    if (!spacer) return 0;
+    if (!spacer) return read(options.listTop, 0);
     const a = spacer.getBoundingClientRect();
     const b = scroller.getBoundingClientRect();
     return a.top - b.top + scroller.scrollTop - scroller.clientTop;

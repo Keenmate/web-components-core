@@ -660,7 +660,8 @@ this.#virtual.destroy();                                  // destroyCallback()
 ```
 
 Core appends a spacer (the full height) with the row window inside it to the scroller; a `<table>` passes
-`hasStructure: false` and sizes its own spacer rows from `offsetTop` / `totalHeight`. `getPinned: () =>
+`hasStructure: false` and sizes its own spacer rows from `offsetTop` / `totalHeight` (`listTop: () =>
+thead.offsetHeight` when a header inside the scroller sits above row 0). `getPinned: () =>
 [editingIndex]` keeps a row rendered while it's scrolled away (`render` gets `pinned`); `computeVirtualRange()` is
 the bare range math.
 

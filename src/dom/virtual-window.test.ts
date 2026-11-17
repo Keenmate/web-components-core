@@ -120,6 +120,16 @@ describe('createVirtualWindow', () => {
     expect(vw.indexAt(400)).toBe(-1);
   });
 
+  it('hasStructure: false + listTop: the range, scrollToIndex and indexAt count the rows from below a header', () => {
+    const { scroller, calls, vw } = setup(1000, { hasStructure: false, listTop: 40 });
+    scroller.setScroll(1040); // 1040 - 40 = row 50 at the top
+    expect(vw.range).toEqual({ start: 48, end: 62 });
+    expect(vw.indexAt(100 + 5)).toBe(50); // the scroller's top edge (rect top 100)
+    vw.scrollToIndex(10, { block: 'start' });
+    expect(scroller.scrollTop).toBe(40 + 10 * 20);
+    expect(calls.at(-1)!.window).toBeNull();
+  });
+
   it('hasStructure: false builds nothing and passes window null', () => {
     const { scroller, calls, vw } = setup(100, { hasStructure: false });
     expect(scroller.children.length).toBe(0);

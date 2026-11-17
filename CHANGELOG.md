@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `render*Callback` result — a string is HTML, a node is mounted, `null` draws the default, `false` hides; a
   matching `memoKey` skips the hook and the DOM, a same string isn't rewritten (focus survives).
   `renderSlotHtml(result, renderDefault?)` → `{ html, kind }` is the string form for rows built as HTML strings.
+- `createVirtualWindow({ hasStructure: false, listTop })`: where row 0 starts under a header inside the scroller
+  (found in web-grid's pass — `scrollToIndex` / `indexAt` assumed 0).
 - `createVirtualWindow({ getPinned })` keeps rows rendered while scrolled away (`render` gets `pinned`), and
   `computeVirtualRange()` exports the bare range math (found in web-grid's pass).
 - `onTextInput(container, cb, { selector })`: delegated — one subscription covers re-rendered inputs.
