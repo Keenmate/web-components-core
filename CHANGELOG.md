@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `keepScrollAcrossMove(host, () => [scrollers])` (main index, SPEC §12.31): scroll positions inside a
+  BlissElement survive a DOM move (keyed reorder, re-parent) — recorded from `scroll` events, restored after the
+  next `connect()`. BlissElement now reports every activation to core helpers bound to it.
 - `onTextInput(input, callback)` + `isImeEnter(event)` (main index, SPEC §12.30): one callback per committed
   text — IME composition steps skipped, `compositionend` delivers, Firefox's duplicate `input` dropped — and the
   IME's own Enter (`isComposing` / keyCode 229) told apart from the component's. From web-commandpalette.

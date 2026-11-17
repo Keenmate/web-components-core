@@ -88,6 +88,14 @@ PointerEvent / DragEvent / `elementFromPoint`: the unit test dispatches plain ev
 the two dispatches). `isImeEnter` = `isComposing || keyCode === 229`. e2e drives a real composition through CDP
 `Input.imeSetComposition` / `Input.insertText` (Chromium only).
 
+## Scroll across a move (`src/dom/keep-scroll.ts`, SPEC §12.31 — implemented)
+
+`keepScrollAcrossMove`: capture `scroll` listeners on host + shadow root record into a WeakMap; restore on
+`watchConnection` (`src/element/connection-watch.ts`, `notifyConnected()` at the end of BlissElement's
+`#activate`) + one rAF. Unit fake: jsdom has no layout and custom-element reactions run the host's connect
+before a child's disconnect — the test resets the fake offsets in the host's `disconnect()`. e2e
+`keep-scroll.spec.ts` proves Chromium resets a moved scroller (control element) and the helper restores it.
+
 ## Persisted UI state (`src/dom/state-store.ts`, SPEC §12.17 — implemented)
 
 `createStateStore(host, { getKey, getLoadCallback?, getSaveCallback?, toContext? })` → `{ load, save, clear }`.

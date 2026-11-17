@@ -90,6 +90,8 @@ export type { LoaderRenderContext, RenderLoaderCallback, RenderLoaderOptions } f
 export { deepActiveElement } from './dom/active-element.js';
 export { escapeHtml } from './dom/escape-html.js';
 export { findScrollContainer, getScrollTopForBox, scrollContainerToBox, scrollIntoContainer } from './dom/scroll-container.js';
+// Scroll positions kept across a DOM move (SPEC §12.31).
+export { keepScrollAcrossMove } from './dom/keep-scroll.js';
 // Typed text, IME-safe: one callback per committed change; the IME's own Enter (SPEC §12.30).
 export { onTextInput, isImeEnter } from './dom/text-input.js';
 export type { TextInputElement } from './dom/text-input.js';

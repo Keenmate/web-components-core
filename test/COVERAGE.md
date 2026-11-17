@@ -274,6 +274,12 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | `announce()`: one shared `role=status` region, visually hidden, never inert while a modal makes the page inert; the same text twice is cleared + rewritten | ✓ | `modal.spec.ts` | `modal.html` |
 | `createFormInputs` + `formatFormValue` through a real GET submit: json / array (`name[]`) / text, disabled + cleared name submit nothing, inputs reused, two same-name fields without ids, throwing callback submits `''` | ✓ | `form-inputs.spec.ts` | `form-inputs.html` |
 
+## 13q. Scroll across a move (`keep-scroll.spec.ts`)
+
+| Feature | Status | Spec | Fixture |
+| ------- | :----: | ---- | ------- |
+| A moved list resets in Chromium (control); with `keepScrollAcrossMove` it stays, also after the next frame | ✓ | `keep-scroll.spec.ts` | `keep-scroll.html` |
+
 ## 13p. IME-safe text (`text-input.spec.ts`)
 
 | Feature | Status | Spec | Fixture |

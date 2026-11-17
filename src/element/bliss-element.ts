@@ -73,6 +73,7 @@ import { DEFAULT_ENABLED_LEVEL, LOG_LEVELS, isLogLevel, toLogLevelNumber } from 
 import { dispatch, type DispatchOptions } from './dispatch.js';
 import { withComponentContext, type ComponentContext, type EmitDetail } from './context.js';
 import { hasRemovalWatchers, notifyRemoval } from './removal-watch.js';
+import { notifyConnected } from './connection-watch.js';
 import { warnUnusedPageStyles } from '../dom/custom-styles.js';
 import { isRtl } from '../dom/direction.js';
 import { getLocaleRevision, observeLocale } from '../locale/page-locale.js';
@@ -681,6 +682,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       if (seen !== -1 && seen !== this.#localeRevision && !step(() => this.localeChanged())) return this.#rethrow(firstError);
     }
     if (!step(() => this.#subscribeTheme())) return this.#rethrow(firstError);
+    // Core helpers bound to this element (keepScrollAcrossMove) hear every activation, after connect().
+    notifyConnected(this, (error) => coreLog(this, 'UI', 'ELEMENT').error('a connection watcher threw', error));
     if (!this.#isReady && !this.#isReadyScheduled) {
       // Announce on a microtask, not synchronously (SPEC §6.3): an element built
       // during upgrade (createElement of a defined tag, `define()` after parsing,

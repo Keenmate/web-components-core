@@ -2634,3 +2634,19 @@ with suggestions); web-multiselect, web-treeview, web-grid and web-editor search
 - **`isImeEnter(event)`**: `isComposing` or `keyCode === 229` (Safari's confirming Enter arrives after
   `compositionend` with `isComposing: false`) — a keydown handler returns early on it.
 - Debouncing stays with the caller (`createAsyncRunner` / `createDebounce`).
+
+### 12.31 Scroll kept across a DOM move — IMPLEMENTED (`src/dom/keep-scroll.ts`, main index)
+
+BlissElement keeps a component's state across a DOM move (§6: `disconnect()` → `connect()`, no rebuild), but the
+browser drops every scroll offset inside a detached element — a keyed list reorder or a re-parent put every
+grid / tree / list back at the top. Audit B20, decided 2026-11-17:
+
+- **`keepScrollAcrossMove(host, () => [scrollers])`** → stop. Records each listed scroller's `scrollTop` /
+  `scrollLeft` from its `scroll` events (capture listeners on the host and its shadow root — a detached element
+  already reads 0, so reading at disconnect would be too late) and restores them after the host's next
+  activation (after `connect()`), then once more on the next frame (after a re-render in that frame).
+- Driven by a core-internal connection notifier (`src/element/connection-watch.ts`, page-wide state like
+  `removal-watch.ts`): BlissElement calls `notifyConnected(this)` at the end of every activation. A host that
+  isn't a BlissElement never restores.
+- Only listed scrollers; only positions a `scroll` event reported (a programmatic `scrollTop` write fires one in
+  the browser too).
