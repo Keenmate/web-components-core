@@ -274,6 +274,15 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | `announce()`: one shared `role=status` region, visually hidden, never inert while a modal makes the page inert; the same text twice is cleared + rewritten | ✓ | `modal.spec.ts` | `modal.html` |
 | `createFormInputs` + `formatFormValue` through a real GET submit: json / array (`name[]`) / text, disabled + cleared name submit nothing, inputs reused, two same-name fields without ids, throwing callback submits `''` | ✓ | `form-inputs.spec.ts` | `form-inputs.html` |
 
+## 13l. Virtual window (`virtual-window.spec.ts`)
+
+| Feature | Status | Spec | Fixture |
+| ------- | :----: | ---- | ------- |
+| 10 000 rows: only visible + overscan in the DOM, scroll height = header + full list | ✓ | `virtual-window.spec.ts` | `virtual-window.html` |
+| Wheel scroll renders the rows under the viewport at the right place; `indexAt` agrees with the painted row; the page doesn't scroll | ✓ | `virtual-window.spec.ts` | `virtual-window.html` |
+| `scrollToIndex` start lands below a sticky header; nearest leaves a visible row alone | ✓ | `virtual-window.spec.ts` | `virtual-window.html` |
+| A taller scroller renders more rows (resize watch) | ✓ | `virtual-window.spec.ts` | `virtual-window.html` |
+
 ## 13k. Keyboard navigation (`a11y.spec.ts`)
 
 | Feature | Status | Spec | Fixture |

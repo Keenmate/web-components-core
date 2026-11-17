@@ -63,6 +63,14 @@ replacing run (no flicker); `isPending` covers the debounce wait. `announce` (`a
 `[data-km-announcer]` under `<body>` (shared across core copies); `focus-trap.ts` skips them when inerting.
 Ghost click lives in `src/overlay/ghost-click.ts` (`startModalSession({ isOpenedByPointer })`).
 
+## Virtual window (`src/dom/virtual-window.ts`, SPEC §12.26 — implemented)
+
+`createVirtualWindow`: spacer (`block-size`) + window (`translateY`) appended to the scroller; the list top is the
+spacer's rect minus the scroller's (+ `scrollTop`), so content above it counts. `compute()` caches the last
+non-zero `clientHeight` (a hidden scroller keeps the last known size; never seen → `2 × overscan + 1` rows).
+`render` via `callSafely`. Scroll listener passive; `observeElementSize` with `shouldFireImmediately: false`.
+jsdom: the unit test fakes `clientHeight` / `scrollTop` / rects; `e2e/virtual-window.spec.ts` is the real check.
+
 ## Persisted UI state (`src/dom/state-store.ts`, SPEC §12.17 — implemented)
 
 `createStateStore(host, { getKey, getLoadCallback?, getSaveCallback?, toContext? })` → `{ load, save, clear }`.

@@ -244,6 +244,9 @@ UI strings + locale go through core `/locale` (`src/locale/`, SPEC §12.24): `cr
 () => this.config.labels)` (`.text` / `.html`), `getLocaleSettings` / `resolveLocale`, `formatNumber` /
 `parseNumber`; page-wide `window.components.locale` / `.security`; the opt-in `localeChanged()` hook re-renders.
 
+Virtual lists (fixed row height) go through `createVirtualWindow(scroller, { getCount, rowHeight, render })`
+(`src/dom/virtual-window.ts`, main index, SPEC §12.26).
+
 Container scroll goes through `scrollIntoContainer(el, opts)` / `findScrollContainer(el, opts)`
 (`src/dom/scroll-container.ts`, main index, SPEC §12.15) — scrolls the one container around an
 element, never the page; components call it instead of `scrollIntoView()`.

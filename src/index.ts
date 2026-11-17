@@ -90,6 +90,9 @@ export type { LoaderRenderContext, RenderLoaderCallback, RenderLoaderOptions } f
 export { deepActiveElement } from './dom/active-element.js';
 export { escapeHtml } from './dom/escape-html.js';
 export { findScrollContainer, getScrollTopForBox, scrollContainerToBox, scrollIntoContainer } from './dom/scroll-container.js';
+// Virtual window over fixed-height rows: range math, spacer + window, index jump, hit test (SPEC §12.26).
+export { createVirtualWindow } from './dom/virtual-window.js';
+export type { VirtualRange, VirtualRenderContext, VirtualWindow, VirtualWindowOptions } from './dom/virtual-window.js';
 export type { FindScrollContainerOptions, ScrollAxis, ScrollBox, ScrollContainerToBoxOptions, ScrollIntoContainerOptions } from './dom/scroll-container.js';
 export { extractConsumedCssVars, extractDeclaredCssVars, suggestCssVars, lintCssVars } from './dom/css-var-lint.js';
 export type { CssVarFinding } from './dom/css-var-lint.js';

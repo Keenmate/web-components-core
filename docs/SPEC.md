@@ -2531,3 +2531,26 @@ Decided 2026-11-17 — two patterns, roles stay per component:
   (ArrowRight / Left on a parent), the date grid's PageUp / Down month jumps — the component handles those
   keys before (the helpers skip a `defaultPrevented` event). `/menu` keeps its level-based model (all items
   `-1`, submenus / drill-in back rows).
+
+### 12.26 Virtual window — IMPLEMENTED (`src/dom/virtual-window.ts`, main index)
+
+Three virtual lists with three copies of the same math: web-multiselect (`VirtualScroll`, an absolutely
+positioned div per row), web-treeview (scroller → spacer → translated content, rAF-throttled) and web-grid
+(table spacer rows). Decided 2026-11-17 — fixed row height only (every copy is):
+
+- **`createVirtualWindow(scroller, { getCount, rowHeight, overscan = 5, render, insetTop, hasStructure = true })`**
+  → `{ range, window, refresh(), scrollToIndex(i, { block, behavior }), indexAt(clientY), destroy() }`.
+- Core builds `.km-virtual-spacer` (`position: relative`, `block-size: count × rowHeight`) with
+  `.km-virtual-window` inside (`position: absolute`, `translateY(start × rowHeight)`) — appended to the scroller,
+  so a header before it (sticky or not) stays. The range is measured from the spacer's own top. `render({ start,
+  end, offsetTop, totalHeight, window })` — the component fills `window` with rows `start … end - 1`. A
+  `<table>` passes `hasStructure: false` (`window: null`) and sizes its spacer rows from `offsetTop` /
+  `totalHeight`.
+- Renders on scroll (passive, only when the range changes), on the scroller's own resize (`observeElementSize`)
+  and on `refresh()` (always — the data changed). `rowHeight` / `insetTop` may be functions, read per compute.
+  A scroller with no height yet (a hidden dropdown) renders `2 × overscan + 1` rows until its size arrives.
+- `scrollToIndex` goes through `getScrollTopForBox` / `scrollContainerToBox` (§12.15: `block`,
+  `scroll-padding-top`, `insetTop` for a sticky header measured in JS) and renders at once for `'auto'`.
+  `indexAt(clientY)` = the row under a viewport y (drop targets, hover), `-1` outside.
+- Not in core: variable row heights, horizontal virtualization (web-grid columns), row recycling — the
+  component re-renders the window (string or DOM, its choice).

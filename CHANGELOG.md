@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `createVirtualWindow(scroller, { getCount, rowHeight, overscan, render, insetTop, hasStructure })` (main index,
+  SPEC §12.26): renders only the visible rows of a fixed-row-height list — spacer + translated window built in
+  the scroller, the range recomputed on scroll / resize / `refresh()`, `scrollToIndex` below a sticky header,
+  `indexAt(clientY)` for hit testing; `hasStructure: false` for a table. Replaces the multiselect, treeview and
+  grid copies.
 - `/a11y` subpath (SPEC §12.25): `createActiveDescendant(input, listbox, { getItems, onActivate, onActiveChange })`
   — focus stays in the input, the arrows move `aria-activedescendant` over the options (disabled skipped, scrolled
   into the list, never the page, Enter activates); `createRovingFocus(container, { getItems, orientation, columns,
