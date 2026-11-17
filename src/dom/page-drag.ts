@@ -8,7 +8,8 @@
  *
  * Start: the first matching `dragenter` / `dragover` anywhere. End, whichever comes first: `drop`
  * anywhere, the drag leaving the window (an enter / leave depth counter), `dragend`, Escape, or the
- * `dragover` heartbeat stopping for 350 ms (Escape on an EXTERNAL drag never reaches JS). Capture phase on
+ * `dragover` heartbeat stopping for 350 ms (Escape on an EXTERNAL drag never reaches JS). After Escape the
+ * same drag's `dragover`s don't re-arm; a new `dragenter` or a pause in them does. Capture phase on
  * `window`, so a target's `stopPropagation()` can't hide anything.
  */
 
@@ -33,6 +34,12 @@ const watchers = new Set<Watcher>();
 let depth = 0;
 let lastPulseAt = 0;
 let heartbeat: ReturnType<typeof setInterval> | null = null;
+/**
+ * Escape dismissed the drag: the `dragover`s of the SAME drag must not re-arm it (they keep coming while the
+ * pointer moves). A new `dragenter`, or the pulses pausing past the heartbeat timeout, is a new drag.
+ */
+let isDismissed = false;
+let lastDismissedPulseAt = 0;
 
 const carries = (e: DragEvent, types: readonly string[]): boolean => {
   const list = e.dataTransfer?.types;
@@ -70,6 +77,12 @@ function endAll(): void {
   for (const w of [...watchers]) set(w, false);
 }
 
+/** The drag is over (drop / dragend): the next one starts fresh. */
+function endDrag(): void {
+  isDismissed = false;
+  endAll();
+}
+
 function arm(e: DragEvent): boolean {
   let isMatched = false;
   for (const w of [...watchers]) {
@@ -82,10 +95,18 @@ function arm(e: DragEvent): boolean {
 }
 
 function onDragEnter(e: DragEvent): void {
+  isDismissed = false;
   if (arm(e)) depth++;
 }
 
 function onDragOver(e: DragEvent): void {
+  if (isDismissed) {
+    const now = Date.now();
+    const isSameDrag = now - lastDismissedPulseAt <= HEARTBEAT_TIMEOUT_MS;
+    lastDismissedPulseAt = now;
+    if (isSameDrag) return;
+    isDismissed = false;
+  }
   const wasArmed = anyArmed();
   if (!arm(e)) return;
   lastPulseAt = Date.now();
@@ -99,7 +120,10 @@ function onDragLeave(e: DragEvent): void {
 }
 
 function onKeyDown(e: KeyboardEvent): void {
-  if (e.key === 'Escape' && anyArmed()) endAll();
+  if (e.key !== 'Escape' || !anyArmed()) return;
+  endAll();
+  isDismissed = true;
+  lastDismissedPulseAt = Date.now();
 }
 
 function listen(isOn: boolean): void {
@@ -107,8 +131,8 @@ function listen(isOn: boolean): void {
   window[method]('dragenter', onDragEnter as EventListener, CAPTURE);
   window[method]('dragover', onDragOver as EventListener, CAPTURE);
   window[method]('dragleave', onDragLeave as EventListener, CAPTURE);
-  window[method]('drop', endAll, CAPTURE);
-  window[method]('dragend', endAll, CAPTURE);
+  window[method]('drop', endDrag, CAPTURE);
+  window[method]('dragend', endDrag, CAPTURE);
   window[method]('keydown', onKeyDown as EventListener, CAPTURE);
 }
 
@@ -122,7 +146,7 @@ export function watchPageDrag(options: WatchPageDragOptions): () => void {
     if (!watchers.delete(watcher)) return;
     if (watchers.size === 0) {
       listen(false);
-      endAll();
+      endDrag();
     }
   };
 }

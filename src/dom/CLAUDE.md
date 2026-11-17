@@ -75,7 +75,8 @@ jsdom: the unit test fakes `clientHeight` / `scrollTop` / rects; `e2e/virtual-wi
 ## Drag (`src/dom/page-drag.ts`, `src/dom/pointer-drag.ts`, SPEC §12.28 — implemented)
 
 `watchPageDrag`: module-level watcher set (per core copy — the state needn't be page-wide), window capture
-listeners while any watcher exists, `Date.now()` heartbeat (fake-timer friendly). `createPointerDrag`: pointerdown
+listeners while any watcher exists, `Date.now()` heartbeat (fake-timer friendly); Escape sets `isDismissed` — same-drag `dragover`s (gaps ≤ the
+timeout) are ignored until a `dragenter`, a pulse pause, `drop` / `dragend` or the last unsubscribe. `createPointerDrag`: pointerdown
 on the container → window capture listeners for move / up / cancel / keydown; touch adds a non-passive
 `touchmove` + `contextmenu` blocker and the long-press timer; `longPressMs <= 0` arms touch at pointerdown (no timer). `start()` sets pointer capture and finds the
 auto-scroll container; `call()` unwraps `callSafely` (an `onStart` returning `false` refuses). jsdom has no

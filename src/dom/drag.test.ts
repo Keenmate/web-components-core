@@ -49,6 +49,27 @@ describe('watchPageDrag', () => {
     stop();
   });
 
+  it('after Escape the same drag’s dragovers don’t re-arm; a new dragenter or a pause in them does', () => {
+    vi.useFakeTimers();
+    const onChange = vi.fn();
+    const stop = watchPageDrag({ onChange });
+    window.dispatchEvent(drag('dragenter', ['Files']));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(onChange).toHaveBeenLastCalledWith(false);
+    for (let i = 0; i < 5; i++) {
+      vi.advanceTimersByTime(100);
+      window.dispatchEvent(drag('dragover', ['Files'])); // the same drag keeps pulsing
+    }
+    expect(onChange).toHaveBeenCalledTimes(2); // armed, disarmed — not re-armed
+    vi.advanceTimersByTime(500); // the pulses paused: a later dragover is a new drag
+    window.dispatchEvent(drag('dragover', ['Files']));
+    expect(onChange).toHaveBeenLastCalledWith(true);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    window.dispatchEvent(drag('dragenter', ['Files'])); // a new dragenter re-arms at once
+    expect(onChange).toHaveBeenLastCalledWith(true);
+    stop();
+  });
+
   it('applyArmedState toggles the attribute', () => {
     const host = document.createElement('div');
     applyArmedState(host, null, true);

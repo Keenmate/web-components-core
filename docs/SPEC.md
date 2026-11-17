@@ -2593,7 +2593,9 @@ events — nothing on a phone except web-treeview's own touch-event copy. Decide
 - **`watchPageDrag({ types = ['Files'], onChange(isArmed) })`** → unsubscribe: one window listener set (capture
   phase) shared by every watcher; per watcher only drags carrying one of its `dataTransfer.types` arm it. Start:
   a matching `dragenter` / `dragover`; end: `drop`, leaving the window (enter / leave depth), `dragend`, Escape,
-  or 350 ms without a `dragover` pulse (Escape on an external drag never reaches JS). `applyArmedState(host,
+  or 350 ms without a `dragover` pulse (Escape on an external drag never reaches JS). After Escape the same
+  drag's `dragover`s don't re-arm (they keep pulsing while the pointer moves); a new `dragenter` or a pause in
+  the pulses longer than the timeout does. `applyArmedState(host,
   internals, isArmed)` → `armed` attribute + `:state(armed)`. From web-dropzone.
 - **`createPointerDrag(container, { getSource, threshold = 5, longPressMs = 300, autoScroll, onStart, onMove,
   onDrop, onCancel })`** → `{ isDragging, cancel(), destroy() }`. Pointer events for mouse, pen and touch. Mouse /

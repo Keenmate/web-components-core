@@ -177,6 +177,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and, while open, runs the item on a chord too (`Ctrl+C`), not only on a bare letter / key name.
 
 ### Fixed
+- `watchPageDrag`: Escape stays dismissed — the same drag's next `dragover` used to re-arm the target at
+  once (web-dropzone's overlay came back ~100 ms after Escape; its e2e failed about 1 run in 4).
 - `copyText`'s fallback gives focus back to the element focused inside a shadow root (`deepActiveElement`), not
   to its host — a grid cell kept its focus only with the Clipboard API.
 - `createPointerDrag` with `longPressMs: 0`: touch is armed at pointerdown and starts past the threshold like a
