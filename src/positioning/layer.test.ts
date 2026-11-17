@@ -39,6 +39,19 @@ describe('createLayer', () => {
     expect(layer.layer.isConnected).toBe(false);
   });
 
+  it('cssVars: the host’s instance tokens are copied onto the layer, again on syncTheme()', () => {
+    const host = document.createElement('div');
+    host.style.setProperty('--xx-bg', 'red');
+    document.body.append(host);
+    const layer = createLayer(host, { cssVars: ['--xx-bg', '--xx-unset'] });
+    expect(layer.layer.style.getPropertyValue('--xx-bg')).toBe('red');
+    expect(layer.layer.style.getPropertyValue('--xx-unset')).toBe('');
+    host.style.setProperty('--xx-bg', 'blue');
+    layer.syncTheme();
+    expect(layer.layer.style.getPropertyValue('--xx-bg')).toBe('blue');
+    layer.destroy();
+  });
+
   it('a host inside an open modal <dialog> mounts in the dialog (top layer)', () => {
     const dialog = document.createElement('dialog');
     const host = document.createElement('div');

@@ -20,6 +20,10 @@ test('a layer covers past the clipping parent and above a z-indexed neighbour, s
   // the component CSS reached the shadow root; the page token reached it; the host's theme attribute came along
   expect(await cover.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(0, 120, 212)');
   expect(await cover.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe('solid');
+  // the component's LAYERED :host rule beats core's reset (km-layer-base is the lowest layer)
+  expect(await page.locator('.km-layer').evaluate((el) => getComputedStyle(el).colorScheme)).toBe('dark');
+  // cssVars: an instance token set on the host reached the layer
+  expect(await cover.evaluate((el) => getComputedStyle(el).borderTopColor)).toBe('rgb(255, 0, 0)');
 });
 
 test('place() compensates a transformed container (containing block for fixed elements)', async ({ page }) => {

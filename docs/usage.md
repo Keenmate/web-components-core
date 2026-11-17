@@ -572,14 +572,15 @@ the component's `overflow` can't clip and its neighbours can't cover ([SPEC §12
 ```ts
 import { createLayer } from '@keenmate/web-components-core/positioning';
 
-const layer = createLayer(this, { css: OVERLAY_CSS, className: 'dz-cover' });  // its own shadow root, your CSS
+const layer = createLayer(this, { css: OVERLAY_CSS, className: 'dz-cover', cssVars: ['--dz-overlay-bg'] });
 layer.element.innerHTML = this.#labels.html('dropHere');
 layer.place(this.getBoundingClientRect());          // viewport coordinates; a transformed container is handled
 layer.destroy();
 ```
 
-The host's theme comes along; per-instance custom properties set on the host don't (put shared tokens on
-`:root`).
+The host's theme comes along. Instance tokens set on the host don't inherit into the layer — list the ones its
+CSS reads in `cssVars` (their computed values are copied; `syncTheme()` re-reads them). Your `:host` rules beat
+core's reset even inside `@layer component`.
 
 A **drawer** is a modal panel on one edge — the preset classes in `SHEET_CHROME_CSS` plus a modal session:
 

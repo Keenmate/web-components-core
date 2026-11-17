@@ -29,10 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `onTextInput(input, callback)` + `isImeEnter(event)` (main index, SPEC §12.30): one callback per committed
   text — IME composition steps skipped, `compositionend` delivers, Firefox's duplicate `input` dropped — and the
   IME's own Enter (`isComposing` / keyCode 229) told apart from the component's. From web-commandpalette.
-- `createLayer(host, { css, className, zIndex, isInteractive })` (`/positioning`, SPEC §12.29): a styled panel
+- `createLayer(host, { css, className, zIndex, isInteractive, cssVars })` (`/positioning`, SPEC §12.29): a styled panel
   outside the component — its own shadow root with the component's CSS, the host's theme, mounted in the overlay
   container (body / the open dialog), `place(rect)` in viewport coordinates with a transformed container
-  compensated. For drag ghosts, drop pads and "drop here" covers.
+  compensated. For drag ghosts, drop pads and "drop here" covers. `cssVars` carries the host's instance tokens
+  onto the layer; core's reset sits in the lowest cascade layer, so the component's `:host` rules win.
 - Drawer preset in `SHEET_CHROME_CSS` (SPEC §12.29): `.km-drawer` + `--start | --end | --top | --bottom` — a
   modal panel on one edge (with `startModalSession`), slide in / out on the motion tokens, safe areas; new
   `--km-sheet-drawer-*` variables (size, max-height, bg, color, shadow, border-radius, duration).

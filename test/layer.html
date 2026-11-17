@@ -15,7 +15,7 @@
 <body>
     <h1>layer fixture</h1>
     <p>Targeted by <code>e2e/layer.spec.ts</code>.</p>
-    <div class="clip"><fx-layer-host id="host" data-theme="dark"></fx-layer-host></div>
+    <div class="clip"><fx-layer-host id="host" data-theme="dark" style="--fx-instance-border: red"></fx-layer-host></div>
     <div class="covering">a neighbour with z-index 50</div>
     <div class="transformed" id="transformed"></div>
     <button id="open-drawer">open drawer</button>
@@ -32,9 +32,11 @@
         });
         const host = document.getElementById('host');
         const CSS = `.cover { background: var(--fx-cover-bg); color: white; display: grid; place-items: center; }
-                     :host([data-theme="dark"]) .cover { outline: 3px solid black; }`;
+                     :host([data-theme="dark"]) .cover { outline: 3px solid black; }
+                     @layer component { :host([data-theme="dark"]) { color-scheme: dark; } }
+                     .cover { border-color: var(--fx-instance-border, transparent); border-style: solid; border-width: 2px; }`;
         window.__openCover = () => {
-            const layer = createLayer(host, { css: CSS, className: 'cover' });
+            const layer = createLayer(host, { css: CSS, className: 'cover', cssVars: ['--fx-instance-border'] });
             layer.element.textContent = 'drop files here';
             const r = host.getBoundingClientRect();
             layer.place({ top: r.top, left: r.left, width: r.width, height: 120 });

@@ -2606,15 +2606,19 @@ Audit B13 / B14: web-treeview drew its drop pads and drag ghost by hand, web-dro
 `<body>` with its CSS variables copied inline, and its side panel was a dummy `createPopover` with no anchor.
 Decided 2026-11-17:
 
-- **`createLayer(host, { css, className, zIndex = Z_INDEX.dropdown, isInteractive = true, container })`** →
+- **`createLayer(host, { css, className, zIndex = Z_INDEX.dropdown, isInteractive = true, container, cssVars })`** →
   `{ element, layer, place(rect), syncTheme(), destroy() }`. A fixed `div.km-layer` in
   `findOverlayContainer(host)` (`<body>` or the open top-layer `<dialog>` / popover around the host) with its OWN
   shadow root: `css` + `MOTION_CSS` adopted there, `element` (`.km-layer__content` + `className`, `inset: 0`) is
   where the component renders; the host's theme attributes copied with `inheritTheme` (C-CS-10). `place(rect)`
   takes viewport coordinates (`host.getBoundingClientRect()` to cover the host) and subtracts the fixed
   containing block when the container has one (`getFixedPositionOffsetParent`). `isInteractive: false` =
-  `pointer-events: none` (a drag ghost under the pointer). Per-instance custom properties on the HOST don't reach
-  the layer (not a descendant; no inline copying — page tokens and the theme do).
+  `pointer-events: none` (a drag ghost under the pointer). Per-instance custom properties on the HOST don't
+  inherit into the layer (not a descendant): the ones the layer CSS reads are listed in `cssVars` and their
+  computed values at the host are set on the layer (re-read by `syncTheme()`); page tokens and the theme arrive on
+  their own. Core's `:host { all: initial }` reset is in the lowest cascade layer (`@layer km-layer-base`), so the
+  component's rules — layered or not — override it (found in web-dropzone's pass: a layered
+  `:host([data-theme]) { color-scheme }` lost to the unlayered reset).
 - **Drawer preset**: `.km-drawer` + `.km-drawer--start | --end | --top | --bottom` in `SHEET_CHROME_CSS` — fixed on
   one edge (start / end follow the panel's writing direction), the modal tier, safe-area padding, slide in / out on
   `--km-sheet-drawer-duration` (→ `--base-duration-medium`, so `data-motion` / reduced motion apply),

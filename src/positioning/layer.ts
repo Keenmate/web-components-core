@@ -11,8 +11,11 @@
  * the component renders. `place(rect)` positions it in viewport coordinates — compensating for a
  * transformed ancestor of the container (a containing block for fixed elements).
  *
- * Per-instance custom properties set ON the host don't reach the layer (it isn't the host's
- * descendant); page-level tokens (`:root`) and the theme do.
+ * The layer isn't the host's descendant, so per-instance custom properties set ON the host don't inherit
+ * into it; list the ones the layer CSS reads in `cssVars` and their computed values at the host are copied
+ * onto the layer (again on `syncTheme()`). Page-level tokens (`:root`) and the theme arrive on their own.
+ * Core's reset (`:host { all: initial }`) sits in the lowest cascade layer (`km-layer-base`), so any of the
+ * component's rules — layered or not — win over it (a `:host([data-theme="dark"]) { color-scheme: dark }`).
  */
 
 import { adoptStyles } from '../dom/adopt-styles.js';
@@ -40,6 +43,11 @@ export interface LayerOptions {
   isInteractive?: boolean;
   /** Where to mount (default `findOverlayContainer(host)`). */
   container?: HTMLElement;
+  /**
+   * Custom properties to carry from the host (`['--dz-overlay-bg', …]`): their computed values at the host
+   * are set on the layer, so instance-level overrides reach the layer CSS. Re-read by `syncTheme()`.
+   */
+  cssVars?: readonly string[];
 }
 
 export interface Layer {
@@ -49,15 +57,29 @@ export interface Layer {
   readonly layer: HTMLElement;
   /** Position + size in viewport coordinates (`host.getBoundingClientRect()` to cover the host). */
   place(rect: LayerRect | DOMRectReadOnly): void;
-  /** Copy the host's theme attributes again (after a theme switch while open). */
+  /** Copy the host's theme attributes (and `cssVars`) again — after a theme switch or a token change while open. */
   syncTheme(): void;
   destroy(): void;
 }
 
+// The lowest cascade layer: declared first, so the component's own layers (and unlayered rules) beat it.
 const LAYER_CSS = `
-:host { all: initial; display: block; }
-.km-layer__content { position: absolute; inset: 0; box-sizing: border-box; }
+@layer km-layer-base {
+  :host { all: initial; display: block; }
+  .km-layer__content { position: absolute; inset: 0; box-sizing: border-box; }
+}
 `;
+
+/** Copy `names`' computed values at `host` onto `layer` (an unset one is removed). */
+function copyCssVars(host: HTMLElement, layer: HTMLElement, names: readonly string[]): void {
+  if (!names.length) return;
+  const style = host.ownerDocument.defaultView?.getComputedStyle(host);
+  for (const name of names) {
+    const value = style?.getPropertyValue(name).trim() ?? '';
+    if (value) layer.style.setProperty(name, value);
+    else layer.style.removeProperty(name);
+  }
+}
 
 export function createLayer(host: HTMLElement, options: LayerOptions = {}): Layer {
   const doc = host.ownerDocument;
@@ -75,6 +97,8 @@ export function createLayer(host: HTMLElement, options: LayerOptions = {}): Laye
   container.append(layer);
   adoptMotionStyles(element);
   let restoreTheme = inheritTheme(host, layer);
+  const cssVars = options.cssVars ?? [];
+  copyCssVars(host, layer, cssVars);
 
   return {
     element,
@@ -95,6 +119,7 @@ export function createLayer(host: HTMLElement, options: LayerOptions = {}): Laye
     syncTheme() {
       restoreTheme();
       restoreTheme = inheritTheme(host, layer);
+      copyCssVars(host, layer, cssVars);
     },
     destroy() {
       restoreTheme();
