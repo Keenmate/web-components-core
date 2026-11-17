@@ -187,6 +187,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and, while open, runs the item on a chord too (`Ctrl+C`), not only on a bare letter / key name.
 
 ### Fixed
+- `createActiveDescendant(el, el, …)` (one element as input and listbox — a tree body): no self-pointing
+  `aria-controls`, and its tab stop is left alone (it set `tabindex=-1` on an element without one).
 - `createPerfLogger` keeps at most `maxSpans` (default 1000) spans for `summary()` — the newest; the summary
   says how many older ones were dropped. It used to keep every span while perf logging was on, so a long-running
   page grew without bound (found in web-treeview's pass).

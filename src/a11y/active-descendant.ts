@@ -62,10 +62,14 @@ export function createActiveDescendant(input: HTMLElement, listbox: HTMLElement,
   if (input.getRootNode() !== listbox.getRootNode()) {
     coreLog(input, 'UI', 'ELEMENT').warn('createActiveDescendant: the input and the listbox are in different roots — aria-activedescendant cannot reach across a shadow boundary');
   }
-  if (!listbox.id) listbox.id = createId('km-listbox');
-  input.setAttribute('aria-controls', listbox.id);
-  // A scrolling listbox is a tab stop of its own in Chromium; the input is the one stop here.
-  if (!listbox.hasAttribute('tabindex')) listbox.tabIndex = -1;
+  // One element as both (a tree / grid body that keeps focus itself): no self-reference, and never take its tab stop.
+  const isSame = input === listbox;
+  if (!isSame) {
+    if (!listbox.id) listbox.id = createId('km-listbox');
+    input.setAttribute('aria-controls', listbox.id);
+    // A scrolling listbox is a tab stop of its own in Chromium; the input is the one stop here.
+    if (!listbox.hasAttribute('tabindex')) listbox.tabIndex = -1;
+  }
 
   const items = (): readonly HTMLElement[] => getItems();
 

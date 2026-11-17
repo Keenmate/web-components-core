@@ -74,6 +74,17 @@ describe('createActiveDescendant', () => {
     expect(onActivate).not.toHaveBeenCalled();
   });
 
+  it('one element as input and listbox (a tree body): no self aria-controls, its tab stop untouched', () => {
+    document.body.innerHTML = '<div id="tree" role="tree"><div role="treeitem">a</div><div role="treeitem">b</div></div>';
+    const tree = document.getElementById('tree')!;
+    const ad = createActiveDescendant(tree, tree, { getItems: () => [...tree.querySelectorAll<HTMLElement>('[role="treeitem"]')], shouldHandleKeys: false });
+    expect(tree.hasAttribute('aria-controls')).toBe(false);
+    expect(tree.hasAttribute('tabindex')).toBe(false);
+    ad.setActive(1);
+    expect(tree.getAttribute('aria-activedescendant')).toBe(tree.children[1]!.id);
+    ad.destroy();
+  });
+
   it('ignores composing / modified keys and a throwing onActiveChange', () => {
     const { input, ad } = setup({ onActiveChange: () => { throw new Error('paint'); } });
     expect(key(input, 'ArrowDown', { isComposing: true }).defaultPrevented).toBe(false);
