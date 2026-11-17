@@ -182,6 +182,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and, while open, runs the item on a chord too (`Ctrl+C`), not only on a bare letter / key name.
 
 ### Fixed
+- `createPerfLogger` keeps at most `maxSpans` (default 1000) spans for `summary()` — the newest; the summary
+  says how many older ones were dropped. It used to keep every span while perf logging was on, so a long-running
+  page grew without bound (found in web-treeview's pass).
 - `createCustomStyles({ shouldShareLayers: false })` for an extra root of the same host (a `createLayer` overlay):
   a second handle used to replace the host's shared entry, and its `destroy()` dropped the owner layers of the
   host's managed children (found in web-dropzone's pass).

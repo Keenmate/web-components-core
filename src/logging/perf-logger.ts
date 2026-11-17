@@ -10,6 +10,11 @@ import { LOG_LEVELS } from './log-core.js';
 export interface PerfLoggerOptions {
   /** Only log spans at least this long, in ms (`0` = every span). Default `0`. */
   thresholdMs?: number;
+  /**
+   * Spans kept for {@link PerfLogger.summary} (the newest; older ones are dropped and counted). Default `1000` —
+   * a long-running page with perf logging on doesn't grow without bound. Counters are per label, never capped.
+   */
+  maxSpans?: number;
 }
 
 export interface PerfLogger {
@@ -54,6 +59,9 @@ export function createPerfLogger(namespace: string, opts: PerfLoggerOptions = {}
   /** Open marks per label — a stack, so a nested start() of the same label doesn't overwrite. */
   const marks = new Map<string, { start: number; metadata?: Record<string, unknown> }[]>();
   const spans: { label: string; ms: number }[] = [];
+  const maxSpans = Math.max(1, opts.maxSpans ?? 1000);
+  /** Spans dropped by the cap since the last clear(). */
+  let droppedSpans = 0;
   const counters = new Map<string, { count: number; ms: number }>();
   /** Spans are kept only while PERF prints (debug or below): a silent logger accumulates nothing. */
   const isRecording = (): boolean => logger.getLevel() <= LOG_LEVELS.DEBUG;
@@ -61,6 +69,10 @@ export function createPerfLogger(namespace: string, opts: PerfLoggerOptions = {}
   const record = (label: string, ms: number, itemCount?: number, metadata?: Record<string, unknown>): void => {
     if (!isRecording()) return;
     spans.push({ label, ms });
+    if (spans.length > maxSpans) {
+      droppedSpans += spans.length - maxSpans;
+      spans.splice(0, spans.length - maxSpans);
+    }
     if (ms < threshold) return;
     let line = `${label} took ${ms2(ms)}${perItem(ms, itemCount)}`;
     if (metadata) line += ` | ${JSON.stringify(metadata)}`;
@@ -116,7 +128,8 @@ export function createPerfLogger(namespace: string, opts: PerfLoggerOptions = {}
         return;
       }
       const total = spans.reduce((sum, s) => sum + s.ms, 0);
-      logger.debug(`${title ? `${title} — ` : ''}summary — ${spans.length} spans, ${ms2(total)} total:`);
+      const dropped = droppedSpans ? ` (${droppedSpans} older dropped — maxSpans ${maxSpans})` : '';
+      logger.debug(`${title ? `${title} — ` : ''}summary — ${spans.length} spans${dropped}, ${ms2(total)} total:`);
       for (const s of spans) logger.debug(`  ${s.label}: ${ms2(s.ms)}`);
       for (const [label, c] of counters) logger.debug(`  ${label}: ×${c.count.toLocaleString()}${c.ms ? ` (${ms2(c.ms)})` : ''}`);
     },
@@ -135,6 +148,7 @@ export function createPerfLogger(namespace: string, opts: PerfLoggerOptions = {}
     clear() {
       marks.clear();
       spans.length = 0;
+      droppedSpans = 0;
       counters.clear();
     },
   };

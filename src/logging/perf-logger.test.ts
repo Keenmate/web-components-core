@@ -48,6 +48,24 @@ describe('createPerfLogger — growth and nesting', () => {
     expect([...log.mock.calls, ...debug.mock.calls]).toHaveLength(0); // not even "summary — 3 spans"
   });
 
+  it('maxSpans caps the kept spans (newest win) and the summary counts the dropped ones', () => {
+    createLoggers('PERFCAP', ['PERF'] as const).enableLogging('debug');
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const perf = createPerfLogger('PERFCAP', { maxSpans: 3, thresholdMs: 1e9 });
+    for (let i = 0; i < 5; i++) perf.measure(`s${i}`, () => i);
+    log.mockClear();
+    perf.summary();
+    const text = log.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(text).toContain('3 spans (2 older dropped');
+    expect(text).toContain('s4');
+    expect(text).not.toContain('s0:');
+    perf.clear();
+    log.mockClear();
+    perf.measure('again', () => 0);
+    perf.summary();
+    expect(log.mock.calls.map((c) => c.join(' ')).join('\n')).not.toContain('dropped');
+  });
+
   it('a nested start() of the same label is closed in order, not overwritten', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {}); // bound when the logger is created
     const perf = createPerfLogger('PERFNEST');

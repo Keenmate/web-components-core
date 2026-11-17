@@ -973,7 +973,7 @@ export const { INIT: initLogger, DATA: dataLogger, UI: uiLogger } = loggers;
 
 Optional companion module: `createPerfLogger(namespace)` (treeview's
 `perfStart` / `perfEnd` / `perfMeasure` / `perfSummary`), opt-in per
-component.
+component. Spans for `summary()` are capped (`maxSpans`, default 1000, oldest dropped and counted) so a long-running page with perf logging on stays bounded.
 
 **Default level, core's own messages, page-wide switch** *(added after rc14)*:
 
