@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `createLayer(host, { css, className, zIndex, isInteractive })` (`/positioning`, SPEC §12.29): a styled panel
+  outside the component — its own shadow root with the component's CSS, the host's theme, mounted in the overlay
+  container (body / the open dialog), `place(rect)` in viewport coordinates with a transformed container
+  compensated. For drag ghosts, drop pads and "drop here" covers.
+- Drawer preset in `SHEET_CHROME_CSS` (SPEC §12.29): `.km-drawer` + `--start | --end | --top | --bottom` — a
+  modal panel on one edge (with `startModalSession`), slide in / out on the motion tokens, safe areas; new
+  `--km-sheet-drawer-*` variables (size, max-height, bg, color, shadow, border-radius, duration).
 - `createPointerDrag(container, { getSource, threshold, longPressMs, autoScroll, onStart, onMove, onDrop,
   onCancel })` (main index, SPEC §12.28): in-page drags on pointer events, so they work with a finger — a long
   press starts a touch drag (moving earlier scrolls), the page doesn't scroll under it, the hit test pierces

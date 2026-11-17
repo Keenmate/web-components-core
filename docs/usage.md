@@ -472,6 +472,32 @@ Per key: the instance `labels` → the page-wide labels → English. Assigning r
 frozen); every live component re-renders. `parseNumber(text, { locale })` reads a number the user typed with the
 same separators.
 
+## Layers and drawers
+
+A **layer** is a styled panel outside your component — a drag ghost, drop pads, a "drop files here" cover — that
+the component's `overflow` can't clip and its neighbours can't cover ([SPEC §12.29](SPEC.md)):
+
+```ts
+import { createLayer } from '@keenmate/web-components-core/positioning';
+
+const layer = createLayer(this, { css: OVERLAY_CSS, className: 'dz-cover' });  // its own shadow root, your CSS
+layer.element.innerHTML = this.#labels.html('dropHere');
+layer.place(this.getBoundingClientRect());          // viewport coordinates; a transformed container is handled
+layer.destroy();
+```
+
+The host's theme comes along; per-instance custom properties set on the host don't (put shared tokens on
+`:root`).
+
+A **drawer** is a modal panel on one edge — the preset classes in `SHEET_CHROME_CSS` plus a modal session:
+
+```ts
+adoptStyles(this.shadowRoot!, SHEET_CHROME_CSS);
+panel.classList.add('km-drawer', 'km-drawer--end');      // --start / --end follow the writing direction; --top / --bottom
+const session = startModalSession(panel, { backdrop: true, onDismiss: () => close() });
+const close = () => { session.end(); animateOut([panel], { className: 'km-drawer--closing', onDone: () => panel.remove() }); };
+```
+
 ## Drag (`createPointerDrag`, `watchPageDrag`)
 
 In-page drags that work with a finger, and drop targets that light up while files are dragged over the page
@@ -1227,7 +1253,7 @@ explain the main ones; [SPEC](SPEC.md) has the design notes.
 
 | Entry point | Exports |
 |---|---|
-| `/positioning` | `anchor`, `createPopover`, `createTooltip`, `findOverlayContainer(trigger)` (where a portaled panel goes), `getFixedPositionOffsetParent` / `detectFixedDrift` / `findContainingBlockCulprit` / `describeContainingBlockProps` (fixed containing blocks and drift), `platform` (Floating UI's, for a custom one) |
+| `/positioning` | `anchor`, `createPopover`, `createTooltip`, `findOverlayContainer(trigger)` (where a portaled panel goes), `createLayer(host, opts)` (a styled layer outside the component), `getFixedPositionOffsetParent` / `detectFixedDrift` / `findContainingBlockCulprit` / `describeContainingBlockProps` (fixed containing blocks and drift), `platform` (Floating UI's, for a custom one) |
 | `/actions` | `runAction`, `resolveActionItem`, `resolveMenuEntries`, `getMenuChildren`, `normalizeActionItems` (string shorthand → items), `readActionDataset(trigger)`, `isActionBusy`, `createMenuDivider` / `isMenuDivider`, shortcuts: `bindShortcuts`, `matchesShortcut`, `parseShortcut`, `formatShortcut`, `shortcutKeycaps`, `isTypingTarget` |
 | `/menu` | `openMenu(entries, ctx, opts)`, `MENU_CSS` |
 | `/a11y` | `createActiveDescendant(input, listbox, opts)` → `{ active, activeIndex, setActive, move, refresh, destroy }`, `createRovingFocus(container, opts)` → `{ current, currentIndex, focusItem, refresh, destroy }`, `createTypeahead(ms)`, `isPrintableKey`, `TYPEAHEAD_TIMEOUT_MS` |

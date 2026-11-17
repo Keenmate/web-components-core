@@ -24,6 +24,10 @@ handles it + the `platform` hatch — a component with a genuinely custom platfo
 like web-multiselect's narrowed fixed-position containing-block heuristic, passes
 it via that hatch). Tests mock `@floating-ui/dom` (jsdom has no layout).
 
+`createLayer(host, opts)` (`layer.ts`, SPEC §12.29): fixed `div.km-layer` + open shadow root (`LAYER_CSS` +
+the component's `css`, `adoptMotionStyles`), `inheritTheme(host, layer)` (restore on destroy / `syncTheme`),
+`place()` subtracts `getFixedPositionOffsetParent(layer)`'s box. No floating-ui involved. e2e `layer.spec.ts`.
+
 **Ported copy in pure-css.** `@keenmate/pure-css` ships `pureCss.position.anchor()`
 (`src/js/position.js`), a port of `anchor.ts` + `containing-block.ts` (from rc15 @
 1882e6f) over the same vendored Floating UI 1.8.0. When either file changes (options,

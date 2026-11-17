@@ -37,6 +37,12 @@ const CLOSE_SIZE = ks('close-size', 'var(--base-touch-target-min, 44px)');
 const CLOSE_EDGE_NUDGE = ks('close-edge-nudge', rem('space-sm', 0.8));
 const CLOSE_BG_HOVER = ks('close-bg-hover', 'var(--base-hover-bg, color-mix(in srgb, currentColor 8%, transparent))');
 
+const DRAWER_SIZE = ks('drawer-size', 'min(320px, 85vw)');
+const DRAWER_RADIUS = ks('drawer-border-radius', rem('border-radius-lg', 0.8));
+const DRAWER_DURATION = ks('drawer-duration', 'var(--base-duration-medium, 0.25s)');
+const EASE_OUT = 'var(--base-ease-out, cubic-bezier(0, 0, 0.2, 1))';
+const EASE_IN = 'var(--base-ease-in, cubic-bezier(0.4, 0, 1, 1))';
+
 export const SHEET_CHROME_CSS = `
 @layer component {
 .km-sheet-header {
@@ -122,7 +128,102 @@ export const SHEET_CHROME_CSS = `
   outline-offset: -2px;
 }
 
+/* ── Drawer preset (SPEC §12.9, B14): a non-anchored panel on one edge of the viewport ──────────────
+   The component adds .km-drawer + a side (--start / --end follow the writing direction, --top / --bottom)
+   to its panel and runs it through startModalSession(panel, { backdrop: true, onDismiss }). Closing:
+   animateOut(panel, { className: 'km-drawer--closing' }). The modal tier, safe areas, motion tokens. */
+.km-drawer {
+  position: fixed;
+  z-index: var(--base-z-modal, 7000);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: ${ks('drawer-bg', 'var(--base-elevated-bg, var(--base-main-bg, light-dark(#ffffff, #2b2b2b)))')};
+  color: ${ks('drawer-color', 'var(--base-text-color-1, light-dark(#242424, #f5f5f5))')};
+  box-shadow: ${ks('drawer-shadow', '0 0 24px var(--base-shadow-color, rgba(0, 0, 0, 0.2))')};
+  animation: ${DRAWER_DURATION} ${EASE_OUT} both;
+}
+
+.km-drawer--start,
+.km-drawer--end {
+  inset-block: 0;
+  inline-size: ${DRAWER_SIZE};
+  max-inline-size: 100vw;
+  padding-block: env(safe-area-inset-top) env(safe-area-inset-bottom);
+}
+
+.km-drawer--start {
+  inset-inline-start: 0;
+  padding-inline-start: env(safe-area-inset-left);
+  border-start-end-radius: ${DRAWER_RADIUS};
+  border-end-end-radius: ${DRAWER_RADIUS};
+  animation-name: km-drawer-in-left;
+}
+
+.km-drawer--end {
+  inset-inline-end: 0;
+  padding-inline-end: env(safe-area-inset-right);
+  border-start-start-radius: ${DRAWER_RADIUS};
+  border-end-start-radius: ${DRAWER_RADIUS};
+  animation-name: km-drawer-in-right;
+}
+
+.km-drawer--start:dir(rtl) { animation-name: km-drawer-in-right; }
+.km-drawer--end:dir(rtl) { animation-name: km-drawer-in-left; }
+
+.km-drawer--top,
+.km-drawer--bottom {
+  inset-inline: 0;
+  max-block-size: ${ks('drawer-max-height', '85dvh')};
+  padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+}
+
+.km-drawer--top {
+  inset-block-start: 0;
+  padding-block-start: env(safe-area-inset-top);
+  border-end-start-radius: ${DRAWER_RADIUS};
+  border-end-end-radius: ${DRAWER_RADIUS};
+  animation-name: km-drawer-in-top;
+}
+
+.km-drawer--bottom {
+  inset-block-end: 0;
+  padding-block-end: env(safe-area-inset-bottom);
+  border-start-start-radius: ${DRAWER_RADIUS};
+  border-start-end-radius: ${DRAWER_RADIUS};
+  animation-name: km-drawer-in-bottom;
+}
+
+.km-drawer.km-drawer--closing {
+  pointer-events: none;
+  animation-timing-function: ${EASE_IN};
+  animation-direction: reverse;
+}
+
+/* A reversed animation only replays when its name changes: the closing state uses twin keyframes. */
+.km-drawer--closing.km-drawer--start { animation-name: km-drawer-out-left; }
+.km-drawer--closing.km-drawer--end { animation-name: km-drawer-out-right; }
+.km-drawer--closing.km-drawer--start:dir(rtl) { animation-name: km-drawer-out-right; }
+.km-drawer--closing.km-drawer--end:dir(rtl) { animation-name: km-drawer-out-left; }
+.km-drawer--closing.km-drawer--top { animation-name: km-drawer-out-top; }
+.km-drawer--closing.km-drawer--bottom { animation-name: km-drawer-out-bottom; }
+
+@keyframes km-drawer-in-left { from { transform: translateX(-100%); } }
+@keyframes km-drawer-in-right { from { transform: translateX(100%); } }
+@keyframes km-drawer-in-top { from { transform: translateY(-100%); } }
+@keyframes km-drawer-in-bottom { from { transform: translateY(100%); } }
+@keyframes km-drawer-out-left { from { transform: translateX(-100%); } }
+@keyframes km-drawer-out-right { from { transform: translateX(100%); } }
+@keyframes km-drawer-out-top { from { transform: translateY(-100%); } }
+@keyframes km-drawer-out-bottom { from { transform: translateY(100%); } }
+
 @media (forced-colors: active) {
+  .km-drawer {
+    border: 1px solid CanvasText;
+  }
+
   .km-sheet-close::before {
     background-color: ButtonText;
     forced-color-adjust: none;

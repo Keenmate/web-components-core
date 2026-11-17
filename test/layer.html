@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test — createLayer + drawer preset</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+    <style>
+        :root { --fx-cover-bg: rgb(0, 120, 212); }
+        .clip { width: 260px; height: 120px; overflow: hidden; border: 1px solid #999; position: relative; z-index: 1; }
+        .covering { position: relative; z-index: 50; background: #fde; height: 40px; margin-top: -20px; }
+        .transformed { transform: translateX(30px); margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>layer fixture</h1>
+    <p>Targeted by <code>e2e/layer.spec.ts</code>.</p>
+    <div class="clip"><fx-layer-host id="host" data-theme="dark"></fx-layer-host></div>
+    <div class="covering">a neighbour with z-index 50</div>
+    <div class="transformed" id="transformed"></div>
+    <button id="open-drawer">open drawer</button>
+    <button id="open-drawer-rtl">open drawer (rtl, start)</button>
+
+    <script type="module">
+        import { startModalSession, animateOut, SHEET_CHROME_CSS, adoptStyles } from '/src/index.ts';
+        import { createLayer } from '/src/positioning/index.ts';
+
+        customElements.define('fx-layer-host', class extends HTMLElement {
+            connectedCallback() {
+                this.attachShadow({ mode: 'open' }).innerHTML = '<div style="height:200px;background:#eee">host content</div>';
+            }
+        });
+        const host = document.getElementById('host');
+        const CSS = `.cover { background: var(--fx-cover-bg); color: white; display: grid; place-items: center; }
+                     :host([data-theme="dark"]) .cover { outline: 3px solid black; }`;
+        window.__openCover = () => {
+            const layer = createLayer(host, { css: CSS, className: 'cover' });
+            layer.element.textContent = 'drop files here';
+            const r = host.getBoundingClientRect();
+            layer.place({ top: r.top, left: r.left, width: r.width, height: 120 });
+            window.__layer = layer;
+        };
+        window.__openInTransformed = () => {
+            const box = document.getElementById('transformed');
+            const layer = createLayer(host, { container: box, className: 'cover', css: CSS });
+            layer.place({ top: 300, left: 100, width: 50, height: 20 });
+            window.__layer2 = layer;
+        };
+
+        adoptStyles(document, SHEET_CHROME_CSS);
+        const openDrawer = (side, dir) => {
+            const panel = document.createElement('div');
+            panel.className = `km-drawer km-drawer--${side}`;
+            panel.id = 'drawer';
+            if (dir) panel.dir = dir;
+            panel.innerHTML = '<button id="drawer-first">first</button><p>drawer</p><button id="drawer-close">close</button>';
+            document.body.append(panel);
+            const close = () => {
+                session.end();
+                animateOut([panel], { className: 'km-drawer--closing', onDone: () => panel.remove() });
+            };
+            const session = startModalSession(panel, { backdrop: true, onDismiss: close });
+            panel.querySelector('#drawer-close').addEventListener('click', close);
+        };
+        document.getElementById('open-drawer').addEventListener('click', () => openDrawer('end'));
+        document.getElementById('open-drawer-rtl').addEventListener('click', () => openDrawer('start', 'rtl'));
+    </script>
+</body>
+</html>

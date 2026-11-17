@@ -1,0 +1,56 @@
+import { test, expect } from './fixtures';
+
+const PAGE = '/test/layer.html';
+
+test.beforeEach(async ({ page }) => {
+  await page.goto(PAGE);
+});
+
+test('a layer covers past the clipping parent and above a z-indexed neighbour, styled + themed', async ({ page }) => {
+  await page.evaluate(() => (window as unknown as { __openCover(): void }).__openCover());
+  const cover = page.locator('.km-layer').locator('.cover');
+  await expect(cover).toHaveText('drop files here');
+  const box = (await cover.boundingBox())!;
+  const host = (await page.locator('#host').boundingBox())!;
+  expect(Math.round(box.x)).toBe(Math.round(host.x));
+  expect(Math.round(box.height)).toBe(120); // the clip's overflow: hidden doesn't cut it
+  // the neighbour (z-index 50) overlaps the bottom of the clip: the layer is above it
+  const top = await page.evaluate(([x, y]) => document.elementFromPoint(x!, y!)?.className, [box.x + 10, box.y + box.height - 5]);
+  expect(top).toBe('km-layer');
+  // the component CSS reached the shadow root; the page token reached it; the host's theme attribute came along
+  expect(await cover.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(0, 120, 212)');
+  expect(await cover.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe('solid');
+});
+
+test('place() compensates a transformed container (containing block for fixed elements)', async ({ page }) => {
+  await page.evaluate(() => (window as unknown as { __openInTransformed(): void }).__openInTransformed());
+  const box = (await page.locator('#transformed .km-layer').boundingBox())!;
+  expect(Math.round(box.x)).toBe(100);
+  expect(Math.round(box.y)).toBe(300);
+});
+
+test('drawer preset: on the end edge, full height, modal; Escape slides it out and focus returns', async ({ page }) => {
+  await page.click('#open-drawer');
+  const drawer = page.locator('#drawer');
+  await expect(drawer).toBeVisible();
+  await page.waitForTimeout(400); // the slide-in
+  const vp = page.viewportSize()!;
+  const box = (await drawer.boundingBox())!;
+  expect(Math.round(box.x + box.width)).toBe(vp.width);
+  expect(Math.round(box.height)).toBe(vp.height);
+  expect(await drawer.evaluate((el) => getComputedStyle(el).zIndex)).toBe('7000');
+  await expect(page.locator('#drawer-first')).toBeFocused();
+  expect(await page.locator('#open-drawer').evaluate((el) => !!el.closest('[inert]'))).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(drawer).toHaveCount(0);
+  await expect(page.locator('#open-drawer')).toBeFocused();
+});
+
+test('drawer preset: --start in RTL sits on the right edge', async ({ page }) => {
+  await page.click('#open-drawer-rtl');
+  await page.waitForTimeout(400); // the slide-in (from the right in RTL)
+  const box = (await page.locator('#drawer').boundingBox())!;
+  expect(Math.round(box.x + box.width)).toBe(page.viewportSize()!.width);
+  await page.mouse.click(5, 5); // the backdrop
+  await expect(page.locator('#drawer')).toHaveCount(0);
+});

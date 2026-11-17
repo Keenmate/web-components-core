@@ -244,6 +244,9 @@ UI strings + locale go through core `/locale` (`src/locale/`, SPEC §12.24): `cr
 () => this.config.labels)` (`.text` / `.html`), `getLocaleSettings` / `resolveLocale`, `formatNumber` /
 `parseNumber`; page-wide `window.components.locale` / `.security`; the opt-in `localeChanged()` hook re-renders.
 
+A styled panel outside the component (drag ghost, drop pads, cover) is `createLayer(host, { css, className })`
+(`/positioning`); an edge drawer is `.km-drawer km-drawer--<side>` (`SHEET_CHROME_CSS`) + `startModalSession` (SPEC §12.29).
+
 In-page drags go through `createPointerDrag` (mouse + touch, long press, auto-scroll); a drop target's
 "files over the page" state through `watchPageDrag` (`src/dom/`, main index, SPEC §12.28).
 

@@ -116,6 +116,13 @@
     { "name": "km-sheet-close-border", "category": "sheet", "usage": "Close chip border (default none; with a radius and a bg it reads as a bordered button)" },
     { "name": "km-sheet-close-border-radius", "category": "sheet", "usage": "Close chip radius (default 50%)" },
     { "name": "km-sheet-close-edge-nudge", "category": "sheet", "usage": "How far the close button slides past the header padding toward the edge (→ --base-space-sm, default 8px)" },
-    { "name": "km-sheet-close-focus-color", "category": "sheet", "usage": "Close button keyboard focus ring (→ --base-primary-color)" }
+    { "name": "km-sheet-close-focus-color", "category": "sheet", "usage": "Close button keyboard focus ring (→ --base-primary-color)" },
+    { "name": "km-sheet-drawer-size", "category": "sheet", "usage": "Drawer preset (.km-drawer--start / --end) width (default min(320px, 85vw))" },
+    { "name": "km-sheet-drawer-max-height", "category": "sheet", "usage": "Drawer preset (.km-drawer--top / --bottom) maximum height (default 85dvh)" },
+    { "name": "km-sheet-drawer-bg", "category": "sheet", "usage": "Drawer preset background (→ --base-elevated-bg, --base-main-bg)" },
+    { "name": "km-sheet-drawer-color", "category": "sheet", "usage": "Drawer preset text colour (→ --base-text-color-1)" },
+    { "name": "km-sheet-drawer-shadow", "category": "sheet", "usage": "Drawer preset box shadow (default 0 0 24px --base-shadow-color)" },
+    { "name": "km-sheet-drawer-border-radius", "category": "sheet", "usage": "Drawer preset radius on its two inner corners (→ --base-border-radius-lg, default 8px)" },
+    { "name": "km-sheet-drawer-duration", "category": "sheet", "usage": "Drawer preset slide-in / slide-out length (→ --base-duration-medium, default 0.25s; data-motion and OS reduced motion set it through the token)" }
   ]
 }

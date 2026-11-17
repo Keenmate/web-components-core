@@ -274,6 +274,15 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | `announce()`: one shared `role=status` region, visually hidden, never inert while a modal makes the page inert; the same text twice is cleared + rewritten | ✓ | `modal.spec.ts` | `modal.html` |
 | `createFormInputs` + `formatFormValue` through a real GET submit: json / array (`name[]`) / text, disabled + cleared name submit nothing, inputs reused, two same-name fields without ids, throwing callback submits `''` | ✓ | `form-inputs.spec.ts` | `form-inputs.html` |
 
+## 13o. Layers + drawer preset (`layer.spec.ts`)
+
+| Feature | Status | Spec | Fixture |
+| ------- | :----: | ---- | ------- |
+| A layer covers past an `overflow: hidden` parent and above a z-indexed neighbour; component CSS + page token + host theme reach its shadow root | ✓ | `layer.spec.ts` | `layer.html` |
+| `place()` in a transformed container lands at the viewport coordinates | ✓ | `layer.spec.ts` | `layer.html` |
+| Drawer `--end`: right edge, full height, modal tier, inert page, focus in; Escape slides out, focus returns | ✓ | `layer.spec.ts` | `layer.html` |
+| Drawer `--start` in RTL: right edge; backdrop closes | ✓ | `layer.spec.ts` | `layer.html` |
+
 ## 13n. Drag (`drag.spec.ts`)
 
 | Feature | Status | Spec | Fixture |

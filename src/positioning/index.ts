@@ -10,6 +10,9 @@ export { anchor } from './anchor.js';
 export { createTooltip } from './tooltip.js';
 export { createPopover } from './popover.js';
 export { findOverlayContainer } from './overlay-container.js';
+// A styled layer outside the component (drag ghost, drop pads, cover overlay) — B13.
+export { createLayer } from './layer.js';
+export type { Layer, LayerOptions, LayerRect } from './layer.js';
 export {
   getFixedPositionOffsetParent,
   findContainingBlockCulprit,
