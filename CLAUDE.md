@@ -244,6 +244,9 @@ UI strings + locale go through core `/locale` (`src/locale/`, SPEC §12.24): `cr
 () => this.config.labels)` (`.text` / `.html`), `getLocaleSettings` / `resolveLocale`, `formatNumber` /
 `parseNumber`; page-wide `window.components.locale` / `.security`; the opt-in `localeChanged()` hook re-renders.
 
+Selected keys + anchor (click / Ctrl / Shift rules) go through `createSelection` (`src/selection/`, main index,
+SPEC §12.27).
+
 Virtual lists (fixed row height) go through `createVirtualWindow(scroller, { getCount, rowHeight, render })`
 (`src/dom/virtual-window.ts`, main index, SPEC §12.26).
 
@@ -253,7 +256,7 @@ element, never the page; components call it instead of `scrollIntoView()`.
 
 Per-module design notes live next to the code and load when working there:
 `src/logging/`, `src/cem/`, `src/testing/`, `src/positioning/`, `src/dom/`,
-`src/search/`, `src/menu/`, `src/dialog/`, `src/locale/`, `src/a11y/` (each has a `CLAUDE.md`).
+`src/search/`, `src/menu/`, `src/dialog/`, `src/locale/`, `src/a11y/`, `src/selection/` (each has a `CLAUDE.md`).
 
 **No direct `console.*` in core** (SPEC §12.1). Core messages with an element
 behind them (input validation → `INIT`, actions / menus / twins / before-callbacks

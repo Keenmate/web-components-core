@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `createSelection<K>({ mode, getOrderedKeys, isSelectable, onChange })` (main index, SPEC §12.27): the selected
+  keys and the anchor with file-manager rules — click, Ctrl / Cmd toggle, Shift range from the anchor, Ctrl + Shift
+  adds the range; ranges walk the display order and skip unselectable keys; `single` mode; `extendTo` for
+  Shift + Arrow; `set(keys, { isSilent })` for a value input. Cascades and cell ranges stay per component.
 - `createVirtualWindow(scroller, { getCount, rowHeight, overscan, render, insetTop, hasStructure })` (main index,
   SPEC §12.26): renders only the visible rows of a fixed-row-height list — spacer + translated window built in
   the scroller, the range recomputed on scroll / resize / `refresh()`, `scrollToIndex` below a sticky header,

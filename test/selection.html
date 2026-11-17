@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test — createSelection</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+    <style>
+        #list li { padding: 4px 8px; cursor: default; user-select: none; }
+        #list li[aria-selected="true"] { background: #cde; }
+        #list li[aria-disabled="true"] { color: #999; }
+    </style>
+</head>
+<body>
+    <h1>selection fixture</h1>
+    <p>Targeted by <code>e2e/selection.spec.ts</code>: real clicks with modifier keys into <code>createSelection</code>.</p>
+    <ul id="list" role="listbox" aria-multiselectable="true"></ul>
+    <output id="changes"></output>
+
+    <script type="module">
+        import { createSelection } from '/src/index.ts';
+        const list = document.getElementById('list');
+        const keys = ['Apple', 'Banana', 'Cherry', 'Date', 'Elder', 'Fig'];
+        list.innerHTML = keys.map((k) => `<li role="option" data-key="${k}"${k === 'Date' ? ' aria-disabled="true"' : ''}>${k}</li>`).join('');
+        let changes = 0;
+        const sel = createSelection({
+            getOrderedKeys: () => keys,
+            isSelectable: (k) => k !== 'Date',
+            onChange: ({ values }) => {
+                changes++;
+                document.getElementById('changes').textContent = String(changes);
+                for (const li of list.children) li.setAttribute('aria-selected', String(values.includes(li.dataset.key)));
+            },
+        });
+        list.addEventListener('click', (e) => {
+            const li = e.target.closest('li');
+            if (li) sel.click(li.dataset.key, e);
+        });
+    </script>
+</body>
+</html>

@@ -90,6 +90,9 @@ export type { LoaderRenderContext, RenderLoaderCallback, RenderLoaderOptions } f
 export { deepActiveElement } from './dom/active-element.js';
 export { escapeHtml } from './dom/escape-html.js';
 export { findScrollContainer, getScrollTopForBox, scrollContainerToBox, scrollIntoContainer } from './dom/scroll-container.js';
+// Selection model: click / Ctrl / Shift rules, anchor, ranges in display order (SPEC §12.27).
+export { createSelection } from './selection/selection.js';
+export type { Selection, SelectionChange, SelectionMode, SelectionOptions } from './selection/selection.js';
 // Virtual window over fixed-height rows: range math, spacer + window, index jump, hit test (SPEC §12.26).
 export { createVirtualWindow } from './dom/virtual-window.js';
 export type { VirtualRange, VirtualRenderContext, VirtualWindow, VirtualWindowOptions } from './dom/virtual-window.js';

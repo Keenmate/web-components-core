@@ -2554,3 +2554,23 @@ positioned div per row), web-treeview (scroller → spacer → translated conten
   `indexAt(clientY)` = the row under a viewport y (drop targets, hover), `-1` outside.
 - Not in core: variable row heights, horizontal virtualization (web-grid columns), row recycling — the
   component re-renders the window (string or DOM, its choice).
+
+### 12.27 Selection model — IMPLEMENTED (`src/selection/selection.ts`, main index)
+
+web-multiselect, web-treeview, web-grid and web-dropzone each kept a selected set, an anchor and their own
+Shift / Ctrl rules (one without Ctrl + Shift, one where Shift ignored filtering). Decided 2026-11-17 —
+**`createSelection<K>({ mode, getOrderedKeys, isSelectable, onChange })`** → `{ click(key, modifiers),
+toggle, extendTo(key, { isAdditive }), selectAll, clear, set(keys), has, values, size, anchor, setAnchor }`:
+
+- File-manager rules: click = only this key (anchor = key); Ctrl / Cmd = toggle (anchor = key); Shift = the
+  range anchor … key REPLACES the selection, the anchor stays; Ctrl + Shift = the range is added. `click()` takes
+  the `MouseEvent` itself (its `shiftKey` / `ctrlKey` / `metaKey`).
+- `single` mode: a click selects the key, Ctrl + click on the selected key clears it, Shift is ignored,
+  `selectAll` does nothing, `set()` keeps the first key. `mode` may be a function (a live input).
+- Ranges walk `getOrderedKeys()` — the DISPLAY order (sorted, filtered, collapsed rows out) — and skip
+  `isSelectable(key) === false` keys; an anchor that isn't shown any more → the range is just the key.
+- `onChange({ added, removed, values })` only on a real change, never for `{ isSilent: true }` writes (a
+  `value` input the component reports itself); a throwing `onChange` is logged.
+- `extendTo` = Shift + Arrow; `setAnchor` moves the anchor with keyboard focus without selecting.
+- Not in core: tree cascades (parent ↔ children), grid cell ranges, `maxSelections` limits, group headers —
+  the component checks / expands before calling, or post-processes in `onChange`.
