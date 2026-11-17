@@ -41,6 +41,10 @@
       "types": "./dist/dialog/index.d.ts",
       "import": "./dist/dialog/index.js"
     },
+    "./locale": {
+      "types": "./dist/locale/index.d.ts",
+      "import": "./dist/locale/index.js"
+    },
     "./component-variables.manifest.json": "./component-variables.manifest.json",
     "./package.json": "./package.json"
   },

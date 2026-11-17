@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test — /locale</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>locale fixture</h1>
+    <p>Targeted by <code>e2e/locale.spec.ts</code>: a component resolving its texts through <code>createLabels</code>,
+        re-rendering on <code>localeChanged()</code>, and the <code>Intl</code>-derived settings in a real browser.</p>
+    <fx-locale id="a"></fx-locale>
+    <fx-locale id="b" locale="de-DE" labels='{"cancel":"Abbrechen {name}"}'></fx-locale>
+
+    <script type="module">
+        import { BlissElement, define, toObject, toText } from '/src/index.ts';
+        import { createLabels, getLocaleSettings, getMonthNames, formatNumber, parseNumber } from '/src/locale/index.ts';
+
+        const DEFAULTS = { cancel: 'Cancel {name}', title: '<b>Files</b> for {user}' };
+
+        class FxLocale extends BlissElement {
+            static inputs = [
+                { configKey: 'locale', attribute: 'locale', converter: toText({ default: 'auto' }), on: 'update' },
+                { configKey: 'labels', attribute: 'labels', converter: toObject(), on: 'update' },
+            ];
+            #labels = createLabels(this, DEFAULTS, () => this.config.labels, { getLocale: () => this.config.locale });
+            renders = 0;
+            reinit() { this.#render(); }
+            update() { this.#render(); }
+            localeChanged() { this.#render(); }
+            #render() {
+                this.renders++;
+                const s = getLocaleSettings({ locale: this.config.locale });
+                this.innerHTML = `
+                    <button class="cancel"></button>
+                    <h3 class="title">${this.#labels.html('title', { user: '<script>x' })}</h3>
+                    <span class="month">${getMonthNames(s.locale)[0]}</span>
+                    <span class="number">${formatNumber(1234.5, { locale: this.config.locale })}</span>
+                    <span class="settings">${s.locale}|${s.dateFormat}|${s.timeFormat}|${s.weekStartDay}</span>`;
+                const button = this.querySelector('.cancel');
+                button.textContent = this.#labels.text('cancel', { name: 'a<b>.txt' });
+                button.setAttribute('aria-label', button.textContent);
+            }
+        }
+        define('fx-locale', FxLocale);
+        window.__parseNumber = parseNumber;
+    </script>
+</body>
+</html>

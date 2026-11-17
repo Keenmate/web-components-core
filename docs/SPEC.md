@@ -2469,3 +2469,37 @@ document and politeness (`[data-km-announcer="polite"]` `role="status"`, `"asser
 created on first use at the end of `<body>`, shared by every component and core copy; cleared then written
 50 ms later (the same text is read again; a newer call replaces one not yet written). `createFocusTrap` never
 makes a region inert. Visible toasts stay per component (web-multiselect anchors its toast to the field).
+
+### 12.24 Locale + labels — IMPLEMENTED (`src/locale/`, subpath `/locale`)
+
+Every component had its own label resolution (web-treeview `resolveLabel`, web-daterangepicker `resolveLabels` +
+`formatLabel` + `resolveLocale` + a week-start table, web-commandpalette / web-editor their own `{name}`
+formatter) and none had a page-wide layer; a German browser with a US user needed a per-instance `locale` on
+every element. Decided 2026-10-26 / 10-27 / 10-28 (rulebook D-NC-24), built 2026-11-17:
+
+- **Page-wide** `window.components.locale = { locale, dateFormat, timeFormat, weekStartDay, decimalSeparator,
+  thousandsSeparator, labels: { '<tag>': {...} }, formatLabelCallback }` and `window.components.security =
+  { shouldEscapeLabels }` — non-enumerable accessors (`publishLocaleHooks()`, from `registerComponent()` and
+  every read), state in `sharedState('locale')`. Assigning REPLACES the object; it is stored as a frozen copy
+  (nested mutation throws instead of being silently missed). A non-object warns and is ignored.
+- **Settings** (`getLocaleSettings(instance)`): per key instance → page → derived from `Intl` for the resolved
+  locale — `getDateFormat` (`YYYY` / `MM` / `DD` tokens from `formatToParts`), `getTimeFormat` (`hourCycle`),
+  `getWeekStartDay` (`Intl.Locale` `getWeekInfo()` / `weekInfo`, then a region table), `getNumberSeparators`.
+  The page-wide keys are the USER's preference, so they apply also to an element with its own `locale`.
+  `resolveLocale(instance)`: instance (`'auto'` / empty = unset) → page → `navigator.language` → `en-US`; an
+  invalid tag warns and falls through. `getMonthNames` / `getWeekdayNames` from `Intl`. No language tables.
+- **Numbers:** `formatNumber(value, opts)` (`Intl.NumberFormat`, then the resolved separators swapped in) and
+  `parseNumber(text, settings)` (group separator and any space removed, decimal separator → `.`, U+2212 minus;
+  not a number → `null`).
+- **Labels:** `createLabels(host, DEFAULT_LABELS, () => this.config.labels, { getLocale })` → `{ template,
+  text, html, all }`. Per key instance → `locale.labels[tag]` → English (a string wins, `''` included). Then
+  `formatLabelCallback({ component, key, template, params, locale })` (a throw / non-string → logged, default
+  `{name}` replacement). `text()` is for `textContent` / attributes — never escaped. `html()` is for `innerHTML`:
+  `shouldEscapeLabels` off (default) → string param values escaped before formatting, the template stays HTML;
+  on → the finished label escaped once. Plural pairs (`day` / `days`) stay component keys.
+- **Live:** `observeLocale(listener)` hears page-locale / security assignments and the browser `languagechange`;
+  BlissElement's opt-in `localeChanged()` hook (override = subscribed while connected) re-renders texts. Not
+  called on the first connect (`reinit()` read the locale); a change while detached fires on reconnect (a
+  revision counter).
+- Not in core: a component's `locale` input (only the components that format dates / numbers declare one),
+  language packs (`/locales/cs` later, if ever), a byte formatter (web-dropzone's stays until a second copy).

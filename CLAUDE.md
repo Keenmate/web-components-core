@@ -237,13 +237,17 @@ components copy the drawing rule from §12.14.
 Form submission goes through `createFormInputs` + `formatFormValue`, async loading through
 `createAsyncRunner`, screen-reader announcements through `announce()` (`src/dom/`, main index, SPEC §12.21–§12.23).
 
+UI strings + locale go through core `/locale` (`src/locale/`, SPEC §12.24): `createLabels(host, DEFAULT_LABELS,
+() => this.config.labels)` (`.text` / `.html`), `getLocaleSettings` / `resolveLocale`, `formatNumber` /
+`parseNumber`; page-wide `window.components.locale` / `.security`; the opt-in `localeChanged()` hook re-renders.
+
 Container scroll goes through `scrollIntoContainer(el, opts)` / `findScrollContainer(el, opts)`
 (`src/dom/scroll-container.ts`, main index, SPEC §12.15) — scrolls the one container around an
 element, never the page; components call it instead of `scrollIntoView()`.
 
 Per-module design notes live next to the code and load when working there:
 `src/logging/`, `src/cem/`, `src/testing/`, `src/positioning/`, `src/dom/`,
-`src/search/`, `src/menu/`, `src/dialog/` (each has a `CLAUDE.md`).
+`src/search/`, `src/menu/`, `src/dialog/`, `src/locale/` (each has a `CLAUDE.md`).
 
 **No direct `console.*` in core** (SPEC §12.1). Core messages with an element
 behind them (input validation → `INIT`, actions / menus / twins / before-callbacks

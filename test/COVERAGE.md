@@ -274,6 +274,16 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | `announce()`: one shared `role=status` region, visually hidden, never inert while a modal makes the page inert; the same text twice is cleared + rewritten | ✓ | `modal.spec.ts` | `modal.html` |
 | `createFormInputs` + `formatFormValue` through a real GET submit: json / array (`name[]`) / text, disabled + cleared name submit nothing, inputs reused, two same-name fields without ids, throwing callback submits `''` | ✓ | `form-inputs.spec.ts` | `form-inputs.html` |
 
+## 13j. Locale + labels (`locale.spec.ts`)
+
+| Feature | Status | Spec | Fixture |
+| ------- | :----: | ---- | ------- |
+| Browser locale → `Intl`-derived date pattern / 12h / week start / separators / month names; instance `locale` + `labels` win | ✓ | `locale.spec.ts` | `locale.html` |
+| `labels.text()` never escaped (aria-label / textContent), `labels.html()` template = HTML, value escaped | ✓ | `locale.spec.ts` | `locale.html` |
+| Assigning `window.components.locale` re-renders every live element via `localeChanged()`; page separators apply to all, instance labels / locale kept; non-enumerable | ✓ | `locale.spec.ts` | `locale.html` |
+| `security.shouldEscapeLabels` turns an HTML label into text | ✓ | `locale.spec.ts` | `locale.html` |
+| `parseNumber` with cs / de / en separators | ✓ | `locale.spec.ts` | `locale.html` |
+
 ## 13g. Overlay tree (`overlay-tree.spec.ts`)
 
 | Feature | Status | Spec | Fixture |

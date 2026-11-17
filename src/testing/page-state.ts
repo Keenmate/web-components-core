@@ -9,6 +9,7 @@ import { __resetElementSizeObservers } from '../environment/element-size.js';
 import { __resetEnvironment } from '../environment/environment.js';
 import { __resetTheme } from '../environment/theme.js';
 import { __resetGlobalLogging } from '../logging/global-logging.js';
+import { __resetLocale } from '../locale/page-locale.js';
 import { __resetOverlays } from '../overlay/active-overlay.js';
 import { __resetScrollLock } from '../overlay/scroll-lock.js';
 
@@ -16,7 +17,7 @@ import { __resetScrollLock } from '../overlay/scroll-lock.js';
  * Reset the page-wide state core keeps across components (shared by every copy of core):
  * open overlays and their routing, the body scroll lock, the environment snapshot and
  * breakpoints, theme watchers, responsive page rules, the global log level, adopted-style
- * caches and element-size observers. Call in `afterEach` when tests open overlays, lock
+ * caches, element-size observers and the page-wide locale / security. Call in `afterEach` when tests open overlays, lock
  * scrolling or set page rules — otherwise state leaks into the next test.
  */
 export function resetPageState(): void {
@@ -28,6 +29,7 @@ export function resetPageState(): void {
   __resetGlobalLogging();
   __resetAdoptedStyles();
   __resetElementSizeObservers();
+  __resetLocale();
 }
 
 type ConsoleMethod = 'log' | 'info' | 'warn' | 'error' | 'debug';

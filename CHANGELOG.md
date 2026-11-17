@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `/locale` subpath (SPEC §12.24): page-wide `window.components.locale` (`locale`, `dateFormat`, `timeFormat`,
+  `weekStartDay`, `decimalSeparator`, `thousandsSeparator`, per-tag `labels`, `formatLabelCallback`) and
+  `window.components.security.shouldEscapeLabels`. `createLabels(host, defaults, getOwn)` resolves every UI
+  string instance → page → English, `.text()` for text / attributes, `.html()` for markup (values escaped, or the
+  whole label with `shouldEscapeLabels`), `formatLabelCallback` for ICU / i18next. `getLocaleSettings` /
+  `resolveLocale` derive the rest from `Intl` (date pattern, 12 / 24 h, week start, separators);
+  `getMonthNames` / `getWeekdayNames`; `formatNumber` / `parseNumber` with the resolved separators.
+- `BlissElement.localeChanged()` hook (opt-in by override): a page-wide locale / security assignment or a browser
+  language change re-renders the texts; a change while detached fires on reconnect. `resetPageState()` (`/testing`)
+  also resets the page locale.
 - `createFormInputs(host)` + `formatFormValue(values, format, { separator, callback })` (main index, SPEC §12.21):
   the light-DOM hidden inputs a component submits through — a string is one `name` input, an array one `name[]`
   input per item, reused, never an `id`, `disabled` with the control; `json` / `text` / `array` formatting with

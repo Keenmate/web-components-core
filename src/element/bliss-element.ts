@@ -75,6 +75,7 @@ import { withComponentContext, type ComponentContext, type EmitDetail } from './
 import { hasRemovalWatchers, notifyRemoval } from './removal-watch.js';
 import { warnUnusedPageStyles } from '../dom/custom-styles.js';
 import { isRtl } from '../dom/direction.js';
+import { getLocaleRevision, observeLocale } from '../locale/page-locale.js';
 import {
   normalizeEventDefs,
   withCoreEvents,
@@ -357,6 +358,10 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   #viewportUnsub?: () => void;
   /** Unsubscribe from the per-element ResizeObserver; set only while connected AND `sizeChanged` is overridden. */
   #sizeUnsub?: () => void;
+  /** Unsubscribe from page-wide locale changes; set only while connected AND `localeChanged` is overridden. */
+  #localeUnsub?: () => void;
+  /** The locale revision this element last rendered with — a change while detached is replayed on reconnect. */
+  #localeRevision = -1;
   /** Where this element reads its theme from (SPEC §12.10); `null` = the page. */
   #themeSource: ThemeSource = null;
   /** Unsubscribe from the theme context; set only while connected AND `hasThemeContext` is on. */
@@ -664,6 +669,17 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     if (this.sizeChanged !== BlissElement.prototype.sizeChanged) {
       if (!step(() => (this.#sizeUnsub = observeElementSize(this, (size) => this.sizeChanged(size), { shouldFireImmediately: false })))) return this.#rethrow(firstError);
     }
+    // Page-wide locale / labels / security (SPEC §12.24) — same opt-in gate. Not fired on the first
+    // connect (reinit() already read the locale); a change missed while detached fires on reconnect.
+    if (this.localeChanged !== BlissElement.prototype.localeChanged) {
+      const seen = this.#localeRevision;
+      this.#localeRevision = getLocaleRevision();
+      if (!step(() => (this.#localeUnsub = observeLocale(() => {
+        this.#localeRevision = getLocaleRevision();
+        this.localeChanged();
+      })))) return this.#rethrow(firstError);
+      if (seen !== -1 && seen !== this.#localeRevision && !step(() => this.localeChanged())) return this.#rethrow(firstError);
+    }
     if (!step(() => this.#subscribeTheme())) return this.#rethrow(firstError);
     if (!this.#isReady && !this.#isReadyScheduled) {
       // Announce on a microtask, not synchronously (SPEC §6.3): an element built
@@ -729,6 +745,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#viewportUnsub = undefined;
     this.#sizeUnsub?.();
     this.#sizeUnsub = undefined;
+    this.#localeUnsub?.();
+    this.#localeUnsub = undefined;
     this.#themeUnsub?.();
     this.#themeUnsub = undefined;
     if (!this.#isActive) return; // connect() never ran (its build threw)
@@ -1280,6 +1298,17 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * forced (the inherited `color-scheme` applies). No-op by default.
    */
   protected themeChanged(_scheme: ColorScheme | null): void {
+    /* opt-in */
+  }
+
+  /**
+   * React to a page-wide locale change (SPEC §12.24): `window.components.locale` or
+   * `window.components.security` assigned, or the browser language changed. Re-render the texts
+   * (labels, month names, number formats) from the current values — keep the state. Not called on
+   * the first connect (`reinit()` reads the locale); a change while detached fires on reconnect.
+   * Overriding opts in (no listener otherwise). No-op by default.
+   */
+  protected localeChanged(): void {
     /* opt-in */
   }
 

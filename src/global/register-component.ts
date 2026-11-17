@@ -20,6 +20,7 @@ import { attachLoggerBundle } from '../logging/logger-registry.js';
 import { publishGlobalLogging, type GlobalLoggingControls } from '../logging/global-logging.js';
 import { publishLoaderHook, type RenderLoaderCallback } from '../dom/render-loader.js';
 import { publishMotionHook, type Motion } from '../environment/motion.js';
+import { publishLocaleHooks, type PageLocale, type PageSecurity } from '../locale/page-locale.js';
 import { getInstances } from './instances.js';
 import {
   installTagResponsiveHooks,
@@ -118,6 +119,10 @@ export type ComponentsRegistry = Record<string, RegisteredComponent | undefined>
   renderLoadingCallback?: RenderLoaderCallback;
   /** Page-wide motion level (SPEC §12.16) for every component whose own `motion` is `auto`. Non-enumerable. */
   motion?: Motion;
+  /** Page-wide locale, settings, per-tag labels and `formatLabelCallback` (SPEC §12.24). Non-enumerable; assigning replaces it. */
+  locale?: PageLocale;
+  /** Page-wide security switches (`shouldEscapeLabels`, SPEC §12.24). Non-enumerable. */
+  security?: PageSecurity;
   /**
    * Page-wide (SPEC §12.8): link custom-CSS `@import`s in the page head so their `@font-face`
    * registers (default on). `false` when the page loads those fonts itself. Non-enumerable.
@@ -209,6 +214,7 @@ export function registerComponent<T extends HTMLElement = HTMLElement>(
     publishGlobalLogging(); // re-publish if the page replaced window.components
     publishLoaderHook();
     publishMotionHook();
+    publishLocaleHooks();
     publishResponsiveHooks();
   } else {
     installTagResponsiveHooks(entry, tagName);

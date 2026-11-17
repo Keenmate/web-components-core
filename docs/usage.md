@@ -435,6 +435,43 @@ announce(this.labels.invalidDate, { politeness: 'assertive' });  // errors only
 One hidden live region per page, shared by every component; the same text twice is read twice. Your visible
 toast or message stays yours — `announce()` is what screen readers hear.
 
+## Labels and locale (`@keenmate/web-components-core/locale`)
+
+Every UI string goes through one seam ([SPEC §12.24](SPEC.md), rulebook D-NC-24):
+
+```ts
+import { createLabels, getLocaleSettings, getMonthNames, formatNumber } from '@keenmate/web-components-core/locale';
+
+const DEFAULT_LABELS = { cancelFile: 'Cancel {name}', addNew: 'Add <b>{value}</b>' };   // English only
+
+#labels = createLabels(this, DEFAULT_LABELS, () => this.config.labels, { getLocale: () => this.config.locale });
+
+button.setAttribute('aria-label', this.#labels.text('cancelFile', { name: file.name })); // text: never escaped
+row.innerHTML = this.#labels.html('addNew', { value: typed });                           // HTML: the value is escaped
+
+const { locale, dateFormat, timeFormat, weekStartDay } = getLocaleSettings({ locale: this.config.locale });
+getMonthNames(locale);                          // from Intl — no language tables
+formatNumber(1234.5, { locale });               // '1 234,5' with the page's separators
+
+protected override localeChanged(): void { this.#renderTexts(); }   // a page-wide change: re-render, keep state
+```
+
+The page sets it once, for every component:
+
+```js
+window.components.locale = {
+  locale: 'en-US',                       // unset = the browser language
+  decimalSeparator: ',',                 // the user's preference, every element
+  labels: { 'web-dropzone': { cancelFile: 'Zrušit {name}' } },
+  formatLabelCallback: ({ component, key, params }) => i18next.t(`${component}.${key}`, params),
+};
+window.components.security = { shouldEscapeLabels: true };   // labels are plain text, not HTML
+```
+
+Per key: the instance `labels` → the page-wide labels → English. Assigning replaces the whole object (it is
+frozen); every live component re-renders. `parseNumber(text, { locale })` reads a number the user typed with the
+same separators.
+
 ## Responsive rules (page / per-tag / instance)
 
 Apps tune what components do per device class / width bucket in one place — no app-side
@@ -1096,6 +1133,7 @@ explain the main ones; [SPEC](SPEC.md) has the design notes.
 | `/positioning` | `anchor`, `createPopover`, `createTooltip`, `findOverlayContainer(trigger)` (where a portaled panel goes), `getFixedPositionOffsetParent` / `detectFixedDrift` / `findContainingBlockCulprit` / `describeContainingBlockProps` (fixed containing blocks and drift), `platform` (Floating UI's, for a custom one) |
 | `/actions` | `runAction`, `resolveActionItem`, `resolveMenuEntries`, `getMenuChildren`, `normalizeActionItems` (string shorthand → items), `readActionDataset(trigger)`, `isActionBusy`, `createMenuDivider` / `isMenuDivider`, shortcuts: `bindShortcuts`, `matchesShortcut`, `parseShortcut`, `formatShortcut`, `shortcutKeycaps`, `isTypingTarget` |
 | `/menu` | `openMenu(entries, ctx, opts)`, `MENU_CSS` |
+| `/locale` | `createLabels(host, defaults, getOwn, { getLocale })` → `{ template, text, html, all }`, `resolveLabel`, `formatLabel`, `resolveLocale`, `getLocaleSettings`, `getDateFormat` / `getTimeFormat` / `getWeekStartDay` / `getNumberSeparators`, `getMonthNames` / `getWeekdayNames`, `formatNumber` / `parseNumber`, `getPageLocale` / `getPageSecurity` / `observeLocale` / `publishLocaleHooks` |
 | `/dialog` | `openDialog(opts)` → `{ result, close, panel, body }`, `confirmDialog(opts)` → `Promise<boolean>`, `promptDialog(opts)` → `Promise<string \| null>`, `DIALOG_CSS` |
 | `/search` | `normalizeSearchText`, `prepareSearchTerm` / `matchesSearchTerm` / `NO_SEARCH_TERM`, `findTextMatches` / `matchesText`, `findRegexMatches` / `createRegexCompiler` / `statelessRegex`, `findHighlightRanges` / `wrapRanges` / `highlightHtml` / `escapeHtml` |
 | `/testing` | `mount`, `mountBeforeUpgrade`, `cleanup`, `defineOnce`, `uniqueTag`, `nextTick`, `nextFrame`, `listen` (event spy), `waitForEvent`, `captureConsole`, `resetPageState` |
