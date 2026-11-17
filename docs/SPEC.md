@@ -2694,3 +2694,23 @@ first build, answering state with empties before that, some frozen, some not. De
   `this` = the target (no target → `emptyResults[name]?.()`); `state` = live read-only getters (`name → empty value
   or factory` while there is no target); `writable` = forwarded getter + setter (a set without target is
   dropped). Nothing else of the target is reachable.
+
+### 12.35 Render-callback results — IMPLEMENTED (`src/dom/render-slot.ts`, main index)
+
+Audit B24: every component read its `render*Callback` return values its own way (a string HTML here, text there;
+`null` = default in one, empty in another; an element appended / replaced / ignored; the hook re-run on every
+repaint, so a focused input inside a custom cell lost focus). Decided 2026-11-17 — every `render*Callback` that
+RETURNS its content goes through **`renderSlot(container, result, { renderDefault, memoKey })`** → `'custom' |
+'default' | 'hidden'`:
+
+- `string` → the container's HTML (a render callback is code, like a template — the page vouches for it; data
+  inside it is the callback's to escape); a same string isn't rewritten (focus, listeners survive);
+- `Node` → the container's only content (moved, not cloned);
+- `null` / `undefined` → `renderDefault(container)` (the built-in look), else emptied;
+- `false` → emptied and `hidden`.
+- `result` may be the hook call itself (`() => cb(ctx)`): with a `memoKey` equal to the previous one for that
+  container (`Object.is`), the hook isn't called and the DOM isn't touched — the component builds the key from
+  what the hook depends on (`${row.id}@${row.version}`).
+- Not this contract: hooks that FILL a given element and may return a cleanup (`renderLoadingCallback`, `/menu`'s
+  `renderItemCallback` / `renderMenuCallback`, web-treeview's `renderIconCallback`) — they keep "fill + optional
+  cleanup".

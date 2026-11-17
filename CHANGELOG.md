@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `renderSlot(container, result, { renderDefault, memoKey })` (main index, SPEC §12.35): one contract for every
+  `render*Callback` result — a string is HTML, a node is mounted, `null` draws the default, `false` hides; a
+  matching `memoKey` skips the hook and the DOM, a same string isn't rewritten (focus survives).
 - `createControllerFacade(target, spec)` (main index, SPEC §12.34): the frozen public controller a
   `createController()` returns — methods forwarded to the current engine (empty answers before the first build),
   live read-only / writable state, nothing else reachable. Replaces six hand-built facades.
