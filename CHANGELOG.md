@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `createPointerDrag(container, { getSource, threshold, longPressMs, autoScroll, onStart, onMove, onDrop,
+  onCancel })` (main index, SPEC §12.28): in-page drags on pointer events, so they work with a finger — a long
+  press starts a touch drag (moving earlier scrolls), the page doesn't scroll under it, the hit test pierces
+  shadow roots, the container auto-scrolls near its edges, Escape cancels, the drop's click is swallowed.
+- `watchPageDrag({ types, onChange })` + `applyArmedState(host, internals, isArmed)` (main index, SPEC §12.28):
+  the page-wide "files (or a custom type) are being dragged over the page" state for drop targets, from
+  web-dropzone — one shared listener set, ends on drop / leave / Escape / a stopped heartbeat.
 - `createSelection<K>({ mode, getOrderedKeys, isSelectable, onChange })` (main index, SPEC §12.27): the selected
   keys and the anchor with file-manager rules — click, Ctrl / Cmd toggle, Shift range from the anchor, Ctrl + Shift
   adds the range; ranges walk the display order and skip unselectable keys; `single` mode; `extendTo` for

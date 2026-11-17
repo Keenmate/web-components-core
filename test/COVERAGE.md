@@ -274,6 +274,15 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | `announce()`: one shared `role=status` region, visually hidden, never inert while a modal makes the page inert; the same text twice is cleared + rewritten | ✓ | `modal.spec.ts` | `modal.html` |
 | `createFormInputs` + `formatFormValue` through a real GET submit: json / array (`name[]`) / text, disabled + cleared name submit nothing, inputs reused, two same-name fields without ids, throwing callback submits `''` | ✓ | `form-inputs.spec.ts` | `form-inputs.html` |
 
+## 13n. Drag (`drag.spec.ts`)
+
+| Feature | Status | Spec | Fixture |
+| ------- | :----: | ---- | ------- |
+| Mouse reorder: threshold, drop indicator under the pointer, the drop isn't also a click; a wobble stays a click | ✓ | `drag.spec.ts` | `drag.html` |
+| Auto-scroll at the list's bottom edge (page stays), hit test inside a shadow root, Escape cancels | ✓ | `drag.spec.ts` | `drag.html` |
+| Touch (CDP): long press + move drags without scrolling the list; a quick swipe scrolls and never starts a drag | ✓ | `drag.spec.ts` | `drag.html` |
+| `watchPageDrag`: a file drag arms the zone, drop disarms; a text drag never arms | ✓ | `drag.spec.ts` | `drag.html` |
+
 ## 13m. Selection (`selection.spec.ts`)
 
 | Feature | Status | Spec | Fixture |

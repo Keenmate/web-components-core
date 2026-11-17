@@ -2574,3 +2574,26 @@ toggle, extendTo(key, { isAdditive }), selectAll, clear, set(keys), has, values,
 - `extendTo` = Shift + Arrow; `setAnchor` moves the anchor with keyboard focus without selecting.
 - Not in core: tree cascades (parent ↔ children), grid cell ranges, `maxSelections` limits, group headers —
   the component checks / expands before calling, or post-processes in `onChange`.
+
+### 12.28 Drag — IMPLEMENTED (`src/dom/page-drag.ts`, `src/dom/pointer-drag.ts`, main index)
+
+Two gaps from the audit (B11 / B12): only web-dropzone knew when files were dragged over the page (its own
+`page-file-drag.ts`), and in-page drags (web-treeview nodes, web-grid columns / rows) were HTML5 DnD or mouse
+events — nothing on a phone except web-treeview's own touch-event copy. Decided 2026-11-17:
+
+- **`watchPageDrag({ types = ['Files'], onChange(isArmed) })`** → unsubscribe: one window listener set (capture
+  phase) shared by every watcher; per watcher only drags carrying one of its `dataTransfer.types` arm it. Start:
+  a matching `dragenter` / `dragover`; end: `drop`, leaving the window (enter / leave depth), `dragend`, Escape,
+  or 350 ms without a `dragover` pulse (Escape on an external drag never reaches JS). `applyArmedState(host,
+  internals, isArmed)` → `armed` attribute + `:state(armed)`. From web-dropzone.
+- **`createPointerDrag(container, { getSource, threshold = 5, longPressMs = 300, autoScroll, onStart, onMove,
+  onDrop, onCancel })`** → `{ isDragging, cancel(), destroy() }`. Pointer events for mouse, pen and touch. Mouse /
+  pen start after `threshold` px; touch must rest `longPressMs` (an earlier move = a scroll, the drag never
+  starts), then a non-passive `touchmove` is prevented (no page scroll) and the long-press context menu is
+  suppressed. Callbacks get `{ source, x, y, target, pointerType, event }`; `target` = `deepElementFromPoint`
+  (through open shadow roots — the drag image needs `pointer-events: none`). `onStart` returning `false`
+  refuses. Auto-scroll near the edges of `findScrollContainer(source)` (or `autoScroll.container`), `onMove`
+  re-run as content slides under the pointer. Escape / `pointercancel` → `onCancel`. The click that ends a drop
+  is swallowed (`guardGhostClick`). Pointer capture on the container.
+- Not in core: the drag image / drop indicator, drop rules, cross-window HTML5 DnD (a component may keep
+  `draggable` for dragging OUT of the page; its drop targets still use `watchPageDrag` to arm).

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test — pointer drag + page drag</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+    <style>
+        #list { height: 200px; width: 240px; overflow: auto; margin: 0; padding: 0; list-style: none; border: 1px solid #999;
+                -webkit-touch-callout: none; user-select: none; }
+        #list li { height: 30px; line-height: 30px; padding: 0 8px; border-bottom: 1px solid #eee; }
+        #list li.is-over { background: #cde; }
+        #zone { margin-top: 12px; padding: 12px; border: 2px dashed #999; }
+        #zone[armed] { border-color: #06c; background: #eef6ff; }
+    </style>
+</head>
+<body>
+    <h1>drag fixture</h1>
+    <p>Targeted by <code>e2e/drag.spec.ts</code>.</p>
+    <ul id="list"></ul>
+    <fx-shadow-target id="shadow"></fx-shadow-target>
+    <div id="zone">drop files here</div>
+    <output id="log"></output>
+
+    <script type="module">
+        import { createPointerDrag, watchPageDrag, applyArmedState } from '/src/index.ts';
+        const list = document.getElementById('list');
+        let items = Array.from({ length: 30 }, (_, i) => `Item ${i}`);
+        const render = () => { list.innerHTML = items.map((t) => `<li data-key="${t}">${t}</li>`).join(''); };
+        render();
+        const log = [];
+        window.__log = log;
+
+        customElements.define('fx-shadow-target', class extends HTMLElement {
+            connectedCallback() { this.attachShadow({ mode: 'open' }).innerHTML = '<div id="inner" style="padding:8px;background:#fde">inside a shadow root</div>'; }
+        });
+
+        let over = null;
+        createPointerDrag(list, {
+            getSource: (t) => t.closest('li'),
+            longPressMs: 300,
+            onStart: ({ source, pointerType }) => { log.push(`start:${source.dataset.key}:${pointerType}`); },
+            onMove: ({ target }) => {
+                const li = target?.closest?.('#list li') ?? null;
+                if (li !== over) { over?.classList.remove('is-over'); li?.classList.add('is-over'); over = li; }
+                if (target?.id === 'inner') log.push('over:shadow-inner');
+            },
+            onDrop: ({ source, target }) => {
+                const li = target?.closest?.('#list li');
+                over?.classList.remove('is-over'); over = null;
+                if (!li || li === source) return log.push('drop:none');
+                const from = items.indexOf(source.dataset.key);
+                const to = items.indexOf(li.dataset.key);
+                items.splice(to, 0, ...items.splice(from, 1));
+                render();
+                log.push(`drop:${source.dataset.key}->${to}`);
+            },
+            onCancel: () => { over?.classList.remove('is-over'); over = null; log.push('cancel'); },
+        });
+        list.addEventListener('click', (e) => log.push(`click:${e.target.dataset?.key ?? ''}`));
+
+        const zone = document.getElementById('zone');
+        watchPageDrag({ onChange: (isArmed) => applyArmedState(zone, null, isArmed) });
+    </script>
+</body>
+</html>

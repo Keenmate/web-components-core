@@ -90,6 +90,11 @@ export type { LoaderRenderContext, RenderLoaderCallback, RenderLoaderOptions } f
 export { deepActiveElement } from './dom/active-element.js';
 export { escapeHtml } from './dom/escape-html.js';
 export { findScrollContainer, getScrollTopForBox, scrollContainerToBox, scrollIntoContainer } from './dom/scroll-container.js';
+// Drag: page-wide armed state for drop targets + pointer drags that work with a finger (SPEC §12.28).
+export { watchPageDrag, applyArmedState } from './dom/page-drag.js';
+export type { WatchPageDragOptions } from './dom/page-drag.js';
+export { createPointerDrag, deepElementFromPoint } from './dom/pointer-drag.js';
+export type { PointerDrag, PointerDragContext, PointerDragOptions } from './dom/pointer-drag.js';
 // Selection model: click / Ctrl / Shift rules, anchor, ranges in display order (SPEC §12.27).
 export { createSelection } from './selection/selection.js';
 export type { Selection, SelectionChange, SelectionMode, SelectionOptions } from './selection/selection.js';

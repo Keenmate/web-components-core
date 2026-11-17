@@ -71,6 +71,16 @@ non-zero `clientHeight` (a hidden scroller keeps the last known size; never seen
 `render` via `callSafely`. Scroll listener passive; `observeElementSize` with `shouldFireImmediately: false`.
 jsdom: the unit test fakes `clientHeight` / `scrollTop` / rects; `e2e/virtual-window.spec.ts` is the real check.
 
+## Drag (`src/dom/page-drag.ts`, `src/dom/pointer-drag.ts`, SPEC §12.28 — implemented)
+
+`watchPageDrag`: module-level watcher set (per core copy — the state needn't be page-wide), window capture
+listeners while any watcher exists, `Date.now()` heartbeat (fake-timer friendly). `createPointerDrag`: pointerdown
+on the container → window capture listeners for move / up / cancel / keydown; touch adds a non-passive
+`touchmove` + `contextmenu` blocker and the long-press timer; `start()` sets pointer capture and finds the
+auto-scroll container; `call()` unwraps `callSafely` (an `onStart` returning `false` refuses). jsdom has no
+PointerEvent / DragEvent / `elementFromPoint`: the unit test dispatches plain events with the fields;
+`e2e/drag.spec.ts` covers mouse, CDP touch (long press vs swipe), auto-scroll, shadow hit test, file drag.
+
 ## Persisted UI state (`src/dom/state-store.ts`, SPEC §12.17 — implemented)
 
 `createStateStore(host, { getKey, getLoadCallback?, getSaveCallback?, toContext? })` → `{ load, save, clear }`.
