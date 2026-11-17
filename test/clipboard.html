@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test — copyText + readPasteText</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>clipboard fixture</h1>
+    <p>Targeted by <code>e2e/clipboard.spec.ts</code>. The system clipboard is never touched: the Clipboard API and
+        <code>execCommand('copy')</code> are captured at the boundary.</p>
+    <button id="copy">copy</button>
+    <label><input type="checkbox" id="break-api"> make the Clipboard API reject (fallback)</label>
+    <input id="target" aria-label="paste here">
+    <output id="result"></output>
+    <output id="pasted"></output>
+
+    <script type="module">
+        import { copyText, readPasteText } from '/src/index.ts';
+        // Capture instead of writing the real clipboard.
+        window.__written = [];
+        let isBroken = false;
+        Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: { writeText: (t) => (isBroken ? Promise.reject(new Error('denied')) : (window.__written.push(`api:${t}`), Promise.resolve())) },
+        });
+        document.execCommand = (cmd) => {
+            if (cmd !== 'copy') return false;
+            const el = document.activeElement;
+            window.__written.push(`exec:${el.value.slice(el.selectionStart, el.selectionEnd)}`);
+            return true;
+        };
+        document.getElementById('break-api').addEventListener('change', (e) => { isBroken = e.target.checked; });
+        document.getElementById('copy').addEventListener('click', async () => {
+            const ok = await copyText('row 1\tvalue\nrow 2\tvalue');
+            document.getElementById('result').textContent = String(ok);
+        });
+        document.getElementById('target').addEventListener('paste', (e) => {
+            e.preventDefault();
+            document.getElementById('pasted').textContent = JSON.stringify(readPasteText(e));
+        });
+    </script>
+</body>
+</html>

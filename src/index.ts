@@ -90,6 +90,9 @@ export type { LoaderRenderContext, RenderLoaderCallback, RenderLoaderOptions } f
 export { deepActiveElement } from './dom/active-element.js';
 export { escapeHtml } from './dom/escape-html.js';
 export { findScrollContainer, getScrollTopForBox, scrollContainerToBox, scrollIntoContainer } from './dom/scroll-container.js';
+// Clipboard: copy with a fallback, read a paste event (SPEC §12.32).
+export { copyText, readPasteText } from './dom/clipboard.js';
+export type { ReadPasteOptions } from './dom/clipboard.js';
 // Scroll positions kept across a DOM move (SPEC §12.31).
 export { keepScrollAcrossMove } from './dom/keep-scroll.js';
 // Typed text, IME-safe: one callback per committed change; the IME's own Enter (SPEC §12.30).

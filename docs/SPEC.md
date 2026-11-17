@@ -2650,3 +2650,17 @@ grid / tree / list back at the top. Audit B20, decided 2026-11-17:
   isn't a BlissElement never restores.
 - Only listed scrollers; only positions a `scroll` event reported (a programmatic `scrollTop` write fires one in
   the browser too).
+
+### 12.32 Clipboard — IMPLEMENTED (`src/dom/clipboard.ts`, main index)
+
+Audit B21: web-grid copied with `navigator.clipboard.writeText` and no fallback (it rejects outside a secure
+context — an intranet app on plain `http://` — and in some webviews); web-grid (twice) and web-daterangepicker
+read `clipboardData.getData('text')` each their own way. Decided 2026-11-17:
+
+- **`copyText(text)`** → `Promise<boolean>`: the async Clipboard API when present in a secure context, else a
+  hidden, focused, selected `<textarea>` + `execCommand('copy')` inside the same user gesture; the previous focus
+  and selection are put back; never throws (`false` = not copied — show the component's own message).
+- **`readPasteText(event, { type = 'text/plain', shouldNormalizeNewlines = true })`** → the pasted text (`''`
+  when none): falls back to the legacy `'text'` alias, CRLF / CR → LF so a pasted spreadsheet block splits the
+  same on every OS.
+- The component keeps the parsing (TSV → cells, a date string → a date) and the `before*Callback`s around it.

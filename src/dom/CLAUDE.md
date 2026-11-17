@@ -96,6 +96,13 @@ the two dispatches). `isImeEnter` = `isComposing || keyCode === 229`. e2e drives
 before a child's disconnect — the test resets the fake offsets in the host's `disconnect()`. e2e
 `keep-scroll.spec.ts` proves Chromium resets a moved scroller (control element) and the helper restores it.
 
+## Clipboard (`src/dom/clipboard.ts`, SPEC §12.32 — implemented)
+
+`copyText`: API only when `isSecureContext !== false`; the fallback textarea must be FOCUSED before `select()`
+(execCommand copies the focused selection); focus + ranges restored. The e2e never touches the system clipboard
+(headless Chromium on Windows shares it): the fixture captures `writeText` / `execCommand`, a paste is a constructed
+`ClipboardEvent` with a `DataTransfer`.
+
 ## Persisted UI state (`src/dom/state-store.ts`, SPEC §12.17 — implemented)
 
 `createStateStore(host, { getKey, getLoadCallback?, getSaveCallback?, toContext? })` → `{ load, save, clear }`.

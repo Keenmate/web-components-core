@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `copyText(text)` + `readPasteText(event, { type })` (main index, SPEC §12.32): copy through the Clipboard API
+  with an `execCommand` fallback for plain-`http` intranets and webviews (never throws, `false` = not copied), and
+  the pasted text of a `paste` event with newlines normalized.
 - `keepScrollAcrossMove(host, () => [scrollers])` (main index, SPEC §12.31): scroll positions inside a
   BlissElement survive a DOM move (keyed reorder, re-parent) — recorded from `scroll` events, restored after the
   next `connect()`. BlissElement now reports every activation to core helpers bound to it.

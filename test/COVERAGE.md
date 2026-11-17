@@ -274,6 +274,14 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | `announce()`: one shared `role=status` region, visually hidden, never inert while a modal makes the page inert; the same text twice is cleared + rewritten | ✓ | `modal.spec.ts` | `modal.html` |
 | `createFormInputs` + `formatFormValue` through a real GET submit: json / array (`name[]`) / text, disabled + cleared name submit nothing, inputs reused, two same-name fields without ids, throwing callback submits `''` | ✓ | `form-inputs.spec.ts` | `form-inputs.html` |
 
+## 13r. Clipboard (`clipboard.spec.ts`)
+
+| Feature | Status | Spec | Fixture |
+| ------- | :----: | ---- | ------- |
+| `copyText` through the Clipboard API (captured, the system clipboard untouched) | ✓ | `clipboard.spec.ts` | `clipboard.html` |
+| API rejects → focused + selected textarea + `execCommand('copy')`, focus back on the button, textarea gone | ✓ | `clipboard.spec.ts` | `clipboard.html` |
+| `readPasteText` from a `ClipboardEvent`: text/plain, CRLF → LF | ✓ | `clipboard.spec.ts` | `clipboard.html` |
+
 ## 13q. Scroll across a move (`keep-scroll.spec.ts`)
 
 | Feature | Status | Spec | Fixture |
