@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test — onTextInput + isImeEnter</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>text input fixture</h1>
+    <p>Targeted by <code>e2e/text-input.spec.ts</code>: an IME composition through CDP.</p>
+    <input id="search" aria-label="search">
+
+    <script type="module">
+        import { onTextInput, isImeEnter } from '/src/index.ts';
+        const input = document.getElementById('search');
+        const log = [];
+        window.__log = log;
+        onTextInput(input, (value) => log.push(`text:${value}`));
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') log.push(isImeEnter(e) ? 'enter:ime' : 'enter:submit');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { isImeEnter, onTextInput } from './text-input.js';
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+const type = (el: HTMLInputElement, value: string, isComposing = false): void => {
+  el.value = value;
+  el.dispatchEvent(new InputEvent('input', { bubbles: true, isComposing }));
+};
+const compositionEnd = (el: HTMLInputElement, value: string): void => {
+  el.value = value;
+  el.dispatchEvent(new CompositionEvent('compositionend', { data: value }));
+};
+
+describe('onTextInput', () => {
+  it('plain typing: one call per input', () => {
+    const el = document.createElement('input');
+    const cb = vi.fn();
+    onTextInput(el, cb);
+    type(el, 'a');
+    type(el, 'ab');
+    expect(cb.mock.calls.map((c) => c[0])).toEqual(['a', 'ab']);
+  });
+
+  it('Chromium order: composing inputs skipped, compositionend delivers once', () => {
+    const el = document.createElement('input');
+    const cb = vi.fn();
+    onTextInput(el, cb);
+    type(el, 'k', true);
+    type(el, 'か', true);
+    compositionEnd(el, '漢');
+    expect(cb.mock.calls.map((c) => c[0])).toEqual(['漢']);
+  });
+
+  it('Firefox order: compositionend then a plain input of the same value — delivered once; a later same-value input is real', () => {
+    vi.useFakeTimers();
+    const el = document.createElement('input');
+    const cb = vi.fn();
+    onTextInput(el, cb);
+    type(el, 'か', true);
+    compositionEnd(el, '漢');
+    type(el, '漢');
+    expect(cb.mock.calls.map((c) => c[0])).toEqual(['漢']);
+    vi.advanceTimersByTime(1);
+    el.value = '';
+    type(el, '漢'); // the component cleared it; typed again
+    expect(cb.mock.calls.map((c) => c[0])).toEqual(['漢', '漢']);
+  });
+
+  it('unsubscribe stops it', () => {
+    const el = document.createElement('input');
+    const cb = vi.fn();
+    const stop = onTextInput(el, cb);
+    stop();
+    type(el, 'x');
+    expect(cb).not.toHaveBeenCalled();
+  });
+});
+
+describe('isImeEnter', () => {
+  it('isComposing or keyCode 229', () => {
+    expect(isImeEnter(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true }))).toBe(true);
+    expect(isImeEnter(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 229 }))).toBe(true);
+    expect(isImeEnter(new KeyboardEvent('keydown', { key: 'Enter' }))).toBe(false);
+  });
+});

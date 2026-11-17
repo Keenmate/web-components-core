@@ -81,6 +81,13 @@ auto-scroll container; `call()` unwraps `callSafely` (an `onStart` returning `fa
 PointerEvent / DragEvent / `elementFromPoint`: the unit test dispatches plain events with the fields;
 `e2e/drag.spec.ts` covers mouse, CDP touch (long press vs swipe), auto-scroll, shadow hit test, file drag.
 
+## IME-safe text (`src/dom/text-input.ts`, SPEC §12.30 — implemented)
+
+`onTextInput`: skip `input` with `isComposing`; `compositionend` delivers and remembers the value until a
+`setTimeout(0)` (Firefox's duplicate `input` comes in the same task — a microtask would clear too early, between
+the two dispatches). `isImeEnter` = `isComposing || keyCode === 229`. e2e drives a real composition through CDP
+`Input.imeSetComposition` / `Input.insertText` (Chromium only).
+
 ## Persisted UI state (`src/dom/state-store.ts`, SPEC §12.17 — implemented)
 
 `createStateStore(host, { getKey, getLoadCallback?, getSaveCallback?, toContext? })` → `{ load, save, clear }`.

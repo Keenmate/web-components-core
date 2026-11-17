@@ -90,6 +90,9 @@ export type { LoaderRenderContext, RenderLoaderCallback, RenderLoaderOptions } f
 export { deepActiveElement } from './dom/active-element.js';
 export { escapeHtml } from './dom/escape-html.js';
 export { findScrollContainer, getScrollTopForBox, scrollContainerToBox, scrollIntoContainer } from './dom/scroll-container.js';
+// Typed text, IME-safe: one callback per committed change; the IME's own Enter (SPEC §12.30).
+export { onTextInput, isImeEnter } from './dom/text-input.js';
+export type { TextInputElement } from './dom/text-input.js';
 // Drag: page-wide armed state for drop targets + pointer drags that work with a finger (SPEC §12.28).
 export { watchPageDrag, applyArmedState } from './dom/page-drag.js';
 export type { WatchPageDragOptions } from './dom/page-drag.js';

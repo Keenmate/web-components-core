@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `onTextInput(input, callback)` + `isImeEnter(event)` (main index, SPEC §12.30): one callback per committed
+  text — IME composition steps skipped, `compositionend` delivers, Firefox's duplicate `input` dropped — and the
+  IME's own Enter (`isComposing` / keyCode 229) told apart from the component's. From web-commandpalette.
 - `createLayer(host, { css, className, zIndex, isInteractive })` (`/positioning`, SPEC §12.29): a styled panel
   outside the component — its own shadow root with the component's CSS, the host's theme, mounted in the overlay
   container (body / the open dialog), `place(rect)` in viewport coordinates with a transformed container

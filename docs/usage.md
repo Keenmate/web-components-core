@@ -472,6 +472,21 @@ Per key: the instance `labels` → the page-wide labels → English. Assigning r
 frozen); every live component re-renders. `parseNumber(text, { locale })` reads a number the user typed with the
 same separators.
 
+## Typed text (IME-safe)
+
+Listen to what the user typed with `onTextInput`, not a bare `input` listener — an IME fires `input` for every
+half-typed syllable ([SPEC §12.30](SPEC.md)):
+
+```ts
+import { onTextInput, isImeEnter } from '@keenmate/web-components-core';
+
+this.#stopText = onTextInput(this.#searchInput, (term) => this.#search.run((signal) => this.#load(term, signal), this.#show));
+this.#searchInput.addEventListener('keydown', (e) => {
+  if (isImeEnter(e)) return;                 // the IME confirming a candidate, not "pick the option"
+  if (e.key === 'Enter') this.#pickActive();
+});
+```
+
 ## Layers and drawers
 
 A **layer** is a styled panel outside your component — a drag ghost, drop pads, a "drop files here" cover — that
@@ -1241,7 +1256,7 @@ explain the main ones; [SPEC](SPEC.md) has the design notes.
 | Element | `BlissElement`, `INPUT_REJECTED_EVENT` (`'input-rejected'`, a refused write), `define(tag, Class)` (define once), `dispatch(target, name, detail)` (the free event helper under `emit()`), `defaultEventProperty(name)` (`'node-select'` → `'onNodeSelect'`), `withComponentContext(detail, controller, element, extras?)` / `COMPONENT_CONTEXT_KEYS` (the non-enumerable `controller` / `element`); `normalizeEventDefs` is internal plumbing |
 | Before-callbacks | `runBeforeCallback` (async; `false` cancels, a value replaces), `runBeforeCallbackSync`, `runBeforeCallbackEager` (stays synchronous for a sync hook) |
 | Registration | `registerComponent(tag, Class, opts)` (`window.components[tag]`), `getInstances(tag)`, `getRegisteredTags()` — page-wide, across copies of core |
-| DOM | `adoptStyles(root, ...css)` / `createStyleSlot(root)` (style injection), `renderLoader(host, container, context, opts)` / `publishLoaderHook()` (loading states), `scrollIntoContainer` / `findScrollContainer` (container scroll), `scrollContainerToBox` / `getScrollTopForBox` (a virtual-list row by index), `createVirtualWindow` (a virtual list over fixed-height rows), `createSelection` (selected keys + anchor, click / Ctrl / Shift rules), `createPointerDrag` / `deepElementFromPoint` (mouse + touch drag), `watchPageDrag` / `applyArmedState` (page-wide file drag), `createStateStore` (persisted UI state), `deepActiveElement()` (the focused element inside shadow roots), `escapeHtml(text)` (also on `/search`), `createMicrotaskScheduler()` (coalesce a burst into one run), `createDebounce(fn, ms)` (`schedule(...args)` / `flush()` / `cancel()`; last call wins, `ms <= 0` = synchronous, `ms` may be a function), `createThrottle(fn, ms)` (leading + one trailing run), `createFrameScheduler(fn)` (one run per animation frame), `isMotionOff` / `readScrollBehavior` / `readCssDurationMs` / `readCssLengthPx` (resolved CSS in JS), `Z_INDEX` (stacking tiers), `isRtl(el)` (effective writing direction, across shadow roots), `createId(prefix)` (page-unique id for ARIA references / `for`), `createFocusTrap` / `getTabbables` (focus trap), `createFormInputs` / `formatFormValue` (form submission), `createAsyncRunner` (latest-request-wins loading), `announce(text)` (screen-reader live region), `guardGhostClick` (a tap's trailing click), `resolveEnumAttribute(raw, values, fallback)` |
+| DOM | `adoptStyles(root, ...css)` / `createStyleSlot(root)` (style injection), `renderLoader(host, container, context, opts)` / `publishLoaderHook()` (loading states), `scrollIntoContainer` / `findScrollContainer` (container scroll), `scrollContainerToBox` / `getScrollTopForBox` (a virtual-list row by index), `createVirtualWindow` (a virtual list over fixed-height rows), `createSelection` (selected keys + anchor, click / Ctrl / Shift rules), `createPointerDrag` / `deepElementFromPoint` (mouse + touch drag), `onTextInput` / `isImeEnter` (IME-safe typed text), `watchPageDrag` / `applyArmedState` (page-wide file drag), `createStateStore` (persisted UI state), `deepActiveElement()` (the focused element inside shadow roots), `escapeHtml(text)` (also on `/search`), `createMicrotaskScheduler()` (coalesce a burst into one run), `createDebounce(fn, ms)` (`schedule(...args)` / `flush()` / `cancel()`; last call wins, `ms <= 0` = synchronous, `ms` may be a function), `createThrottle(fn, ms)` (leading + one trailing run), `createFrameScheduler(fn)` (one run per animation frame), `isMotionOff` / `readScrollBehavior` / `readCssDurationMs` / `readCssLengthPx` (resolved CSS in JS), `Z_INDEX` (stacking tiers), `isRtl(el)` (effective writing direction, across shadow roots), `createId(prefix)` (page-unique id for ARIA references / `for`), `createFocusTrap` / `getTabbables` (focus trap), `createFormInputs` / `formatFormValue` (form submission), `createAsyncRunner` (latest-request-wins loading), `announce(text)` (screen-reader live region), `guardGhostClick` (a tap's trailing click), `resolveEnumAttribute(raw, values, fallback)` |
 | CSS-variable lint | `extractConsumedCssVars`, `extractDeclaredCssVars`, `lintCssVars` (read vs declared `--prefix-*` names), `suggestCssVars` (likely target of a typo) |
 | Environment | `getEnvironment`, `observeEnvironment`, `observeViewport`, `observeElementSize`, `createElementSizeObserver(listener)` (`observe` / `unobserve` / `disconnect` — one listener for a changing set of elements, shared observer), `configureBreakpoints` / `BREAKPOINTS_CHANGE_EVENT`, `classifyDevice` / `TABLET_MIN_SHORT_SIDE` |
 | Theme | `getThemeContext`, `observeThemeContext`, `setThemeMode` / `getThemeMode` (force dark / light page-wide), `readThemeSignal(el)`, `resolveThemeSource(host, source)`, `THEME_CONTEXT_ATTRIBUTE`, `THEME_SOURCE_ATTRIBUTE` |

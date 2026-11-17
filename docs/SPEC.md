@@ -2620,3 +2620,17 @@ Decided 2026-11-17:
   its panel with those classes + `startModalSession(panel, { backdrop: true, onDismiss })`; closing =
   `session.end()` + `animateOut(panel, { className: 'km-drawer--closing' })`. `/menu`'s drawer presentation keeps
   its own `.km-menu-sheet--drawer` (same look, its own variables).
+
+### 12.30 IME-safe text input — IMPLEMENTED (`src/dom/text-input.ts`, main index)
+
+Audit B16: only web-commandpalette handled IME composition (Japanese / Chinese / Korean input, phone keyboards
+with suggestions); web-multiselect, web-treeview, web-grid and web-editor searched on every intermediate
+`input` and treated the candidate-confirming Enter as their own. Decided 2026-11-17:
+
+- **`onTextInput(input, callback(value, event))`** → unsubscribe: `input` events with `isComposing` are skipped,
+  `compositionend` delivers the committed text, and Firefox's plain `input` right after `compositionend` (same
+  value, same task) is dropped; a same-value `input` later is a real edit. Works on an input, a textarea or a
+  contenteditable (`textContent`).
+- **`isImeEnter(event)`**: `isComposing` or `keyCode === 229` (Safari's confirming Enter arrives after
+  `compositionend` with `isComposing: false`) — a keydown handler returns early on it.
+- Debouncing stays with the caller (`createAsyncRunner` / `createDebounce`).
