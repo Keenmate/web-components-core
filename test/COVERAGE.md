@@ -274,6 +274,13 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | `announce()`: one shared `role=status` region, visually hidden, never inert while a modal makes the page inert; the same text twice is cleared + rewritten | ✓ | `modal.spec.ts` | `modal.html` |
 | `createFormInputs` + `formatFormValue` through a real GET submit: json / array (`name[]`) / text, disabled + cleared name submit nothing, inputs reused, two same-name fields without ids, throwing callback submits `''` | ✓ | `form-inputs.spec.ts` | `form-inputs.html` |
 
+## 13s. Icons (`icons.spec.ts`)
+
+| Feature | Status | Spec | Fixture |
+| ------- | :----: | ---- | ------- |
+| A name → masked from its `--base-icon-*` token, `currentColor`, 1em; unset token → transparent; emoji text; svg raw | ✓ | `icons.spec.ts` | `icons.html` |
+| `/menu` renders an item icon name through `renderIcon`, an emoji as text | ✓ | `icons.spec.ts` | `icons.html` |
+
 ## 13r. Clipboard (`clipboard.spec.ts`)
 
 | Feature | Status | Spec | Fixture |

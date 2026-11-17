@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `renderIcon(icon, { prefix })` + `ICON_CSS` (main index, SPEC §12.33): one reading of an icon string — markup
+  raw, an ASCII name masked from `--base-icon-<name>` in `currentColor` (nothing drawn when the token is unset),
+  anything else escaped text. From web-commandpalette.
 - `copyText(text)` + `readPasteText(event, { type })` (main index, SPEC §12.32): copy through the Clipboard API
   with an `execCommand` fallback for plain-`http` intranets and webviews (never throws, `false` = not copied), and
   the pasted text of a `paste` event with newlines normalized.
@@ -149,6 +152,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   them by hand after floating its host). pure-css port affected.
 
 ### Changed
+- `/menu` item icons go through `renderIcon`: an icon NAME (`'gear'`) is now a glyph masked from
+  `--base-icon-gear` instead of the word as text; markup and emoji render as before.
 - `/menu`: right-to-left comes from `isRtl(opener)` (the effective CSS direction) instead of the nearest `[dir]`
   attribute only — a page that sets `direction: rtl` in CSS, or `dir="auto"` on Arabic / Hebrew text, now
   gets mirrored submenus.

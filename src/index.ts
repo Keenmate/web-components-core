@@ -90,6 +90,9 @@ export type { LoaderRenderContext, RenderLoaderCallback, RenderLoaderOptions } f
 export { deepActiveElement } from './dom/active-element.js';
 export { escapeHtml } from './dom/escape-html.js';
 export { findScrollContainer, getScrollTopForBox, scrollContainerToBox, scrollIntoContainer } from './dom/scroll-container.js';
+// Icons are data: markup raw / a name masked from --base-icon-<name> / text (SPEC §12.33).
+export { renderIcon, ICON_CSS } from './dom/render-icon.js';
+export type { RenderIconOptions } from './dom/render-icon.js';
 // Clipboard: copy with a fallback, read a paste event (SPEC §12.32).
 export { copyText, readPasteText } from './dom/clipboard.js';
 export type { ReadPasteOptions } from './dom/clipboard.js';

@@ -2664,3 +2664,18 @@ read `clipboardData.getData('text')` each their own way. Decided 2026-11-17:
   when none): falls back to the legacy `'text'` alias, CRLF / CR → LF so a pasted spreadsheet block splits the
   same on every OS.
 - The component keeps the parsing (TSV → cells, a date string → a date) and the `before*Callback`s around it.
+
+### 12.33 Icons — IMPLEMENTED (`src/dom/render-icon.ts`, main index)
+
+Icons are DATA: the page passes a string on an item / option / command / node. Audit B22 found five readings of
+that string — web-commandpalette's `renderIcon` (the model), `/menu`'s raw `innerHTML`, web-grid / web-treeview /
+web-multiselect each their own. Decided 2026-11-17 — **`renderIcon(icon, { prefix })`** → HTML:
+
+- starts with `<` → raw (an `<svg>`, `<img>`, `<i class="fa …">` — the page vouches for its markup);
+- an ASCII name (`[A-Za-z][A-Za-z0-9_-]*`) → `<span class="km-icon <prefix>__icon <prefix>__icon--<name>"
+  style="--_km-icon: var(--base-icon-<name>, linear-gradient(transparent 0 0))" aria-hidden="true">` — a 1em glyph
+  in `currentColor` masked from the base-css-variables icon token; an unset token draws nothing (not a square);
+- anything else (an emoji, a non-Latin letter) → escaped text.
+
+`ICON_CSS` (`.km-icon`, `@layer component`, forced-colors aware) is adopted where named icons render; `/menu`
+adopts it and renders item icons through `renderIcon` (a name used to come out as its text).

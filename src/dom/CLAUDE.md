@@ -103,6 +103,13 @@ before a child's disconnect — the test resets the fake offsets in the host's `
 (headless Chromium on Windows shares it): the fixture captures `writeText` / `execCommand`, a paste is a constructed
 `ClipboardEvent` with a `DataTransfer`.
 
+## Icons (`src/dom/render-icon.ts`, SPEC §12.33 — implemented)
+
+`renderIcon`: `<` → raw; `NAME` regex → `.km-icon` span with an inline `--_km-icon: var(--base-icon-<name>,
+linear-gradient(transparent 0 0))` (the transparent fallback keeps an unset token from masking nothing = a solid
+square); else `escapeHtml`. `ICON_CSS` is NOT part of the manifest test (its only variables are private / dynamic).
+`/menu` adopts it next to `MENU_CSS`.
+
 ## Persisted UI state (`src/dom/state-store.ts`, SPEC §12.17 — implemented)
 
 `createStateStore(host, { getKey, getLoadCallback?, getSaveCallback?, toContext? })` → `{ load, save, clear }`.

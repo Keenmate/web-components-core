@@ -244,6 +244,8 @@ UI strings + locale go through core `/locale` (`src/locale/`, SPEC §12.24): `cr
 () => this.config.labels)` (`.text` / `.html`), `getLocaleSettings` / `resolveLocale`, `formatNumber` /
 `parseNumber`; page-wide `window.components.locale` / `.security`; the opt-in `localeChanged()` hook re-renders.
 
+Icon strings render through `renderIcon(icon, { prefix })` + `ICON_CSS` (SPEC §12.33).
+
 Clipboard: `copyText(text)` (API + execCommand fallback) and `readPasteText(event)` (SPEC §12.32).
 
 Scroll positions survive a DOM move with `keepScrollAcrossMove(this, () => [scrollers])` (SPEC §12.31).

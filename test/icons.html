@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test — renderIcon</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+    <style>
+        :root { --base-icon-gear: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Crect width='10' height='10'/%3E%3C/svg%3E"); }
+        #icons { font-size: 32px; color: rgb(200, 0, 0); }
+    </style>
+</head>
+<body>
+    <h1>icons fixture</h1>
+    <p>Targeted by <code>e2e/icons.spec.ts</code>.</p>
+    <div id="icons"></div>
+    <button id="menu-trigger">menu</button>
+
+    <script type="module">
+        import { renderIcon, ICON_CSS, adoptStyles } from '/src/index.ts';
+        import { openMenu } from '/src/menu/index.ts';
+        adoptStyles(document, ICON_CSS);
+        document.getElementById('icons').innerHTML = [
+            `<span id="named">${renderIcon('gear', { prefix: 'fx' })}</span>`,
+            `<span id="unset">${renderIcon('nothing-here')}</span>`,
+            `<span id="emoji">${renderIcon('🚀')}</span>`,
+            `<span id="svg">${renderIcon('<svg width="10" height="10"><rect width="10" height="10"/></svg>')}</span>`,
+        ].join(' ');
+        const trigger = document.getElementById('menu-trigger');
+        trigger.addEventListener('click', () => {
+            openMenu([{ id: 'settings', text: 'Settings', icon: 'gear' }, { id: 'go', text: 'Go', icon: '🚀' }], {}, { host: document.body, at: trigger, returnFocusTo: trigger, presentation: 'floating' });
+        });
+    </script>
+</body>
+</html>

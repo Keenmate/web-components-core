@@ -11,6 +11,7 @@ import type { MenuEntry, MenuItem, ResolvedActionItem } from '../actions/types.j
 import { formatShortcut, matchesShortcut } from '../actions/shortcut.js';
 import { deepActiveElement } from '../dom/active-element.js';
 import { adoptStyles } from '../dom/adopt-styles.js';
+import { ICON_CSS, renderIcon } from '../dom/render-icon.js';
 import { animateOut } from '../dom/animate-out.js';
 import { composedParent } from '../dom/composed-tree.js';
 import { isRtl as isRtlElement } from '../dom/direction.js';
@@ -253,8 +254,8 @@ export function openMenu<Ctx, A extends string = string>(
           const icon = document.createElement('span');
           icon.className = `${BLOCK}__icon`;
           icon.setAttribute('aria-hidden', 'true');
-          // Developer-supplied markup (an <svg>, an <i class>, a glyph) — like action buttons.
-          if (resolved.icon) icon.innerHTML = resolved.icon;
+          // Icons are data (SPEC §12.33): markup raw, a name masked from --base-icon-<name>, else text.
+          if (resolved.icon) icon.innerHTML = renderIcon(resolved.icon);
           itemEl.appendChild(icon);
         }
         const label = document.createElement('span');
@@ -724,7 +725,7 @@ export function openMenu<Ctx, A extends string = string>(
 
   // ── Open ───────────────────────────────────────────────────────────────
 
-  adoptStyles(styleRoot, MENU_CSS, SHEET_CHROME_CSS);
+  adoptStyles(styleRoot, MENU_CSS, SHEET_CHROME_CSS, ICON_CSS);
   const rootLevel: Level<Ctx, A> = {
     el: createLevelElement(false),
     owner: null,
