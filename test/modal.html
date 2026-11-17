@@ -10,6 +10,9 @@
                     z-index: var(--base-z-dropdown, 7500); }
         /* a long page: scroll lock is visible */
         .tall { height: 2000px; }
+        /* the option sits right over the opener: the ghost click of the opening tap lands on it */
+        #press-panel { position: fixed; inset: 0; z-index: var(--base-z-modal, 7000); background: #fff; }
+        #press-option { position: fixed; left: var(--x); top: var(--y); width: 200px; height: 60px; translate: -50% -50%; }
     </style>
 </head>
 <body>
@@ -21,6 +24,8 @@
     <button id="open-prompt">prompt</button>
     <button id="open-confirm">confirm (danger)</button>
     <output id="result"></output>
+    <p><button id="press-open">open on press</button> <label><input type="checkbox" id="guard" checked> ghost-click guard</label></p>
+    <div id="press-panel" hidden><button id="press-option">option under the finger</button> <button id="press-close">close</button></div>
     <fx-modal-host id="host"></fx-modal-host>
     <div class="tall"></div>
 
@@ -78,6 +83,29 @@
 
         document.getElementById('open-own').onclick = (e) => document.getElementById('host').open(e.currentTarget);
         document.getElementById('page-button').onclick = () => log.push('page-button');
+
+        // A full-screen sheet opened on the PRESS (like web-daterangepicker / web-multiselect on a phone).
+        const pressPanel = document.getElementById('press-panel');
+        let pressSession = null;
+        document.getElementById('press-open').addEventListener('pointerdown', (e) => {
+            if (pressSession) return;
+            pressPanel.style.setProperty('--x', `${e.clientX}px`);
+            pressPanel.style.setProperty('--y', `${e.clientY}px`);
+            pressPanel.hidden = false;
+            log.push('press-open');
+            pressSession = startModalSession(pressPanel, {
+                onDismiss: (reason) => closePress(reason),
+                isOpenedByPointer: document.getElementById('guard').checked,
+            });
+        });
+        const closePress = (reason) => {
+            log.push(`press-dismiss:${reason}`);
+            pressPanel.hidden = true;
+            pressSession?.end();
+            pressSession = null;
+        };
+        document.getElementById('press-option').onclick = () => log.push('press-option');
+        document.getElementById('press-close').onclick = () => closePress('close');
         document.getElementById('open-prompt').onclick = async (e) => {
             result.textContent = String(await promptDialog({
                 title: 'Image URL', value: 'https://', trigger: e.currentTarget,

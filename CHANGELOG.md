@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `createFormInputs(host)` + `formatFormValue(values, format, { separator, callback })` (main index, SPEC §12.21):
+  the light-DOM hidden inputs a component submits through — a string is one `name` input, an array one `name[]`
+  input per item, reused, never an `id`, `disabled` with the control; `json` / `text` / `array` formatting with
+  the component's `getValueFormatCallback` winning and a throw reported as `{ value: '', error }`.
+  web-multiselect, web-daterangepicker and web-editor each had a copy.
+- `createAsyncRunner({ debounceMs, loaderDelayMs, onLoadingChange, onError })` (main index, SPEC §12.22):
+  latest request wins — `run(task, onResult)` aborts the previous run's signal and drops its late answer;
+  synchronous results never show the loader, `loaderDelayMs` keeps a fast answer from flashing it, an
+  `AbortError` is never an error. Replaces five hand-written copies (multiselect search, commandpalette,
+  grid dropdown, editor pipelines).
+- `announce(text, { politeness })` (main index, SPEC §12.23): one visually hidden live region per page for
+  "12 results" / "Invalid date"; the same text twice is read twice; a modal's inert background skips it.
+- `startModalSession({ isOpenedByPointer })` + `guardGhostClick(elements, opts)` (SPEC §12.19): a modal opened on
+  a press (`pointerdown` / `mousedown`) swallows that tap's trailing click on the panel / backdrop, which would
+  pick an option or dismiss the sheet at once. From web-daterangepicker.
 - `isRtl(el)` (main index, SPEC §12.20): the effective writing direction — CSS `direction`, so `dir` on any
   ancestor across shadow roots, `dir="auto"` and CSS rules count; the nearest `dir` attribute when detached.
   `BlissElement.isRtl` uses it. Components answered three ways (host computed style / host `dir` /

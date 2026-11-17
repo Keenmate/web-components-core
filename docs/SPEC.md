@@ -2405,6 +2405,15 @@ the edges (tabbables on the flat tree), focus goes in and comes back when it was
 dropdown / tooltip would have to mount inside the dialog (`findOverlayContainer` handles that for the
 consumer's own `<dialog>`, §12.2); the tiers (§12.18) keep nesting simple.
 
+**Ghost click (decided 2026-11-17, opt-in).** A tap fires `pointerdown` → `mousedown` → `click` at one spot; a
+component that opens its modal on the PRESS (web-daterangepicker on `pointerdown`, web-multiselect's full-screen
+sheet on `mousedown` — both to keep the soft keyboard down) has the panel up when the tap's own `click` lands on
+it (picks a day / an option, or the backdrop dismisses). `startModalSession({ isOpenedByPointer: true })` arms
+`guardGhostClick([panel, backdrop])` (main index): the next click is swallowed when its composed path hits a
+guarded element, then the guard removes itself (700 ms safety net; `trailingFocus` blurs an input the press
+focuses — inside a session the inert background already blocks that). Modals opened on `click` / keyboard
+don't pass it. web-daterangepicker's `armGhostClickGuard` + `blurTrailingFocus` were the original.
+
 ### 12.20 Direction + ids — IMPLEMENTED (`src/dom/direction.ts`, `src/dom/create-id.ts`, main index)
 
 **`isRtl(el)`** — the effective CSS `direction` (a `dir` anywhere up the composed tree, `dir="auto"`, a CSS
@@ -2417,3 +2426,46 @@ answers: the host's computed style (web-multiselect, web-daterangepicker), the h
 even with two bundled copies of core. For ARIA references (`aria-labelledby`, `aria-controls`,
 `aria-activedescendant`), `<label for>`, log instance tags, new tree keys. Replaces web-multiselect's
 `Math.random()` instance id, web-treeview's and web-dropzone's `Date.now()` + random keys.
+
+### 12.21 Form inputs — IMPLEMENTED (`src/dom/form-inputs.ts`, main index)
+
+The submission convention (light-DOM hidden inputs, never `setFormValue`) had three copies: web-multiselect
+(rebuild all, `json` default, `name[]` for `array`), web-daterangepicker (same, `text` default) and web-editor
+(one reused input). Decided 2026-11-17:
+
+- **`createFormInputs(host)`** → `{ write(name, value, { isDisabled }), clear(), inputs }`. A string = one
+  `<input type="hidden" name>`, an array = one `name[]` input per item (none for `[]`); inputs reused, re-appended
+  when a framework dropped them, never an `id` (duplicate ids — web-multiselect 3.0.0-rc04 dropped its `id = name`);
+  `disabled` while the control is; `null` name removes them.
+- **`formatFormValue(values, format, { separator, callback })`** → `{ value, error? }`: `json` (default) /
+  `text` (joined, `','`) / `array`; the component's `getValueFormatCallback` (bound to its context) wins, also
+  over `array`; a throw yields `''` + `error`. The component keeps `setFormatError` + `value-format-error`.
+  Domain formats (web-daterangepicker's date masks / ranges) keep their own serializer and use
+  `createFormInputs` only.
+
+### 12.22 Async runner — IMPLEMENTED (`src/dom/async-runner.ts`, main index)
+
+Five copies of "latest request wins" (web-multiselect search, web-commandpalette palette + usage, web-grid
+dropdown, web-editor pipelines), each with a different subset. Decided 2026-11-17:
+**`createAsyncRunner({ debounceMs, loaderDelayMs = 0, onLoadingChange, onError, logSource })`** →
+`{ run(task, onResult), cancel(), isLoading, isPending }`.
+
+- `run(task: (signal) => T | PromiseLike<T>, onResult)` replaces the previous run: its debounce is dropped, its
+  signal aborts, a late answer is ignored (generation check) — only the latest run reaches `onResult`.
+- A synchronous result is delivered at once (after the debounce) with no loader. An async one turns the
+  loader on — after `loaderDelayMs` when set (web-editor's 200 ms `PendingGate`), at once otherwise
+  (web-multiselect) — and a run replacing a loading one keeps it on (no flicker). Loader off before `onResult`.
+- `AbortError` (by `name`) is never an error; other failures → `onError`, else the logger. Throwing callbacks
+  are logged (`callSafely`), the runner keeps working. `cancel()` on close / `disconnect()`.
+- Not in core: web-editor's "pause while a dialog is open", web-multiselect's term check (the generation covers
+  it).
+
+### 12.23 Announcements — IMPLEMENTED (`src/dom/announce.ts`, main index)
+
+Screen readers missed what changed without focus moving: web-daterangepicker's message area had no ARIA,
+web-multiselect announced through its visible toast, web-commandpalette had its own live region. Decided
+2026-11-17: **`announce(text, { politeness = 'polite', document })`** — one visually hidden region per
+document and politeness (`[data-km-announcer="polite"]` `role="status"`, `"assertive"` `aria-live` only),
+created on first use at the end of `<body>`, shared by every component and core copy; cleared then written
+50 ms later (the same text is read again; a newer call replaces one not yet written). `createFocusTrap` never
+makes a region inert. Visible toasts stay per component (web-multiselect anchors its toast to the field).

@@ -290,6 +290,12 @@ Escape through the overlay tree (a dropdown opened inside closes first), the pho
 `createFocusTrap(panel, opts)` → `{ release() }` is the trap alone (inert + Tab cycling + focus in / back);
 `getTabbables(container)` lists the tabbable elements in flat-tree order (shadow roots and slots included).
 
+**Opened on a press?** A component that opens its modal on `pointerdown` / `mousedown` (to keep the phone
+keyboard down) passes `isOpenedByPointer: true`: the tap's own `click`, which arrives a moment later at the same
+spot, would otherwise land on the new panel (pick an option) or the backdrop (close it). Opening on `click` or
+the keyboard needs nothing. `guardGhostClick(elements, { durationMs, trailingFocus })` → `stop()` is the guard
+alone, for a non-modal popup.
+
 ### Ready-made dialogs (`@keenmate/web-components-core/dialog`)
 
 The styled, translatable replacement for `window.confirm` / `window.prompt` — never those in a component:
@@ -369,6 +375,65 @@ const CSS = `
 `modalBackdrop` 6000 < `modal` 7000 < `dropdown` 7500 < `popover` 7600 < `toast` 8000 < `tooltip` 9000.
 Dialogs, sheets and drawers are `modal`, so a dropdown or tooltip opened inside one stacks above it. A
 component's own sub-layer is `calc(<tier> + 1)`; no bare numbers like `9999`.
+
+## Form submission (hidden inputs)
+
+Components submit through light-DOM hidden inputs, never `setFormValue` ([SPEC §12.21](SPEC.md)):
+
+```ts
+import { createFormInputs, formatFormValue } from '@keenmate/web-components-core';
+
+#form = createFormInputs(this);                 // once
+
+// whenever the value changes
+const { value, error } = formatFormValue(selectedValues, this.config.valueFormat, {   // 'json' | 'text' | 'array'
+  separator: this.config.valueSeparator,        // 'text'
+  callback: this.config.getValueFormatCallback && ((values) => this.config.getValueFormatCallback(this.withContext({ values }))),
+});
+this.setFormatError(error ?? null, this.labels.valueFormatError);
+if (error) this.emit('value-format-error', { error, value: selectedValues });
+this.#form.write(this.config.name, value, { isDisabled: this.isEffectivelyDisabled });
+// a string → <input type="hidden" name="x">; an array → one <input name="x[]"> per item; no name → none
+```
+
+The inputs never get an `id`; `clear()` removes them (`destroyCallback()`).
+
+## Async loading (search-as-you-type, lazy options)
+
+One runner per async source ([SPEC §12.22](SPEC.md)) — never your own abort controller + "is this still the
+latest" check:
+
+```ts
+import { createAsyncRunner } from '@keenmate/web-components-core';
+
+#search = createAsyncRunner({
+  debounceMs: () => this.config.searchDebounce,   // 0 = start at once
+  loaderDelayMs: 0,                                // > 0: a fast answer never flashes the loader
+  onLoadingChange: (isLoading) => this.#renderLoading(isLoading),
+  onError: (error) => this.log.DATA.error('searchCallback failed', error),   // never an AbortError
+  logSource: this,
+});
+
+this.#search.run(
+  (signal) => this.config.searchCallback({ term, signal }),   // sync or async
+  (items) => this.#renderOptions(items),                      // only the latest run lands
+);
+this.#search.cancel();                                         // close / disconnect()
+```
+
+## Screen-reader announcements
+
+Say what changed when focus doesn't move ([SPEC §12.23](SPEC.md)):
+
+```ts
+import { announce } from '@keenmate/web-components-core';
+
+announce(this.labels.resultCount(items.length));                 // polite: "12 results"
+announce(this.labels.invalidDate, { politeness: 'assertive' });  // errors only
+```
+
+One hidden live region per page, shared by every component; the same text twice is read twice. Your visible
+toast or message stays yours — `announce()` is what screen readers hear.
 
 ## Responsive rules (page / per-tag / instance)
 
@@ -1016,7 +1081,7 @@ explain the main ones; [SPEC](SPEC.md) has the design notes.
 | Element | `BlissElement`, `INPUT_REJECTED_EVENT` (`'input-rejected'`, a refused write), `define(tag, Class)` (define once), `dispatch(target, name, detail)` (the free event helper under `emit()`), `defaultEventProperty(name)` (`'node-select'` → `'onNodeSelect'`), `withComponentContext(detail, controller, element, extras?)` / `COMPONENT_CONTEXT_KEYS` (the non-enumerable `controller` / `element`); `normalizeEventDefs` is internal plumbing |
 | Before-callbacks | `runBeforeCallback` (async; `false` cancels, a value replaces), `runBeforeCallbackSync`, `runBeforeCallbackEager` (stays synchronous for a sync hook) |
 | Registration | `registerComponent(tag, Class, opts)` (`window.components[tag]`), `getInstances(tag)`, `getRegisteredTags()` — page-wide, across copies of core |
-| DOM | `adoptStyles(root, ...css)` / `createStyleSlot(root)` (style injection), `renderLoader(host, container, context, opts)` / `publishLoaderHook()` (loading states), `scrollIntoContainer` / `findScrollContainer` (container scroll), `scrollContainerToBox` / `getScrollTopForBox` (a virtual-list row by index), `createStateStore` (persisted UI state), `deepActiveElement()` (the focused element inside shadow roots), `escapeHtml(text)` (also on `/search`), `createMicrotaskScheduler()` (coalesce a burst into one run), `createDebounce(fn, ms)` (`schedule(...args)` / `flush()` / `cancel()`; last call wins, `ms <= 0` = synchronous, `ms` may be a function), `createThrottle(fn, ms)` (leading + one trailing run), `createFrameScheduler(fn)` (one run per animation frame), `isMotionOff` / `readScrollBehavior` / `readCssDurationMs` / `readCssLengthPx` (resolved CSS in JS), `Z_INDEX` (stacking tiers), `isRtl(el)` (effective writing direction, across shadow roots), `createId(prefix)` (page-unique id for ARIA references / `for`), `createFocusTrap` / `getTabbables` (focus trap), `resolveEnumAttribute(raw, values, fallback)` |
+| DOM | `adoptStyles(root, ...css)` / `createStyleSlot(root)` (style injection), `renderLoader(host, container, context, opts)` / `publishLoaderHook()` (loading states), `scrollIntoContainer` / `findScrollContainer` (container scroll), `scrollContainerToBox` / `getScrollTopForBox` (a virtual-list row by index), `createStateStore` (persisted UI state), `deepActiveElement()` (the focused element inside shadow roots), `escapeHtml(text)` (also on `/search`), `createMicrotaskScheduler()` (coalesce a burst into one run), `createDebounce(fn, ms)` (`schedule(...args)` / `flush()` / `cancel()`; last call wins, `ms <= 0` = synchronous, `ms` may be a function), `createThrottle(fn, ms)` (leading + one trailing run), `createFrameScheduler(fn)` (one run per animation frame), `isMotionOff` / `readScrollBehavior` / `readCssDurationMs` / `readCssLengthPx` (resolved CSS in JS), `Z_INDEX` (stacking tiers), `isRtl(el)` (effective writing direction, across shadow roots), `createId(prefix)` (page-unique id for ARIA references / `for`), `createFocusTrap` / `getTabbables` (focus trap), `createFormInputs` / `formatFormValue` (form submission), `createAsyncRunner` (latest-request-wins loading), `announce(text)` (screen-reader live region), `guardGhostClick` (a tap's trailing click), `resolveEnumAttribute(raw, values, fallback)` |
 | CSS-variable lint | `extractConsumedCssVars`, `extractDeclaredCssVars`, `lintCssVars` (read vs declared `--prefix-*` names), `suggestCssVars` (likely target of a typo) |
 | Environment | `getEnvironment`, `observeEnvironment`, `observeViewport`, `observeElementSize`, `createElementSizeObserver(listener)` (`observe` / `unobserve` / `disconnect` — one listener for a changing set of elements, shared observer), `configureBreakpoints` / `BREAKPOINTS_CHANGE_EVENT`, `classifyDevice` / `TABLET_MIN_SHORT_SIDE` |
 | Theme | `getThemeContext`, `observeThemeContext`, `setThemeMode` / `getThemeMode` (force dark / light page-wide), `readThemeSignal(el)`, `resolveThemeSource(host, source)`, `THEME_CONTEXT_ATTRIBUTE`, `THEME_SOURCE_ATTRIBUTE` |

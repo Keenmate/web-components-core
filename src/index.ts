@@ -64,6 +64,15 @@ export { Z_INDEX } from './dom/z-index.js';
 export { isRtl } from './dom/direction.js';
 export { createId } from './dom/create-id.js';
 export { createFocusTrap, getTabbables } from './dom/focus-trap.js';
+// Form submission through light-DOM hidden inputs (SPEC §12.21).
+export { createFormInputs, formatFormValue } from './dom/form-inputs.js';
+export type { FormInputs, FormValueFormat, FormatFormValueOptions, FormattedFormValue } from './dom/form-inputs.js';
+// Latest-request-wins async runner: debounce, abort, stale drop, delayed loader (SPEC §12.22).
+export { createAsyncRunner } from './dom/async-runner.js';
+export type { AsyncRunner, AsyncRunnerOptions } from './dom/async-runner.js';
+// Screen-reader announcements through one page-wide live region (SPEC §12.23).
+export { announce } from './dom/announce.js';
+export type { AnnounceOptions, AnnouncePoliteness } from './dom/announce.js';
 export type { FocusTrap, FocusTrapOptions } from './dom/focus-trap.js';
 export type { ZIndexTier } from './dom/z-index.js';
 export { adoptStyles, createStyleSlot } from './dom/adopt-styles.js';
@@ -154,6 +163,8 @@ export { startSheetSession } from './overlay/sheet-session.js';
 export type { SheetSession, SheetSessionOptions } from './overlay/sheet-session.js';
 export { startModalSession } from './overlay/modal-session.js';
 export type { ModalDismissReason, ModalSession, ModalSessionOptions } from './overlay/modal-session.js';
+export { guardGhostClick } from './overlay/ghost-click.js';
+export type { GhostClickGuardOptions } from './overlay/ghost-click.js';
 // The phone sheet chrome (header + title + close button) every sheet shares (SPEC §12.9).
 export { SHEET_CHROME_CSS, createSheetHeader } from './overlay/sheet-chrome.js';
 export type { SheetHeaderOptions, SheetHeader } from './overlay/sheet-chrome.js';

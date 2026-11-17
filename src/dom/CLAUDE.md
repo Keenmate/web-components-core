@@ -54,6 +54,15 @@ visible). Release returns focus only when it was inside the panel or on `<body>`
 `composedClosest(el, '[dir]')`. `BlissElement.isRtl` + `/menu` use it. `createId(prefix)`: module counter (base 36)
 + `crypto.getRandomValues` (Math.random fallback); `/dialog` uses it.
 
+## Form inputs, async runner, announce (SPEC §12.21–§12.23 — implemented)
+
+`createFormInputs(host)` (`form-inputs.ts`): reuses its inputs by index, re-appends when a framework dropped
+them, no `id`. `formatFormValue`: the callback wins (also over `array`); a thrown `undefined` becomes an Error.
+`createAsyncRunner` (`async-runner.ts`): generation counter + AbortController per run; the loader survives a
+replacing run (no flicker); `isPending` covers the debounce wait. `announce` (`announce.ts`): regions found by
+`[data-km-announcer]` under `<body>` (shared across core copies); `focus-trap.ts` skips them when inerting.
+Ghost click lives in `src/overlay/ghost-click.ts` (`startModalSession({ isOpenedByPointer })`).
+
 ## Persisted UI state (`src/dom/state-store.ts`, SPEC §12.17 — implemented)
 
 `createStateStore(host, { getKey, getLoadCallback?, getSaveCallback?, toContext? })` → `{ load, save, clear }`.

@@ -270,6 +270,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | `promptDialog`: validation message, Enter submits, focus returns | ✓ | `modal.spec.ts` | `modal.html` |
 | `confirmDialog` danger: focus on Cancel, Escape = false, Delete = true | ✓ | `modal.spec.ts` | `modal.html` |
 | Desktop centered card sized to content, `z-index` 7000; phone bottom sheet | ✓ | `modal.spec.ts` | `modal.html` |
+| Ghost click: a sheet opened on the press — real tap picks the option without the guard; `isOpenedByPointer` swallows it, the next tap works | ✓ | `modal.spec.ts` | `modal.html` |
 
 ## 13g. Overlay tree (`overlay-tree.spec.ts`)
 

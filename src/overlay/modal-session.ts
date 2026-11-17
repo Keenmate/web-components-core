@@ -7,7 +7,8 @@
  * - an optional backdrop: `true` = core creates one (`Z_INDEX.modalBackdrop`, `--base-overlay-bg`) right before
  *   the panel, an element = your own; a click on it dismisses;
  * - Escape through the overlay tree (the deepest overlay closes first: a dropdown opened inside closes before
- *   the dialog), the phone Back gesture, page scroll lock and the keyboard inset (`startSheetSession`).
+ *   the dialog), the phone Back gesture, page scroll lock and the keyboard inset (`startSheetSession`);
+ * - opened by a press (`isOpenedByPointer`): the tap's trailing "ghost" click on the panel / backdrop is swallowed.
  *
  * Core never closes the panel itself: `onDismiss(reason)` tells the component, which closes and calls `end()`.
  * The panel's own `z-index` is the component's (`Z_INDEX.modal`, §12.18).
@@ -15,6 +16,7 @@
 import { createFocusTrap, type FocusTrapOptions } from '../dom/focus-trap.js';
 import { Z_INDEX } from '../dom/z-index.js';
 import { registerOverlay, type OverlayHandle } from './active-overlay.js';
+import { guardGhostClick } from './ghost-click.js';
 import { startSheetSession, type SheetSessionOptions } from './sheet-session.js';
 
 /** Why a modal asks to close: Escape, the phone Back gesture, a backdrop click, or the overlay tree. */
@@ -47,6 +49,12 @@ export interface ModalSessionOptions
   shouldObserveKeyboardInset?: boolean;
   /** Overlay-tree group (default: a modal-only group, so other overlays opening don't dismiss it). */
   group?: unknown;
+  /**
+   * The modal opened on a PRESS (`pointerdown` / `mousedown` of a tap): swallow that tap's trailing click if it
+   * lands on the panel or backdrop (it would pick an option / dismiss at once) — {@link guardGhostClick}.
+   * Leave it off for a modal opened on `click` or the keyboard. Default `false`.
+   */
+  isOpenedByPointer?: boolean;
 }
 
 export interface ModalSession {
@@ -130,6 +138,8 @@ export function startModalSession(panel: HTMLElement, opts: ModalSessionOptions)
       getInsideElements: () => [backdrop],
     },
   );
+
+  if (opts.isOpenedByPointer) undo.push(guardGhostClick([panel, backdrop]));
 
   // Focus trap last: it moves focus in.
   const trap = createFocusTrap(panel, {

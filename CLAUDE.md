@@ -224,7 +224,8 @@ The shared context / dropdown menu lives in `src/menu/` (subpath `/menu`, SPEC
 Modals go through `startModalSession(panel, { backdrop, onDismiss })` (`src/overlay/modal-session.ts`,
 main index, SPEC §12.19: inert page + Tab trap via `createFocusTrap`, Escape / Back / backdrop → `onDismiss`,
 the component closes + `end()`); ready-made `openDialog` / `confirmDialog` / `promptDialog` in `src/dialog/`
-(subpath `/dialog`) — never `window.prompt` / `confirm` or a hand-written trap. Stacking via `Z_INDEX`
+(subpath `/dialog`) — never `window.prompt` / `confirm` or a hand-written trap; a modal opened on a press
+passes `isOpenedByPointer` (ghost-click guard). Stacking via `Z_INDEX`
 (§12.18): dialogs and phone sheets are the modal tier.
 
 Loading states go through `renderLoader(host, container, context, { label, prefix })`
@@ -232,6 +233,9 @@ Loading states go through `renderLoader(host, container, context, { label, prefi
 > page-wide `window.components.renderLoadingCallback` (non-enumerable accessor, state on
 `globalThis`) > default `<span class="<prefix>-loader">`. Core ships no loader CSS —
 components copy the drawing rule from §12.14.
+
+Form submission goes through `createFormInputs` + `formatFormValue`, async loading through
+`createAsyncRunner`, screen-reader announcements through `announce()` (`src/dom/`, main index, SPEC §12.21–§12.23).
 
 Container scroll goes through `scrollIntoContainer(el, opts)` / `findScrollContainer(el, opts)`
 (`src/dom/scroll-container.ts`, main index, SPEC §12.15) — scrolls the one container around an

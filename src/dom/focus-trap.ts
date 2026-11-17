@@ -14,6 +14,7 @@
  * `release()` restores both and returns focus to what had it before (or `returnFocusTo`) when focus is still
  * inside the panel or was lost to `<body>`.
  */
+import { ANNOUNCER_ATTRIBUTE } from './announce.js';
 import { deepActiveElement } from './active-element.js';
 
 export interface FocusTrapOptions {
@@ -99,6 +100,7 @@ function inertBackground(panel: Element, keep: readonly (Element | null | undefi
     for (const sibling of parent.children) {
       if (sibling === node || keepSet.has(sibling) || sibling.hasAttribute('inert')) continue;
       if (sibling.localName === 'style' || sibling.localName === 'script' || sibling.localName === 'template') continue;
+      if (sibling.hasAttribute(ANNOUNCER_ATTRIBUTE)) continue; // announce() keeps talking over a modal
       sibling.setAttribute('inert', '');
       changed.push(sibling);
     }

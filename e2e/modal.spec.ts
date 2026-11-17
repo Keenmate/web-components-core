@@ -125,3 +125,24 @@ test.describe('/dialog on a phone', () => {
     await expect(page.locator('#result')).toHaveText('true');
   });
 });
+
+test.describe('ghost click (a sheet opened on the press, real taps)', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  test('without the guard the opening tap picks the option under the finger', async ({ page }) => {
+    await page.locator('#guard').setChecked(false);
+    await page.tap('#press-open');
+    await expect.poll(() => log(page)).toEqual(['press-open', 'press-option']);
+  });
+
+  test('isOpenedByPointer swallows that click; the next tap works', async ({ page }) => {
+    await page.tap('#press-open');
+    await page.waitForTimeout(100);
+    expect(await log(page)).toEqual(['press-open']);
+    await expect(page.locator('#press-panel')).toBeVisible();
+    await page.tap('#press-option');
+    await expect.poll(() => log(page)).toEqual(['press-open', 'press-option']);
+    await page.tap('#press-close');
+    await expect(page.locator('#press-panel')).toBeHidden();
+  });
+});
