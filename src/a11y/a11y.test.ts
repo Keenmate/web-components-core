@@ -64,6 +64,16 @@ describe('createActiveDescendant', () => {
     expect(key(input, 'ArrowDown').defaultPrevented).toBe(false);
   });
 
+  it('shouldHandleKeys: false = ARIA only — keys are the component’s, move() / setActive() still write the attribute', () => {
+    const { input, items, ad, onActivate } = setup({ shouldHandleKeys: false });
+    expect(key(input, 'ArrowDown').defaultPrevented).toBe(false);
+    expect(input.hasAttribute('aria-activedescendant')).toBe(false);
+    ad.move(1);
+    expect(input.getAttribute('aria-activedescendant')).toBe(items()[0]!.id);
+    key(input, 'Enter');
+    expect(onActivate).not.toHaveBeenCalled();
+  });
+
   it('ignores composing / modified keys and a throwing onActiveChange', () => {
     const { input, ad } = setup({ onActiveChange: () => { throw new Error('paint'); } });
     expect(key(input, 'ArrowDown', { isComposing: true }).defaultPrevented).toBe(false);

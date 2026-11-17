@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { renderSlot } from './render-slot.js';
+import { renderSlot, renderSlotHtml } from './render-slot.js';
 
 describe('renderSlot', () => {
   it('string = HTML, node = mounted, null = default, false = hidden', () => {
@@ -30,5 +30,18 @@ describe('renderSlot', () => {
     renderSlot(c, hook, { memoKey: 'row-1@v2' });
     expect(hook).toHaveBeenCalledTimes(2);
     expect(c.firstChild).toBe(span); // same HTML: the span survives (focus, listeners)
+  });
+
+  it('renderSlotHtml: the same reading as a string', () => {
+    expect(renderSlotHtml('<b>x</b>')).toEqual({ html: '<b>x</b>', kind: 'custom' });
+    expect(renderSlotHtml(null, () => 'def')).toEqual({ html: 'def', kind: 'default' });
+    expect(renderSlotHtml(() => undefined)).toEqual({ html: '', kind: 'default' });
+    expect(renderSlotHtml(false, () => 'def')).toEqual({ html: '', kind: 'hidden' });
+    const i = document.createElement('i');
+    i.textContent = 'a<b';
+    expect(renderSlotHtml(i)).toEqual({ html: '<i>a&lt;b</i>', kind: 'custom' });
+    const frag = document.createDocumentFragment();
+    frag.append('t', document.createElement('br'));
+    expect(renderSlotHtml(frag).html).toBe('t<br>');
   });
 });

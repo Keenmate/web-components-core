@@ -59,7 +59,8 @@ export function readScrollBehavior(el: Element, property = '--base-scroll-behavi
 /**
  * A CSS length custom property (`'--xx-badge-height'`: `2.4rem`, `calc(…)`, `var(…)`) resolved to px at
  * `el`, by letting the browser resolve it on a hidden probe inside `el` (so `em` and inherited variables
- * resolve where they apply). `fallbackPx` when unset, unresolvable, or with no layout (SSR, jsdom).
+ * resolve where they apply) — also inside a `display: none` subtree (the computed width). `fallbackPx` when
+ * unset or unresolvable (SSR, jsdom).
  */
 export function readCssLengthPx(el: Element, property: string, fallbackPx = 0): number {
   if (!computed(el, property)) return fallbackPx;
@@ -71,7 +72,11 @@ export function readCssLengthPx(el: Element, property: string, fallbackPx = 0): 
   parent.appendChild(probe);
   try {
     const width = probe.getBoundingClientRect().width;
-    return width > 0 ? width : fallbackPx;
+    if (width > 0) return width;
+    // No layout (a display: none subtree, a detached panel): the computed width is still an absolute length.
+    const value = getComputedStyle(probe).width;
+    const px = value.endsWith('px') ? parseFloat(value) : NaN;
+    return px > 0 ? px : fallbackPx;
   } finally {
     probe.remove();
   }

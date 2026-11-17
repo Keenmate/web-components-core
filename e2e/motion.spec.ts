@@ -154,3 +154,16 @@ test('JS readers: isMotionOff / readScrollBehavior / readCssDurationMs / readCss
   await page.emulateMedia({ reducedMotion: 'reduce' });
   expect((await read())[0]).toEqual({ off: true, scroll: 'auto', ms: 0, len: 40 });
 });
+
+test('readCssLengthPx resolves inside a display: none subtree (no layout box)', async ({ page }) => {
+  const len = await page.evaluate(() => {
+    const box = document.createElement('div');
+    box.style.display = 'none';
+    box.innerHTML = '<motion-probe style="--probe-len: calc(2rem + 4px)"></motion-probe>';
+    document.body.appendChild(box);
+    const value = (window as any).core.readCssLengthPx(box.firstElementChild, '--probe-len', -1);
+    box.remove();
+    return value;
+  });
+  expect(len).toBe(36);
+});

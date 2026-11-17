@@ -94,8 +94,8 @@ export { deepActiveElement } from './dom/active-element.js';
 export { escapeHtml } from './dom/escape-html.js';
 export { findScrollContainer, getScrollTopForBox, scrollContainerToBox, scrollIntoContainer } from './dom/scroll-container.js';
 // One contract for every render*Callback: string = HTML, node, null = default, false = hidden, memo (SPEC §12.35).
-export { renderSlot } from './dom/render-slot.js';
-export type { RenderSlotOptions, SlotKind, SlotResult } from './dom/render-slot.js';
+export { renderSlot, renderSlotHtml } from './dom/render-slot.js';
+export type { RenderSlotOptions, SlotHtml, SlotKind, SlotResult } from './dom/render-slot.js';
 // Icons are data: markup raw / a name masked from --base-icon-<name> / text (SPEC §12.33).
 export { renderIcon, ICON_CSS } from './dom/render-icon.js';
 export type { RenderIconOptions } from './dom/render-icon.js';

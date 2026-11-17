@@ -1,7 +1,7 @@
 ## Keyboard navigation (`src/a11y/`, subpath `/a11y`, SPEC §12.25 — implemented)
 
 `active-descendant.ts`: keydown on the input; `apply(next, list, isForced)` sets `aria-activedescendant`,
-ids via `createId`, scrolls via `scrollIntoContainer` into the listbox / its nearest scroller only (no page
+ids via `createId` (`shouldHandleKeys: false` = no keydown listener, ARIA + scroll only), scrolls via `scrollIntoContainer` into the listbox / its nearest scroller only (no page
 scroll); `refresh()` re-finds by element, then id, else clears (forced). Sets `aria-controls` and
 `tabindex="-1"` on the listbox (Chromium: a scroller without focusable children is a tab stop).
 `roving-focus.ts`: keydown + focusin on the container; `seek()` walks inside a bound (a grid row for Left /

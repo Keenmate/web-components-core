@@ -112,7 +112,7 @@ square); else `escapeHtml`. `ICON_CSS` is NOT part of the manifest test (its onl
 
 ## Render-callback results (`src/dom/render-slot.ts`, SPEC §12.35 — implemented)
 
-`renderSlot`: per-container memo in a module WeakMap (`{ key, hasKey, kind, html }`); `memoKey: undefined` = no
+`renderSlot` (+ `renderSlotHtml`, the stateless string form: a node is serialized): per-container memo in a module WeakMap (`{ key, hasKey, kind, html }`); `memoKey: undefined` = no
 memo; `result` may be a thunk (skipped on a memo hit). `hidden` toggled only by `false` / any other result.
 
 ## Persisted UI state (`src/dom/state-store.ts`, SPEC §12.17 — implemented)

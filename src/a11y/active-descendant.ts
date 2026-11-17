@@ -31,6 +31,11 @@ export interface ActiveDescendantOptions {
   pageSize?: number;
   /** Scroll the active item into the listbox's scroll container (default `true`). */
   shouldScroll?: boolean;
+  /**
+   * `false` = ARIA only: no keydown listener — the component handles its own keys and drives `move()` /
+   * `setActive()`; core still owns `aria-activedescendant`, ids, `aria-controls` and the scroll. Default `true`.
+   */
+  shouldHandleKeys?: boolean;
 }
 
 export interface ActiveDescendant {
@@ -50,7 +55,7 @@ export interface ActiveDescendant {
 const isAriaDisabled = (item: HTMLElement): boolean => item.getAttribute('aria-disabled') === 'true';
 
 export function createActiveDescendant(input: HTMLElement, listbox: HTMLElement, options: ActiveDescendantOptions): ActiveDescendant {
-  const { getItems, onActivate, onActiveChange, isWrapping = false, isSkipped = isAriaDisabled, hasHomeEnd = false, pageSize = 10, shouldScroll = true } = options;
+  const { getItems, onActivate, onActiveChange, isWrapping = false, isSkipped = isAriaDisabled, hasHomeEnd = false, pageSize = 10, shouldScroll = true, shouldHandleKeys = true } = options;
   let active: HTMLElement | null = null;
   let activeId = '';
 
@@ -153,7 +158,7 @@ export function createActiveDescendant(input: HTMLElement, listbox: HTMLElement,
     }
     event.preventDefault();
   };
-  input.addEventListener('keydown', onKeydown);
+  if (shouldHandleKeys) input.addEventListener('keydown', onKeydown);
 
   return {
     get active() {

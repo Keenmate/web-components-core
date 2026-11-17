@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `renderSlot(container, result, { renderDefault, memoKey })` (main index, SPEC §12.35): one contract for every
   `render*Callback` result — a string is HTML, a node is mounted, `null` draws the default, `false` hides; a
   matching `memoKey` skips the hook and the DOM, a same string isn't rewritten (focus survives).
+  `renderSlotHtml(result, renderDefault?)` → `{ html, kind }` is the string form for rows built as HTML strings.
+- `createActiveDescendant(…, { shouldHandleKeys: false })`: ARIA only — no keydown listener; a component with
+  its own keys (and `before*Callback`s) drives `move()` / `setActive()` (found in web-multiselect's pass).
 - `createControllerFacade(target, spec)` (main index, SPEC §12.34): the frozen public controller a
   `createController()` returns — methods forwarded to the current engine (empty answers before the first build),
   live read-only / writable state, nothing else reachable. Replaces six hand-built facades.
@@ -170,6 +173,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and, while open, runs the item on a chord too (`Ctrl+C`), not only on a bare letter / key name.
 
 ### Fixed
+- `readCssLengthPx` resolves inside a `display: none` subtree (the probe's computed width) instead of returning
+  the fallback — a panel measured before it is shown got 0.
 - Sheet close chip (`SHEET_CHROME_CSS`): the hover tint applies only with a real pointer
   (`@media (hover: hover)`), and pressing tints it (`:active`). On touch the circle used to stick
   after a tap, and a sheet opening under a resting mouse showed it at once.

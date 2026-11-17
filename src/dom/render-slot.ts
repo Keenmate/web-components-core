@@ -64,3 +64,26 @@ export function renderSlot(container: HTMLElement, result: SlotResult | (() => S
   memos.set(container, { key: options.memoKey, hasKey, kind, html });
   return kind;
 }
+
+/** What `renderSlotHtml` produced: the HTML to put in the row string, and what it was. */
+export interface SlotHtml {
+  html: string;
+  kind: SlotKind;
+}
+
+/**
+ * The string form of `renderSlot` for components that build rows as HTML strings (a virtual list's window, a
+ * badge row): the same reading of the result — string = HTML, `null` / `undefined` = `renderDefault()`, `false`
+ * = hidden (`''`) — but a `Node` is serialized (`outerHTML` / its children's), so its listeners don't survive;
+ * document that a string-rendered slot takes markup. No memo: there is no container to remember.
+ */
+export function renderSlotHtml(result: SlotResult | (() => SlotResult), renderDefault?: () => string): SlotHtml {
+  const value = typeof result === 'function' ? result() : result;
+  if (value === false) return { html: '', kind: 'hidden' };
+  if (value == null) return { html: renderDefault ? renderDefault() : '', kind: 'default' };
+  if (typeof value === 'string') return { html: value, kind: 'custom' };
+  if ((value as Element).outerHTML !== undefined) return { html: (value as Element).outerHTML, kind: 'custom' };
+  const box = (value.ownerDocument ?? document).createElement('div');
+  box.append(value.cloneNode(true));
+  return { html: box.innerHTML, kind: 'custom' };
+}

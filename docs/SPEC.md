@@ -2307,7 +2307,7 @@ DOM (a dropdown, a tooltip toggling a class).
 JS that has to follow the resolved level reads it at the element (`src/dom/css-values.ts`, main index):
 `isMotionOff(el)` (`--base-duration-normal` is `0s`), `readScrollBehavior(el, prop?)`, `readCssDurationMs(el, prop,
 fallback)` (a speed token for WAAPI) and `readCssLengthPx(el, prop, fallback)` (a hidden probe resolves the length
-where it applies). Components never probe `getComputedStyle` for these themselves.
+where it applies; inside a `display: none` subtree its computed width). Components never probe `getComputedStyle` for these themselves.
 
 base-css-variables carries the same `[data-motion]` presets (the reference for the values; a core
 unit test compares them when the repo sits next to core).
@@ -2512,7 +2512,9 @@ web-daterangepicker day grid and web-treeview moved real focus their own way, we
 Decided 2026-11-17 — two patterns, roles stay per component:
 
 - **`createActiveDescendant(input, listbox, { getItems, onActivate, onActiveChange, isWrapping, isSkipped,
-  hasHomeEnd, pageSize, shouldScroll })`** → `{ active, activeIndex, setActive, move, refresh, destroy }`. Focus
+  hasHomeEnd, pageSize, shouldScroll, shouldHandleKeys })`** → `{ active, activeIndex, setActive, move, refresh,
+  destroy }`. `shouldHandleKeys: false` = ARIA only (a component with its own key handling and
+  `before*Callback`s drives `move()` / `setActive()`; core installs no keydown listener). Focus
   stays in the input; ArrowUp / Down (PageUp / Down by `pageSize`, Home / End only with `hasHomeEnd` — they are
   the caret's otherwise) move over the items, skipping `aria-disabled="true"`; nothing active + ArrowUp starts at
   the last. Core sets `aria-activedescendant`, ids (`createId`), `aria-controls`, `tabindex="-1"` on the listbox
@@ -2714,3 +2716,6 @@ RETURNS its content goes through **`renderSlot(container, result, { renderDefaul
 - Not this contract: hooks that FILL a given element and may return a cleanup (`renderLoadingCallback`, `/menu`'s
   `renderItemCallback` / `renderMenuCallback`, web-treeview's `renderIconCallback`) — they keep "fill + optional
   cleanup".
+- Rows built as HTML strings (a virtual window's rows, a badge strip) use the string form
+  **`renderSlotHtml(result, renderDefault?)`** → `{ html, kind }`: the same reading, `false` → `''`; a `Node` is
+  serialized (no listeners), so such a slot is documented as markup-only. No memo (no container).
