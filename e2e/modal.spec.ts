@@ -20,7 +20,8 @@ test.describe('startModalSession (a component panel in a shadow root)', () => {
     await page.click('#open-own');
     expect(await focusedId(page)).toBe('first');
 
-    // Tab cycles: first → open-dropdown → last → first; Shift+Tab back to last
+    // Tab cycles: first → open-dropdown → announce → last → first; Shift+Tab back to last
+    await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
     expect(await focusedId(page)).toBe('last');
@@ -144,5 +145,44 @@ test.describe('ghost click (a sheet opened on the press, real taps)', () => {
     await expect.poll(() => log(page)).toEqual(['press-open', 'press-option']);
     await page.tap('#press-close');
     await expect(page.locator('#press-panel')).toBeHidden();
+  });
+});
+
+test.describe('announce()', () => {
+  test('one shared live region, still readable while a modal makes the page inert', async ({ page }) => {
+    // the region exists BEFORE the modal opens — the case where inerting the page would silence it
+    await page.evaluate(() => (window as unknown as { __announce(t: string): void }).__announce('Before the modal'));
+    await expect(page.getByRole('status').filter({ hasText: 'Before the modal' })).toHaveCount(1);
+
+    await page.click('#open-own');
+    expect(await page.locator('#page-button').evaluate((el) => el.closest('[inert]') !== null)).toBe(true);
+    await page.locator('#host').evaluate((h) => (h.shadowRoot!.getElementById('announce') as HTMLButtonElement).click());
+
+    const region = page.locator('[data-km-announcer="polite"]');
+    await expect(region).toHaveText('Saved from the modal');
+    expect(await region.evaluate((el) => el.closest('[inert]') === null)).toBe(true);
+    await expect(page.getByRole('status').filter({ hasText: 'Saved from the modal' })).toHaveCount(1);
+    expect(await page.locator('[data-km-announcer]').count()).toBe(1);
+    // visually hidden: 1px, clipped
+    const box = await region.boundingBox();
+    expect(box && box.width <= 1 && box.height <= 1).toBe(true);
+  });
+
+  test('the same text twice is cleared and written again', async ({ page }) => {
+    const say = (t: string) => page.evaluate((x) => (window as unknown as { __announce(t: string): void }).__announce(x), t);
+    await say('3 results');
+    const region = page.locator('[data-km-announcer="polite"]');
+    await expect(region).toHaveText('3 results');
+    const texts = await page.evaluate(async () => {
+      const el = document.querySelector('[data-km-announcer="polite"]')!;
+      const seen: string[] = [];
+      const mo = new MutationObserver(() => seen.push(el.textContent ?? ''));
+      mo.observe(el, { childList: true, characterData: true, subtree: true });
+      (window as unknown as { __announce(t: string): void }).__announce('3 results');
+      await new Promise((r) => setTimeout(r, 150));
+      mo.disconnect();
+      return seen;
+    });
+    expect(texts).toEqual(['', '3 results']);
   });
 });

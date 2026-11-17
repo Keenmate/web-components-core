@@ -30,7 +30,8 @@
     <div class="tall"></div>
 
     <script type="module">
-        import { startModalSession, registerOverlay } from '/src/index.ts';
+        import { startModalSession, registerOverlay, announce } from '/src/index.ts';
+        window.__announce = announce;
         import { promptDialog, confirmDialog } from '/src/dialog/index.ts';
 
         const result = document.getElementById('result');
@@ -47,6 +48,7 @@
                         <style>#own-panel{position:fixed;inset:0;margin:auto;width:320px;height:fit-content;padding:12px;background:#fff;border:1px solid #888;z-index:var(--base-z-modal,7000)}</style>
                         <button id="first">first</button>
                         <button id="open-dropdown">open dropdown</button>
+                        <button id="announce">announce</button>
                         <button id="last">last</button>
                     </div>`;
             }
@@ -61,6 +63,7 @@
                 };
                 const session = startModalSession(panel, { backdrop: true, onDismiss: close, trigger });
                 this.session = session;
+                this.shadowRoot.getElementById('announce').onclick = () => announce('Saved from the modal');
                 this.shadowRoot.getElementById('open-dropdown').onclick = (e) => this.openDropdown(e.currentTarget);
             }
             // a dropdown portaled to <body> (mounted AFTER the modal started: not inert)

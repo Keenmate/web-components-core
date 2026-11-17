@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test — createFormInputs (real form submission)</title>
+    <link rel="stylesheet" href="test-fixtures.css">
+</head>
+<body>
+    <h1>form inputs fixture</h1>
+    <p>Targeted by <code>e2e/form-inputs.spec.ts</code>: <code>createFormInputs</code> + <code>formatFormValue</code>
+        writing light-DOM hidden inputs into custom-element hosts, submitted by a real <code>&lt;form method="get"&gt;</code>
+        (the submitted query lands in the URL).</p>
+    <form id="form" method="get" action="/test/form-inputs.html">
+        <!-- marks a submitted URL (the spec waits for it), dropped from the pairs -->
+        <input type="hidden" name="_" value="1">
+        <fx-field id="a"></fx-field>
+        <fx-field id="b"></fx-field>
+        <button id="submit" type="submit">submit</button>
+    </form>
+    <output id="query"></output>
+
+    <script type="module">
+        import { createFormInputs, formatFormValue } from '/src/index.ts';
+
+        // A component with a shadow root: the hidden inputs are its LIGHT-DOM children (inside the <form>).
+        class FxField extends HTMLElement {
+            constructor() {
+                super();
+                this.attachShadow({ mode: 'open' }).innerHTML = '<span>shadow UI</span>';
+                this.form = createFormInputs(this);
+            }
+            setValue(name, values, format, opts = {}) {
+                const { value, error } = formatFormValue(values, format, opts);
+                this.form.write(name, value, { isDisabled: !!opts.isDisabled });
+                return error ? String(error) : null;
+            }
+        }
+        customElements.define('fx-field', FxField);
+        document.getElementById('query').textContent = location.search;
+        window.__ready = true;
+    </script>
+</body>
+</html>
