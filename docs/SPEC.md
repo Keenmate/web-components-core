@@ -172,7 +172,7 @@ correct" is enforced. Naming: `to<Type>` — "convert the raw value to a …".
 
 ```ts
 toEnum(values, { default?, isNullable? })  // match (attribute trimmed, case-insensitive → declared spelling) against the set; invalid → default (or null; with no default, el.x = null clears it too)
-toInt({ min?, max?, default? })                // the WHOLE (trimmed) attribute is a base-10 integer + range-check; "12px" / "1.9" / "1e3" / "0x10" are invalid
+toInt({ min?, max?, default?, isNullable? }) // isNullable: absent / empty → null (like toText); the WHOLE (trimmed) attribute is a base-10 integer + range-check; "12px" / "1.9" / "1e3" / "0x10" are invalid
 toFloat({ min?, max?, default? })              // the whole attribute is a finite decimal ("1.5", "-2e3"); "1.5em" / "1,5" / "Infinity" are invalid
 toCssLength({ default?, allowNegative?, keywords? })  // a CSS length for style-only inputs: "12px" | "2rem" | "50%" | calc(…) | var(…); a bare number (attribute or property) → px
 toText({ shouldTrim?, isEmptyAllowed?, isNullable?, default? })  // string (NOT toString). isNullable:true → absent/empty is null (optional string), not ''

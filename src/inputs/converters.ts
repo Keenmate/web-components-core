@@ -87,17 +87,22 @@ const DECIMAL = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
  * Parse a base-10 integer with optional range check. The WHOLE attribute must be the
  * number: `"12px"`, `"1.9"`, `"1e3"` and `"0x10"` are invalid (warn, keep the previous
  * value) instead of quietly becoming 12, 1, 1 and 0. Values with a CSS unit belong in
- * {@link toCssLength}.
+ * {@link toCssLength}. `isNullable: true` (like {@link toText} / {@link toEnum}): absent / empty → `null`, and `null`
+ * is a valid assigned value (unset — "no limit", "no level"); without it the unset value is `default`.
  */
-export function toInt(opts: { min?: number; max?: number; default?: number } = {}): Converter<number> {
+export function toInt(opts: { min?: number; max?: number; default?: number; isNullable: true }): Converter<number | null>;
+export function toInt(opts?: { min?: number; max?: number; default?: number; isNullable?: false }): Converter<number>;
+export function toInt(opts: { min?: number; max?: number; default?: number; isNullable?: boolean } = {}): Converter<number | null> {
   return toNumber((raw) => (INTEGER.test(raw) ? Number(raw) : Number.NaN), Number.isInteger, opts, 'an integer');
 }
 
 /**
  * Parse a finite floating-point number with optional range check. The whole attribute
- * must be the number (`"1.5"`, `"-2e3"`); `"1.5em"`, `"1,5"` and `"Infinity"` are invalid.
+ * must be the number (`"1.5"`, `"-2e3"`); `"1.5em"`, `"1,5"` and `"Infinity"` are invalid. `isNullable` as {@link toInt}.
  */
-export function toFloat(opts: { min?: number; max?: number; default?: number } = {}): Converter<number> {
+export function toFloat(opts: { min?: number; max?: number; default?: number; isNullable: true }): Converter<number | null>;
+export function toFloat(opts?: { min?: number; max?: number; default?: number; isNullable?: false }): Converter<number>;
+export function toFloat(opts: { min?: number; max?: number; default?: number; isNullable?: boolean } = {}): Converter<number | null> {
   return toNumber((raw) => (DECIMAL.test(raw) ? Number(raw) : Number.NaN), Number.isFinite, opts, 'a number');
 }
 
@@ -105,15 +110,18 @@ export function toFloat(opts: { min?: number; max?: number; default?: number } =
 function toNumber(
   parse: (raw: string) => number,
   isNumber: (n: number) => boolean,
-  opts: { min?: number; max?: number; default?: number },
+  opts: { min?: number; max?: number; default?: number; isNullable?: boolean },
   expected: string,
-): Converter<number> {
+): Converter<number | null> {
   const inRange = (n: number): boolean =>
     (opts.min == null || n >= opts.min) && (opts.max == null || n <= opts.max);
-  const fallback = opts.default as number;
+  const isNullable = opts.isNullable === true;
+  // nullable: unset is null unless an explicit default is given (toText's rule)
+  const fallback = (isNullable && opts.default === undefined ? null : opts.default) as number | null;
   return {
     fromAttribute(raw, _el, _attr, reportInvalid) {
       if (raw === null) return fallback;
+      if (isNullable && raw.trim() === '') return null;
       const n = parse(raw.trim());
       if (Number.isNaN(n) || !isNumber(n)) {
         reportInvalid?.(`expected ${expected}`);
@@ -125,10 +133,11 @@ function toNumber(
       }
       return n;
     },
-    validate(value): value is number {
+    validate(value): value is number | null {
+      if (value === null) return isNullable;
       return typeof value === 'number' && isNumber(value) && inRange(value);
     },
-    toAttribute: scalarToAttribute,
+    toAttribute: (value) => (value === null ? null : scalarToAttribute(value)),
   };
 }
 

@@ -52,6 +52,20 @@ describe('toInt / toFloat', () => {
     expect(c.fromAttribute!('101', reader(), 'x')).toBe(0);
     expect(c.validate!(101)).toBe(false);
   });
+
+  it('isNullable: absent / empty → null, null is a valid value and removes the attribute; a bad value still warns', () => {
+    const c = toInt({ min: 0, isNullable: true });
+    expect(c.fromAttribute!(null, reader(), 'x')).toBeNull();
+    expect(c.fromAttribute!('  ', reader(), 'x')).toBeNull();
+    expect(c.fromAttribute!('3', reader(), 'x')).toBe(3);
+    expect(c.validate!(null)).toBe(true);
+    expect(c.validate!(-1)).toBe(false);
+    expect(c.toAttribute!(null)).toBeNull();
+    expect(c.toAttribute!(3)).toBe('3');
+    expect(toInt({ isNullable: true, default: 2 }).fromAttribute!(null, reader(), 'x')).toBe(2); // an explicit default wins
+    expect(toInt().validate!(null)).toBe(false); // not nullable: null is refused
+    expect(toFloat({ isNullable: true }).fromAttribute!('', reader(), 'x')).toBeNull();
+  });
 });
 
 describe('toText', () => {

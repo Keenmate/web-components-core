@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `toInt` / `toFloat({ isNullable: true })`: absent / empty → `null`, `null` a valid assigned value — like `toText` /
+  `toEnum` (web-grid had its own `toNullableInt`).
 - `startPanelSession(panel, { onDismiss, … })` (main index, SPEC §12.19): the non-modal sibling of
   `startModalSession` — Escape through the overlay tree, a click outside and Back dismiss; no backdrop, inert page,
   focus trap or scroll lock. For a drawer the page stays usable around (web-dropzone's upload drawer).

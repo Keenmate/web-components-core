@@ -82,7 +82,7 @@ The `to*` factory library sets both paths from the same inputs:
 | factory | for |
 | --- | --- |
 | `toEnum(values, { default?, isNullable? })` | fixed string set |
-| `toInt({ min?, max?, default? })` / `toFloat(...)` | numbers |
+| `toInt({ min?, max?, default?, isNullable? })` / `toFloat(...)` | numbers; `isNullable` = absent / empty → `null` (unset) |
 | `toText({ shouldTrim?, isEmptyAllowed?, isNullable?, default? })` | strings (`isNullable` → optional string, absent/empty ⇒ `null`) |
 | `toBool('default-false' \| 'default-true' \| 'tristate' \| 'presence')` | booleans — mode required; `'presence'` is the native rule (`x="false"` is still `true`), meant for `disabled` / `readonly` |
 | `toBytes({ default? })` | human sizes (`"10mb"`) |
