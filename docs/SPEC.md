@@ -2646,7 +2646,9 @@ Decided 2026-11-17:
   inherit into the layer (not a descendant): the ones the layer CSS reads are listed in `cssVars` and their
   computed values at the host are set on the layer (re-read by `syncTheme()`); page tokens and the theme arrive on
   their own. Core's `:host { all: initial }` reset is in the lowest cascade layer (`@layer km-layer-base`), so the
-  component's rules — layered or not — override it (found in web-dropzone's pass: a layered
+  component's rules — layered or not — override it. The host's text look (font family / size / weight / style, line
+  height, colour, letter spacing) and `dir` are copied inline on the layer — what it would have inherited inside the
+  host (web-treeview's pass); `syncTheme()` re-reads them (found in web-dropzone's pass: a layered
   `:host([data-theme]) { color-scheme }` lost to the unlayered reset).
 - **Drawer preset**: `.km-drawer` + `.km-drawer--start | --end | --top | --bottom` in `SHEET_CHROME_CSS` — fixed on
   one edge (start / end follow the panel's writing direction), the modal tier, safe-area padding, slide in / out on

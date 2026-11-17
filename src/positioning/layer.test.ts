@@ -52,6 +52,24 @@ describe('createLayer', () => {
     layer.destroy();
   });
 
+  it('the host\u2019s text look and writing direction come along (inherited inside the host, not in the overlay)', () => {
+    const section = document.createElement('section');
+    section.dir = 'rtl';
+    const host = document.createElement('div');
+    host.style.fontFamily = 'monospace';
+    host.style.lineHeight = '2';
+    section.append(host);
+    document.body.append(section);
+    const layer = createLayer(host);
+    expect(layer.layer.style.fontFamily).toBe('monospace');
+    expect(layer.layer.style.lineHeight).toBe('2');
+    expect(layer.layer.dir).toBe('rtl');
+    section.dir = 'ltr';
+    layer.syncTheme();
+    expect(layer.layer.dir).toBe('ltr');
+    layer.destroy();
+  });
+
   it('a host inside an open modal <dialog> mounts in the dialog (top layer)', () => {
     const dialog = document.createElement('dialog');
     const host = document.createElement('div');

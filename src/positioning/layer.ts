@@ -14,6 +14,9 @@
  * The layer isn't the host's descendant, so per-instance custom properties set ON the host don't inherit
  * into it; list the ones the layer CSS reads in `cssVars` and their computed values at the host are copied
  * onto the layer (again on `syncTheme()`). Page-level tokens (`:root`) and the theme arrive on their own.
+ * The host's text look (font family / size / weight / style, line height, colour, letter spacing) and its writing
+ * direction (`dir`) are copied too — what the layer would have inherited inside the host; `syncTheme()` re-reads them.
+ * They sit inline on the layer, so the component styles its content elements, not the layer's `:host`.
  * Core's reset (`:host { all: initial }`) sits in the lowest cascade layer (`km-layer-base`), so any of the
  * component's rules — layered or not — win over it (a `:host([data-theme="dark"]) { color-scheme: dark }`).
  */
@@ -24,6 +27,7 @@ import { Z_INDEX } from '../dom/z-index.js';
 import { findOverlayContainer } from './overlay-container.js';
 import { getFixedPositionOffsetParent } from './containing-block.js';
 import { inheritTheme } from './inherit-theme.js';
+import { isRtl } from '../dom/direction.js';
 
 export interface LayerRect {
   top: number;
@@ -70,6 +74,21 @@ const LAYER_CSS = `
 }
 `;
 
+/**
+ * What the layer would have inherited had it been inside the host: the text look and the writing direction. Copied
+ * inline (an inline style beats core's `all: initial` reset); the component's layer CSS can still override them.
+ */
+const INHERITED_TEXT = ['font-family', 'font-size', 'font-weight', 'font-style', 'line-height', 'color', 'letter-spacing'] as const;
+
+function copyInheritedText(host: HTMLElement, layer: HTMLElement): void {
+  const style = host.ownerDocument.defaultView?.getComputedStyle(host);
+  if (style) for (const name of INHERITED_TEXT) {
+    const value = style.getPropertyValue(name);
+    if (value) layer.style.setProperty(name, value);
+  }
+  layer.dir = isRtl(host) ? 'rtl' : 'ltr';
+}
+
 /** Copy `names`' computed values at `host` onto `layer` (an unset one is removed). */
 function copyCssVars(host: HTMLElement, layer: HTMLElement, names: readonly string[]): void {
   if (!names.length) return;
@@ -99,6 +118,7 @@ export function createLayer(host: HTMLElement, options: LayerOptions = {}): Laye
   let restoreTheme = inheritTheme(host, layer);
   const cssVars = options.cssVars ?? [];
   copyCssVars(host, layer, cssVars);
+  copyInheritedText(host, layer);
 
   return {
     element,
@@ -120,6 +140,7 @@ export function createLayer(host: HTMLElement, options: LayerOptions = {}): Laye
       restoreTheme();
       restoreTheme = inheritTheme(host, layer);
       copyCssVars(host, layer, cssVars);
+      copyInheritedText(host, layer);
     },
     destroy() {
       restoreTheme();

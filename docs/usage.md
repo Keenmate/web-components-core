@@ -582,7 +582,7 @@ layer.place(this.getBoundingClientRect());          // viewport coordinates; a t
 layer.destroy();
 ```
 
-The host's theme comes along. Instance tokens set on the host don't inherit into the layer — list the ones its
+The host's theme, font, line height, colour and writing direction come along. Instance tokens set on the host don't inherit into the layer — list the ones its
 CSS reads in `cssVars` (their computed values are copied; `syncTheme()` re-reads them). Your `:host` rules beat
 core's reset even inside `@layer component`.
 

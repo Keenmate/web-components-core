@@ -43,7 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   outside the component — its own shadow root with the component's CSS, the host's theme, mounted in the overlay
   container (body / the open dialog), `place(rect)` in viewport coordinates with a transformed container
   compensated. For drag ghosts, drop pads and "drop here" covers. `cssVars` carries the host's instance tokens
-  onto the layer; core's reset sits in the lowest cascade layer, so the component's `:host` rules win.
+  onto the layer; core's reset sits in the lowest cascade layer, so the component's `:host` rules win. The host's
+  text look (font, line height, colour) and writing direction come along (found in web-treeview's pass).
 - Drawer preset in `SHEET_CHROME_CSS` (SPEC §12.29): `.km-drawer` + `--start | --end | --top | --bottom` — a
   modal panel on one edge (with `startModalSession`), slide in / out on the motion tokens, safe areas; new
   `--km-sheet-drawer-*` variables (size, max-height, bg, color, shadow, border-radius, duration).
