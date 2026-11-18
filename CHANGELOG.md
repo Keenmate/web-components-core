@@ -187,6 +187,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and, while open, runs the item on a chord too (`Ctrl+C`), not only on a bare letter / key name.
 
 ### Fixed
+- `createRovingFocus` focuses with `preventScroll` and brings the item into view inside its scroll container only
+  (`scrollIntoContainer`); a plain `focus()` could scroll the page. `shouldScroll` (boolean or per-item function —
+  a component's `beforeScrollCallback` gate) turns it off (found in web-daterangepicker's calendar pass).
 - `createPointerDrag`: `longPressMs` / `threshold` may be functions (read per press — a component input that
   changes between drags), and `autoScroll.isEnabled(ctx)` holds the edge scroll still for a drag the component
   keeps but refuses (a locked tree node) — found in web-treeview's touch-drag pass.

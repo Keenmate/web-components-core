@@ -23,6 +23,9 @@
     </div>
     <div id="grid" role="grid"></div>
     <button id="after">after</button>
+    <div style="height: 60vh"></div>
+    <div id="vlist" role="listbox" aria-label="Long list" style="height: 120px; overflow: auto; border: 1px solid #999"></div>
+    <div style="height: 150vh"></div>
     <output id="picked"></output>
 
     <script type="module">
@@ -57,6 +60,9 @@
         const grid = document.getElementById('grid');
         grid.innerHTML = Array.from({ length: 8 }, (_, i) => `<button role="gridcell">${i + 1}</button>`).join('');
         createRovingFocus(grid, { getItems: () => [...grid.children], orientation: 'grid', columns: 3 });
+        const vlist = document.getElementById('vlist');
+        vlist.innerHTML = Array.from({ length: 40 }, (_, i) => `<div role="option" style="height: 24px">Row ${i}</div>`).join('');
+        createRovingFocus(vlist, { getItems: () => [...vlist.children] });
     </script>
 </body>
 </html>

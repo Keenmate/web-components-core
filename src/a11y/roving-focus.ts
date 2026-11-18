@@ -10,6 +10,7 @@
  */
 
 import { isRtl } from '../dom/direction.js';
+import { scrollIntoContainer } from '../dom/scroll-container.js';
 import { callSafely } from '../logging/safe-call.js';
 import { createTypeahead } from './typeahead.js';
 
@@ -32,6 +33,11 @@ export interface RovingFocusOptions {
   isSkipped?: (item: HTMLElement) => boolean;
   /** Focus moved to `item` (keys, type-to-find, a click, `focusItem`). */
   onFocusItem?: (item: HTMLElement, index: number) => void;
+  /**
+   * Bring the focused item into view inside its scroll container (never the page; focus itself uses
+   * `preventScroll`). A function is asked per move — the component's `beforeScrollCallback` gate. Default `true`.
+   */
+  shouldScroll?: boolean | ((item: HTMLElement) => boolean);
 }
 
 export interface RovingFocus {
@@ -65,7 +71,10 @@ export function createRovingFocus(container: HTMLElement, options: RovingFocusOp
     if (!item) return;
     setTabStop(list, item);
     if (opts.shouldFocus !== false) {
-      item.focus();
+      item.focus({ preventScroll: true }); // a plain focus() scrolls every ancestor — the page too
+      const scroll = options.shouldScroll ?? true;
+      const isScrolling = typeof scroll === 'function' ? callSafely(() => scroll(item), { source: container, message: 'shouldScroll threw' }) : { isOk: true as const, value: scroll };
+      if (isScrolling.isOk && isScrolling.value !== false) scrollIntoContainer(item, { block: 'nearest', inline: 'nearest' });
       if (onFocusItem) callSafely(() => onFocusItem(item, list.indexOf(item)), { source: container, message: 'onFocusItem threw' });
     }
   };

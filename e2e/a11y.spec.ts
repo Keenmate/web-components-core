@@ -52,6 +52,20 @@ test('roving toolbar: one tab stop, arrows move focus, type-to-find, Tab leaves'
   expect(await focused(page)).toBe('Strike');
 });
 
+test('roving focus scrolls the list only, never the page', async ({ page }) => {
+  await page.locator('#vlist [role="option"]').first().scrollIntoViewIfNeeded();
+  await page.locator('#vlist [role="option"]').first().focus();
+  const pageY = await page.evaluate(() => window.scrollY);
+  for (let i = 0; i < 15; i++) await page.keyboard.press('ArrowDown');
+  await expect(page.locator('#vlist [role="option"]').nth(15)).toBeFocused();
+  expect(await page.evaluate(() => window.scrollY)).toBe(pageY);
+  expect(await page.locator('#vlist').evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  const box = (await page.locator('#vlist [role="option"]').nth(15).boundingBox())!;
+  const list = (await page.locator('#vlist').boundingBox())!;
+  expect(box.y).toBeGreaterThanOrEqual(list.y - 1);
+  expect(box.y + box.height).toBeLessThanOrEqual(list.y + list.height + 1);
+});
+
 test('roving grid: arrows by row and column, Home / End per row, Ctrl+End', async ({ page }) => {
   await page.locator('#grid button').first().focus();
   await page.keyboard.press('ArrowDown');
