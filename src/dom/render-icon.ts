@@ -8,7 +8,8 @@
  * 2. a built-in name ({@link BUILT_IN_ICON_NAMES}: `close`, `chevron`, `check`, …) → `<span class="km-icon
  *    <prefix>__icon <prefix>__icon--close">`, a glyph masked from the `--base-icon-<name>` token in `currentColor`.
  *    Reserved: the page-wide hook never sees them (a theme restyles them through the token);
- * 3. the page-wide `window.components.renderIconCallback(name, ctx)` → markup, or `null` / `undefined` = not mine;
+ * 3. the element's own `renderIconCallback(name, ctx)`, then the page-wide `window.components.renderIconCallback` →
+ *    markup, or `null` / `undefined` = not mine (the next one decides) — one multiselect needs no page setup;
  * 4. ASCII class names (`fa-solid fa-folder`, `bi-gear`, `material-symbols-outlined`) → `<i class="<prefix>__icon
  *    fa-solid fa-folder" aria-hidden="true">` — an icon font (keen-pure-admin's `<i class={name}>`);
  * 5. anything else (an emoji, a letter in another script) → escaped text.
@@ -24,12 +25,23 @@ import { callSafely } from '../logging/safe-call.js';
 export interface RenderIconOptions {
   /** The component's BEM block: adds `<prefix>__icon` (+ `<prefix>__icon--<name>` on a built-in) to the icon. */
   prefix?: string;
-  /** The component host: `component` / `element` in the page hook's context, and its logger for a throwing hook. */
+  /**
+   * The component host: its `renderIconCallback` is the instance hook, `component` / `element` go into the hooks'
+   * context, and a throwing hook is logged through its logger.
+   */
   host?: Element | null;
+  /**
+   * The instance hook. Omitted → read from `host.renderIconCallback` (the component's input row); pass it explicitly
+   * when the component keeps it elsewhere. `null` / `undefined` → no instance hook.
+   */
+  renderIconCallback?: RenderIconCallback | null;
+  /** Component extras for the hooks' context (`{ node }`, `{ item }`), next to `component` / `element` / `prefix`. */
+  context?: Readonly<Record<string, unknown>>;
 }
 
-/** What the page-wide `renderIconCallback` receives next to the name. */
+/** What a `renderIconCallback` (instance or page-wide) receives next to the name, + the component's extras. */
 export interface IconRenderContext {
+  [extra: string]: unknown;
   /** The component's tag name (`'web-multiselect'`); `''` when the caller passed no host. */
   component: string;
   /** The component host, when the caller passed it. */
@@ -39,14 +51,14 @@ export interface IconRenderContext {
 }
 
 /**
- * The page-wide icon hook: map an icon name (`'fa delete'`, `'lucide-rocket'`, `'star'`) to markup, or answer
+ * An icon hook (the element's `renderIconCallback` and the page-wide one share it): map an icon name (`'fa delete'`, `'lucide-rocket'`, `'star'`) to markup, or answer
  * `null` / `undefined` for a name that isn't yours (the next rule decides). A string is used as is (`''` = no icon).
  */
 export type RenderIconCallback = (name: string, ctx: IconRenderContext) => string | null | undefined;
 
 /**
  * The reserved built-in names — the base-css-variables `--base-icon-*` glyphs. Always masked from their token;
- * the page-wide hook never sees them. Name another set's icon differently (`'fa-solid fa-xmark'`, not `'close'`).
+ * no hook sees them. Name another set's icon differently (`'fa-solid fa-xmark'`, not `'close'`).
  */
 export const BUILT_IN_ICON_NAMES: readonly string[] = Object.freeze([
   'add', 'bell', 'caret-down', 'caret-up', 'check', 'chevron', 'clear', 'close', 'collapse', 'copy', 'danger',
@@ -107,12 +119,18 @@ export function renderIcon(icon: string | null | undefined, options: RenderIconO
     const own = prefix ? ` ${prefix}__icon ${prefix}__icon--${value}` : '';
     return `<span class="km-icon${own}" style="--_km-icon: var(--base-icon-${value}, linear-gradient(transparent 0 0))" aria-hidden="true"></span>`;
   }
-  const hook = pageHook();
-  if (hook) {
-    const host = options.host ?? null;
-    const result = callSafely(() => hook(value, { component: host?.localName ?? '', element: host, prefix }), {
+  const host = options.host ?? null;
+  const own = 'renderIconCallback' in options ? options.renderIconCallback : (host as { renderIconCallback?: unknown } | null)?.renderIconCallback;
+  const hooks: Array<[unknown, string]> = [
+    [own, 'renderIconCallback'],
+    [pageHook(), 'window.components.renderIconCallback'],
+  ];
+  for (const [hook, name] of hooks) {
+    if (typeof hook !== 'function') continue;
+    const ctx: IconRenderContext = { ...options.context, component: host?.localName ?? '', element: host, prefix };
+    const result = callSafely(() => (hook as RenderIconCallback)(value, ctx), {
       source: host,
-      message: `window.components.renderIconCallback threw for "${value}" — using the default rendering`,
+      message: `${name} threw for "${value}" — the next rule decides`,
     });
     if (result.isOk && typeof result.value === 'string') return result.value;
   }

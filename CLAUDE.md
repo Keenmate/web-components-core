@@ -243,7 +243,7 @@ List / tree / grid / toolbar keys go through core `/a11y` (`src/a11y/`, SPEC §1
 
 UI strings + locale go through core `/locale` (`src/locale/`, SPEC §12.24): `createLabels(host, DEFAULT_LABELS,
 () => this.config.labels, { tag: '<component>' })` (`.text` / `.html`; flat keys `<elementType>.<name>`, page-wide one flat
-dictionary `'<component>.<elementType>.<name>'`, `translateCallback` for an app's own i18n), `getLocaleSettings` / `resolveLocale`, `formatNumber` /
+dictionary `'<component>.<elementType>.<name>'`, `translateCallback` for an app's own i18n — the element's own first, then the page-wide one), `getLocaleSettings` / `resolveLocale`, `formatNumber` /
 `parseNumber`; page-wide `window.components.locale` / `.security`; the opt-in `localeChanged()` hook re-renders.
 
 A `render*Callback` result goes through `renderSlot(container, result, { renderDefault, memoKey })` (SPEC §12.35).
@@ -251,7 +251,7 @@ A `render*Callback` result goes through `renderSlot(container, result, { renderD
 `createController()` returns `createControllerFacade(() => engine, { methods, state, writable })` (SPEC §12.34).
 
 Icon strings render through `renderIcon(icon, { prefix, host })` + `ICON_CSS` (SPEC §12.33): markup → built-in name
-(mask) → page `window.components.renderIconCallback` → icon-font `<i class="<prefix>__icon …">` → text.
+(mask) → the element's `renderIconCallback` → page `window.components.renderIconCallback` → icon-font `<i class="<prefix>__icon …">` → text.
 
 Clipboard: `copyText(text)` (API + execCommand fallback) and `readPasteText(event)` (SPEC §12.32).
 

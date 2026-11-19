@@ -2516,7 +2516,9 @@ every element. Decided 2026-10-26 / 10-27 / 10-28 (rulebook D-NC-24), built 2026
   `locale.labels['<tag>.<key>']` (the app's whole translation JSON can be assigned; other keys ignored; a nested
   per-tag object warns) → English (a string wins, `''` included). A key the instance did NOT set goes to
   `translateCallback({ component, key: '<tag>.<key>', template, params, locale })` first — the app's own i18n;
-  `null` / `undefined` = not mine; a throw → logged; then the default `{name}` replacement. **One text, one key:**
+  `null` / `undefined` = not mine; a throw → logged; then the default `{name}` replacement. The element's own
+  `translateCallback` (`getTranslateCallback` option, else `host.translateCallback` — the component's input row) is
+  asked first, the same way; its `null` passes to the page-wide one. **One text, one key:**
   a visible text names its element (a text button has no `aria-label`; an input points at its caption with
   `aria-labelledby`), so no twin key exists to drift. Where twins remain (an icon button's tooltip + screen-reader
   name), an `ariaLabels.x` / `tooltips.x` NOBODY set (still the built-in English) takes the first CUSTOMIZED sibling
@@ -2734,9 +2736,11 @@ web-multiselect each their own. Decided 2026-11-17 — **`renderIcon(icon, { pre
   style="--_km-icon: var(--base-icon-<name>, linear-gradient(transparent 0 0))" aria-hidden="true">` — a 1em glyph
   in `currentColor` masked from the token; an unset token draws nothing (not a square). Reserved: the hook below
   never sees a built-in (a theme restyles it through the token; another set's close is `'fa-solid fa-xmark'`);
-- the page-wide `window.components.renderIconCallback(name, { component, element, prefix })` (non-enumerable,
-  `publishIconHook()`) → a string is used as is (`''` = no icon); `null` / `undefined` = not mine; a throw → logged
-  (the host's logger when the caller passed `host`) and the next rule decides;
+- the element's own `renderIconCallback` (option `renderIconCallback`, else `host.renderIconCallback` — every
+  component's input row), then the page-wide `window.components.renderIconCallback(name, { component, element,
+  prefix, …extras })` (non-enumerable, `publishIconHook()`) → a string is used as is (`''` = no icon); `null` /
+  `undefined` = not mine (the next one decides); a throw → logged (the host's logger) and the next rule decides.
+  One element needs no page setup;
 - ASCII class names (`[A-Za-z][A-Za-z0-9_-]*`, space-separated) → `<i class="<prefix>__icon <names>"
   aria-hidden="true">` — an icon font (`fa-solid fa-folder`, `bi-gear`);
 - anything else (an emoji, a non-Latin letter) → escaped text.

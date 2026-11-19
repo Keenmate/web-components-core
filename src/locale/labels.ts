@@ -6,7 +6,8 @@
  * string, `''` included, wins) → the page-wide flat dictionary `window.components.locale.labels['<full key>']`
  * → the component's built-in English default. An `ariaLabels.x` / `tooltips.x` nobody set takes a customized
  * sibling with the same `<name>` first (`buttons.x`, `labels.x`, … — {@link getLabelSiblings}). A key the instance set is formatted as is (`{name}`); any other
- * goes to `window.components.locale.translateCallback` first (i18next / ICU / the app's own lookup — gets the
+ * goes to the element's own `translateCallback`, then `window.components.locale.translateCallback` (i18next / ICU /
+ * the app's own lookup — one element needs no page setup; each gets the
  * full key, the resolved template and the RAW params; `null` / `undefined` = "not mine"), else the default
  * `{name}` replacement — a NUMBER param is shown through `formatNumber` (the resolved locale and separators:
  * `12 345` in Czech). Pass a string for a number that mustn't be grouped (a year, an id). Then escaping:
@@ -19,7 +20,7 @@
 
 import { escapeHtml } from '../dom/escape-html.js';
 import { callSafely } from '../logging/safe-call.js';
-import { getPageLocale, getPageSecurity } from './page-locale.js';
+import { getPageLocale, getPageSecurity, type TranslateCallback } from './page-locale.js';
 import { resolveLocale } from './settings.js';
 import { formatNumber } from './numbers.js';
 
@@ -45,6 +46,11 @@ export interface CreateLabelsOptions {
   tag?: string;
   /** The element's own locale (its `locale` input), for `translateCallback`'s `ctx.locale`. */
   getLocale?: () => string | null | undefined;
+  /**
+   * The element's own `translateCallback` (asked before the page-wide one; `null` = not mine → the page's).
+   * Default: `host.translateCallback` (the component's input row), read per call.
+   */
+  getTranslateCallback?: () => TranslateCallback | null | undefined;
 }
 
 /** `{name}` → `params.name`; an unknown placeholder stays as written. */
@@ -129,17 +135,23 @@ export function createLabels<L extends object>(
   const template = (key: keyof L & string): string => resolveLabel(tag, defaults, own(), key);
 
   /**
-   * One key, without the sibling fallback: the instance text (a template, never sent to the callback) →
-   * `translateCallback` (a finished text) → the page dictionary → the built-in default (`source: 'default'`).
+   * One key, without the sibling fallback: the instance text (a template, never sent to a callback) → the
+   * element's `translateCallback` → the page-wide one (a finished text) → the page dictionary → the built-in
+   * default (`source: 'default'`).
    */
   const resolveOne = (key: string, values: LabelParams | undefined): { template: string; text?: string; source: LabelSource | 'callback' } => {
     const found = lookup(tag, defaults, own(), key);
     if (found.source === 'instance') return found; // written for this element: the app dictionary must not overwrite it
-    const callback = getPageLocale()?.translateCallback;
-    if (typeof callback === 'function') {
+    const ownCallback = options.getTranslateCallback ? options.getTranslateCallback() : (host as { translateCallback?: unknown }).translateCallback;
+    const callbacks: Array<[unknown, string]> = [
+      [ownCallback, 'translateCallback'],
+      [getPageLocale()?.translateCallback, 'window.components.locale.translateCallback'],
+    ];
+    for (const [callback, name] of callbacks) {
+      if (typeof callback !== 'function') continue;
       const result = callSafely(
-        () => callback({ component: tag, key: `${tag}.${key}`, template: found.template, params: values ?? {}, locale: resolveLocale(options.getLocale?.(), host) }),
-        { source: host, message: `translateCallback threw for "${tag}.${key}" — using the default formatting` },
+        () => (callback as TranslateCallback)({ component: tag, key: `${tag}.${key}`, template: found.template, params: values ?? {}, locale: resolveLocale(options.getLocale?.(), host) }),
+        { source: host, message: `${name} threw for "${tag}.${key}" — the next rule decides` },
       );
       if (result.isOk && typeof result.value === 'string') return { template: found.template, text: result.value, source: 'callback' };
     }

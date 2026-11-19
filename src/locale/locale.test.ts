@@ -198,6 +198,22 @@ describe('labels', () => {
     expect(callback.mock.calls[1]![0].template).toBe('Cancel {name}');
   });
 
+  it("the element's own translateCallback comes first (host.translateCallback or the option); null → the page's", () => {
+    const el = Object.assign(document.createElement('web-x'), {
+      translateCallback: vi.fn((ctx: { key: string }) => (ctx.key === 'web-x.labels.count' ? 'mine' : null)),
+    });
+    page().locale = { translateCallback: (ctx: { key: string }) => (ctx.key === 'web-x.buttons.cancel' ? 'page' : null) };
+    const labels = createLabels(el, DEFAULTS, () => null);
+    expect(labels.text('labels.count', { count: 1 })).toBe('mine');
+    expect(labels.text('buttons.cancel', { name: 'f' })).toBe('page');
+    page().locale = {};
+    expect(labels.text('labels.count', { count: 1 })).toBe('mine'); // no page setup needed
+    const viaOption = createLabels(host, DEFAULTS, () => null, { getTranslateCallback: () => () => 'opt' });
+    expect(viaOption.text('buttons.cancel')).toBe('opt');
+    const own = { 'buttons.cancel': 'Instance' };
+    expect(createLabels(el, DEFAULTS, () => own).text('buttons.cancel')).toBe('Instance'); // instance labels win
+  });
+
   it('a number param is shown locale-formatted; translateCallback gets the raw number; a string stays as is', () => {
     const labels = createLabels(host, DEFAULTS, () => null, { getLocale: () => 'en-US' });
     expect(labels.text('labels.count', { count: 12345 })).toBe('12,345 files');

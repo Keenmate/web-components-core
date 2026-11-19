@@ -46,6 +46,23 @@ describe('renderIcon', () => {
     expect(hook).not.toHaveBeenCalled();
   });
 
+  it("the element's own renderIconCallback comes first; null passes the name on to the page hook", () => {
+    setHook((name) => (name === 'star' || name === 'moon' ? `<page-${name}>` : null));
+    const host = Object.assign(document.createElement('web-ms'), {
+      renderIconCallback: vi.fn<RenderIconCallback>((name, ctx) => (name === 'star' ? `<own-star ${String(ctx.item)}>` : null)),
+    });
+    expect(renderIcon('star', { host, context: { item: 7 } })).toBe('<own-star 7>');
+    expect(host.renderIconCallback).toHaveBeenLastCalledWith('star', { item: 7, component: 'web-ms', element: host, prefix: '' });
+    expect(renderIcon('moon', { host })).toBe('<page-moon>');
+    expect(renderIcon('bi-x', { host })).toBe('<i class="bi-x" aria-hidden="true"></i>');
+    expect(renderIcon('star', { host, renderIconCallback: null })).toBe('<page-star>'); // an explicit option wins over the host
+    setHook(undefined);
+    expect(renderIcon('star', { host })).toBe('<own-star undefined>'); // no page setup needed
+    host.renderIconCallback.mockClear();
+    renderIcon('close', { host });
+    expect(host.renderIconCallback).not.toHaveBeenCalled();
+  });
+
   it('a throwing hook is logged and the default rendering follows', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     setHook(() => {

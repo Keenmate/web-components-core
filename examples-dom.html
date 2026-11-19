@@ -146,8 +146,9 @@ cell.addEventListener('paste', (e) =&gt; {
                     <code>BUILT_IN_ICON_NAMES</code>) is a <code>.km-icon</code> glyph masked from its
                     <code>--base-icon-&lt;name&gt;</code> token in <code>currentColor</code> — reserved, the hook never sees it
                     (this page defines only <code>check</code>, so <code>close</code> draws nothing here);</li>
-                <li>the page-wide <code>window.components.renderIconCallback(name, ctx)</code> maps the app's own names
-                    (here <code>star</code> → an SVG) and answers <code>null</code> for the rest;</li>
+                <li>the element's own <code>renderIconCallback(name, ctx)</code> (here <code>moon</code> → an SVG), then the
+                    page-wide <code>window.components.renderIconCallback</code> (here <code>star</code>) — each answers
+                    <code>null</code> for a name that isn't its own; one element needs no page setup;</li>
                 <li>other class names are an icon font: <code>&lt;i class="demo__icon fa-solid fa-folder"&gt;</code>
                     (<code>demo-font-heart</code> stands in for Font Awesome here);</li>
                 <li>anything else (an emoji, a letter) is escaped text.</li>
@@ -156,19 +157,24 @@ cell.addEventListener('paste', (e) =&gt; {
                 <label>icon <input id="dh05-icon" class="w-md" value="star"></label>
                 <button data-icon="check">check (built-in)</button>
                 <button data-icon="close">close (built-in, token unset)</button>
-                <button data-icon="star">star (hook)</button>
+                <button data-icon="moon">moon (element hook)</button>
+                <button data-icon="star">star (page hook)</button>
                 <button data-icon="demo-font-heart">demo-font-heart (icon font)</button>
                 <button data-icon="fa-solid fa-folder">fa-solid fa-folder</button>
                 <button data-icon="🚀">🚀</button>
                 <button data-icon='&lt;svg viewBox="0 0 10 10" width="1em" height="1em"&gt;&lt;circle cx="5" cy="5" r="4" fill="currentColor"/&gt;&lt;/svg&gt;'>&lt;svg&gt;</button>
                 <button data-icon="&lt;b&gt;">a stray <code>&lt;b&gt;</code> (raw)</button>
+                <label><input type="checkbox" id="dh05-own-hook" checked> element hook set</label>
                 <label><input type="checkbox" id="dh05-hook" checked> page hook set</label>
             </div>
             <div class="output">
                 <span class="output-label">rendered</span> <strong id="dh05-out"></strong>
                 <pre id="dh05-html"></pre>
             </div>
-            <div class="code-block" data-language="js"><pre><code>// once per page — every component asks it for names that aren't built-in
+            <div class="code-block" data-language="js"><pre><code>// one element — asked first, null = not mine
+multiselect.renderIconCallback = (name) =&gt; (name === 'moon' ? '&lt;svg …&gt;' : null);
+
+// once per page — every component asks it for names that aren't built-in
 window.components.renderIconCallback = (name, { component, prefix }) =>
     name === 'star' ? '&lt;svg viewBox="0 0 24 24" width="1em" height="1em"&gt;…&lt;/svg&gt;' : null; // null = not mine
 
@@ -358,13 +364,18 @@ protected override createController() {
         const iconHook = (name) => (name === 'star' ? STAR : null);
         const setIconHook = () => { (window.components ??= {}).renderIconCallback = $('dh05-hook').checked ? iconHook : undefined; };
         setIconHook();
+        const MOON = '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+        const iconHost = document.createElement('demo-icon-host'); // stands in for a component (its renderIconCallback input)
+        const setOwnIconHook = () => { iconHost.renderIconCallback = $('dh05-own-hook').checked ? (name) => (name === 'moon' ? MOON : null) : null; };
+        setOwnIconHook();
         const showIcon = () => {
-            const html = renderIcon($('dh05-icon').value, { prefix: 'demo' });
+            const html = renderIcon($('dh05-icon').value, { prefix: 'demo', host: iconHost });
             $('dh05-out').innerHTML = html;
             $('dh05-html').textContent = html;
         };
         $('dh05-icon').addEventListener('input', showIcon);
         $('dh05-hook').addEventListener('change', () => { setIconHook(); showIcon(); });
+        $('dh05-own-hook').addEventListener('change', () => { setOwnIconHook(); showIcon(); });
         for (const b of document.querySelectorAll('[data-icon]')) {
             b.addEventListener('click', () => { $('dh05-icon').value = b.dataset.icon; showIcon(); });
         }

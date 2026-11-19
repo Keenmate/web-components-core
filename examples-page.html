@@ -392,7 +392,14 @@ owner.customStyles = '.pgc { border-color: #ea580c }';</code></pre></div>
                 The locale, date pattern, 12 / 24 h clock, week start and number separators come from
                 <code>getLocaleSettings()</code>: instance → page → <code>Intl</code>. Assigning the page object
                 re-renders every live component through its <code>localeChanged()</code> hook. Element B has its own
-                <code>locale="de-DE"</code> and one label of its own — those stay.
+                <code>locale="de-DE"</code> and one label of its own — those stay. Element C has its own
+                <code>translateCallback</code> (Slovak, only <code>buttons.remove</code>): it is asked before the page-wide one,
+                and its <code>null</code> leaves the other keys to the page — one element needs no page setup at all.
+            </p>
+            <p class="muted">
+                The <code>&lt;i&gt;Ann&lt;/i&gt;</code> in the title is on purpose: the user name is DATA (a <code>{user}</code>
+                value), so <code>.html()</code> escapes it and you see the tags as text — while the template's own
+                <code>&lt;b&gt;</code> around the count is markup and renders bold.
             </p>
             <div>
                 <div class="controls"><strong class="muted">page locale</strong>
@@ -404,11 +411,15 @@ owner.customStyles = '.pgc { border-color: #ea580c }';</code></pre></div>
                 <div class="controls"><strong class="muted">security</strong>
                     <label><input type="checkbox" id="pg07-escape"> <code>shouldEscapeLabels</code></label>
                 </div>
+                <div class="controls"><strong class="muted">element C</strong>
+                    <label><input type="checkbox" id="pg07-own-callback" checked> its own <code>translateCallback</code></label>
+                </div>
             </div>
             <div class="demo-area">
                 <div class="field-row">
                     <core-demo-pg-locale id="demo-pg-locale-a"></core-demo-pg-locale>
                     <core-demo-pg-locale id="demo-pg-locale-b" locale="de-DE" labels='{"buttons.remove":"Entfernen {name}"}'></core-demo-pg-locale>
+                    <core-demo-pg-locale id="demo-pg-locale-c"></core-demo-pg-locale>
                 </div>
                 <div class="output"><pre id="pg07-readout"></pre></div>
             </div>
@@ -416,7 +427,7 @@ owner.customStyles = '.pgc { border-color: #ea580c }';</code></pre></div>
 const DEFAULT_LABELS = { 'headers.title': '&lt;b&gt;{count}&lt;/b&gt; files for {user}', 'buttons.remove': 'Remove {name}' };
 #labels = createLabels(this, DEFAULT_LABELS, () =&gt; this.config.labels, { tag: 'web-files' });   // tag = the key prefix
 title.innerHTML = this.#labels.html('headers.title', { count: 3, user: name });       // the template is HTML, the value isn't
-button.setAttribute('aria-label', this.#labels.text('buttons.remove', { name: file })); // text: never escaped
+button.textContent = this.#labels.text('buttons.remove', { name: file });           // text: never escaped; it names the button
 const { locale, dateFormat, weekStartDay } = getLocaleSettings({ locale: this.config.locale });
 protected localeChanged() { this.#render(); }                                   // a page-wide change
 
@@ -427,6 +438,8 @@ window.components.locale = {
 };
 // or the app's own i18n — the full key; null = core uses labels / the default
 window.components.locale = { translateCallback: ({ key, params }) =&gt; (i18next.exists(key) ? i18next.t(key, params) : null) };
+// or just this one element — asked before the page-wide callback, null = not mine
+el.translateCallback = ({ key, params }) =&gt; (key === 'web-files.buttons.remove' ? `Odstrániť ${params.name}` : null);
 window.components.security = { shouldEscapeLabels: true };</code></pre></div>
         </div>
 
@@ -810,12 +823,13 @@ window.components.security = { shouldEscapeLabels: true };</code></pre></div>
 
         // ── PG07 · locale + labels ───────────────────────────────────────────
         {
-            const { BlissElement, define, toObject, toText } = await import('/src/index.ts');
+            const { BlissElement, define, toObject, toText, toFunction } = await import('/src/index.ts');
             const { createLabels, getLocaleSettings, getMonthNames, formatNumber } = await import('/src/locale/index.ts');
             class LocaleDemo extends BlissElement {
                 static inputs = [
                     { configKey: 'locale', attribute: 'locale', converter: toText({ default: 'auto' }), on: 'update' },
                     { configKey: 'labels', attribute: 'labels', converter: toObject(), on: 'update' },
+                    { configKey: 'translateCallback', converter: toFunction(), on: 'update' },
                 ];
                 #labels = createLabels(this, { 'headers.title': '<b>{count}</b> files for {user}', 'buttons.remove': 'Remove {name}' }, () => this.config.labels,
                     { tag: 'core-demo-pg-locale', getLocale: () => this.config.locale });
@@ -829,8 +843,7 @@ window.components.security = { shouldEscapeLabels: true };</code></pre></div>
                         <button type="button"></button></div>`;
                     this.querySelector('.pg07-title').innerHTML = this.#labels.html('headers.title', { count: 3, user: '<i>Ann</i>' });
                     const button = this.querySelector('button');
-                    button.textContent = this.#labels.text('buttons.remove', { name: 'report.pdf' });
-                    button.setAttribute('aria-label', button.textContent);
+                    button.textContent = this.#labels.text('buttons.remove', { name: 'report.pdf' }); // the text names the button
                 }
             }
             define('core-demo-pg-locale', LocaleDemo);
@@ -855,6 +868,11 @@ window.components.security = { shouldEscapeLabels: true };</code></pre></div>
                     render7();
                 });
             }
+            // element C's own i18n: only buttons.remove, null leaves the rest to the page / the default
+            const SK_CALLBACK = ({ key, params }) => (key === 'core-demo-pg-locale.buttons.remove' ? `Odstrániť ${params.name}` : null);
+            const setOwnCallback = () => { $('demo-pg-locale-c').translateCallback = $('pg07-own-callback').checked ? SK_CALLBACK : null; };
+            $('pg07-own-callback').addEventListener('change', setOwnCallback);
+            setOwnCallback();
             $('pg07-escape').addEventListener('change', (e) => {
                 reg.security = e.target.checked ? { shouldEscapeLabels: true } : null;
                 render7();

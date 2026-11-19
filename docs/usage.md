@@ -483,6 +483,13 @@ Per key: the instance `labels` → the page-wide `labels['<component>.<key>']` (
 The instance takes the short key or the full one, and wins over the callback — a key set on the element is never
 sent to it (`<web-multiselect labels='{"placeholders.select": "Vyberte zemi…"}'>`).
 
+One element can carry its own `translateCallback` (same shape, asked before the page-wide one; `null` passes the
+key on), so a page with a single component needs no `window.components.locale`:
+
+```js
+grid.translateCallback = ({ key, params }) => (i18n.has(key) ? i18n.t(key, params) : null);
+```
+
 Twins share `<name>`. A screen-reader name or tooltip nobody set follows its customized visible sibling, so
 translating only the caption is enough:
 
@@ -541,7 +548,8 @@ Icons on items / options / nodes are data — read them with one rule ([SPEC §1
 1. markup (`'<svg …>'`) → raw;
 2. a built-in name (`'close'`, `'chevron'`, `'check'`, … — `BUILT_IN_ICON_NAMES`, the base-css-variables glyphs) →
    masked from `--base-icon-<name>` in `currentColor`; reserved, the page hook never sees it;
-3. the page-wide `window.components.renderIconCallback(name, { component, element, prefix })` → markup, `null` = not mine;
+3. the element's own `renderIconCallback`, then the page-wide `window.components.renderIconCallback(name, { component,
+   element, prefix })` → markup, `null` = not mine (the next one decides);
 4. other class names (`'fa-solid fa-folder'`, `'bi-gear'`) → `<i class="<prefix>__icon fa-solid fa-folder" aria-hidden="true">`;
 5. anything else (`'🚀'`) → escaped text.
 
@@ -552,9 +560,10 @@ adoptStyles(this.shadowRoot!, ICON_CSS);
 cell.innerHTML = renderIcon(item.icon, { prefix: 'grid', host: this });
 ```
 
-One page hook maps the app's own icon set for every component (keen-pure-admin's icon providers):
+Set it on one element, or once for every component (keen-pure-admin's icon providers):
 
 ```js
+multiselect.renderIconCallback = (name) => (name === 'moon' ? moonSvg : null); // this element only, asked first
 window.components.renderIconCallback = (name) =>
   name.startsWith('lucide-') ? lucideSvg(name.slice(7)) : null; // null → the icon-font / text rules
 ```
