@@ -242,7 +242,8 @@ List / tree / grid / toolbar keys go through core `/a11y` (`src/a11y/`, SPEC §1
 (input keeps focus) or `createRovingFocus` (one tab stop); roles + `aria-selected` stay the component's.
 
 UI strings + locale go through core `/locale` (`src/locale/`, SPEC §12.24): `createLabels(host, DEFAULT_LABELS,
-() => this.config.labels)` (`.text` / `.html`), `getLocaleSettings` / `resolveLocale`, `formatNumber` /
+() => this.config.labels, { tag: '<component>' })` (`.text` / `.html`; flat keys `<elementType>.<name>`, page-wide one flat
+dictionary `'<component>.<elementType>.<name>'`, `translateCallback` for an app's own i18n), `getLocaleSettings` / `resolveLocale`, `formatNumber` /
 `parseNumber`; page-wide `window.components.locale` / `.security`; the opt-in `localeChanged()` hook re-renders.
 
 A `render*Callback` result goes through `renderSlot(container, result, { renderDefault, memoKey })` (SPEC §12.35).

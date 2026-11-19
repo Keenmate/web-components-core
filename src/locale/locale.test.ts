@@ -35,16 +35,16 @@ describe('window.components.locale / .security', () => {
     expect(Object.keys(window.components!)).not.toContain('locale');
     const heard = vi.fn();
     const stop = observeLocale(heard);
-    const mine = { locale: 'cs-CZ', labels: { 'web-x': { ok: 'Dobře' } } };
+    const mine = { locale: 'cs-CZ', labels: { 'web-x.buttons.ok': 'Dobře' } };
     page().locale = mine;
     expect(heard).toHaveBeenCalledTimes(1);
     const stored = getPageLocale()!;
     expect(stored).not.toBe(mine);
     expect(Object.isFrozen(stored)).toBe(true);
-    expect(Object.isFrozen(stored.labels!['web-x'])).toBe(true);
+    expect(Object.isFrozen(stored.labels)).toBe(true);
     expect(() => {
       'use strict';
-      (stored.labels!['web-x'] as Record<string, string>).ok = 'x';
+      (stored.labels as Record<string, string>)['web-x.buttons.ok'] = 'x';
     }).toThrow();
     page().security = { shouldEscapeLabels: true };
     expect(heard).toHaveBeenCalledTimes(2);
@@ -54,12 +54,25 @@ describe('window.components.locale / .security', () => {
     expect(getPageLocale()).toBeUndefined();
   });
 
-  it('a non-object is refused (kept), a bad formatLabelCallback dropped', () => {
+  it('labels is one flat dictionary: non-strings dropped, nested per-tag objects warn + ignored', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    page().locale = { labels: { 'web-x.buttons.ok': 'OK', 'web-x.buttons.no': 3, 'web-x': { ok: 'x' }, 'app.title': 'App' } };
+    expect(getPageLocale()?.labels).toEqual({ 'web-x.buttons.ok': 'OK', 'app.title': 'App' });
+    expect(warn.mock.calls.some((c) => String(c.join(' ')).includes('ONE flat dictionary'))).toBe(true);
+  });
+
+  it('formatLabelCallback (renamed translateCallback) warns + is dropped; a bad translateCallback dropped', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    page().locale = { formatLabelCallback: () => 'x', translateCallback: 'nope' };
+    expect(getPageLocale()).not.toHaveProperty('formatLabelCallback');
+    expect(getPageLocale()?.translateCallback).toBeUndefined();
+    expect(warn.mock.calls.some((c) => String(c.join(' ')).includes('now translateCallback'))).toBe(true);
+  });
+
+  it('a non-object is refused (kept)', () => {
     page().locale = { locale: 'de' };
     page().locale = 'de';
     expect(getPageLocale()?.locale).toBe('de');
-    page().locale = { formatLabelCallback: 'nope' };
-    expect(getPageLocale()?.formatLabelCallback).toBeUndefined();
   });
 
   it('the browser languagechange event notifies', () => {
@@ -134,18 +147,26 @@ describe('formatNumber / parseNumber', () => {
 });
 
 describe('labels', () => {
-  const DEFAULTS = { cancel: 'Cancel {name}', empty: 'Nothing', count: '{count} files' };
+  const DEFAULTS = { 'buttons.cancel': 'Cancel {name}', 'messages.empty': 'Nothing', 'labels.count': '{count} files' };
   const host = document.createElement('web-x');
 
-  it('per key: instance → page-wide → English; "" is a deliberate empty label', () => {
-    let own: Partial<typeof DEFAULTS> | null = { empty: '' };
+  it('per key: instance → page-wide flat `<tag>.<key>` → English; "" is a deliberate empty label', () => {
+    let own: Record<string, unknown> | null = { 'messages.empty': '' };
     const labels = createLabels(host, DEFAULTS, () => own);
-    page().locale = { labels: { 'web-x': { cancel: 'Zrušit {name}', count: 42 as unknown as string } } };
-    expect(labels.text('cancel', { name: 'a.txt' })).toBe('Zrušit a.txt');
-    expect(labels.text('empty')).toBe('');
-    expect(labels.text('count', { count: 3 })).toBe('3 files'); // non-string page value ignored
+    page().locale = { labels: { 'web-x.buttons.cancel': 'Zrušit {name}', 'web-x.labels.count': 42, 'buttons.cancel': 'no prefix' } };
+    expect(labels.text('buttons.cancel', { name: 'a.txt' })).toBe('Zrušit a.txt');
+    expect(labels.text('messages.empty')).toBe('');
+    expect(labels.text('labels.count', { count: 3 })).toBe('3 files'); // non-string page value ignored
     own = null;
-    expect(labels.all()).toEqual({ cancel: 'Zrušit {name}', empty: 'Nothing', count: '{count} files' });
+    expect(labels.all()).toEqual({ 'buttons.cancel': 'Zrušit {name}', 'messages.empty': 'Nothing', 'labels.count': '{count} files' });
+  });
+
+  it('the instance takes the short or the full key; the prefix is options.tag, not the element tag', () => {
+    const own = { 'web-grid.buttons.cancel': 'Full {name}' };
+    const labels = createLabels(document.createElement('my-grid'), DEFAULTS, () => own, { tag: 'web-grid' });
+    expect(labels.text('buttons.cancel', { name: 'f' })).toBe('Full f');
+    page().locale = { labels: { 'web-grid.messages.empty': 'Prázdné', 'my-grid.messages.empty': 'wrong' } };
+    expect(labels.text('messages.empty')).toBe('Prázdné');
   });
 
   it('text never escapes; html escapes the values, or the whole label when shouldEscapeLabels', () => {
@@ -156,26 +177,35 @@ describe('labels', () => {
     expect(labels.html('add', { value: '<i>' })).toBe('&lt;b&gt;Add&lt;/b&gt; &quot;&lt;i&gt;&quot;');
   });
 
-  it('formatLabelCallback formats; a throw or non-string falls back to {name}', () => {
-    const labels = createLabels(host, DEFAULTS, () => null, { getLocale: () => 'cs' });
-    const callback = vi.fn((ctx: { component: string; key: string; params: Record<string, unknown>; locale: string }) =>
-      ctx.key === 'count' ? `${ctx.component}.${ctx.key}:${String(ctx.params.count)}@${ctx.locale}` : ctx.key === 'empty' ? (undefined as unknown as string) : (() => { throw new Error('x'); })(),
+  it('translateCallback gets the full key; null / a throw falls back to {name}; never asked for an instance key', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const own = { 'messages.empty': 'Mine {n}' };
+    const labels = createLabels(host, DEFAULTS, () => own, { getLocale: () => 'cs' });
+    const callback = vi.fn((ctx: { component: string; key: string; template: string; params: Record<string, unknown>; locale: string }) =>
+      ctx.key === 'web-x.labels.count'
+        ? `${ctx.component}|${ctx.key}:${String(ctx.params.count)}@${ctx.locale}`
+        : ctx.key === 'web-x.buttons.cancel'
+          ? null
+          : (() => { throw new Error('x'); })(),
     );
-    page().locale = { formatLabelCallback: callback };
-    expect(labels.text('count', { count: 2 })).toBe('web-x.count:2@cs');
-    expect(labels.text('empty')).toBe('Nothing');
-    expect(labels.text('cancel', { name: 'f' })).toBe('Cancel f');
+    page().locale = { translateCallback: callback };
+    expect(labels.text('labels.count', { count: 2 })).toBe('web-x|web-x.labels.count:2@cs');
+    expect(labels.text('buttons.cancel', { name: 'f' })).toBe('Cancel f'); // null = not mine
+    expect(labels.text('messages.empty', { n: 1 })).toBe('Mine 1'); // the instance's own text
+    expect(callback.mock.calls.map(([c]) => c.key)).toEqual(['web-x.labels.count', 'web-x.buttons.cancel']);
+    expect(callback.mock.calls[1]![0].template).toBe('Cancel {name}');
   });
 
-  it('a number param is shown locale-formatted; formatLabelCallback gets the raw number; a string stays as is', () => {
+  it('a number param is shown locale-formatted; translateCallback gets the raw number; a string stays as is', () => {
     const labels = createLabels(host, DEFAULTS, () => null, { getLocale: () => 'en-US' });
-    expect(labels.text('count', { count: 12345 })).toBe('12,345 files');
-    expect(labels.text('count', { count: '2026' })).toBe('2026 files'); // a string: not grouped
+    expect(labels.text('labels.count', { count: 12345 })).toBe('12,345 files');
+    expect(labels.text('labels.count', { count: '2026' })).toBe('2026 files'); // a string: not grouped
     page().locale = { thousandsSeparator: ' ' };
-    expect(labels.text('count', { count: 12345 })).toBe('12 345 files');
+    expect(labels.text('labels.count', { count: 12345 })).toBe('12 345 files');
     let seen: unknown;
-    page().locale = { formatLabelCallback: (ctx: { params: Record<string, unknown> }) => ((seen = ctx.params.count), 'x') };
-    labels.text('count', { count: 12345 });
+    page().locale = { translateCallback: (ctx: { params: Record<string, unknown> }) => ((seen = ctx.params.count), 'x') };
+    labels.text('labels.count', { count: 12345 });
     expect(seen).toBe(12345);
   });
 

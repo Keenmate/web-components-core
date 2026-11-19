@@ -175,6 +175,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   them by hand after floating its host). pure-css port affected.
 
 ### Changed
+- **BREAKING — labels (`/locale`, SPEC §12.24):** keys are flat `<elementType>.<name>` (`buttons.add`,
+  `tooltips.clearAll`, `ariaLabels.clearAll`, `placeholders.search`; types `buttons`, `tooltips`, `ariaLabels`,
+  `placeholders`, `headers`, `labels`, `messages`, `errors`, `menuItems`, `columnHeaders`), and the full key prefixes
+  the component name: `web-grid.buttons.add`. `window.components.locale.labels` is ONE flat dictionary of full keys
+  (the app's whole translation JSON can be assigned; other keys are ignored) — the nested
+  `labels: { 'web-grid': { … } }` shape warns and is ignored. An instance's `labels` takes the short or the full key.
+  `createLabels(…, { tag })` is the key prefix — components pass their own name, so a custom tag still reads
+  `web-grid.*`.
+- **BREAKING — `formatLabelCallback` → `translateCallback`** (`window.components.locale`): gets the FULL key
+  (`{ component, key: 'web-grid.buttons.add', template, params, locale }`), returns the text or `null` /
+  `undefined` = not mine (core formats the template). A key the instance set in its own `labels` is never sent to
+  it — the per-element text wins over the app dictionary. The old name warns and is ignored. Types:
+  `TranslateCallback` / `LabelTranslateContext` (were `FormatLabelCallback` / `LabelFormatContext`); `OwnLabels<L>`.
 - `/menu` item icons go through `renderIcon`: an icon NAME (`'gear'`) is now a glyph masked from
   `--base-icon-gear` instead of the word as text; markup and emoji render as before.
 - `/menu`: right-to-left comes from `isRtl(opener)` (the effective CSS direction) instead of the nearest `[dir]`

@@ -380,9 +380,13 @@ owner.customStyles = '.pgc { border-color: #ea580c }';</code></pre></div>
             <h2>PG07 · Locale and labels: <code>window.components.locale</code></h2>
             <p>
                 Every UI string a component shows goes through core <code>/locale</code>'s
-                <code>createLabels(host, DEFAULT_LABELS, () =&gt; this.config.labels)</code>: per key the instance
-                <code>labels</code>, then the page-wide <code>window.components.locale.labels[tag]</code>, then the built-in
-                English. <code>.text(key, params)</code> is for <code>textContent</code> and attributes (never escaped),
+                <code>createLabels(host, DEFAULT_LABELS, () =&gt; this.config.labels, { tag })</code>. Keys are flat
+                <code>&lt;elementType&gt;.&lt;name&gt;</code> (<code>buttons.remove</code>); per key the instance
+                <code>labels</code> (short or full key), then the page-wide flat dictionary
+                <code>window.components.locale.labels['&lt;tag&gt;.buttons.remove']</code> (the app's whole translation JSON
+                fits), then the built-in English. An app with its own i18n sets <code>translateCallback</code> instead: it
+                gets the full key and returns the text, or <code>null</code> to leave the key to core. A key the instance
+                set is never sent to it. <code>.text(key, params)</code> is for <code>textContent</code> and attributes (never escaped),
                 <code>.html(key, params)</code> for markup — the template is HTML, the <code>{param}</code> values are data
                 and are escaped; with <code>window.components.security.shouldEscapeLabels</code> the whole label is text.
                 The locale, date pattern, 12 / 24 h clock, week start and number separators come from
@@ -395,6 +399,7 @@ owner.customStyles = '.pgc { border-color: #ea580c }';</code></pre></div>
                     <label><input type="radio" name="pg07-locale" value="" checked> unset (browser)</label>
                     <label><input type="radio" name="pg07-locale" value="cs-CZ"> cs-CZ + Czech labels</label>
                     <label><input type="radio" name="pg07-locale" value="en-US"> en-US, decimal <code>,</code></label>
+                    <label><input type="radio" name="pg07-locale" value="callback"> cs-CZ via <code>translateCallback</code></label>
                 </div>
                 <div class="controls"><strong class="muted">security</strong>
                     <label><input type="checkbox" id="pg07-escape"> <code>shouldEscapeLabels</code></label>
@@ -403,23 +408,25 @@ owner.customStyles = '.pgc { border-color: #ea580c }';</code></pre></div>
             <div class="demo-area">
                 <div class="field-row">
                     <core-demo-pg-locale id="demo-pg-locale-a"></core-demo-pg-locale>
-                    <core-demo-pg-locale id="demo-pg-locale-b" locale="de-DE" labels='{"remove":"Entfernen {name}"}'></core-demo-pg-locale>
+                    <core-demo-pg-locale id="demo-pg-locale-b" locale="de-DE" labels='{"buttons.remove":"Entfernen {name}"}'></core-demo-pg-locale>
                 </div>
                 <div class="output"><pre id="pg07-readout"></pre></div>
             </div>
             <div class="code-block" data-language="js"><pre><code>// component side
-#labels = createLabels(this, { title: '&lt;b&gt;{count}&lt;/b&gt; files for {user}', remove: 'Remove {name}' }, () =&gt; this.config.labels);
-title.innerHTML = this.#labels.html('title', { count: 3, user: name });       // the template is HTML, the value isn't
-button.setAttribute('aria-label', this.#labels.text('remove', { name: file })); // text: never escaped
+const DEFAULT_LABELS = { 'headers.title': '&lt;b&gt;{count}&lt;/b&gt; files for {user}', 'buttons.remove': 'Remove {name}' };
+#labels = createLabels(this, DEFAULT_LABELS, () =&gt; this.config.labels, { tag: 'web-files' });   // tag = the key prefix
+title.innerHTML = this.#labels.html('headers.title', { count: 3, user: name });       // the template is HTML, the value isn't
+button.setAttribute('aria-label', this.#labels.text('buttons.remove', { name: file })); // text: never escaped
 const { locale, dateFormat, weekStartDay } = getLocaleSettings({ locale: this.config.locale });
 protected localeChanged() { this.#render(); }                                   // a page-wide change
 
 // page side — every component at once
 window.components.locale = {
   locale: 'cs-CZ',
-  labels: { 'web-dropzone': { cancelFile: 'Zrušit {name}' } },
-  formatLabelCallback: ({ component, key, params }) =&gt; i18next.t(`${component}.${key}`, params),
+  labels: { 'web-files.buttons.remove': 'Odebrat {name}', 'app.title': '…' },   // one flat dictionary
 };
+// or the app's own i18n — the full key; null = core uses labels / the default
+window.components.locale = { translateCallback: ({ key, params }) =&gt; (i18next.exists(key) ? i18next.t(key, params) : null) };
 window.components.security = { shouldEscapeLabels: true };</code></pre></div>
         </div>
 
@@ -450,7 +457,7 @@ window.components.security = { shouldEscapeLabels: true };</code></pre></div>
                     <tr><td><code>shouldHoistImports</code></td><td>Also links each custom-CSS <code>@import</code> URL in the document <code>&lt;head&gt;</code> (shared, ref-counted; a <code>&lt;link&gt;</code> the page already has is reused), so an imported <code>@font-face</code> registers — Chromium ignores it inside a shadow root. Default <code>true</code>, only for a shadow root. The page wins: <code>window.components[tag].shouldHoistImports</code>, else <code>window.components.shouldHoistImports</code> (<code>false</code> when the page loads those fonts itself).</td></tr>
                     <tr><td><code>getOwner: () =&gt; HTMLElement | null</code></td><td>A managed child's owner (PG06), read on every refresh. The owner's page and instance layers, as the owner's own handle resolved them, sit between the child's: child page → owner page → owner instance → child instance (slots <code>&lt;cssClass&gt;--owner-page</code>, <code>&lt;cssClass&gt;--owner</code>). A page write for either tag or the owner's <code>refresh()</code> refreshes the child. <code>null</code>, a throw (logged), an owner with no live handle or one removed from the page = no owner layers.</td></tr>
                     <tr><td><code>window.components.locale</code> · <code>window.components.security</code></td><td>Page-wide locale settings, per-tag <code>labels</code> and <code>formatLabelCallback</code>; <code>shouldEscapeLabels</code>. Non-enumerable; assigning replaces the object (stored frozen) and re-renders every component (<code>localeChanged()</code>).</td></tr>
-                    <tr><td><code>createLabels(host, defaults, getOwn, { getLocale })</code> (<code>/locale</code>)</td><td><code>{ template, text, html, all }</code> — instance → page → English; <code>text</code> never escaped, <code>html</code> escapes the values (or everything with <code>shouldEscapeLabels</code>).</td></tr>
+                    <tr><td><code>createLabels(host, defaults, getOwn, { tag, getLocale })</code> (<code>/locale</code>)</td><td><code>{ template, text, html, all }</code> — instance → page <code>labels['&lt;tag&gt;.&lt;key&gt;']</code> / <code>translateCallback</code> → English; <code>text</code> never escaped, <code>html</code> escapes the values (or everything with <code>shouldEscapeLabels</code>).</td></tr>
                     <tr><td><code>getLocaleSettings(instance)</code> · <code>resolveLocale</code> · <code>getMonthNames</code> · <code>formatNumber</code> · <code>parseNumber</code></td><td>Per key instance → page → <code>Intl</code>: locale, date pattern, 12 / 24 h, week start, separators; month / weekday names; numbers with the resolved separators.</td></tr>
                     <tr><td><code>window.components[tag].customStyles</code> / <code>.getCustomStylesCallback(ctx)</code></td><td>Page layer for every instance of the tag, before the instance's own custom CSS. The callback gets each instance's context and, while set, replaces <code>customStyles</code>. Installed by <code>registerComponent()</code> (a value set on a pre-created entry is adopted); assigning updates the live instances; a wrong type warns and keeps the previous value.</td></tr>
                 </tbody>
@@ -810,8 +817,8 @@ window.components.security = { shouldEscapeLabels: true };</code></pre></div>
                     { configKey: 'locale', attribute: 'locale', converter: toText({ default: 'auto' }), on: 'update' },
                     { configKey: 'labels', attribute: 'labels', converter: toObject(), on: 'update' },
                 ];
-                #labels = createLabels(this, { title: '<b>{count}</b> files for {user}', remove: 'Remove {name}' }, () => this.config.labels,
-                    { getLocale: () => this.config.locale });
+                #labels = createLabels(this, { 'headers.title': '<b>{count}</b> files for {user}', 'buttons.remove': 'Remove {name}' }, () => this.config.labels,
+                    { tag: 'core-demo-pg-locale', getLocale: () => this.config.locale });
                 reinit() { this.#render(); }
                 update() { this.#render(); }
                 localeChanged() { this.#render(); }
@@ -820,14 +827,20 @@ window.components.security = { shouldEscapeLabels: true };</code></pre></div>
                     this.innerHTML = `<div class="card"><div class="pg07-title"></div>
                         <div class="muted">${escapeHtml(getMonthNames(s.locale)[10])} · ${escapeHtml(s.dateFormat)} · ${s.timeFormat} · week starts ${s.weekStartDay} · ${escapeHtml(formatNumber(1234567.89, { locale: this.config.locale }))}</div>
                         <button type="button"></button></div>`;
-                    this.querySelector('.pg07-title').innerHTML = this.#labels.html('title', { count: 3, user: '<i>Ann</i>' });
+                    this.querySelector('.pg07-title').innerHTML = this.#labels.html('headers.title', { count: 3, user: '<i>Ann</i>' });
                     const button = this.querySelector('button');
-                    button.textContent = this.#labels.text('remove', { name: 'report.pdf' });
+                    button.textContent = this.#labels.text('buttons.remove', { name: 'report.pdf' });
                     button.setAttribute('aria-label', button.textContent);
                 }
             }
             define('core-demo-pg-locale', LocaleDemo);
-            const CS = { locale: 'cs-CZ', labels: { 'core-demo-pg-locale': { title: '<b>{count}</b> soubory pro {user}', remove: 'Odebrat {name}' } } };
+            const CS_DICT = { 'core-demo-pg-locale.headers.title': '<b>{count}</b> soubory pro {user}', 'core-demo-pg-locale.buttons.remove': 'Odebrat {name}' };
+            const CS = { locale: 'cs-CZ', labels: CS_DICT };
+            // an app's own i18n: look the full key up, null = not mine
+            const CS_CALLBACK = {
+                locale: 'cs-CZ',
+                translateCallback: ({ key, params }) => (key in CS_DICT ? CS_DICT[key].replace(/\{(\w+)\}/g, (_, n) => String(params[n] ?? '')) : null),
+            };
             const render7 = () => {
                 const loc = reg.locale;
                 $('pg07-readout').innerHTML = [
@@ -838,7 +851,7 @@ window.components.security = { shouldEscapeLabels: true };</code></pre></div>
             };
             for (const radio of document.querySelectorAll('input[name="pg07-locale"]')) {
                 radio.addEventListener('change', () => {
-                    reg.locale = radio.value === 'cs-CZ' ? CS : radio.value === 'en-US' ? { locale: 'en-US', decimalSeparator: ',', thousandsSeparator: ' ' } : null;
+                    reg.locale = radio.value === 'cs-CZ' ? CS : radio.value === 'callback' ? CS_CALLBACK : radio.value === 'en-US' ? { locale: 'en-US', decimalSeparator: ',', thousandsSeparator: ' ' } : null;
                     render7();
                 });
             }

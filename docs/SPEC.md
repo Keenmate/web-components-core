@@ -2494,7 +2494,7 @@ formatter) and none had a page-wide layer; a German browser with a US user neede
 every element. Decided 2026-10-26 / 10-27 / 10-28 (rulebook D-NC-24), built 2026-11-17:
 
 - **Page-wide** `window.components.locale = { locale, dateFormat, timeFormat, weekStartDay, decimalSeparator,
-  thousandsSeparator, labels: { '<tag>': {...} }, formatLabelCallback }` and `window.components.security =
+  thousandsSeparator, labels: { '<component>.<elementType>.<name>': '…' }, translateCallback }` and `window.components.security =
   { shouldEscapeLabels }` — non-enumerable accessors (`publishLocaleHooks()`, from `registerComponent()` and
   every read), state in `sharedState('locale')`. Assigning REPLACES the object; it is stored as a frozen copy
   (nested mutation throws instead of being silently missed). A non-object warns and is ignored.
@@ -2507,14 +2507,22 @@ every element. Decided 2026-10-26 / 10-27 / 10-28 (rulebook D-NC-24), built 2026
 - **Numbers:** `formatNumber(value, opts)` (`Intl.NumberFormat`, then the resolved separators swapped in) and
   `parseNumber(text, settings)` (group separator and any space removed, decimal separator → `.`, U+2212 minus;
   not a number → `null`).
-- **Labels:** `createLabels(host, DEFAULT_LABELS, () => this.config.labels, { getLocale })` → `{ template,
-  text, html, all }`. Per key instance → `locale.labels[tag]` → English (a string wins, `''` included). Then
-  `formatLabelCallback({ component, key, template, params, locale })` (a throw / non-string → logged, default
-  `{name}` replacement). `text()` is for `textContent` / attributes — never escaped. `html()` is for `innerHTML`:
+- **Labels:** `createLabels(host, DEFAULT_LABELS, () => this.config.labels, { tag, getLocale })` → `{ template,
+  text, html, all }`. Keys are flat `<elementType>.<name>` — element types `buttons`, `tooltips`, `ariaLabels`,
+  `placeholders`, `headers`, `labels`, `messages`, `errors`, `menuItems`, `columnHeaders` (one text per surface: a
+  button's caption, its tooltip and its screen-reader name are three keys sharing `<name>`); the FULL key is
+  `<tag>.<key>` with `tag` = the component's own name (not the element's tag — a custom tag still reads the app's
+  `web-grid.*`). Per key: the instance `labels` (short or full key) → the page-wide flat dictionary
+  `locale.labels['<tag>.<key>']` (the app's whole translation JSON can be assigned; other keys ignored; a nested
+  per-tag object warns) → English (a string wins, `''` included). A key the instance did NOT set goes to
+  `translateCallback({ component, key: '<tag>.<key>', template, params, locale })` first — the app's own i18n;
+  `null` / `undefined` = not mine; a throw → logged; then the default `{name}` replacement. Decided 2026-11-19
+  (the documenthub admin's `<scope>.<elementType>.<key>`; keen-pure-admin's `translate` callback; nested groups,
+  per-tag objects and `formatLabelCallback` dropped). `text()` is for `textContent` / attributes — never escaped. `html()` is for `innerHTML`:
   `shouldEscapeLabels` off (default) → string param values escaped before formatting, the template stays HTML;
   on → the finished label escaped once. Plural pairs (`day` / `days`) stay component keys. A NUMBER param is
   displayed through `formatNumber` (resolved locale + separators — components pass raw numbers, never pre-formatted
-  strings), while `formatLabelCallback` receives the raw number (ICU / i18next plural rules need it); a string param
+  strings), while `translateCallback` receives the raw number (ICU / i18next plural rules need it); a string param
   (a year, an id) is shown as given. Decided 2026-11-17 (web-commandpalette's pass: pre-formatted counts reached the
   callback as `"12 345"`).
 - **Live:** `observeLocale(listener)` hears page-locale / security assignments and the browser `languagechange`;

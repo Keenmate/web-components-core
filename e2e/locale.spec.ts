@@ -27,7 +27,7 @@ test('assigning window.components.locale re-renders every live component, keepin
     (window.components as Record<string, unknown>).locale = {
       locale: 'cs-CZ',
       thousandsSeparator: ' ',
-      labels: { 'fx-locale': { cancel: 'Zrušit {name}', title: 'Soubory: {user}' } },
+      labels: { 'fx-locale.buttons.cancel': 'Zrušit {name}', 'fx-locale.headers.title': 'Soubory: {user}', 'app.other': 'ignored' },
     };
   });
   await expect(page.locator('#a .month')).toHaveText('leden');
@@ -37,6 +37,19 @@ test('assigning window.components.locale re-renders every live component, keepin
   await expect(page.locator('#b .number')).toHaveText('1 234,5'); // the page-wide separator applies to every element
   await expect(page.locator('#b .cancel')).toHaveText('Abbrechen a<b>.txt'); // its own labels
   expect(await page.evaluate(() => Object.keys(window.components!).includes('locale'))).toBe(false);
+});
+
+test('translateCallback: the app lookup by full key; null falls back; an instance key never asked', async ({ page }) => {
+  await page.evaluate(() => {
+    const dict: Record<string, string> = { 'fx-locale.buttons.cancel': 'i18n: {name}' };
+    (window.components as Record<string, unknown>).locale = {
+      translateCallback: ({ key, params }: { key: string; params: Record<string, unknown> }) =>
+        key in dict ? dict[key]!.replace('{name}', String(params.name)) : null,
+    };
+  });
+  await expect(page.locator('#a .cancel')).toHaveText('i18n: a<b>.txt');
+  await expect(page.locator('#a .title b')).toHaveText('Files'); // null → the default template
+  await expect(page.locator('#b .cancel')).toHaveText('Abbrechen a<b>.txt'); // its own labels win
 });
 
 test('shouldEscapeLabels: an HTML label becomes text', async ({ page }) => {

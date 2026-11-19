@@ -119,7 +119,7 @@ export type ComponentsRegistry = Record<string, RegisteredComponent | undefined>
   renderLoadingCallback?: RenderLoaderCallback;
   /** Page-wide motion level (SPEC §12.16) for every component whose own `motion` is `auto`. Non-enumerable. */
   motion?: Motion;
-  /** Page-wide locale, settings, per-tag labels and `formatLabelCallback` (SPEC §12.24). Non-enumerable; assigning replaces it. */
+  /** Page-wide locale, settings, the flat `labels` dictionary and `translateCallback` (SPEC §12.24). Non-enumerable; assigning replaces it. */
   locale?: PageLocale;
   /** Page-wide security switches (`shouldEscapeLabels`, SPEC §12.24). Non-enumerable. */
   security?: PageSecurity;

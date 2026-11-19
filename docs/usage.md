@@ -442,12 +442,15 @@ Every UI string goes through one seam ([SPEC §12.24](SPEC.md), rulebook D-NC-24
 ```ts
 import { createLabels, getLocaleSettings, getMonthNames, formatNumber } from '@keenmate/web-components-core/locale';
 
-const DEFAULT_LABELS = { cancelFile: 'Cancel {name}', addNew: 'Add <b>{value}</b>' };   // English only
+// English only; flat keys `<elementType>.<name>` (buttons, tooltips, ariaLabels, placeholders, headers, labels,
+// messages, errors, menuItems, columnHeaders)
+const DEFAULT_LABELS = { 'ariaLabels.cancelFile': 'Cancel {name}', 'labels.addNew': 'Add <b>{value}</b>' };
 
-#labels = createLabels(this, DEFAULT_LABELS, () => this.config.labels, { getLocale: () => this.config.locale });
+// tag = the component's own name: the prefix of the full keys (`web-dropzone.ariaLabels.cancelFile`)
+#labels = createLabels(this, DEFAULT_LABELS, () => this.config.labels, { tag: 'web-dropzone', getLocale: () => this.config.locale });
 
-button.setAttribute('aria-label', this.#labels.text('cancelFile', { name: file.name })); // text: never escaped
-row.innerHTML = this.#labels.html('addNew', { value: typed });                           // HTML: the value is escaped
+button.setAttribute('aria-label', this.#labels.text('ariaLabels.cancelFile', { name: file.name })); // text: never escaped
+row.innerHTML = this.#labels.html('labels.addNew', { value: typed });                                // HTML: the value is escaped
 
 const { locale, dateFormat, timeFormat, weekStartDay } = getLocaleSettings({ locale: this.config.locale });
 getMonthNames(locale);                          // from Intl — no language tables
@@ -462,15 +465,23 @@ The page sets it once, for every component:
 window.components.locale = {
   locale: 'en-US',                       // unset = the browser language
   decimalSeparator: ',',                 // the user's preference, every element
-  labels: { 'web-dropzone': { cancelFile: 'Zrušit {name}' } },
-  formatLabelCallback: ({ component, key, params }) => i18next.t(`${component}.${key}`, params),
+  // ONE flat dictionary keyed `<component>.<elementType>.<name>` — the app's whole translation JSON fits
+  labels: { 'web-dropzone.ariaLabels.cancelFile': 'Zrušit {name}', 'web-multiselect.placeholders.search': 'Hledat…' },
 };
-// components pass counts as numbers: `{count}` shows as `12 345` in Czech, the callback gets 12345
+// components pass counts as numbers: `{count}` shows as `12 345` in Czech
+
+// or delegate to the app's own i18n: the FULL key, the template, the RAW params (12345, for plurals);
+// null / undefined = not mine (core uses `labels` / the English default)
+window.components.locale = {
+  translateCallback: ({ key, params }) => (i18next.exists(key) ? i18next.t(key, params) : null),
+};
 
 window.components.security = { shouldEscapeLabels: true };   // labels are plain text, not HTML
 ```
 
-Per key: the instance `labels` → the page-wide labels → English. Assigning replaces the whole object (it is
+Per key: the instance `labels` → the page-wide `labels['<component>.<key>']` (or `translateCallback`) → English.
+The instance takes the short key or the full one, and wins over the callback — a key set on the element is never
+sent to it (`<web-multiselect labels='{"placeholders.select": "Vyberte zemi…"}'>`). Assigning replaces the whole object (it is
 frozen); every live component re-renders. `parseNumber(text, { locale })` reads a number the user typed with the
 same separators.
 
