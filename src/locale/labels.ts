@@ -64,7 +64,7 @@ export type OwnLabels<L extends object> = Partial<L> | Readonly<Record<string, u
  * leave the screen-reader name / tooltip in English (WCAG 2.5.3). Other types never fall back.
  */
 const SIBLINGS: Readonly<Record<string, readonly string[]>> = {
-  ariaLabels: ['buttons', 'labels', 'headers', 'menuItems', 'tooltips'],
+  ariaLabels: ['buttons', 'labels', 'headers', 'messages', 'menuItems', 'tooltips'],
   tooltips: ['buttons', 'labels', 'menuItems', 'ariaLabels'],
 };
 

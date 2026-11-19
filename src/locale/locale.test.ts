@@ -225,7 +225,7 @@ describe('labels', () => {
     const el = document.createElement('web-dz');
 
     it('getLabelSiblings: visible texts first; visible types have none', () => {
-      expect(getLabelSiblings('ariaLabels.x')).toEqual(['buttons.x', 'labels.x', 'headers.x', 'menuItems.x', 'tooltips.x']);
+      expect(getLabelSiblings('ariaLabels.x')).toEqual(['buttons.x', 'labels.x', 'headers.x', 'messages.x', 'menuItems.x', 'tooltips.x']);
       expect(getLabelSiblings('tooltips.x')).toEqual(['buttons.x', 'labels.x', 'menuItems.x', 'ariaLabels.x']);
       expect(getLabelSiblings('buttons.x')).toEqual([]);
       expect(getLabelSiblings('nodot')).toEqual([]);
