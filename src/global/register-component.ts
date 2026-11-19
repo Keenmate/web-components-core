@@ -19,6 +19,7 @@ import type { LoggerBundle, LogLevelDesc } from '../logging/create-loggers.js';
 import { attachLoggerBundle } from '../logging/logger-registry.js';
 import { publishGlobalLogging, type GlobalLoggingControls } from '../logging/global-logging.js';
 import { publishLoaderHook, type RenderLoaderCallback } from '../dom/render-loader.js';
+import { publishIconHook, type RenderIconCallback } from '../dom/render-icon.js';
 import { publishMotionHook, type Motion } from '../environment/motion.js';
 import { publishLocaleHooks, type PageLocale, type PageSecurity } from '../locale/page-locale.js';
 import { getInstances } from './instances.js';
@@ -104,7 +105,7 @@ export interface RegisterComponentOptions {
 /**
  * `window.components`: one entry per component tag, plus the NON-enumerable
  * page-wide `logging` switch (every bundle — components + CORE) and the
- * NON-enumerable page-wide `renderLoadingCallback` hook (SPEC §12.14) and
+ * NON-enumerable page-wide `renderLoadingCallback` (SPEC §12.14) / `renderIconCallback` (§12.33) hooks and
  * `responsive` / `responsiveCallback` rules (SPEC §6.7). Tag names
  * always contain a hyphen, so neither can clash, and enumerating the object
  * still yields tags only.
@@ -117,6 +118,11 @@ export type ComponentsRegistry = Record<string, RegisteredComponent | undefined>
   responsiveCallback?: ResponsiveCallback;
   /** Page-wide loader look: draws every component's loading states unless an instance `renderLoadingCallback` is set. */
   renderLoadingCallback?: RenderLoaderCallback;
+  /**
+   * Page-wide icon hook (SPEC §12.33): maps an icon name that isn't a built-in to markup for every component;
+   * `null` = not mine (icon-font classes / text follow). Non-enumerable.
+   */
+  renderIconCallback?: RenderIconCallback;
   /** Page-wide motion level (SPEC §12.16) for every component whose own `motion` is `auto`. Non-enumerable. */
   motion?: Motion;
   /** Page-wide locale, settings, the flat `labels` dictionary and `translateCallback` (SPEC §12.24). Non-enumerable; assigning replaces it. */
@@ -213,6 +219,7 @@ export function registerComponent<T extends HTMLElement = HTMLElement>(
     components[tagName] = entry as RegisteredComponent;
     publishGlobalLogging(); // re-publish if the page replaced window.components
     publishLoaderHook();
+    publishIconHook();
     publishMotionHook();
     publishLocaleHooks();
     publishResponsiveHooks();

@@ -1,16 +1,58 @@
-import { describe, expect, it } from 'vitest';
-import { renderIcon } from './render-icon.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { BUILT_IN_ICON_NAMES, publishIconHook, renderIcon, type RenderIconCallback } from './render-icon.js';
+
+const setHook = (cb: RenderIconCallback | undefined): void => {
+  publishIconHook();
+  (window.components as { renderIconCallback?: RenderIconCallback }).renderIconCallback = cb;
+};
 
 describe('renderIcon', () => {
-  it('markup raw, a name masked from its token, anything else escaped text', () => {
+  afterEach(() => setHook(undefined));
+
+  it('markup raw, a built-in name masked from its token, class names an icon font, anything else escaped text', () => {
     expect(renderIcon('<svg viewBox="0 0 1 1"></svg>')).toBe('<svg viewBox="0 0 1 1"></svg>');
-    expect(renderIcon('gear', { prefix: 'cp' })).toBe(
-      '<span class="km-icon cp__icon cp__icon--gear" style="--_km-icon: var(--base-icon-gear, linear-gradient(transparent 0 0))" aria-hidden="true"></span>',
+    expect(renderIcon('settings', { prefix: 'cp' })).toBe(
+      '<span class="km-icon cp__icon cp__icon--settings" style="--_km-icon: var(--base-icon-settings, linear-gradient(transparent 0 0))" aria-hidden="true"></span>',
     );
-    expect(renderIcon('chevron-right')).toContain('var(--base-icon-chevron-right,');
+    expect(renderIcon('chevron')).toContain('var(--base-icon-chevron,');
+    expect(renderIcon('fa-solid  fa-folder', { prefix: 'tv' })).toBe('<i class="km-icon-font tv__icon fa-solid fa-folder" aria-hidden="true"></i>');
+    expect(renderIcon('bi-gear')).toBe('<i class="km-icon-font bi-gear" aria-hidden="true"></i>');
     expect(renderIcon('🚀')).toBe('🚀');
     expect(renderIcon('a"><img src=x onerror=1>')).not.toContain('<img');
     expect(renderIcon('  ')).toBe('');
     expect(renderIcon(null)).toBe('');
+  });
+
+  it('the built-in names are the base-css-variables glyphs', () => {
+    expect(BUILT_IN_ICON_NAMES).toContain('close');
+    expect(BUILT_IN_ICON_NAMES).not.toContain('check-size');
+    expect(Object.isFrozen(BUILT_IN_ICON_NAMES)).toBe(true);
+  });
+
+  it('window.components.renderIconCallback maps the other names; null falls through; built-ins and markup never reach it', () => {
+    const host = document.createElement('web-ms');
+    const hook = vi.fn<RenderIconCallback>((name) => (name === 'star' ? '<svg class="star"></svg>' : name === 'none' ? '' : null));
+    setHook(hook);
+    expect(window.components?.renderIconCallback).toBe(hook);
+    expect(Object.keys(window.components ?? {})).not.toContain('renderIconCallback');
+    expect(renderIcon('star', { prefix: 'ms', host })).toBe('<svg class="star"></svg>');
+    expect(hook).toHaveBeenLastCalledWith('star', { component: 'web-ms', element: host, prefix: 'ms' });
+    expect(renderIcon('none')).toBe('');
+    expect(renderIcon('fa-solid fa-x')).toBe('<i class="km-icon-font fa-solid fa-x" aria-hidden="true"></i>');
+    expect(renderIcon('lucide:rocket')).toBe('lucide:rocket');
+    hook.mockClear();
+    renderIcon('close');
+    renderIcon('<b>x</b>');
+    expect(hook).not.toHaveBeenCalled();
+  });
+
+  it('a throwing hook is logged and the default rendering follows', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    setHook(() => {
+      throw new Error('boom');
+    });
+    expect(renderIcon('bi-gear')).toBe('<i class="km-icon-font bi-gear" aria-hidden="true"></i>');
+    expect(error).toHaveBeenCalled();
+    error.mockRestore();
   });
 });

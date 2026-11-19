@@ -110,9 +110,11 @@ before a child's disconnect — the test resets the fake offsets in the host's `
 
 ## Icons (`src/dom/render-icon.ts`, SPEC §12.33 — implemented)
 
-`renderIcon`: `<` → raw; `NAME` regex → `.km-icon` span with an inline `--_km-icon: var(--base-icon-<name>,
+`renderIcon`: `<` → raw; a `BUILT_IN_ICON_NAMES` name → `.km-icon` span with an inline `--_km-icon: var(--base-icon-<name>,
 linear-gradient(transparent 0 0))` (the transparent fallback keeps an unset token from masking nothing = a solid
-square); else `escapeHtml`. `ICON_CSS` is NOT part of the manifest test (its only variables are private / dynamic).
+square); the page hook `window.components.renderIconCallback` (`publishIconHook`, shared state like the loader hook,
+`callSafely`; a string wins); `CLASS_LIST` → `<i class="km-icon-font …">`; else `escapeHtml`. Keep
+`BUILT_IN_ICON_NAMES` in sync with base-css-variables' `--base-icon-*` (minus `check-size`). `ICON_CSS` is NOT part of the manifest test (its only variables are private / dynamic).
 `/menu` adopts it next to `MENU_CSS`.
 
 ## Render-callback results (`src/dom/render-slot.ts`, SPEC §12.35 — implemented)

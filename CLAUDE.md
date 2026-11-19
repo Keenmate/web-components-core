@@ -250,7 +250,8 @@ A `render*Callback` result goes through `renderSlot(container, result, { renderD
 
 `createController()` returns `createControllerFacade(() => engine, { methods, state, writable })` (SPEC §12.34).
 
-Icon strings render through `renderIcon(icon, { prefix })` + `ICON_CSS` (SPEC §12.33).
+Icon strings render through `renderIcon(icon, { prefix, host })` + `ICON_CSS` (SPEC §12.33): markup → built-in name
+(mask) → page `window.components.renderIconCallback` → icon-font `<i class>` → text.
 
 Clipboard: `copyText(text)` (API + execCommand fallback) and `readPasteText(event)` (SPEC §12.32).
 

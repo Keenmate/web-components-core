@@ -180,6 +180,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   them by hand after floating its host). pure-css port affected.
 
 ### Changed
+- **BREAKING — icons (`renderIcon`, SPEC §12.33), keen-pure-admin's model:** markup raw → a built-in name
+  (`BUILT_IN_ICON_NAMES`, the base-css-variables `--base-icon-*` glyphs) masked from its token, reserved → the new
+  page-wide `window.components.renderIconCallback(name, { component, element, prefix })` (markup, or `null` = not
+  mine; `renderIcon(icon, { prefix, host })` passes the component) → other class names as an icon font
+  (`'fa-solid fa-folder'` → `<i class="km-icon-font fa-solid fa-folder" aria-hidden="true">`, used to print as text) →
+  escaped text. A one-word name that isn't built-in (`'gear'`, a page-invented `--base-icon-star`) is no longer
+  masked: it renders `<i class="gear">` — use a built-in (`'settings'`) or map it in `renderIconCallback`. `/menu`
+  passes its host.
 - **BREAKING — labels (`/locale`, SPEC §12.24):** keys are flat `<elementType>.<name>` (`buttons.add`,
   `tooltips.clearAll`, `ariaLabels.clearAll`, `placeholders.search`; types `buttons`, `tooltips`, `ariaLabels`,
   `placeholders`, `headers`, `labels`, `messages`, `errors`, `menuItems`, `columnHeaders`), and the full key prefixes

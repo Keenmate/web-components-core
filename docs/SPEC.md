@@ -2729,10 +2729,21 @@ that string — web-commandpalette's `renderIcon` (the model), `/menu`'s raw `in
 web-multiselect each their own. Decided 2026-11-17 — **`renderIcon(icon, { prefix })`** → HTML:
 
 - starts with `<` → raw (an `<svg>`, `<img>`, `<i class="fa …">` — the page vouches for its markup);
-- an ASCII name (`[A-Za-z][A-Za-z0-9_-]*`) → `<span class="km-icon <prefix>__icon <prefix>__icon--<name>"
+- a built-in name (`BUILT_IN_ICON_NAMES` = the base-css-variables `--base-icon-*` glyphs: `close`, `chevron`, `check`,
+  …) → `<span class="km-icon <prefix>__icon <prefix>__icon--<name>"
   style="--_km-icon: var(--base-icon-<name>, linear-gradient(transparent 0 0))" aria-hidden="true">` — a 1em glyph
-  in `currentColor` masked from the base-css-variables icon token; an unset token draws nothing (not a square);
+  in `currentColor` masked from the token; an unset token draws nothing (not a square). Reserved: the hook below
+  never sees a built-in (a theme restyles it through the token; another set's close is `'fa-solid fa-xmark'`);
+- the page-wide `window.components.renderIconCallback(name, { component, element, prefix })` (non-enumerable,
+  `publishIconHook()`) → a string is used as is (`''` = no icon); `null` / `undefined` = not mine; a throw → logged
+  (the host's logger when the caller passed `host`) and the next rule decides;
+- ASCII class names (`[A-Za-z][A-Za-z0-9_-]*`, space-separated) → `<i class="km-icon-font <prefix>__icon <names>"
+  aria-hidden="true">` — an icon font (`fa-solid fa-folder`, `bi-gear`);
 - anything else (an emoji, a non-Latin letter) → escaped text.
+
+Revised 2026-11-19 to keen-pure-admin's model (reserved affordances → providers → `<i class={name}>`), plus the
+markup and text steps string data needs. The trade-off: a page-invented token (`--base-icon-star` + `'star'`) is no
+longer masked — it renders `<i class="star">`; map it in the hook instead.
 
 `ICON_CSS` (`.km-icon`, `@layer component`, forced-colors aware) is adopted where named icons render; `/menu`
 adopts it and renders item icons through `renderIcon` (a name used to come out as its text).

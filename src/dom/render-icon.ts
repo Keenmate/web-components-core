@@ -1,24 +1,100 @@
 /**
  * Icons are DATA (SPEC §12.33): the page hands a component a string, and every component turned it into markup
  * its own way (web-commandpalette's `renderIcon`, `/menu`'s raw `innerHTML`, web-grid / web-treeview / web-
- * multiselect each their own). One rule:
+ * multiselect each their own). One rule, keen-pure-admin's icon resolution plus two steps for string data —
+ * first match wins:
  *
- * - starts with `<` (an `<svg>`, an `<img>`, an `<i class="fa …">`) → inserted raw — the page vouches for it;
- * - an ASCII name (`gear`, `chevron-right`) → `<span class="km-icon <prefix>__icon <prefix>__icon--gear">`, a
- *   glyph masked from the `--base-icon-<name>` token in `currentColor` (nothing drawn when the token is unset);
- * - anything else (an emoji, a letter in another script) → escaped text.
+ * 1. starts with `<` (an `<svg>`, an `<img>`, an `<i class="fa …">`) → inserted raw — the page vouches for it;
+ * 2. a built-in name ({@link BUILT_IN_ICON_NAMES}: `close`, `chevron`, `check`, …) → `<span class="km-icon
+ *    <prefix>__icon <prefix>__icon--close">`, a glyph masked from the `--base-icon-<name>` token in `currentColor`.
+ *    Reserved: the page-wide hook never sees them (a theme restyles them through the token);
+ * 3. the page-wide `window.components.renderIconCallback(name, ctx)` → markup, or `null` / `undefined` = not mine;
+ * 4. ASCII class names (`fa-solid fa-folder`, `bi-gear`, `material-symbols-outlined`) → `<i class="km-icon-font
+ *    <prefix>__icon fa-solid fa-folder" aria-hidden="true">` — an icon font;
+ * 5. anything else (an emoji, a letter in another script) → escaped text.
  *
  * `ICON_CSS` (the `.km-icon` rule) goes into the root the icon renders in (`adoptStyles`).
  */
 
 import { escapeHtml } from './escape-html.js';
+import { sharedState } from '../global/shared-state.js';
+import { publishPageSetting } from '../global/page-setting.js';
+import { callSafely } from '../logging/safe-call.js';
 
 export interface RenderIconOptions {
-  /** The component's BEM block: adds `<prefix>__icon` + `<prefix>__icon--<name>` to a named icon. */
+  /** The component's BEM block: adds `<prefix>__icon` (+ `<prefix>__icon--<name>` on a built-in) to the icon. */
   prefix?: string;
+  /** The component host: `component` / `element` in the page hook's context, and its logger for a throwing hook. */
+  host?: Element | null;
 }
 
-const NAME = /^[A-Za-z][A-Za-z0-9_-]*$/;
+/** What the page-wide `renderIconCallback` receives next to the name. */
+export interface IconRenderContext {
+  /** The component's tag name (`'web-multiselect'`); `''` when the caller passed no host. */
+  component: string;
+  /** The component host, when the caller passed it. */
+  element: Element | null;
+  /** The component's BEM block (`'ms'`), when the caller passed it. */
+  prefix: string;
+}
+
+/**
+ * The page-wide icon hook: map an icon name (`'fa delete'`, `'lucide-rocket'`, `'star'`) to markup, or answer
+ * `null` / `undefined` for a name that isn't yours (the next rule decides). A string is used as is (`''` = no icon).
+ */
+export type RenderIconCallback = (name: string, ctx: IconRenderContext) => string | null | undefined;
+
+/**
+ * The reserved built-in names — the base-css-variables `--base-icon-*` glyphs. Always masked from their token;
+ * the page-wide hook never sees them. Name another set's icon differently (`'fa-solid fa-xmark'`, not `'close'`).
+ */
+export const BUILT_IN_ICON_NAMES: readonly string[] = Object.freeze([
+  'add', 'bell', 'caret-down', 'caret-up', 'check', 'chevron', 'clear', 'close', 'collapse', 'copy', 'danger',
+  'delete', 'download', 'edit', 'ellipsis', 'expand', 'external-link', 'filter', 'indeterminate', 'info', 'link',
+  'refresh', 'remove', 'save', 'search', 'settings', 'success', 'user', 'warning',
+]);
+
+const BUILT_IN = new Set(BUILT_IN_ICON_NAMES);
+const CLASS_LIST = /^[A-Za-z][A-Za-z0-9_-]*(?:\s+[A-Za-z][A-Za-z0-9_-]*)*$/;
+
+// ---------------------------------------------------------------------------
+// Page-wide hook: window.components.renderIconCallback (non-enumerable)
+// ---------------------------------------------------------------------------
+
+interface IconHookState {
+  callback: RenderIconCallback | undefined;
+}
+
+/** On globalThis because each component bundles its own core copy. */
+const STATE_KEY = '@keenmate/web-components-core:icon';
+
+function state(): IconHookState {
+  return sharedState(STATE_KEY, () => ({ callback: undefined }));
+}
+
+/**
+ * Publish `window.components.renderIconCallback` as a NON-enumerable accessor (a plain property assigned earlier
+ * is adopted). Idempotent; SSR-safe. Called by `registerComponent()` and `renderIcon()`.
+ */
+export function publishIconHook(): void {
+  const s = state();
+  publishPageSetting('renderIconCallback', {
+    get: () => s.callback,
+    set: (value: unknown) => {
+      s.callback = typeof value === 'function' ? (value as RenderIconCallback) : undefined;
+    },
+  });
+}
+
+function pageHook(): RenderIconCallback | undefined {
+  publishIconHook();
+  const cb = typeof window !== 'undefined' ? window.components?.renderIconCallback : state().callback;
+  return typeof cb === 'function' ? cb : undefined;
+}
+
+// ---------------------------------------------------------------------------
+// renderIcon
+// ---------------------------------------------------------------------------
 
 /** HTML for an icon value; `''` for none. */
 export function renderIcon(icon: string | null | undefined, options: RenderIconOptions = {}): string {
@@ -26,14 +102,28 @@ export function renderIcon(icon: string | null | undefined, options: RenderIconO
   const value = String(icon).trim();
   if (!value) return '';
   if (value.startsWith('<')) return value;
-  if (NAME.test(value)) {
-    const own = options.prefix ? ` ${options.prefix}__icon ${options.prefix}__icon--${value}` : '';
+  const prefix = options.prefix ?? '';
+  if (BUILT_IN.has(value)) {
+    const own = prefix ? ` ${prefix}__icon ${prefix}__icon--${value}` : '';
     return `<span class="km-icon${own}" style="--_km-icon: var(--base-icon-${value}, linear-gradient(transparent 0 0))" aria-hidden="true"></span>`;
+  }
+  const hook = pageHook();
+  if (hook) {
+    const host = options.host ?? null;
+    const result = callSafely(() => hook(value, { component: host?.localName ?? '', element: host, prefix }), {
+      source: host,
+      message: `window.components.renderIconCallback threw for "${value}" — using the default rendering`,
+    });
+    if (result.isOk && typeof result.value === 'string') return result.value;
+  }
+  if (CLASS_LIST.test(value)) {
+    const own = prefix ? ` ${prefix}__icon` : '';
+    return `<i class="km-icon-font${own} ${value.split(/\s+/).join(' ')}" aria-hidden="true"></i>`;
   }
   return escapeHtml(value);
 }
 
-/** The `.km-icon` drawing rule (1em square, `currentColor`, masked). Adopt it where named icons render. */
+/** The `.km-icon` drawing rule (1em square, `currentColor`, masked) + `.km-icon-font`. Adopt it where icons render. */
 export const ICON_CSS = `
 @layer component {
 .km-icon {
@@ -45,6 +135,9 @@ export const ICON_CSS = `
   background-color: currentColor;
   -webkit-mask: var(--_km-icon) center / contain no-repeat;
   mask: var(--_km-icon) center / contain no-repeat;
+}
+.km-icon-font {
+  flex: none;
 }
 @media (forced-colors: active) {
   .km-icon { background-color: CanvasText; forced-color-adjust: none; }

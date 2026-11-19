@@ -6,8 +6,9 @@
     <title>Test — renderIcon</title>
     <link rel="stylesheet" href="test-fixtures.css">
     <style>
-        :root { --base-icon-gear: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Crect width='10' height='10'/%3E%3C/svg%3E"); }
+        :root { --base-icon-settings: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Crect width='10' height='10'/%3E%3C/svg%3E"); }
         #icons { font-size: 32px; color: rgb(200, 0, 0); }
+        .demo-font::before { content: 'F'; }
     </style>
 </head>
 <body>
@@ -20,15 +21,23 @@
         import { renderIcon, ICON_CSS, adoptStyles } from '/src/index.ts';
         import { openMenu } from '/src/menu/index.ts';
         adoptStyles(document, ICON_CSS);
+        // The page-wide hook maps app names; null = not mine. Built-ins never reach it.
+        window.components = window.components ?? {};
+        window.components.renderIconCallback = (name, ctx) =>
+            name === 'star' ? `<svg class="app-star" data-component="${ctx.component}" width="10" height="10"><rect width="10" height="10"/></svg>`
+                : name === 'settings' ? '<b>never</b>' : null;
+        const host = document.createElement('fx-host');
         document.getElementById('icons').innerHTML = [
-            `<span id="named">${renderIcon('gear', { prefix: 'fx' })}</span>`,
-            `<span id="unset">${renderIcon('nothing-here')}</span>`,
+            `<span id="named">${renderIcon('settings', { prefix: 'fx' })}</span>`,
+            `<span id="unset">${renderIcon('bell')}</span>`,
+            `<span id="hook">${renderIcon('star', { prefix: 'fx', host })}</span>`,
+            `<span id="font">${renderIcon('demo-font extra', { prefix: 'fx' })}</span>`,
             `<span id="emoji">${renderIcon('🚀')}</span>`,
             `<span id="svg">${renderIcon('<svg width="10" height="10"><rect width="10" height="10"/></svg>')}</span>`,
         ].join(' ');
         const trigger = document.getElementById('menu-trigger');
         trigger.addEventListener('click', () => {
-            openMenu([{ id: 'settings', text: 'Settings', icon: 'gear' }, { id: 'go', text: 'Go', icon: '🚀' }], {}, { host: document.body, at: trigger, returnFocusTo: trigger, presentation: 'floating' });
+            openMenu([{ id: 'settings', text: 'Settings', icon: 'settings' }, { id: 'star', text: 'Star', icon: 'star' }, { id: 'go', text: 'Go', icon: '🚀' }], {}, { host: document.body, at: trigger, returnFocusTo: trigger, presentation: 'floating' });
         });
     </script>
 </body>

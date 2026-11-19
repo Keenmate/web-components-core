@@ -96,9 +96,10 @@ export { findScrollContainer, getScrollTopForBox, scrollContainerToBox, scrollIn
 // One contract for every render*Callback: string = HTML, node, null = default, false = hidden, memo (SPEC §12.35).
 export { renderSlot, renderSlotHtml } from './dom/render-slot.js';
 export type { RenderSlotOptions, SlotHtml, SlotKind, SlotResult } from './dom/render-slot.js';
-// Icons are data: markup raw / a name masked from --base-icon-<name> / text (SPEC §12.33).
-export { renderIcon, ICON_CSS } from './dom/render-icon.js';
-export type { RenderIconOptions } from './dom/render-icon.js';
+// Icons are data (SPEC §12.33): markup raw → built-in name masked → window.components.renderIconCallback →
+// icon-font classes <i class> → escaped text.
+export { renderIcon, ICON_CSS, BUILT_IN_ICON_NAMES, publishIconHook } from './dom/render-icon.js';
+export type { RenderIconOptions, RenderIconCallback, IconRenderContext } from './dom/render-icon.js';
 // Clipboard: copy with a fallback, read a paste event (SPEC §12.32).
 export { copyText, readPasteText } from './dom/clipboard.js';
 export type { ReadPasteOptions } from './dom/clipboard.js';

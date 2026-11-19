@@ -2,11 +2,12 @@
 <meta name="kmwc:subtitle" content="Small helpers every component used to write its own way: in-page drag with mouse and touch (<code>createPointerDrag</code>) and a drop target that lights up while files are over the page (<code>watchPageDrag</code>, SPEC §12.28), layers and edge drawers (<code>createLayer</code>, <code>.km-drawer</code>, §12.29), the clipboard (<code>copyText</code> / <code>readPasteText</code>, §12.32), icon strings (<code>renderIcon</code>, §12.33), render-callback results (<code>renderSlot</code>, §12.35) and the public controller (<code>createControllerFacade</code>, §12.34). The demos are small demo elements (<code>examples-dom-card.ts</code>) or plain page markup.">
 <meta name="kmwc:entry" content="none">
 <style>
-    /* DH05 · named icon tokens — what @keenmate/base-css-variables defines on :root (any mask image works). */
+    /* DH05 · built-in icon tokens — what @keenmate/base-css-variables defines on :root (any mask image works). */
     :root {
-        --base-icon-star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z'/%3E%3C/svg%3E");
         --base-icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'/%3E%3C/svg%3E");
     }
+    /* DH05 · a stand-in for an icon font (Font Awesome, Bootstrap Icons, …): a class that draws a glyph. */
+    .demo-font-heart::before { content: '\2665'; }
 </style>
 
         <!-- ============================================================= -->
@@ -137,28 +138,44 @@ cell.addEventListener('paste', (e) =&gt; {
         <div class="card">
             <h2>DH05 · Icon strings: <code>renderIcon</code></h2>
             <p>
-                An item's <code>icon</code> is data, read with one rule: markup (it starts with <code>&lt;</code>) goes in
-                raw, an ASCII name becomes a <code>.km-icon</code> glyph masked from the <code>--base-icon-&lt;name&gt;</code>
-                token in <code>currentColor</code> (this page defines <code>star</code> and <code>check</code>; an unknown
-                name draws nothing), anything else (an emoji, a letter) is escaped text.
-                <code>ICON_CSS</code> is the drawing rule.
+                An item's <code>icon</code> is data. Every component reads it the same way, first match wins:
             </p>
+            <ol>
+                <li>markup (it starts with <code>&lt;</code>) goes in raw;</li>
+                <li>a built-in name (<code>close</code>, <code>chevron</code>, <code>check</code>, …
+                    <code>BUILT_IN_ICON_NAMES</code>) is a <code>.km-icon</code> glyph masked from its
+                    <code>--base-icon-&lt;name&gt;</code> token in <code>currentColor</code> — reserved, the hook never sees it
+                    (this page defines only <code>check</code>, so <code>close</code> draws nothing here);</li>
+                <li>the page-wide <code>window.components.renderIconCallback(name, ctx)</code> maps the app's own names
+                    (here <code>star</code> → an SVG) and answers <code>null</code> for the rest;</li>
+                <li>other class names are an icon font: <code>&lt;i class="km-icon-font fa-solid fa-folder"&gt;</code>
+                    (<code>demo-font-heart</code> stands in for Font Awesome here);</li>
+                <li>anything else (an emoji, a letter) is escaped text.</li>
+            </ol>
             <div class="controls">
                 <label>icon <input id="dh05-icon" class="w-md" value="star"></label>
-                <button data-icon="star">star</button>
-                <button data-icon="check">check</button>
+                <button data-icon="check">check (built-in)</button>
+                <button data-icon="close">close (built-in, token unset)</button>
+                <button data-icon="star">star (hook)</button>
+                <button data-icon="demo-font-heart">demo-font-heart (icon font)</button>
+                <button data-icon="fa-solid fa-folder">fa-solid fa-folder</button>
                 <button data-icon="🚀">🚀</button>
                 <button data-icon='&lt;svg viewBox="0 0 10 10" width="1em" height="1em"&gt;&lt;circle cx="5" cy="5" r="4" fill="currentColor"/&gt;&lt;/svg&gt;'>&lt;svg&gt;</button>
                 <button data-icon="&lt;b&gt;">a stray <code>&lt;b&gt;</code> (raw)</button>
+                <label><input type="checkbox" id="dh05-hook" checked> page hook set</label>
             </div>
             <div class="output">
                 <span class="output-label">rendered</span> <strong id="dh05-out"></strong>
                 <pre id="dh05-html"></pre>
             </div>
-            <div class="code-block" data-language="js"><pre><code>import { renderIcon, ICON_CSS, adoptStyles } from '@keenmate/web-components-core';
+            <div class="code-block" data-language="js"><pre><code>// once per page — every component asks it for names that aren't built-in
+window.components.renderIconCallback = (name, { component, prefix }) =>
+    name === 'star' ? '&lt;svg viewBox="0 0 24 24" width="1em" height="1em"&gt;…&lt;/svg&gt;' : null; // null = not mine
 
+// in a component
+import { renderIcon, ICON_CSS, adoptStyles } from '@keenmate/web-components-core';
 adoptStyles(this.shadowRoot, ICON_CSS);
-cell.innerHTML = renderIcon(item.icon, { prefix: 'grid' });</code></pre></div>
+cell.innerHTML = renderIcon(item.icon, { prefix: 'grid', host: this });</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -243,7 +260,7 @@ protected override createController() {
                     <tr><td><code>startPanelSession(panel, { onDismiss, shouldCloseOnEscape, shouldCloseOnOutsideClick, shouldCloseOnBack, trigger, initialFocus })</code></td><td>A non-modal panel: Escape / a click outside / Back → <code>onDismiss(reason)</code>; no backdrop, inert page or focus trap. <code>{ end, rearmBack, isEnded }</code>.</td></tr>
                     <tr><td><code>.km-drawer</code> · <code>--start</code> / <code>--end</code> / <code>--top</code> / <code>--bottom</code> / <code>--closing</code> (<code>SHEET_CHROME_CSS</code>)</td><td>An edge drawer; <code>--km-sheet-drawer-size</code> / <code>-max-height</code> / <code>-bg</code> / <code>-color</code> / <code>-shadow</code> / <code>-border-radius</code> / <code>-duration</code>.</td></tr>
                     <tr><td><code>copyText(text)</code> · <code>readPasteText(event, { type, shouldNormalizeNewlines })</code></td><td>Copy with the Clipboard API or the <code>execCommand</code> fallback (→ <code>Promise&lt;boolean&gt;</code>); a paste's text, CRLF → LF.</td></tr>
-                    <tr><td><code>renderIcon(icon, { prefix })</code> · <code>ICON_CSS</code></td><td>Markup raw, an ASCII name → a <code>--base-icon-&lt;name&gt;</code> mask, anything else escaped text.</td></tr>
+                    <tr><td><code>renderIcon(icon, { prefix })</code> · <code>ICON_CSS</code></td><td>Markup raw → a built-in name masked from <code>--base-icon-&lt;name&gt;</code> → the page-wide <code>renderIconCallback</code> → class names as an icon font → escaped text.</td></tr>
                     <tr><td><code>renderSlot(container, result | () =&gt; result, { renderDefault, memoKey })</code></td><td>String = HTML, node = mounted, <code>null</code> = default, <code>false</code> = hidden; a same <code>memoKey</code> skips the hook. Returns <code>'custom' | 'default' | 'hidden'</code>.</td></tr>
                     <tr><td><code>createControllerFacade(target | () =&gt; target, methods | { methods, state, writable, emptyResults })</code></td><td>A frozen public controller over a lazily-read engine.</td></tr>
                 </tbody>
@@ -337,12 +354,17 @@ protected override createController() {
 
         // DH05
         adoptStyles(document, ICON_CSS);
+        const STAR = '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>';
+        const iconHook = (name) => (name === 'star' ? STAR : null);
+        const setIconHook = () => { (window.components ??= {}).renderIconCallback = $('dh05-hook').checked ? iconHook : undefined; };
+        setIconHook();
         const showIcon = () => {
             const html = renderIcon($('dh05-icon').value, { prefix: 'demo' });
             $('dh05-out').innerHTML = html;
             $('dh05-html').textContent = html;
         };
         $('dh05-icon').addEventListener('input', showIcon);
+        $('dh05-hook').addEventListener('change', () => { setIconHook(); showIcon(); });
         for (const b of document.querySelectorAll('[data-icon]')) {
             b.addEventListener('click', () => { $('dh05-icon').value = b.dataset.icon; showIcon(); });
         }

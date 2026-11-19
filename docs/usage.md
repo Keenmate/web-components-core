@@ -536,14 +536,27 @@ protected override createController(): TreeController {
 
 ## Icons
 
-Icons on items / options / nodes are data — read them with one rule ([SPEC §12.33](SPEC.md)):
+Icons on items / options / nodes are data — read them with one rule ([SPEC §12.33](SPEC.md)), first match wins:
+
+1. markup (`'<svg …>'`) → raw;
+2. a built-in name (`'close'`, `'chevron'`, `'check'`, … — `BUILT_IN_ICON_NAMES`, the base-css-variables glyphs) →
+   masked from `--base-icon-<name>` in `currentColor`; reserved, the page hook never sees it;
+3. the page-wide `window.components.renderIconCallback(name, { component, element, prefix })` → markup, `null` = not mine;
+4. other class names (`'fa-solid fa-folder'`, `'bi-gear'`) → `<i class="km-icon-font fa-solid fa-folder" aria-hidden="true">`;
+5. anything else (`'🚀'`) → escaped text.
 
 ```ts
 import { renderIcon, ICON_CSS, adoptStyles } from '@keenmate/web-components-core';
 
 adoptStyles(this.shadowRoot!, ICON_CSS);
-cell.innerHTML = renderIcon(item.icon, { prefix: 'grid' });
-// '<svg …>' → raw · 'gear' → masked from --base-icon-gear in currentColor · '🚀' → text
+cell.innerHTML = renderIcon(item.icon, { prefix: 'grid', host: this });
+```
+
+One page hook maps the app's own icon set for every component (keen-pure-admin's icon providers):
+
+```js
+window.components.renderIconCallback = (name) =>
+  name.startsWith('lucide-') ? lucideSvg(name.slice(7)) : null; // null → the icon-font / text rules
 ```
 
 ## Clipboard
@@ -1382,7 +1395,7 @@ explain the main ones; [SPEC](SPEC.md) has the design notes.
 | Element | `BlissElement`, `INPUT_REJECTED_EVENT` (`'input-rejected'`, a refused write), `define(tag, Class)` (define once), `dispatch(target, name, detail)` (the free event helper under `emit()`), `defaultEventProperty(name)` (`'node-select'` → `'onNodeSelect'`), `withComponentContext(detail, controller, element, extras?)` / `COMPONENT_CONTEXT_KEYS` (the non-enumerable `controller` / `element`), `createControllerFacade(target, spec)` (the frozen public controller over a lazy engine); `normalizeEventDefs` is internal plumbing |
 | Before-callbacks | `runBeforeCallback` (async; `false` cancels, a value replaces), `runBeforeCallbackSync`, `runBeforeCallbackEager` (stays synchronous for a sync hook) |
 | Registration | `registerComponent(tag, Class, opts)` (`window.components[tag]`), `getInstances(tag)`, `getRegisteredTags()` — page-wide, across copies of core |
-| DOM | `adoptStyles(root, ...css)` / `createStyleSlot(root)` (style injection), `renderLoader(host, container, context, opts)` / `publishLoaderHook()` (loading states), `scrollIntoContainer` / `findScrollContainer` (container scroll), `scrollContainerToBox` / `getScrollTopForBox` (a virtual-list row by index), `createVirtualWindow` / `computeVirtualRange` (a virtual list over fixed-height rows; the bare range math), `createSelection` (selected keys + anchor, click / Ctrl / Shift rules), `createPointerDrag` / `deepElementFromPoint` (mouse + touch drag), `onTextInput` / `isImeEnter` (IME-safe typed text), `keepScrollAcrossMove` (scroll positions across a DOM move), `copyText` / `readPasteText` (clipboard), `renderIcon` / `ICON_CSS` (icon strings: markup / token name / text), `renderSlot` / `renderSlotHtml` (a render callback's result: HTML / node / default / hidden, memoized; the string form for string-built rows), `watchPageDrag` / `applyArmedState` (page-wide file drag), `createStateStore` (persisted UI state), `deepActiveElement()` (the focused element inside shadow roots), `escapeHtml(text)` (also on `/search`), `createMicrotaskScheduler()` (coalesce a burst into one run), `createDebounce(fn, ms)` (`schedule(...args)` / `flush()` / `cancel()`; last call wins, `ms <= 0` = synchronous, `ms` may be a function), `createThrottle(fn, ms)` (leading + one trailing run), `createFrameScheduler(fn)` (one run per animation frame), `isMotionOff` / `readScrollBehavior` / `readCssDurationMs` / `readCssLengthPx` (resolved CSS in JS), `Z_INDEX` (stacking tiers), `isRtl(el)` (effective writing direction, across shadow roots), `createId(prefix)` (page-unique id for ARIA references / `for`), `createFocusTrap` / `getTabbables` (focus trap), `createFormInputs` / `formatFormValue` (form submission), `createAsyncRunner` (latest-request-wins loading), `announce(text)` (screen-reader live region), `guardGhostClick` (a tap's trailing click), `resolveEnumAttribute(raw, values, fallback)` |
+| DOM | `adoptStyles(root, ...css)` / `createStyleSlot(root)` (style injection), `renderLoader(host, container, context, opts)` / `publishLoaderHook()` (loading states), `scrollIntoContainer` / `findScrollContainer` (container scroll), `scrollContainerToBox` / `getScrollTopForBox` (a virtual-list row by index), `createVirtualWindow` / `computeVirtualRange` (a virtual list over fixed-height rows; the bare range math), `createSelection` (selected keys + anchor, click / Ctrl / Shift rules), `createPointerDrag` / `deepElementFromPoint` (mouse + touch drag), `onTextInput` / `isImeEnter` (IME-safe typed text), `keepScrollAcrossMove` (scroll positions across a DOM move), `copyText` / `readPasteText` (clipboard), `renderIcon` / `ICON_CSS` / `BUILT_IN_ICON_NAMES` / `publishIconHook()` (icon strings: markup / built-in name / page `renderIconCallback` / icon-font classes / text), `renderSlot` / `renderSlotHtml` (a render callback's result: HTML / node / default / hidden, memoized; the string form for string-built rows), `watchPageDrag` / `applyArmedState` (page-wide file drag), `createStateStore` (persisted UI state), `deepActiveElement()` (the focused element inside shadow roots), `escapeHtml(text)` (also on `/search`), `createMicrotaskScheduler()` (coalesce a burst into one run), `createDebounce(fn, ms)` (`schedule(...args)` / `flush()` / `cancel()`; last call wins, `ms <= 0` = synchronous, `ms` may be a function), `createThrottle(fn, ms)` (leading + one trailing run), `createFrameScheduler(fn)` (one run per animation frame), `isMotionOff` / `readScrollBehavior` / `readCssDurationMs` / `readCssLengthPx` (resolved CSS in JS), `Z_INDEX` (stacking tiers), `isRtl(el)` (effective writing direction, across shadow roots), `createId(prefix)` (page-unique id for ARIA references / `for`), `createFocusTrap` / `getTabbables` (focus trap), `createFormInputs` / `formatFormValue` (form submission), `createAsyncRunner` (latest-request-wins loading), `announce(text)` (screen-reader live region), `guardGhostClick` (a tap's trailing click), `resolveEnumAttribute(raw, values, fallback)` |
 | CSS-variable lint | `extractConsumedCssVars`, `extractDeclaredCssVars`, `lintCssVars` (read vs declared `--prefix-*` names), `suggestCssVars` (likely target of a typo) |
 | Environment | `getEnvironment`, `observeEnvironment`, `observeViewport`, `observeElementSize`, `createElementSizeObserver(listener)` (`observe` / `unobserve` / `disconnect` — one listener for a changing set of elements, shared observer), `configureBreakpoints` / `BREAKPOINTS_CHANGE_EVENT`, `classifyDevice` / `TABLET_MIN_SHORT_SIDE` |
 | Theme | `getThemeContext`, `observeThemeContext`, `setThemeMode` / `getThemeMode` (force dark / light page-wide), `readThemeSignal(el)`, `resolveThemeSource(host, source)`, `THEME_CONTEXT_ATTRIBUTE`, `THEME_SOURCE_ATTRIBUTE` |
