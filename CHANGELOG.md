@@ -184,7 +184,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`BUILT_IN_ICON_NAMES`, the base-css-variables `--base-icon-*` glyphs) masked from its token, reserved → the new
   page-wide `window.components.renderIconCallback(name, { component, element, prefix })` (markup, or `null` = not
   mine; `renderIcon(icon, { prefix, host })` passes the component) → other class names as an icon font
-  (`'fa-solid fa-folder'` → `<i class="km-icon-font fa-solid fa-folder" aria-hidden="true">`, used to print as text) →
+  (`'fa-solid fa-folder'` → `<i class="<prefix>__icon fa-solid fa-folder" aria-hidden="true">`, used to print as text) →
   escaped text. A one-word name that isn't built-in (`'gear'`, a page-invented `--base-icon-star`) is no longer
   masked: it renders `<i class="gear">` — use a built-in (`'settings'`) or map it in `renderIconCallback`. `/menu`
   passes its host.

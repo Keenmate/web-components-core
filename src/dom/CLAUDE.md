@@ -113,7 +113,7 @@ before a child's disconnect — the test resets the fake offsets in the host's `
 `renderIcon`: `<` → raw; a `BUILT_IN_ICON_NAMES` name → `.km-icon` span with an inline `--_km-icon: var(--base-icon-<name>,
 linear-gradient(transparent 0 0))` (the transparent fallback keeps an unset token from masking nothing = a solid
 square); the page hook `window.components.renderIconCallback` (`publishIconHook`, shared state like the loader hook,
-`callSafely`; a string wins); `CLASS_LIST` → `<i class="km-icon-font …">`; else `escapeHtml`. Keep
+`callSafely`; a string wins); `CLASS_LIST` → `<i class="<prefix>__icon …">` (no marker class of its own; the component's `__icon` rule styles it); else `escapeHtml`. Keep
 `BUILT_IN_ICON_NAMES` in sync with base-css-variables' `--base-icon-*` (minus `check-size`). `ICON_CSS` is NOT part of the manifest test (its only variables are private / dynamic).
 `/menu` adopts it next to `MENU_CSS`.
 

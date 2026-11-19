@@ -15,8 +15,8 @@ describe('renderIcon', () => {
       '<span class="km-icon cp__icon cp__icon--settings" style="--_km-icon: var(--base-icon-settings, linear-gradient(transparent 0 0))" aria-hidden="true"></span>',
     );
     expect(renderIcon('chevron')).toContain('var(--base-icon-chevron,');
-    expect(renderIcon('fa-solid  fa-folder', { prefix: 'tv' })).toBe('<i class="km-icon-font tv__icon fa-solid fa-folder" aria-hidden="true"></i>');
-    expect(renderIcon('bi-gear')).toBe('<i class="km-icon-font bi-gear" aria-hidden="true"></i>');
+    expect(renderIcon('fa-solid  fa-folder', { prefix: 'tv' })).toBe('<i class="tv__icon fa-solid fa-folder" aria-hidden="true"></i>');
+    expect(renderIcon('bi-gear')).toBe('<i class="bi-gear" aria-hidden="true"></i>');
     expect(renderIcon('🚀')).toBe('🚀');
     expect(renderIcon('a"><img src=x onerror=1>')).not.toContain('<img');
     expect(renderIcon('  ')).toBe('');
@@ -38,7 +38,7 @@ describe('renderIcon', () => {
     expect(renderIcon('star', { prefix: 'ms', host })).toBe('<svg class="star"></svg>');
     expect(hook).toHaveBeenLastCalledWith('star', { component: 'web-ms', element: host, prefix: 'ms' });
     expect(renderIcon('none')).toBe('');
-    expect(renderIcon('fa-solid fa-x')).toBe('<i class="km-icon-font fa-solid fa-x" aria-hidden="true"></i>');
+    expect(renderIcon('fa-solid fa-x')).toBe('<i class="fa-solid fa-x" aria-hidden="true"></i>');
     expect(renderIcon('lucide:rocket')).toBe('lucide:rocket');
     hook.mockClear();
     renderIcon('close');
@@ -51,7 +51,7 @@ describe('renderIcon', () => {
     setHook(() => {
       throw new Error('boom');
     });
-    expect(renderIcon('bi-gear')).toBe('<i class="km-icon-font bi-gear" aria-hidden="true"></i>');
+    expect(renderIcon('bi-gear')).toBe('<i class="bi-gear" aria-hidden="true"></i>');
     expect(error).toHaveBeenCalled();
     error.mockRestore();
   });

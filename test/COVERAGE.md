@@ -291,7 +291,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | Feature | Status | Spec | Fixture |
 | ------- | :----: | ---- | ------- |
 | A built-in name → masked from its `--base-icon-*` token, `currentColor`, 1em; unset token → transparent; emoji text; svg raw | ✓ | `icons.spec.ts` | `icons.html` |
-| `window.components.renderIconCallback` maps an app name (gets the component); other class names → `<i class="km-icon-font …">` | ✓ | `icons.spec.ts` | `icons.html` |
+| `window.components.renderIconCallback` maps an app name (gets the component); other class names → `<i class="<prefix>__icon …">` | ✓ | `icons.spec.ts` | `icons.html` |
 | `/menu` renders an item icon name through `renderIcon`, an emoji as text | ✓ | `icons.spec.ts` | `icons.html` |
 
 ## 13r. Clipboard (`clipboard.spec.ts`)

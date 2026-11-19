@@ -2737,7 +2737,7 @@ web-multiselect each their own. Decided 2026-11-17 — **`renderIcon(icon, { pre
 - the page-wide `window.components.renderIconCallback(name, { component, element, prefix })` (non-enumerable,
   `publishIconHook()`) → a string is used as is (`''` = no icon); `null` / `undefined` = not mine; a throw → logged
   (the host's logger when the caller passed `host`) and the next rule decides;
-- ASCII class names (`[A-Za-z][A-Za-z0-9_-]*`, space-separated) → `<i class="km-icon-font <prefix>__icon <names>"
+- ASCII class names (`[A-Za-z][A-Za-z0-9_-]*`, space-separated) → `<i class="<prefix>__icon <names>"
   aria-hidden="true">` — an icon font (`fa-solid fa-folder`, `bi-gear`);
 - anything else (an emoji, a non-Latin letter) → escaped text.
 

@@ -542,7 +542,7 @@ Icons on items / options / nodes are data — read them with one rule ([SPEC §1
 2. a built-in name (`'close'`, `'chevron'`, `'check'`, … — `BUILT_IN_ICON_NAMES`, the base-css-variables glyphs) →
    masked from `--base-icon-<name>` in `currentColor`; reserved, the page hook never sees it;
 3. the page-wide `window.components.renderIconCallback(name, { component, element, prefix })` → markup, `null` = not mine;
-4. other class names (`'fa-solid fa-folder'`, `'bi-gear'`) → `<i class="km-icon-font fa-solid fa-folder" aria-hidden="true">`;
+4. other class names (`'fa-solid fa-folder'`, `'bi-gear'`) → `<i class="<prefix>__icon fa-solid fa-folder" aria-hidden="true">`;
 5. anything else (`'🚀'`) → escaped text.
 
 ```ts

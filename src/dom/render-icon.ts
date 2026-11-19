@@ -9,8 +9,8 @@
  *    <prefix>__icon <prefix>__icon--close">`, a glyph masked from the `--base-icon-<name>` token in `currentColor`.
  *    Reserved: the page-wide hook never sees them (a theme restyles them through the token);
  * 3. the page-wide `window.components.renderIconCallback(name, ctx)` → markup, or `null` / `undefined` = not mine;
- * 4. ASCII class names (`fa-solid fa-folder`, `bi-gear`, `material-symbols-outlined`) → `<i class="km-icon-font
- *    <prefix>__icon fa-solid fa-folder" aria-hidden="true">` — an icon font;
+ * 4. ASCII class names (`fa-solid fa-folder`, `bi-gear`, `material-symbols-outlined`) → `<i class="<prefix>__icon
+ *    fa-solid fa-folder" aria-hidden="true">` — an icon font (keen-pure-admin's `<i class={name}>`);
  * 5. anything else (an emoji, a letter in another script) → escaped text.
  *
  * `ICON_CSS` (the `.km-icon` rule) goes into the root the icon renders in (`adoptStyles`).
@@ -117,13 +117,13 @@ export function renderIcon(icon: string | null | undefined, options: RenderIconO
     if (result.isOk && typeof result.value === 'string') return result.value;
   }
   if (CLASS_LIST.test(value)) {
-    const own = prefix ? ` ${prefix}__icon` : '';
-    return `<i class="km-icon-font${own} ${value.split(/\s+/).join(' ')}" aria-hidden="true"></i>`;
+    const own = prefix ? `${prefix}__icon ` : '';
+    return `<i class="${own}${value.split(/\s+/).join(' ')}" aria-hidden="true"></i>`;
   }
   return escapeHtml(value);
 }
 
-/** The `.km-icon` drawing rule (1em square, `currentColor`, masked) + `.km-icon-font`. Adopt it where icons render. */
+/** The `.km-icon` drawing rule (1em square, `currentColor`, masked). Adopt it where named icons render. */
 export const ICON_CSS = `
 @layer component {
 .km-icon {
@@ -135,9 +135,6 @@ export const ICON_CSS = `
   background-color: currentColor;
   -webkit-mask: var(--_km-icon) center / contain no-repeat;
   mask: var(--_km-icon) center / contain no-repeat;
-}
-.km-icon-font {
-  flex: none;
 }
 @media (forced-colors: active) {
   .km-icon { background-color: CanvasText; forced-color-adjust: none; }

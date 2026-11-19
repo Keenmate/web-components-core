@@ -23,7 +23,7 @@ test('window.components.renderIconCallback maps an app name; other class names r
   await page.goto(PAGE);
   await expect(page.locator('#hook svg.app-star')).toHaveAttribute('data-component', 'fx-host');
   const font = page.locator('#font i');
-  await expect(font).toHaveClass('km-icon-font fx__icon demo-font extra');
+  await expect(font).toHaveClass('fx__icon demo-font extra');
   await expect(font).toHaveAttribute('aria-hidden', 'true');
   expect(await font.evaluate((el) => getComputedStyle(el, '::before').content)).toBe('"F"');
 });
