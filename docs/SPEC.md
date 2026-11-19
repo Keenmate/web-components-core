@@ -2516,7 +2516,14 @@ every element. Decided 2026-10-26 / 10-27 / 10-28 (rulebook D-NC-24), built 2026
   `locale.labels['<tag>.<key>']` (the app's whole translation JSON can be assigned; other keys ignored; a nested
   per-tag object warns) → English (a string wins, `''` included). A key the instance did NOT set goes to
   `translateCallback({ component, key: '<tag>.<key>', template, params, locale })` first — the app's own i18n;
-  `null` / `undefined` = not mine; a throw → logged; then the default `{name}` replacement. Decided 2026-11-19
+  `null` / `undefined` = not mine; a throw → logged; then the default `{name}` replacement. **One text, one key:**
+  a visible text names its element (a text button has no `aria-label`; an input points at its caption with
+  `aria-labelledby`), so no twin key exists to drift. Where twins remain (an icon button's tooltip + screen-reader
+  name), an `ariaLabels.x` / `tooltips.x` NOBODY set (still the built-in English) takes the first CUSTOMIZED sibling
+  with the same `<name>` — `ariaLabels.x` ← `buttons` / `labels` / `headers` / `menuItems` / `tooltips`,
+  `tooltips.x` ← `buttons` / `labels` / `menuItems` / `ariaLabels` (`getLabelSiblings`; customized = instance, page
+  dictionary or `translateCallback`; only siblings the component defines): a page that translates only the visible
+  caption doesn't leave the spoken name in English (WCAG 2.5.3). A key that is set always wins. Decided 2026-11-19
   (the documenthub admin's `<scope>.<elementType>.<key>`; keen-pure-admin's `translate` callback; nested groups,
   per-tag objects and `formatLabelCallback` dropped). `text()` is for `textContent` / attributes — never escaped. `html()` is for `innerHTML`:
   `shouldEscapeLabels` off (default) → string param values escaped before formatting, the template stays HTML;

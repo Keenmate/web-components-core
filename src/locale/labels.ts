@@ -4,7 +4,8 @@
  * Keys are flat `<elementType>.<name>` (`buttons.add`, `tooltips.clearAll`); the FULL key prefixes the
  * component name: `web-grid.buttons.add`. Per key: the instance `labels` (short key, or the full key — a
  * string, `''` included, wins) → the page-wide flat dictionary `window.components.locale.labels['<full key>']`
- * → the component's built-in English default. A key the instance set is formatted as is (`{name}`); any other
+ * → the component's built-in English default. An `ariaLabels.x` / `tooltips.x` nobody set takes a customized
+ * sibling with the same `<name>` first (`buttons.x`, `labels.x`, … — {@link getLabelSiblings}). A key the instance set is formatted as is (`{name}`); any other
  * goes to `window.components.locale.translateCallback` first (i18next / ICU / the app's own lookup — gets the
  * full key, the resolved template and the RAW params; `null` / `undefined` = "not mine"), else the default
  * `{name}` replacement — a NUMBER param is shown through `formatNumber` (the resolved locale and separators:
@@ -57,22 +58,50 @@ type LabelSource = 'instance' | 'page' | 'default';
 /** An instance's `labels`: short keys (`buttons.add`) and / or full keys (`web-grid.buttons.add`). */
 export type OwnLabels<L extends object> = Partial<L> | Readonly<Record<string, unknown>> | null | undefined;
 
-function lookup<L extends object>(tag: string, defaults: L, own: OwnLabels<L>, key: keyof L & string): { template: string; source: LabelSource } {
+/**
+ * Twins share `<name>`: a NON-visible key nobody set (`ariaLabels.x`, `tooltips.x` on its built-in English) takes
+ * the first CUSTOMIZED sibling, visible texts first — so a page that translates only the visible caption doesn't
+ * leave the screen-reader name / tooltip in English (WCAG 2.5.3). Other types never fall back.
+ */
+const SIBLINGS: Readonly<Record<string, readonly string[]>> = {
+  ariaLabels: ['buttons', 'labels', 'headers', 'menuItems', 'tooltips'],
+  tooltips: ['buttons', 'labels', 'menuItems', 'ariaLabels'],
+};
+
+/** The sibling keys `key` falls back to (`ariaLabels.clear` → `buttons.clear`, …), in order; `[]` for a visible type. */
+export function getLabelSiblings(key: string): string[] {
+  const dot = key.indexOf('.');
+  if (dot < 0) return [];
+  const types = SIBLINGS[key.slice(0, dot)];
+  return types ? types.map((type) => `${type}${key.slice(dot)}`) : [];
+}
+
+function lookup<L extends object>(tag: string, defaults: L, own: OwnLabels<L>, key: string): { template: string; source: LabelSource } {
   const full = `${tag}.${key}`;
   const mine = (own as Record<string, unknown> | null | undefined)?.[key] ?? (own as Record<string, unknown> | null | undefined)?.[full];
   if (typeof mine === 'string') return { template: mine, source: 'instance' };
   const page = getPageLocale()?.labels?.[full];
   if (typeof page === 'string') return { template: page, source: 'page' };
-  const fallback = defaults[key];
+  const fallback = (defaults as Record<string, unknown>)[key];
   return { template: typeof fallback === 'string' ? fallback : '', source: 'default' };
 }
 
+const hasKey = (defaults: object, key: string): boolean => Object.prototype.hasOwnProperty.call(defaults, key);
+
 /**
  * Resolve `key` (short: `buttons.add`): `own[key]` / `own['<tag>.<key>']` → page-wide `labels['<tag>.<key>']`
- * → `defaults[key]`. A string wins (`''` is a deliberate empty label); anything else falls through.
+ * → a customized sibling (`ariaLabels.x` / `tooltips.x` only, {@link getLabelSiblings}) → `defaults[key]`. A string
+ * wins (`''` is a deliberate empty label); anything else falls through.
  */
 export function resolveLabel<L extends object>(tag: string, defaults: L, own: OwnLabels<L>, key: keyof L & string): string {
-  return lookup(tag, defaults, own, key).template;
+  const found = lookup(tag, defaults, own, key);
+  if (found.source !== 'default') return found.template;
+  for (const sibling of getLabelSiblings(key)) {
+    if (!hasKey(defaults, sibling)) continue;
+    const twin = lookup(tag, defaults, own, sibling);
+    if (twin.source !== 'default') return twin.template;
+  }
+  return found.template;
 }
 
 /**
@@ -99,31 +128,50 @@ export function createLabels<L extends object>(
   };
   const template = (key: keyof L & string): string => resolveLabel(tag, defaults, own(), key);
 
+  /**
+   * One key, without the sibling fallback: the instance text (a template, never sent to the callback) →
+   * `translateCallback` (a finished text) → the page dictionary → the built-in default (`source: 'default'`).
+   */
+  const resolveOne = (key: string, values: LabelParams | undefined): { template: string; text?: string; source: LabelSource | 'callback' } => {
+    const found = lookup(tag, defaults, own(), key);
+    if (found.source === 'instance') return found; // written for this element: the app dictionary must not overwrite it
+    const callback = getPageLocale()?.translateCallback;
+    if (typeof callback === 'function') {
+      const result = callSafely(
+        () => callback({ component: tag, key: `${tag}.${key}`, template: found.template, params: values ?? {}, locale: resolveLocale(options.getLocale?.(), host) }),
+        { source: host, message: `translateCallback threw for "${tag}.${key}" — using the default formatting` },
+      );
+      if (result.isOk && typeof result.value === 'string') return { template: found.template, text: result.value, source: 'callback' };
+    }
+    return found;
+  };
+
   const format = (key: keyof L & string, params: LabelParams | undefined, isHtml: boolean): string => {
-    const { template: raw, source } = lookup(tag, defaults, own(), key);
     const shouldEscapeAll = isHtml && getPageSecurity()?.shouldEscapeLabels === true;
     const values: LabelParams | undefined =
       params && isHtml && !shouldEscapeAll
         ? Object.fromEntries(Object.entries(params).map(([name, v]) => [name, typeof v === 'string' ? escapeHtml(v) : v]))
         : params;
-    let out: string | undefined;
-    // A key the instance set was written for this element — the app dictionary must not overwrite it.
-    const callback = source === 'instance' ? undefined : getPageLocale()?.translateCallback;
-    if (typeof callback === 'function') {
-      const result = callSafely(
-        () => callback({ component: tag, key: `${tag}.${key}`, template: raw, params: values ?? {}, locale: resolveLocale(options.getLocale?.(), host) }),
-        { source: host, message: `translateCallback threw for "${tag}.${key}" — using the default formatting` },
-      );
-      if (result.isOk && typeof result.value === 'string') out = result.value;
+    let resolved = resolveOne(key, values);
+    if (resolved.source === 'default') {
+      for (const sibling of getLabelSiblings(key)) {
+        if (!hasKey(defaults, sibling)) continue;
+        const twin = resolveOne(sibling, values);
+        if (twin.source !== 'default') {
+          resolved = twin;
+          break;
+        }
+      }
     }
+    let out = resolved.text;
     if (out === undefined) {
-      // The default display formats numbers for the locale; the callback above gets the raw values.
+      // The default display formats numbers for the locale; the callback gets the raw values.
       const shown = values
         ? Object.fromEntries(
             Object.entries(values).map(([name, v]) => [name, typeof v === 'number' && Number.isFinite(v) ? formatNumber(v, { locale: options.getLocale?.() ?? undefined }) : v]),
           )
         : values;
-      out = formatLabel(raw, shown);
+      out = formatLabel(resolved.template, shown);
     }
     return shouldEscapeAll ? escapeHtml(out) : out;
   };

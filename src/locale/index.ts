@@ -14,5 +14,5 @@ export {
 export type { ResolvedLocaleSettings } from './settings.js';
 export { formatNumber, parseNumber } from './numbers.js';
 export type { NumberFormatOptions } from './numbers.js';
-export { createLabels, formatLabel, resolveLabel } from './labels.js';
+export { createLabels, formatLabel, getLabelSiblings, resolveLabel } from './labels.js';
 export type { CreateLabelsOptions, LabelParams, Labels, OwnLabels } from './labels.js';

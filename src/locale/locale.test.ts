@@ -4,6 +4,7 @@ import {
   formatLabel,
   formatNumber,
   getDateFormat,
+  getLabelSiblings,
   getLocaleSettings,
   getMonthNames,
   getNumberSeparators,
@@ -207,6 +208,67 @@ describe('labels', () => {
     page().locale = { translateCallback: (ctx: { params: Record<string, unknown> }) => ((seen = ctx.params.count), 'x') };
     labels.text('labels.count', { count: 12345 });
     expect(seen).toBe(12345);
+  });
+
+  describe('sibling fallback (ariaLabels / tooltips nobody set → a customized twin with the same name)', () => {
+    const TWINS = {
+      'labels.prompt': 'Drop files here',
+      'ariaLabels.prompt': 'Drop files here',
+      'buttons.clear': 'Clear',
+      'ariaLabels.clear': 'Clear',
+      'tooltips.clear': 'Clear the value',
+      'ariaLabels.close': 'Close',
+      'tooltips.close': 'Close',
+      'messages.noData': 'No data',
+      'labels.noData': 'unused',
+    };
+    const el = document.createElement('web-dz');
+
+    it('getLabelSiblings: visible texts first; visible types have none', () => {
+      expect(getLabelSiblings('ariaLabels.x')).toEqual(['buttons.x', 'labels.x', 'headers.x', 'menuItems.x', 'tooltips.x']);
+      expect(getLabelSiblings('tooltips.x')).toEqual(['buttons.x', 'labels.x', 'menuItems.x', 'ariaLabels.x']);
+      expect(getLabelSiblings('buttons.x')).toEqual([]);
+      expect(getLabelSiblings('nodot')).toEqual([]);
+    });
+
+    it('only the visible text translated → the aria name follows it (instance or page); nothing set → English', () => {
+      let own: Record<string, unknown> | null = { 'labels.prompt': 'Přetáhněte soubory sem' };
+      const labels = createLabels(el, TWINS, () => own);
+      expect(labels.text('ariaLabels.prompt')).toBe('Přetáhněte soubory sem');
+      expect(labels.template('ariaLabels.prompt')).toBe('Přetáhněte soubory sem');
+      own = null;
+      expect(labels.text('ariaLabels.prompt')).toBe('Drop files here');
+      page().locale = { labels: { 'web-dz.buttons.clear': 'Vymazat' } };
+      expect(labels.text('ariaLabels.clear')).toBe('Vymazat');
+      expect(labels.text('tooltips.clear')).toBe('Vymazat'); // buttons.x comes before its own English
+      expect(labels.all()['ariaLabels.clear']).toBe('Vymazat');
+    });
+
+    it('a key that is set is respected, even in English; visible types never fall back', () => {
+      const own = { 'labels.prompt': 'Přetáhněte', 'ariaLabels.prompt': 'Drop files here', 'labels.noData': 'Nic' };
+      const labels = createLabels(el, TWINS, () => own);
+      expect(labels.text('ariaLabels.prompt')).toBe('Drop files here');
+      expect(labels.text('messages.noData')).toBe('No data');
+    });
+
+    it('order: a visible twin beats the tooltip; a sibling the component lacks is skipped', () => {
+      page().locale = { labels: { 'web-dz.tooltips.close': 'Zavřít panel', 'web-dz.buttons.close': 'not a key of this component' } };
+      const labels = createLabels(el, TWINS, () => null);
+      expect(labels.text('ariaLabels.close')).toBe('Zavřít panel');
+      page().locale = { labels: { 'web-dz.tooltips.clear': 'Vymaže hodnotu', 'web-dz.buttons.clear': 'Vymazat' } };
+      expect(labels.text('ariaLabels.clear')).toBe('Vymazat');
+    });
+
+    it('translateCallback: own key first, then the twin; null for both → English', () => {
+      const asked: string[] = [];
+      page().locale = {
+        translateCallback: ({ key }: { key: string }) => (asked.push(key), key === 'web-dz.labels.prompt' ? 'Přetáhněte' : null),
+      };
+      const labels = createLabels(el, TWINS, () => null);
+      expect(labels.text('ariaLabels.prompt')).toBe('Přetáhněte');
+      expect(asked).toEqual(['web-dz.ariaLabels.prompt', 'web-dz.labels.prompt']);
+      expect(labels.text('ariaLabels.close')).toBe('Close');
+    });
   });
 
   it('formatLabel leaves unknown placeholders', () => {

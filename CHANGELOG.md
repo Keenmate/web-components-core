@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Labels: twins share `<name>` — an `ariaLabels.x` / `tooltips.x` nobody set (still the built-in English) takes the
+  first customized sibling (`buttons.x`, `labels.x`, `headers.x`, `menuItems.x`, then the other of the two;
+  `getLabelSiblings(key)`), so a page that translates only a visible caption doesn't leave the screen-reader name or
+  the tooltip in English (WCAG 2.5.3 — found in web-dropzone's rename). A key that is set always wins.
 - `toInt` / `toFloat({ isNullable: true })`: absent / empty → `null`, `null` a valid assigned value — like `toText` /
   `toEnum` (web-grid had its own `toNullableInt`).
 - `startPanelSession(panel, { onDismiss, … })` (main index, SPEC §12.19): the non-modal sibling of

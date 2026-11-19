@@ -481,7 +481,18 @@ window.components.security = { shouldEscapeLabels: true };   // labels are plain
 
 Per key: the instance `labels` → the page-wide `labels['<component>.<key>']` (or `translateCallback`) → English.
 The instance takes the short key or the full one, and wins over the callback — a key set on the element is never
-sent to it (`<web-multiselect labels='{"placeholders.select": "Vyberte zemi…"}'>`). Assigning replaces the whole object (it is
+sent to it (`<web-multiselect labels='{"placeholders.select": "Vyberte zemi…"}'>`).
+
+Twins share `<name>`. A screen-reader name or tooltip nobody set follows its customized visible sibling, so
+translating only the caption is enough:
+
+```js
+window.components.locale = { labels: { 'web-dropzone.buttons.retryFile': 'Zkusit znovu' } };
+// ariaLabels.retryFile / tooltips.retryFile (still English built-ins) now read 'Zkusit znovu' too;
+// set them explicitly to differ. Visible types (buttons, labels, messages, …) never fall back.
+```
+
+Prefer no twin at all: a text button is named by its text, an input by its caption (`aria-labelledby`). Assigning replaces the whole object (it is
 frozen); every live component re-renders. `parseNumber(text, { locale })` reads a number the user typed with the
 same separators.
 

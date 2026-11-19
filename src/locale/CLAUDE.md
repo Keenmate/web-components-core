@@ -10,4 +10,5 @@ from here (the `localeChanged()` hook) — the rest of the module stays off the 
 NBSP / NNBSP / thin space in the regex), `−` → `-`. `labels.ts`: `createLabels` → `text` (no escaping) / `html`
 (params escaped, or all with `shouldEscapeLabels`); keys flat `<elementType>.<name>`, full key `<tag>.<key>` (`tag` = the
 component's own name); instance short OR full key → page `labels[full]` → default; `translateCallback` via `callSafely` (full key,
-RAW params) for every key the instance did NOT set — a non-string falls back; the default `{name}` display runs number params through `formatNumber({ locale: getLocale() })`. jsdom has full ICU (Node) — the unit tests assert real `Intl` output; e2e `locale.spec.ts` covers Chromium.
+RAW params) for every key the instance did NOT set — a non-string falls back; an `ariaLabels.x` / `tooltips.x` that resolved to its
+built-in takes the first customized sibling (`getLabelSiblings`, visible types first, only keys in `defaults`); the default `{name}` display runs number params through `formatNumber({ locale: getLocale() })`. jsdom has full ICU (Node) — the unit tests assert real `Intl` output; e2e `locale.spec.ts` covers Chromium.
