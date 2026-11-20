@@ -2738,7 +2738,8 @@ web-multiselect each their own. Decided 2026-11-17 — **`renderIcon(icon, { pre
   never sees a built-in (a theme restyles it through the token; another set's close is `'fa-solid fa-xmark'`);
 - the element's own `renderIconCallback` (option `renderIconCallback`, else `host.renderIconCallback` — every
   component's input row), then the page-wide `window.components.renderIconCallback(name, { component, element,
-  prefix, …extras })` (non-enumerable, `publishIconHook()`) → a string is used as is (`''` = no icon); `null` /
+  prefix, …extras })` (`component` = the `component` option — for a framework component whose host is a plain
+  `<div>` — else the host's tag) (non-enumerable, `publishIconHook()`) → a string is used as is (`''` = no icon); `null` /
   `undefined` = not mine (the next one decides); a throw → logged (the host's logger) and the next rule decides.
   One element needs no page setup;
 - ASCII class names (`[A-Za-z][A-Za-z0-9_-]*`, space-separated) → `<i class="<prefix>__icon <names>"

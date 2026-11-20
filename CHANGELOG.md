@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `renderIcon(value, { component })`: the hooks' `ctx.component` when the host is not the component's own element —
+  a framework component (svelte-treeview) renders into a plain `<div>`, whose tag said `'div'`. Default: the host's
+  tag, as before.
 - Every page-wide hook has an instance twin, asked first (`null` = not mine → the page-wide one), so one element
   needs no `window.components` setup: `renderIcon` reads the element's `renderIconCallback` (option, else
   `host.renderIconCallback`; `context` adds component extras to `ctx`), `createLabels` the element's

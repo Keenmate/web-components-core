@@ -31,6 +31,11 @@ export interface RenderIconOptions {
    */
   host?: Element | null;
   /**
+   * The component name for the hooks' `ctx.component` when the host is not the component's own element (a Svelte /
+   * React component renders into a plain `<div>`, whose `localName` says nothing). Default: `host.localName`.
+   */
+  component?: string;
+  /**
    * The instance hook. Omitted → read from `host.renderIconCallback` (the component's input row); pass it explicitly
    * when the component keeps it elsewhere. `null` / `undefined` → no instance hook.
    */
@@ -42,7 +47,7 @@ export interface RenderIconOptions {
 /** What a `renderIconCallback` (instance or page-wide) receives next to the name, + the component's extras. */
 export interface IconRenderContext {
   [extra: string]: unknown;
-  /** The component's tag name (`'web-multiselect'`); `''` when the caller passed no host. */
+  /** The component's name (`'web-multiselect'`): the `component` option, else the host's tag; `''` without either. */
   component: string;
   /** The component host, when the caller passed it. */
   element: Element | null;
@@ -127,7 +132,7 @@ export function renderIcon(icon: string | null | undefined, options: RenderIconO
   ];
   for (const [hook, name] of hooks) {
     if (typeof hook !== 'function') continue;
-    const ctx: IconRenderContext = { ...options.context, component: host?.localName ?? '', element: host, prefix };
+    const ctx: IconRenderContext = { ...options.context, component: options.component ?? host?.localName ?? '', element: host, prefix };
     const result = callSafely(() => (hook as RenderIconCallback)(value, ctx), {
       source: host,
       message: `${name} threw for "${value}" — the next rule decides`,

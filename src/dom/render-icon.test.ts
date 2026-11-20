@@ -63,6 +63,15 @@ describe('renderIcon', () => {
     expect(host.renderIconCallback).not.toHaveBeenCalled();
   });
 
+  it('the component option names a host that is not the component element (a framework component in a <div>)', () => {
+    const hook = vi.fn<RenderIconCallback>(() => '<own>');
+    const host = document.createElement('div');
+    expect(renderIcon('star', { host, component: 'svelte-treeview', prefix: 'stv', renderIconCallback: hook })).toBe('<own>');
+    expect(hook).toHaveBeenLastCalledWith('star', { component: 'svelte-treeview', element: host, prefix: 'stv' });
+    renderIcon('star', { component: 'svelte-treeview', renderIconCallback: hook });
+    expect(hook).toHaveBeenLastCalledWith('star', { component: 'svelte-treeview', element: null, prefix: '' });
+  });
+
   it('a throwing hook is logged and the default rendering follows', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     setHook(() => {
