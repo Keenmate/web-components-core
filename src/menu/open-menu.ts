@@ -98,6 +98,17 @@ const openMenuStack = (): object[] => sharedState(sharedStateKey('open-menus'), 
  * it is the host or inside it — the clicked row / cell, so a scroller INSIDE the component that
  * moves it closes the menu too. `null` (→ the host) without `elementFromPoint` or off the host.
  */
+/**
+ * The custom element that owns `el`: `el` itself or its closest custom-element ancestor in the same tree, else
+ * the shadow host of the root `el` lives in, else `el`. A component passes an overlay layer inside its shadow root
+ * as `host`; its `renderIconCallback` lives on the component element.
+ */
+function findComponentElement(el: Element): Element {
+  for (let n: Element | null = el; n; n = n.parentElement) if (n.localName.includes('-')) return n;
+  const root = el.getRootNode();
+  return typeof ShadowRoot !== 'undefined' && root instanceof ShadowRoot ? root.host : el;
+}
+
 function elementAtPoint(point: MenuPoint, hostEl: Element): Element | null {
   if (typeof document === 'undefined' || typeof document.elementFromPoint !== 'function') return null;
   if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return null; // elementFromPoint throws on NaN
@@ -139,6 +150,8 @@ export function openMenu<Ctx, A extends string = string>(
   /** Hover intent: a sibling's submenu opens after a short delay while another submenu is open. */
   let openTimer: ReturnType<typeof setTimeout> | null = null;
   const hostElement = typeof ShadowRoot !== 'undefined' && host instanceof ShadowRoot ? host.host : (host as Element);
+  /** The component the menu belongs to (its icon hook): `host` is often a layer inside the component's shadow root. */
+  const componentElement = findComponentElement(hostElement);
   /** The element the menu was opened from (focus returns there). */
   const opener: Element = opts.returnFocusTo ?? (opts.at instanceof Element ? opts.at : hostElement);
   /** Right-to-left (the opener's `dir`): submenus open to the left and ← / → swap. */
@@ -254,8 +267,8 @@ export function openMenu<Ctx, A extends string = string>(
           const icon = document.createElement('span');
           icon.className = `${BLOCK}__icon`;
           icon.setAttribute('aria-hidden', 'true');
-          // Icons are data (SPEC §12.33): markup raw, built-in names masked, the page hook, icon-font classes, else text.
-          if (resolved.icon) icon.innerHTML = renderIcon(resolved.icon, { host: host instanceof Element ? host : (host as ShadowRoot).host });
+          // Icons are data (SPEC §12.33): markup raw, built-in names masked, the component's then the page hook (ctx.item = the entry), icon-font classes, else text.
+          if (resolved.icon) icon.innerHTML = renderIcon(resolved.icon, { host: componentElement, context: { item } });
           itemEl.appendChild(icon);
         }
         const label = document.createElement('span');

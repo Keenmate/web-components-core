@@ -29,6 +29,8 @@ submenu there. Backdrop closes on `click`, not `pointerdown`; no scroll close; o
 `startSheetSession()` per open sheet (`src/overlay/sheet-session.ts`: scroll lock + Back entry, `rearmBack()` for a
 submenu Back), ended in `close()` via `endSheetSession`. Tests: `sheet.test.ts` (mocks `getEnvironment`), e2e `menu-sheet.spec.ts`.
 
+Item icons: `renderIcon(icon, { host: findComponentElement(host), context: { item } })` — the closest custom element (or shadow host), so the component's own `renderIconCallback` applies.
+
 Consumers: web-treeview, web-editor, web-grid (cell + header menus; built-in submenus via
 `prepareItemCallback`). All three map their `--<prefix>-context-menu-*` onto `--_km-menu-*`.
 

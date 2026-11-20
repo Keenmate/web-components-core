@@ -217,6 +217,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and, while open, runs the item on a chord too (`Ctrl+C`), not only on a bare letter / key name.
 
 ### Fixed
+- `openMenu` asks the COMPONENT's `renderIconCallback` for an item icon: `host` is often a layer inside the
+  component's shadow root (web-editor), so the hook is read from the closest custom element (or the shadow host);
+  `ctx.item` = the menu entry (found in the web-editor icons pass).
 - `createRovingFocus` focuses with `preventScroll` and brings the item into view inside its scroll container only
   (`scrollIntoContainer`); a plain `focus()` could scroll the page. `shouldScroll` (boolean or per-item function —
   a component's `beforeScrollCallback` gate) turns it off (found in web-daterangepicker's calendar pass).

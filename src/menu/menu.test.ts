@@ -113,6 +113,20 @@ describe('rendering', () => {
     expect(x.querySelector('.km-menu__shortcut')!.innerHTML).toBe('&lt;i&gt;');
   });
 
+  it("an icon name asks the COMPONENT's renderIconCallback (host = a layer inside its shadow root) with ctx.item", () => {
+    const comp = document.createElement('demo-comp');
+    const compShadow = comp.attachShadow({ mode: 'open' });
+    const layer = document.createElement('div');
+    compShadow.append(layer);
+    document.body.append(comp);
+    const hook = vi.fn((name: string) => (name === 'moon' ? '<svg data-moon></svg>' : null));
+    (comp as unknown as { renderIconCallback: unknown }).renderIconCallback = hook;
+    const item = { id: 'x', text: 'X', icon: 'moon' };
+    openMenu<Ctx>([item], ctx, { at: { x: 0, y: 0 }, host: layer, runAction: vi.fn(), returnFocusTo: opener });
+    expect(layer.querySelector('.km-menu__icon svg[data-moon]')).not.toBeNull();
+    expect(hook).toHaveBeenCalledWith('moon', expect.objectContaining({ component: 'demo-comp', element: comp, item }));
+  });
+
   it('renderItemCallback fills an item; left empty, the default content renders', () => {
     const renderItemCallback = vi.fn((item: MenuEntry<Ctx>, el: HTMLElement, c: Ctx) => {
       if ((item as { id?: string }).id === 'a') el.textContent = `custom ${c.name}`;
