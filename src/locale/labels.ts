@@ -120,14 +120,17 @@ export function resolveLabel<L extends object>(tag: string, defaults: L, own: Ow
  * button.setAttribute('aria-label', this.#labels.text('ariaLabels.cancelFile', { name: file.name }));
  * row.innerHTML = this.#labels.html('labels.addNew', { value: typed });
  * ```
+ *
+ * A public engine without its element passes `host: null` with `tag` and `getTranslateCallback` (its own
+ * options): same resolution order; a throwing callback is logged by core (no element logger).
  */
 export function createLabels<L extends object>(
-  host: Element,
+  host: Element | null,
   defaults: L,
   getOwn: () => OwnLabels<L>,
   options: CreateLabelsOptions = {},
 ): Labels<L> {
-  const tag = options.tag ?? host.localName;
+  const tag = options.tag ?? host?.localName ?? '';
   const own = (): OwnLabels<L> => {
     const value = getOwn();
     return value && typeof value === 'object' ? value : null;
@@ -142,7 +145,7 @@ export function createLabels<L extends object>(
   const resolveOne = (key: string, values: LabelParams | undefined): { template: string; text?: string; source: LabelSource | 'callback' } => {
     const found = lookup(tag, defaults, own(), key);
     if (found.source === 'instance') return found; // written for this element: the app dictionary must not overwrite it
-    const ownCallback = options.getTranslateCallback ? options.getTranslateCallback() : (host as { translateCallback?: unknown }).translateCallback;
+    const ownCallback = options.getTranslateCallback ? options.getTranslateCallback() : (host as { translateCallback?: unknown } | null)?.translateCallback;
     const callbacks: Array<[unknown, string]> = [
       [ownCallback, 'translateCallback'],
       [getPageLocale()?.translateCallback, 'window.components.locale.translateCallback'],
@@ -150,7 +153,7 @@ export function createLabels<L extends object>(
     for (const [callback, name] of callbacks) {
       if (typeof callback !== 'function') continue;
       const result = callSafely(
-        () => (callback as TranslateCallback)({ component: tag, key: `${tag}.${key}`, template: found.template, params: values ?? {}, locale: resolveLocale(options.getLocale?.(), host) }),
+        () => (callback as TranslateCallback)({ component: tag, key: `${tag}.${key}`, template: found.template, params: values ?? {}, locale: resolveLocale(options.getLocale?.(), host ?? undefined) }),
         { source: host, message: `${name} threw for "${tag}.${key}" — the next rule decides` },
       );
       if (result.isOk && typeof result.value === 'string') return { template: found.template, text: result.value, source: 'callback' };

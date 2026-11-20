@@ -220,6 +220,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and, while open, runs the item on a chord too (`Ctrl+C`), not only on a bare letter / key name.
 
 ### Fixed
+- `createLabels(host, …)` takes `host: null` — a public engine without its element (web-command-palette,
+  web-editor) passes `tag` + `getTranslateCallback` and gets the same resolution order (own callback → page-wide
+  callback; instance labels never sent) instead of a cast stand-in element or its own copy of the chain.
 - `openMenu` asks the COMPONENT's `renderIconCallback` for an item icon: `host` is often a layer inside the
   component's shadow root (web-editor), so the hook is read from the closest custom element (or the shadow host);
   `ctx.item` = the menu entry (found in the web-editor icons pass).

@@ -214,6 +214,18 @@ describe('labels', () => {
     expect(createLabels(el, DEFAULTS, () => own).text('buttons.cancel')).toBe('Instance'); // instance labels win
   });
 
+  it('host: null (a public engine without its element) — tag + own callback → page callback; instance labels never sent', () => {
+    page().locale = {
+      translateCallback: (ctx: { key: string }) => (ctx.key === 'web-x.buttons.cancel' ? 'page' : null),
+    };
+    const ownCb = vi.fn((ctx: { key: string; component: string }) => (ctx.key === 'web-x.labels.count' ? `mine ${ctx.component}` : null));
+    const labels = createLabels(null, DEFAULTS, () => ({ 'messages.empty': 'Instance' }), { tag: 'web-x', getTranslateCallback: () => ownCb });
+    expect(labels.text('labels.count', { count: 1 })).toBe('mine web-x');
+    expect(labels.text('buttons.cancel', { name: 'f' })).toBe('page');
+    expect(labels.text('messages.empty')).toBe('Instance');
+    expect(ownCb).not.toHaveBeenCalledWith(expect.objectContaining({ key: 'web-x.messages.empty' }));
+  });
+
   it('a number param is shown locale-formatted; translateCallback gets the raw number; a string stays as is', () => {
     const labels = createLabels(host, DEFAULTS, () => null, { getLocale: () => 'en-US' });
     expect(labels.text('labels.count', { count: 12345 })).toBe('12,345 files');
