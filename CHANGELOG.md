@@ -220,6 +220,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and, while open, runs the item on a chord too (`Ctrl+C`), not only on a bare letter / key name.
 
 ### Fixed
+- A text label (`ariaLabels.x` / `tooltips.x`) that falls back to a customized twin with markup
+  (`buttons.x: '<b>Next</b>'`) takes the twin's TEXT (tags dropped, entities decoded) — an aria-label no longer
+  reads "<b>Next</b>"; `.html()` keeps the markup (found in web-grid's localization page).
 - `createLabels(host, …)` takes `host: null` — a public engine without its element (web-command-palette,
   web-editor) passes `tag` + `getTranslateCallback` and gets the same resolution order (own callback → page-wide
   callback; instance labels never sent) instead of a cast stand-in element or its own copy of the chain.

@@ -259,6 +259,14 @@ describe('labels', () => {
       expect(getLabelSiblings('nodot')).toEqual([]);
     });
 
+    it('a twin with markup gives a text use its TEXT (no tags); an html use keeps the markup', () => {
+      const labels = createLabels(el, TWINS, () => ({ 'buttons.clear': '<b>Vymazat</b> &amp; zavřít' }));
+      expect(labels.text('ariaLabels.clear')).toBe('Vymazat & zavřít');
+      expect(labels.text('tooltips.clear')).toBe('Vymazat & zavřít');
+      expect(labels.html('ariaLabels.clear')).toBe('<b>Vymazat</b> &amp; zavřít');
+      expect(labels.text('buttons.clear')).toBe('<b>Vymazat</b> &amp; zavřít'); // its own key: as written
+    });
+
     it('only the visible text translated → the aria name follows it (instance or page); nothing set → English', () => {
       let own: Record<string, unknown> | null = { 'labels.prompt': 'Přetáhněte soubory sem' };
       const labels = createLabels(el, TWINS, () => own);

@@ -110,6 +110,15 @@ export function resolveLabel<L extends object>(tag: string, defaults: L, own: Ow
   return found.template;
 }
 
+/** The text of an HTML fragment (tags dropped, entities decoded); inert — a `<template>` runs nothing. */
+function htmlToText(html: string): string {
+  if (!html.includes('<') && !html.includes('&')) return html;
+  if (typeof document === 'undefined') return html.replace(/<[^>]*>/g, '');
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  return template.content.textContent ?? '';
+}
+
 /**
  * The labels of one component instance. `getOwn` reads the instance `labels` input on every call, so
  * a changed input or page-wide object is picked up by the next render (re-render on
@@ -168,12 +177,14 @@ export function createLabels<L extends object>(
         ? Object.fromEntries(Object.entries(params).map(([name, v]) => [name, typeof v === 'string' ? escapeHtml(v) : v]))
         : params;
     let resolved = resolveOne(key, values);
+    let isFromTwin = false;
     if (resolved.source === 'default') {
       for (const sibling of getLabelSiblings(key)) {
         if (!hasKey(defaults, sibling)) continue;
         const twin = resolveOne(sibling, values);
         if (twin.source !== 'default') {
           resolved = twin;
+          isFromTwin = true;
           break;
         }
       }
@@ -188,6 +199,9 @@ export function createLabels<L extends object>(
         : values;
       out = formatLabel(resolved.template, shown);
     }
+    // A twin may be a content label with markup (`buttons.x: '<b>Next</b>'`); a text use (an aria-label / title)
+    // takes its text, never the tags.
+    if (isFromTwin && !isHtml) out = htmlToText(out);
     return shouldEscapeAll ? escapeHtml(out) : out;
   };
 
