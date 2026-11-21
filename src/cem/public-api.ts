@@ -28,13 +28,25 @@ interface Named {
 const isInternalMember = (m: Named): boolean =>
   m.privacy === 'private' || m.privacy === 'protected' || /^[#_]/.test(m.name ?? '');
 
-/** A re-export specifier of `entry` → the manifest path of that module (`./x.js` / `src/x` → `src/x.ts`). */
-function toModulePath(entry: string, spec: string | undefined): string | undefined {
+/**
+ * A re-export specifier of module `from` → the manifest path of that module (`./x.js` / `./x` / `src/x` →
+ * `src/x.ts`; a folder `./dir` → `src/dir/index.ts`). `undefined` for a package import or a path the
+ * manifest doesn't hold.
+ */
+function toModulePath(from: string, spec: string | undefined, paths: ReadonlySet<string>): string | undefined {
   if (!spec) return undefined;
-  const dir = entry.slice(0, entry.lastIndexOf('/') + 1);
-  const path = spec.startsWith('.') ? (dir + spec).replace(/\/\.\//g, '/') : spec;
-  if (!path.startsWith(dir)) return undefined; // a package import — not a module of this manifest
-  return /\.[cm]?[jt]s$/.test(path) ? path.replace(/\.js$/, '.ts') : `${path}.ts`;
+  const dir = from.slice(0, from.lastIndexOf('/') + 1);
+  let path = spec;
+  if (spec.startsWith('.')) {
+    const parts: string[] = [];
+    for (const part of (dir + spec).split('/')) {
+      if (part === '..') parts.pop();
+      else if (part !== '.') parts.push(part);
+    }
+    path = parts.join('/');
+  }
+  const base = path.replace(/\.[cm]?[jt]s$/, '');
+  return [`${base}.ts`, path, `${base}/index.ts`].find((candidate) => paths.has(candidate));
 }
 
 /** Filter `manifest` in place to the public API (see the module comment). */
@@ -49,14 +61,33 @@ export function keepPublicApi(manifest: CemPackageDoc, options: PublicApiOptions
     for (const mod of modules) dropMembers(mod.declarations ?? []);
     return manifest;
   }
-  const reexported = new Map<string, Set<string>>(); // module path → names ('*' = all)
-  for (const entry of entryModules) {
-    for (const e of entry.exports ?? []) {
-      const path = toModulePath(entry.path!, e.declaration?.module);
-      if (!path || entries.includes(path)) continue;
-      if (!reexported.has(path)) reexported.set(path, new Set());
-      reexported.get(path)!.add(e.name === '*' ? '*' : (e.declaration?.name ?? ''));
+  const paths = new Set(modules.map((m) => m.path ?? ''));
+  const byPath = new Map(modules.map((m) => [m.path ?? '', m]));
+  // module path → the names it must keep ('*' = all); followed through re-export chains (a folder index
+  // re-exporting its files, `export *` of a barrel).
+  const reexported = new Map<string, Set<string>>();
+  const queue: Array<[string, string]> = [];
+  const add = (path: string, name: string): void => {
+    if (entries.includes(path)) return;
+    if (!reexported.has(path)) reexported.set(path, new Set());
+    const names = reexported.get(path)!;
+    if (names.has(name)) return;
+    names.add(name);
+    queue.push([path, name]);
+  };
+  const follow = (mod: { path?: string; exports?: Array<{ name?: string; declaration?: { name?: string; module?: string } }> }, wanted: string | null): void => {
+    for (const e of mod.exports ?? []) {
+      if (wanted !== null && wanted !== '*' && e.name !== wanted) continue;
+      const path = toModulePath(mod.path!, e.declaration?.module, paths);
+      if (!path || path === mod.path) continue;
+      add(path, e.name === '*' ? '*' : (e.declaration?.name ?? ''));
     }
+  };
+  for (const entry of entryModules) follow(entry, null);
+  while (queue.length > 0) {
+    const [path, name] = queue.shift()!;
+    const mod = byPath.get(path);
+    if (mod) follow(mod, name);
   }
   manifest.modules = modules.filter((mod) => {
     if (entryModules.includes(mod)) {
@@ -66,13 +97,13 @@ export function keepPublicApi(manifest: CemPackageDoc, options: PublicApiOptions
     const names = reexported.get(mod.path ?? '');
     const hasElement = (mod.declarations ?? []).some((d) => d.customElement);
     if (!names && !hasElement) return false;
-    const keep = (name: string | undefined, decl: { customElement?: boolean } | undefined): boolean =>
-      decl?.customElement === true || names?.has('*') === true || (name !== undefined && names?.has(name) === true);
-    mod.declarations = (mod.declarations ?? []).filter((d) => keep(d.name, d));
+    const has = (name: string | undefined): boolean => names?.has('*') === true || (name !== undefined && names?.has(name) === true);
+    mod.declarations = (mod.declarations ?? []).filter((d) => d.customElement === true || has(d.name));
     mod.exports = (mod.exports ?? []).filter(
       (e) =>
         e.kind === 'custom-element-definition' ||
-        keep(e.declaration?.name, mod.declarations!.find((d) => d.name === e.declaration?.name)),
+        has(e.name) ||
+        mod.declarations!.some((d) => d.customElement === true && d.name === e.declaration?.name),
     );
     dropMembers(mod.declarations);
     return true;
