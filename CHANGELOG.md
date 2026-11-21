@@ -235,6 +235,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and, while open, runs the item on a chord too (`Ctrl+C`), not only on a bare letter / key name.
 
 ### Fixed
+- The form-validity anchor warning names the method that was called (`setFormatError` / `setValidityFlag`);
+  it always said `setValidityFlag`.
 - A text label (`ariaLabels.x` / `tooltips.x`) that falls back to a customized twin with markup
   (`buttons.x: '<b>Next</b>'`) takes the twin's TEXT (tags dropped, entities decoded) — an aria-label no longer
   reads "<b>Next</b>"; `.html()` keeps the markup (found in web-grid's localization page).
