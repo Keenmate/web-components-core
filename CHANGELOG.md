@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `iconsChanged()` (BlissElement, opt-in protected hook, SPEC §12.33) + `observeIconHook(listener)` (main index):
+  setting / replacing / clearing `window.components.renderIconCallback` after components rendered (load order can't
+  be ensured) now signals them — the hook fires while connected (not on the first connect, not for the same
+  function), a change while detached on reconnect. A component that renders icons implements it (re-render the
+  icons, keep state). Works across bundled core copies; an rc24-or-older copy's accessor (no notify) is taken over.
 - `parseNumberCallback` (`/locale`): `parseNumber(text, { parseNumberCallback })` asks the element's own callback,
   then `window.components.locale.parseNumberCallback`, then core — `ctx = { text, locale, decimalSeparator,
   thousandsSeparator, parseDefault() }`; a number, `null` = not a number, `undefined` = next rule. New types

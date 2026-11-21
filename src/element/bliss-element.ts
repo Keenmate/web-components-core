@@ -77,6 +77,7 @@ import { notifyConnected } from './connection-watch.js';
 import { warnUnusedPageStyles } from '../dom/custom-styles.js';
 import { isRtl } from '../dom/direction.js';
 import { getLocaleRevision, observeLocale } from '../locale/page-locale.js';
+import { getIconHookRevision, observeIconHook } from '../dom/render-icon.js';
 import {
   normalizeEventDefs,
   withCoreEvents,
@@ -363,6 +364,10 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   #localeUnsub?: () => void;
   /** The locale revision this element last rendered with — a change while detached is replayed on reconnect. */
   #localeRevision = -1;
+  /** Unsubscribe from page-wide icon-hook changes; set only while connected AND `iconsChanged` is overridden. */
+  #iconsUnsub?: () => void;
+  /** The icon-hook revision this element last rendered with — a change while detached is replayed on reconnect. */
+  #iconsRevision = -1;
   /** Where this element reads its theme from (SPEC §12.10); `null` = the page. */
   #themeSource: ThemeSource = null;
   /** Unsubscribe from the theme context; set only while connected AND `hasThemeContext` is on. */
@@ -682,6 +687,17 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       })))) return this.#rethrow(firstError);
       if (seen !== -1 && seen !== this.#localeRevision && !step(() => this.localeChanged())) return this.#rethrow(firstError);
     }
+    // Page-wide `window.components.renderIconCallback` (SPEC §12.33) — same opt-in gate and catch-up as locale:
+    // the page may set the hook after the icons rendered (load order can't be ensured).
+    if (this.iconsChanged !== BlissElement.prototype.iconsChanged) {
+      const seen = this.#iconsRevision;
+      this.#iconsRevision = getIconHookRevision();
+      if (!step(() => (this.#iconsUnsub = observeIconHook(() => {
+        this.#iconsRevision = getIconHookRevision();
+        this.iconsChanged();
+      })))) return this.#rethrow(firstError);
+      if (seen !== -1 && seen !== this.#iconsRevision && !step(() => this.iconsChanged())) return this.#rethrow(firstError);
+    }
     if (!step(() => this.#subscribeTheme())) return this.#rethrow(firstError);
     // Core helpers bound to this element (keepScrollAcrossMove) hear every activation, after connect().
     notifyConnected(this, (error) => coreLog(this, 'UI', 'ELEMENT').error('a connection watcher threw', error));
@@ -751,6 +767,8 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#sizeUnsub = undefined;
     this.#localeUnsub?.();
     this.#localeUnsub = undefined;
+    this.#iconsUnsub?.();
+    this.#iconsUnsub = undefined;
     this.#themeUnsub?.();
     this.#themeUnsub = undefined;
     if (!this.#isActive) return; // connect() never ran (its build threw)
@@ -1315,6 +1333,17 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * Overriding opts in (no listener otherwise). No-op by default.
    */
   protected localeChanged(): void {
+    /* opt-in */
+  }
+
+  /**
+   * React to a change of the page-wide `window.components.renderIconCallback` (SPEC §12.33) — the page may set
+   * it after the component rendered (load order can't be ensured). Re-render the icons through `renderIcon()` —
+   * keep the state. Not called on the first connect (`reinit()` renders with the current hook) nor for an
+   * assignment of the same function; a change while detached fires on reconnect. Overriding opts in (no listener
+   * otherwise). No-op by default.
+   */
+  protected iconsChanged(): void {
     /* opt-in */
   }
 

@@ -116,6 +116,11 @@ square); the element's hook (option, else `host.renderIconCallback`; `ctx.compon
 `callSafely`; a string wins); `CLASS_LIST` → `<i class="<prefix>__icon …">` (no marker class of its own; the component's `__icon` rule styles it); else `escapeHtml`. Keep
 `BUILT_IN_ICON_NAMES` in sync with base-css-variables' `--base-icon-*` (minus `check-size`). `ICON_CSS` is NOT part of the manifest test (its only variables are private / dynamic).
 `/menu` adopts it next to `MENU_CSS`.
+Live page hook: the shared state also carries `revision` + `listeners` + the notifying `get` / `set` (added in place
+when an rc24-or-older copy created the state); the setter bumps + `notifyEach` only on a real change. `publishIconHook`
+deletes an accessor whose `set` isn't `state.set` (an older copy's, which never notifies) before `publishPageSetting`.
+`observeIconHook` / `getIconHookRevision` feed BlissElement's opt-in `iconsChanged()` (same gate + reconnect catch-up
+as `localeChanged()`).
 
 ## Render-callback results (`src/dom/render-slot.ts`, SPEC §12.35 — implemented)
 

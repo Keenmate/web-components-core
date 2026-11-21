@@ -1,5 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BUILT_IN_ICON_NAMES, publishIconHook, renderIcon, type RenderIconCallback } from './render-icon.js';
+import { BlissElement } from '../element/bliss-element.js';
+import { define } from '../element/define.js';
+import {
+  BUILT_IN_ICON_NAMES,
+  getIconHookRevision,
+  observeIconHook,
+  publishIconHook,
+  renderIcon,
+  type RenderIconCallback,
+} from './render-icon.js';
 
 const setHook = (cb: RenderIconCallback | undefined): void => {
   publishIconHook();
@@ -80,5 +89,132 @@ describe('renderIcon', () => {
     expect(renderIcon('bi-gear')).toBe('<i class="bi-gear" aria-hidden="true"></i>');
     expect(error).toHaveBeenCalled();
     error.mockRestore();
+  });
+});
+
+describe('observeIconHook / getIconHookRevision', () => {
+  afterEach(() => setHook(undefined));
+
+  it('notifies on a change (set, replace, clear), not on the same value or a non-function that stays "none"', () => {
+    const listener = vi.fn();
+    const off = observeIconHook(listener);
+    const start = getIconHookRevision();
+    const a: RenderIconCallback = () => '<b>a</b>';
+    setHook(a);
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(getIconHookRevision()).toBe(start + 1);
+    setHook(a); // same function
+    expect(listener).toHaveBeenCalledTimes(1);
+    setHook(() => null); // replaced
+    expect(listener).toHaveBeenCalledTimes(2);
+    setHook(undefined); // cleared
+    expect(listener).toHaveBeenCalledTimes(3);
+    (window.components as Record<string, unknown>).renderIconCallback = 'nope'; // still none
+    expect(listener).toHaveBeenCalledTimes(3);
+    off();
+    setHook(a);
+    expect(listener).toHaveBeenCalledTimes(3);
+  });
+
+  it('a throwing listener is logged, the others still hear the change', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const second = vi.fn();
+    const offA = observeIconHook(() => {
+      throw new Error('boom');
+    });
+    const offB = observeIconHook(second);
+    setHook(() => 'x');
+    expect(second).toHaveBeenCalledTimes(1);
+    expect(error).toHaveBeenCalled();
+    offA();
+    offB();
+    error.mockRestore();
+  });
+
+  it('cross-copy: the state lives on globalThis; an older copy accessor (no notify) is taken over, keeping its callback', () => {
+    const shared = (globalThis as unknown as Record<symbol, { callback?: unknown }>)[Symbol.for('@keenmate/web-components-core:icon')]!;
+    expect(shared).toBeDefined();
+    // Simulate core rc24: its own accessor, setter only stores the callback.
+    const old: RenderIconCallback = () => '<i>old</i>';
+    const components = window.components as Record<string, unknown>;
+    delete components.renderIconCallback;
+    Object.defineProperty(components, 'renderIconCallback', {
+      enumerable: false,
+      configurable: true,
+      get: () => shared.callback,
+      set: (v: unknown) => {
+        shared.callback = typeof v === 'function' ? v : undefined;
+      },
+    });
+    components.renderIconCallback = old;
+    const listener = vi.fn();
+    const off = observeIconHook(listener); // publishes: takes the old accessor over
+    expect(components.renderIconCallback).toBe(old);
+    expect(renderIcon('star')).toBe('<i>old</i>');
+    components.renderIconCallback = () => '<i>new</i>';
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(Object.keys(components)).not.toContain('renderIconCallback');
+    off();
+  });
+
+  it('a plain value the page assigned before core loaded is adopted', () => {
+    const components = window.components as Record<string, unknown>;
+    delete components.renderIconCallback;
+    const early: RenderIconCallback = () => '<i>early</i>';
+    components.renderIconCallback = early;
+    publishIconHook();
+    expect(renderIcon('star')).toBe('<i>early</i>');
+    expect(Object.keys(components)).not.toContain('renderIconCallback');
+  });
+});
+
+describe('BlissElement.iconsChanged()', () => {
+  class IconEl extends BlissElement {
+    static inputs = [];
+    calls = 0;
+    protected override iconsChanged(): void {
+      this.calls++;
+    }
+  }
+  define('icons-hook-el', IconEl);
+  afterEach(() => setHook(undefined));
+
+  it('fires on a change while connected (not on the first connect, not for the same value); replays a change missed while detached', async () => {
+    const el = document.createElement('icons-hook-el') as IconEl;
+    document.body.append(el);
+    await el.whenSettled();
+    expect(el.calls).toBe(0);
+    const a: RenderIconCallback = () => '<b>a</b>';
+    setHook(a);
+    expect(el.calls).toBe(1);
+    setHook(a);
+    expect(el.calls).toBe(1);
+    el.remove();
+    setHook(() => '<b>b</b>');
+    expect(el.calls).toBe(1);
+    document.body.append(el);
+    expect(el.calls).toBe(2);
+    el.remove();
+    document.body.append(el); // nothing changed meanwhile
+    expect(el.calls).toBe(2);
+    el.destroy();
+    el.remove();
+    setHook(a);
+    expect(el.calls).toBe(2); // unsubscribed
+  });
+
+  it('a class that does not override iconsChanged() subscribes nothing', async () => {
+    class PlainEl extends BlissElement {
+      static inputs = [];
+    }
+    define('icons-plain-el', PlainEl);
+    const el = document.createElement('icons-plain-el');
+    document.body.append(el);
+    const listener = vi.fn();
+    const off = observeIconHook(listener);
+    setHook(() => 'x');
+    expect(listener).toHaveBeenCalledTimes(1);
+    off();
+    el.remove();
   });
 });

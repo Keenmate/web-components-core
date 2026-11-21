@@ -20,7 +20,7 @@
 import { escapeHtml } from './escape-html.js';
 import { sharedState } from '../global/shared-state.js';
 import { publishPageSetting } from '../global/page-setting.js';
-import { callSafely } from '../logging/safe-call.js';
+import { callSafely, notifyEach } from '../logging/safe-call.js';
 
 export interface RenderIconOptions {
   /** The component's BEM block: adds `<prefix>__icon` (+ `<prefix>__icon--<name>` on a built-in) to the icon. */
@@ -80,27 +80,75 @@ const CLASS_LIST = /^[A-Za-z][A-Za-z0-9_-]*(?:\s+[A-Za-z][A-Za-z0-9_-]*)*$/;
 
 interface IconHookState {
   callback: RenderIconCallback | undefined;
+  /**
+   * Bumped whenever the page-wide hook changes — lets a re-connecting element tell whether it missed one.
+   * Absent on state created by core rc24 and older (added on first use by a newer copy).
+   */
+  revision?: number;
+  /** `observeIconHook` listeners (all copies of core). Absent on state from rc24 and older. */
+  listeners?: Set<() => void>;
+  /** The accessor this generation of core installs; an accessor with another setter is an older copy's. */
+  get?: () => RenderIconCallback | undefined;
+  set?: (value: unknown) => void;
 }
 
 /** On globalThis because each component bundles its own core copy. */
 const STATE_KEY = '@keenmate/web-components-core:icon';
 
-function state(): IconHookState {
-  return sharedState(STATE_KEY, () => ({ callback: undefined }));
+type LiveIconHookState = Required<IconHookState>;
+
+function state(): LiveIconHookState {
+  const s = sharedState<IconHookState>(STATE_KEY, () => ({ callback: undefined }));
+  // State created by an older copy of core (rc24 and older) has no revision / listeners / notifying
+  // accessor: extend it in place (same key, compatible shape — the older copy still reads `callback`).
+  s.revision ??= 0;
+  s.listeners ??= new Set();
+  if (!s.get || !s.set) {
+    s.get = () => s.callback;
+    s.set = (value: unknown) => {
+      const next = typeof value === 'function' ? (value as RenderIconCallback) : undefined;
+      if (next === s.callback) return;
+      s.callback = next;
+      s.revision = (s.revision ?? 0) + 1;
+      notifyEach(s.listeners as Set<() => void>, undefined, { message: 'renderIconCallback listener threw' });
+    };
+  }
+  return s as LiveIconHookState;
 }
 
 /**
  * Publish `window.components.renderIconCallback` as a NON-enumerable accessor (a plain property assigned earlier
- * is adopted). Idempotent; SSR-safe. Called by `registerComponent()` and `renderIcon()`.
+ * is adopted). Idempotent; SSR-safe. Called by `registerComponent()` and `renderIcon()`. An accessor an older copy
+ * of core installed (its setter stores the callback without notifying anyone) is replaced — the state is shared,
+ * so the current callback is kept.
  */
 export function publishIconHook(): void {
   const s = state();
-  publishPageSetting('renderIconCallback', {
-    get: () => s.callback,
-    set: (value: unknown) => {
-      s.callback = typeof value === 'function' ? (value as RenderIconCallback) : undefined;
-    },
-  });
+  if (typeof window !== 'undefined') {
+    const components = (window.components ??= {}) as Record<string, unknown>;
+    const existing = Object.getOwnPropertyDescriptor(components, 'renderIconCallback');
+    if (existing?.get && existing.set !== s.set && existing.configurable) delete components.renderIconCallback;
+  }
+  publishPageSetting('renderIconCallback', { get: s.get, set: s.set });
+}
+
+/** A counter bumped on every change of the page-wide `renderIconCallback` — lets a re-connecting element tell whether it missed one. */
+export function getIconHookRevision(): number {
+  return state().revision;
+}
+
+/**
+ * Subscribe to changes of the page-wide `window.components.renderIconCallback` (assigned / replaced / cleared —
+ * an assignment of the same function is no change); returns the unsubscribe. The page may set the hook after
+ * components rendered (load order can't be ensured): re-render the icons. A BlissElement gets this through the
+ * `iconsChanged()` hook instead.
+ */
+export function observeIconHook(listener: () => void): () => void {
+  publishIconHook();
+  const { listeners } = state();
+  const wrapped = (): void => listener();
+  listeners.add(wrapped);
+  return () => listeners.delete(wrapped);
 }
 
 function pageHook(): RenderIconCallback | undefined {

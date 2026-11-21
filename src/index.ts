@@ -98,7 +98,7 @@ export { renderSlot, renderSlotHtml } from './dom/render-slot.js';
 export type { RenderSlotOptions, SlotHtml, SlotKind, SlotResult } from './dom/render-slot.js';
 // Icons are data (SPEC §12.33): markup raw → built-in name masked → window.components.renderIconCallback →
 // icon-font classes <i class> → escaped text.
-export { renderIcon, ICON_CSS, BUILT_IN_ICON_NAMES, publishIconHook } from './dom/render-icon.js';
+export { renderIcon, ICON_CSS, BUILT_IN_ICON_NAMES, publishIconHook, observeIconHook } from './dom/render-icon.js';
 export type { RenderIconOptions, RenderIconCallback, IconRenderContext } from './dom/render-icon.js';
 // Clipboard: copy with a fallback, read a paste event (SPEC §12.32).
 export { copyText, readPasteText } from './dom/clipboard.js';

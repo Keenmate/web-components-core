@@ -2761,6 +2761,17 @@ longer masked — it renders `<i class="star">`; map it in the hook instead.
 `ICON_CSS` (`.km-icon`, `@layer component`, forced-colors aware) is adopted where named icons render; `/menu`
 adopts it and renders item icons through `renderIcon` (a name used to come out as its text).
 
+**Live (decided 2026-11-21):** the page may set `window.components.renderIconCallback` AFTER components rendered (load
+order can't be ensured), so they repaint. `observeIconHook(listener)` → unsubscribe hears every change of the page
+hook (set / replaced / cleared — the same function assigned again is no change; a non-function = none);
+`getIconHookRevision()` is the counter behind it. BlissElement's opt-in **`iconsChanged()`** hook (override =
+subscribed while connected), wired like `localeChanged()` (§12.24): not called on the first connect (`reinit()`
+rendered with the current hook); a change while detached fires on reconnect (the revision). A component that renders
+icons implements it: re-render the icons, keep the state. An instance `renderIconCallback` is an input row — its
+change goes through `update()` / `reinit()` as usual. Cross-copy: the state (callback, revision, listeners, the
+notifying accessor) is `sharedState`; an accessor installed by core rc24 or older (its setter only stores the
+callback) is replaced by the first newer copy that publishes — the shared callback is kept.
+
 ### 12.34 Controller facade — IMPLEMENTED (`src/element/controller-facade.ts`, main index)
 
 `createController()` (§12.5) returns the component's public imperative API — never the engine. Audit B23: six

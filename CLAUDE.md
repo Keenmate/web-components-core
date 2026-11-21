@@ -252,6 +252,8 @@ A `render*Callback` result goes through `renderSlot(container, result, { renderD
 
 Icon strings render through `renderIcon(icon, { prefix, host })` + `ICON_CSS` (SPEC §12.33): markup → built-in name
 (mask) → the element's `renderIconCallback` → page `window.components.renderIconCallback` → icon-font `<i class="<prefix>__icon …">` → text.
+The page hook may be set after render: a component that renders icons implements the opt-in `iconsChanged()` hook
+(re-render the icons, keep state; wired like `localeChanged()`; `observeIconHook` outside an element).
 
 Clipboard: `copyText(text)` (API + execCommand fallback) and `readPasteText(event)` (SPEC §12.32).
 
