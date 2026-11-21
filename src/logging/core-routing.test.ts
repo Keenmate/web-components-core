@@ -77,7 +77,7 @@ describe('instance line format', () => {
     expect(args[0]).toBe(`%c[${ns}:INIT]%c #country`);
     expect(String(args[1])).toContain('color:');
     expect(consoleLine(args)).toBe(`[${ns}:INIT] #country rejected invalid value for attribute page-size="abc" (expected an integer); keeping previous value`);
-    expect(args[4]).toBe(10); // the kept value stays a separate (inspectable) arg
+    expect(args.slice(4)).toEqual(['kept:', 10]); // the kept value stays a separate (inspectable) arg, labelled
   });
 
   it('own bundle, no id: a running number', () => {

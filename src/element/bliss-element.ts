@@ -557,6 +557,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       this.#reject(
         { configKey: def.configKey, attribute: name, value: raw, reason, kept: this.#config[def.configKey], source: 'attribute' },
         `rejected invalid value for attribute ${name}="${raw}"${reason ? ` (${reason})` : ''}; keeping previous value`,
+        'kept:',
         this.#config[def.configKey],
       );
       this.#restoreAttribute(def);
@@ -864,6 +865,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       this.#reject(
         { configKey: 'responsive', value, reason: `expected ${RESPONSIVE_MAP_EXPECTED}`, kept: this.responsive, source: 'property' },
         `rejected invalid value for property "responsive" (${RESPONSIVE_MAP_EXPECTED}); keeping previous value`,
+        'got:',
         value,
       );
       return;
@@ -888,6 +890,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       this.#reject(
         { configKey: 'responsiveCallback', value, reason: `expected ${RESPONSIVE_CALLBACK_EXPECTED}`, kept: this.responsiveCallback, source: 'property' },
         `rejected invalid value for property "responsiveCallback" (${RESPONSIVE_CALLBACK_EXPECTED}); keeping previous value`,
+        'got:',
         value,
       );
       return;
@@ -1991,6 +1994,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       this.#reject(
         { configKey: def.configKey, value, kept: this.#config[def.configKey], source: 'property' },
         `rejected invalid value for property "${def.configKey}"; keeping previous value`,
+        'got:',
         value,
       );
       return false;

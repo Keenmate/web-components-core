@@ -235,6 +235,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and, while open, runs the item on a chord too (`Ctrl+C`), not only on a bare letter / key name.
 
 ### Fixed
+- A rejected-input warning labels its value: `got: <value>` on the property path, `kept: <value>` on the attribute
+  path. The property warning printed the REJECTED value right after "keeping previous value", which read as the kept one.
 - The form-validity anchor warning names the method that was called (`setFormatError` / `setValidityFlag`);
   it always said `setValidityFlag`.
 - A text label (`ariaLabels.x` / `tooltips.x`) that falls back to a customized twin with markup
