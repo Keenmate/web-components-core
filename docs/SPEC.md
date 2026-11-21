@@ -2508,7 +2508,8 @@ every element. Decided 2026-10-26 / 10-27 / 10-28 (rulebook D-NC-24), built 2026
   `parseNumber(text, settings)` (group separator and any space removed, decimal separator → `.`, U+2212 minus;
   not a number → `null`).
 - **Labels:** `createLabels(host, DEFAULT_LABELS, () => this.config.labels, { tag, getLocale })` → `{ template,
-  text, html, all }`. Keys are flat `<elementType>.<name>` — element types `buttons`, `tooltips`, `ariaLabels`,
+  text, html, all }`. A user callback's context gets `ctx.labels = createLabelsView(labels)` → frozen `{ text, html }`
+  only (the paths that run the translate callbacks; `template` / `all` skip them) — never a plain labels object. Keys are flat `<elementType>.<name>` — element types `buttons`, `tooltips`, `ariaLabels`,
   `placeholders`, `headers`, `labels`, `messages`, `errors`, `menuItems`, `columnHeaders` (one text per surface: a
   button's caption, its tooltip and its screen-reader name are three keys sharing `<name>`); the FULL key is
   `<tag>.<key>` with `tag` = the component's own name (not the element's tag — a custom tag still reads the app's

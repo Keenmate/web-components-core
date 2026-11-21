@@ -37,6 +37,21 @@ export interface Labels<L extends object> {
   all(): L;
 }
 
+/**
+ * The labels a component hands to a user callback (`ctx.labels`): only `text()` / `html()`, the two paths that
+ * run the whole chain (instance → page dictionary → the element's then the page's `translateCallback` →
+ * default, numbers locale-formatted). No `template()` / `all()` — those skip the callbacks.
+ */
+export type LabelsView<L extends object> = Readonly<Pick<Labels<L>, 'text' | 'html'>>;
+
+/** `ctx.labels` for a callback context: a frozen `{ text, html }` over the component's labels (SPEC §12.24). */
+export function createLabelsView<L extends object>(labels: Labels<L>): LabelsView<L> {
+  return Object.freeze({
+    text: (key: keyof L & string, params?: LabelParams) => labels.text(key, params),
+    html: (key: keyof L & string, params?: LabelParams) => labels.html(key, params),
+  });
+}
+
 export interface CreateLabelsOptions {
   /**
    * The component name — the prefix of the full keys (`web-grid` → `web-grid.buttons.add`). Pass the

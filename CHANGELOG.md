@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `createLabelsView(labels)` (`/locale`) → a frozen `{ text, html }` for a user callback's `ctx.labels`: both run the
+  whole chain (the element's and the page's `translateCallback`, numbers locale-formatted); `template()` / `all()`
+  (which skip the callbacks) are not exposed. Rule: a callback context never gets a plain labels object.
 - `renderIcon(value, { component })`: the hooks' `ctx.component` when the host is not the component's own element —
   a framework component (svelte-treeview) renders into a plain `<div>`, whose tag said `'div'`. Default: the host's
   tag, as before.

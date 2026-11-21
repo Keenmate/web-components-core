@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createLabels,
+  createLabelsView,
   formatLabel,
   formatNumber,
   getDateFormat,
@@ -224,6 +225,15 @@ describe('labels', () => {
     expect(labels.text('buttons.cancel', { name: 'f' })).toBe('page');
     expect(labels.text('messages.empty')).toBe('Instance');
     expect(ownCb).not.toHaveBeenCalledWith(expect.objectContaining({ key: 'web-x.messages.empty' }));
+  });
+
+  it('createLabelsView: ctx.labels for a callback — text / html run the callbacks; no template / all', () => {
+    page().locale = { translateCallback: (ctx: { key: string }) => (ctx.key === 'web-x.labels.count' ? '<b>{count}</b> souborů' : null) };
+    const view = createLabelsView(createLabels(host, DEFAULTS, () => null, { tag: 'web-x' }));
+    expect(view.text('labels.count', { count: 3 })).toBe('<b>{count}</b> souborů');
+    expect(view.html('buttons.cancel', { name: '<i>Ann</i>' })).toContain('&lt;i&gt;Ann&lt;/i&gt;');
+    expect(Object.keys(view).sort()).toEqual(['html', 'text']);
+    expect(Object.isFrozen(view)).toBe(true);
   });
 
   it('a number param is shown locale-formatted; translateCallback gets the raw number; a string stays as is', () => {
