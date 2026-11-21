@@ -24,7 +24,13 @@ import { __resetOverlays } from '../overlay/active-overlay.js';
 /** Let the mocked computePosition resolve (onPlaced runs in its `.then`). */
 const settle = () => new Promise((r) => setTimeout(r, 0));
 /** Past watchScrollClose's opening frames (jsdom: no rAF → its 50 ms fallback). */
-const settleOpen = () => new Promise((r) => setTimeout(r, 60));
+/** Past the opening window: two animation frames (scroll-close's settle) — a fixed timeout raced
+ *  jsdom's rAF timer under load — or its 50 ms timeout fallback. */
+const settleOpen = () =>
+  new Promise<void>((r) => {
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 0)));
+    else setTimeout(r, 60);
+  });
 /** jsdom has no PointerEvent; the overlay router only reads composedPath(). */
 /** A full click: the press records, the click (after page handlers) decides. */
 const press = (target: EventTarget, onClick?: () => void) => {
