@@ -504,7 +504,16 @@ window.components.locale = { labels: { 'web-dropzone.buttons.retryFile': 'Zkusit
 
 Prefer no twin at all: a text button is named by its text, an input by its caption (`aria-labelledby`). Assigning replaces the whole object (it is
 frozen); every live component re-renders. `parseNumber(text, { locale })` reads a number the user typed with the
-same separators.
+same separators; a group separator counts only in a real group position (`1.234,5` → 1234.5, but `1.5` in `de` is
+not a number — never a silent 15). To read numbers your own way, set `parseNumberCallback` (on the element where a
+component has one, or page-wide):
+
+```js
+window.components.locale = {
+  // '1.5' in a German grid → 1.5 instead of "invalid number"; undefined = core's parse
+  parseNumberCallback: ({ text, parseDefault }) => parseDefault() ?? (/^\d+\.\d+$/.test(text.trim()) ? Number(text) : undefined),
+};
+```
 
 ## Render callbacks (`renderSlot`)
 

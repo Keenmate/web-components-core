@@ -2505,8 +2505,12 @@ every element. Decided 2026-10-26 / 10-27 / 10-28 (rulebook D-NC-24), built 2026
   `resolveLocale(instance)`: instance (`'auto'` / empty = unset) → page → `navigator.language` → `en-US`; an
   invalid tag warns and falls through. `getMonthNames` / `getWeekdayNames` from `Intl`. No language tables.
 - **Numbers:** `formatNumber(value, opts)` (`Intl.NumberFormat`, then the resolved separators swapped in) and
-  `parseNumber(text, settings)` (group separator and any space removed, decimal separator → `.`, U+2212 minus;
-  not a number → `null`).
+  `parseNumber(text, options, source?)` (decimal separator → `.`, U+2212 minus; a group separator — the locale's,
+  or any space — only in a real group position: first 1–3 digits, then 2–3, the last group exactly 3, so `'1.5'` in
+  `de` is `null`, never 15; not a number → `null`). `parseNumberCallback` overrides it: the element's own
+  (`options.parseNumberCallback`), then `window.components.locale.parseNumberCallback`; `ctx = { text, locale,
+  decimalSeparator, thousandsSeparator, parseDefault() }` → a number, `null` = not a number, `undefined` = next rule
+  (a throw is logged, next rule).
 - **Labels:** `createLabels(host, DEFAULT_LABELS, () => this.config.labels, { tag, getLocale })` → `{ template,
   text, html, all }`. A user callback's context gets `ctx.labels = createLabelsView(labels)` → frozen `{ text, html }`
   only (the paths that run the translate callbacks; `template` / `all` skip them) — never a plain labels object. Keys are flat `<elementType>.<name>` — element types `buttons`, `tooltips`, `ariaLabels`,

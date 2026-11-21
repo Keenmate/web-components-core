@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `parseNumberCallback` (`/locale`): `parseNumber(text, { parseNumberCallback })` asks the element's own callback,
+  then `window.components.locale.parseNumberCallback`, then core — `ctx = { text, locale, decimalSeparator,
+  thousandsSeparator, parseDefault() }`; a number, `null` = not a number, `undefined` = next rule. New types
+  `ParseNumberCallback` / `ParseNumberContext` / `ParseNumberOptions`.
 - `createLabelsView(labels)` (`/locale`) → a frozen `{ text, html }` for a user callback's `ctx.labels`: both run the
   whole chain (the element's and the page's `translateCallback`, numbers locale-formatted); `template()` / `all()`
   (which skip the callbacks) are not exposed. Rule: a callback context never gets a plain labels object.
@@ -190,6 +194,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   them by hand after floating its host). pure-css port affected.
 
 ### Changed
+- `parseNumber` accepts a group separator only in a real group position (first 1–3 digits, then 2–3, the last
+  group 3): `'1.5'` in `de` was read as 15, now `null` (a grid cell says "invalid number"); `'1.234,5'` and Indian
+  `'12,34,567'` still parse. Its third parameter is the logging `source` element.
 - **BREAKING — icons (`renderIcon`, SPEC §12.33), keen-pure-admin's model:** markup raw → a built-in name
   (`BUILT_IN_ICON_NAMES`, the base-css-variables `--base-icon-*` glyphs) masked from its token, reserved → the new
   page-wide `window.components.renderIconCallback(name, { component, element, prefix })` (markup, or `null` = not

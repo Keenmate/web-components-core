@@ -6,7 +6,7 @@
 `formatLabelCallback` (renamed `translateCallback`) warns + dropped); `languagechange` bumps the revision too. BlissElement imports only `observeLocale` / `getLocaleRevision`
 from here (the `localeChanged()` hook) — the rest of the module stays off the base import graph.
 `settings.ts`: per key instance → page → `Intl`; page keys apply to every element (user preference).
-`numbers.ts`: `formatNumber` swaps separators into `formatToParts`; `parseNumber` strips group + spaces (literal
+`numbers.ts`: `formatNumber` swaps separators into `formatToParts`; `parseNumber` checks group positions (a group mark only between real groups, `parseNumberCallback` element → page → core) and strips group + spaces (literal
 NBSP / NNBSP / thin space in the regex), `−` → `-`. `labels.ts`: `createLabels(host | null, …)` (null = a public engine without its element: pass `tag` + `getTranslateCallback`) → `text` (no escaping) / `html`
 (params escaped, or all with `shouldEscapeLabels`); keys flat `<elementType>.<name>`, full key `<tag>.<key>` (`tag` = the
 component's own name); instance short OR full key → page `labels[full]` → default; the element's `translateCallback` (`getTranslateCallback` / `host.translateCallback`) then the page-wide one, via `callSafely` (full key,

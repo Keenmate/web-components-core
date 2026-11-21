@@ -146,6 +146,45 @@ describe('formatNumber / parseNumber', () => {
     expect(parseNumber('12abc', { locale: 'en-US' })).toBeNull();
     expect(parseNumber('1,2,3.4.5', { locale: 'en-US' })).toBeNull();
   });
+
+  it('a group separator only in a real group position — "1.5" in de is not 15', () => {
+    expect(parseNumber('1.5', { locale: 'de-DE' })).toBeNull();
+    expect(parseNumber('12.34', { locale: 'de-DE' })).toBeNull();
+    expect(parseNumber('1,5', { locale: 'en-US' })).toBeNull();
+    expect(parseNumber('1.234.567,89', { locale: 'de-DE' })).toBe(1234567.89);
+    expect(parseNumber('1234,5', { locale: 'de-DE' })).toBe(1234.5);
+    expect(parseNumber('12,34,567', { locale: 'en-IN' })).toBe(1234567); // Indian grouping
+    expect(parseNumber('12 34', { locale: 'cs-CZ' })).toBeNull();
+    expect(parseNumber('-1 234 567', { locale: 'cs-CZ' })).toBe(-1234567);
+    expect(parseNumber(',5', { locale: 'de-DE' })).toBe(0.5);
+    expect(parseNumber('1_000', { locale: 'en-US' })).toBeNull();
+    expect(parseNumber('1,234,5', { locale: 'en-US' })).toBeNull();
+  });
+
+  it('parseNumberCallback: the element’s own → page-wide → core; undefined = next rule', () => {
+    const seen: unknown[] = [];
+    page().locale = {
+      parseNumberCallback: (ctx: { text: string; decimalSeparator: string; parseDefault(): number | null }) => {
+        seen.push(ctx.decimalSeparator);
+        return ctx.text === 'page' ? 7 : undefined;
+      },
+    } as never;
+    expect(parseNumber('page', { locale: 'de-DE' })).toBe(7);
+    expect(parseNumber('1,5', { locale: 'de-DE' })).toBe(1.5); // page callback said "not mine"
+    expect(seen).toEqual([',', ',']);
+    const own = (ctx: { text: string; parseDefault(): number | null }) => (ctx.text === 'page' ? null : (ctx.parseDefault() ?? 0) * 2);
+    expect(parseNumber('page', { locale: 'de-DE', parseNumberCallback: own })).toBeNull(); // own wins, null = not a number
+    expect(parseNumber('1,5', { locale: 'de-DE', parseNumberCallback: own })).toBe(3);
+    const throwing = () => {
+      throw new Error('boom');
+    };
+    expect(parseNumber('2,5', { locale: 'de-DE', parseNumberCallback: throwing })).toBe(2.5); // logged, next rule
+  });
+
+  it('a non-function page-wide parseNumberCallback is dropped', () => {
+    page().locale = { parseNumberCallback: 'nope' } as never;
+    expect((page().locale as { parseNumberCallback?: unknown }).parseNumberCallback).toBeUndefined();
+  });
 });
 
 describe('labels', () => {

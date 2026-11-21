@@ -11,6 +11,7 @@
  *   decimalSeparator: ',', thousandsSeparator: ' ',
  *   labels: { 'web-dropzone.buttons.cancelFile': 'Zrušit {name}' },   // flat — the app's whole JSON fits
  *   translateCallback: ({ key, params }) => (i18next.exists(key) ? i18next.t(key, params) : null),
+ *   parseNumberCallback: ({ text, parseDefault }) => parseDefault() ?? myNumberParser(text),   // optional
  * };
  * window.components.security = { shouldEscapeLabels: true };
  * ```
@@ -24,6 +25,7 @@ import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { publishPageSetting } from '../global/page-setting.js';
 import { coreLog } from '../logging/element-logger.js';
 import { notifyEach } from '../logging/safe-call.js';
+import type { ParseNumberCallback } from './numbers.js';
 
 /** `translateCallback` context: look the full `key` up (i18next) or format `template` (ICU / FormatJS). */
 export interface LabelTranslateContext {
@@ -67,6 +69,11 @@ export interface PageLocale extends LocaleSettings {
    */
   labels?: Readonly<Record<string, string>>;
   translateCallback?: TranslateCallback;
+  /**
+   * Reads every number a user types in any component (`parseNumber`), after an element's own
+   * `parseNumberCallback`: return the number, `null` = not a number, `undefined` = core's parse.
+   */
+  parseNumberCallback?: ParseNumberCallback;
 }
 
 /** `window.components.security`. */
@@ -118,6 +125,10 @@ function freezeLocale(value: Record<string, unknown>): Readonly<PageLocale> {
   if (copy.translateCallback !== undefined && typeof copy.translateCallback !== 'function') {
     coreLog(null, 'INIT', 'ELEMENT').warn('window.components.locale.translateCallback must be a function — ignored');
     delete copy.translateCallback;
+  }
+  if (copy.parseNumberCallback !== undefined && typeof copy.parseNumberCallback !== 'function') {
+    coreLog(null, 'INIT', 'ELEMENT').warn('window.components.locale.parseNumberCallback must be a function — ignored');
+    delete copy.parseNumberCallback;
   }
   if ('formatLabelCallback' in copy) {
     coreLog(null, 'INIT', 'ELEMENT').warn('window.components.locale.formatLabelCallback is now translateCallback — ignored');
