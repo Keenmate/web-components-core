@@ -7,7 +7,7 @@
  * out of the base import graph.
  */
 export { anchor } from './anchor.js';
-export { createTooltip } from './tooltip.js';
+export { createTooltip, TOOLTIP_CLASS, TOOLTIP_CSS, TOOLTIP_HIDING_CLASS } from './tooltip.js';
 export { createPopover } from './popover.js';
 export { findOverlayContainer } from './overlay-container.js';
 // A styled layer outside the component (drag ghost, drop pads, cover overlay) — B13.

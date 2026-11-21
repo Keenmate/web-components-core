@@ -10,10 +10,20 @@
  * cells, tree nodes) — one set of listeners on the root, the target found with `closest(selector)`,
  * the content resolved per target when it shows. Moving from one target to the next while a
  * tooltip shows switches at once (no second show delay).
+ *
+ * Exit animation: hiding removes `visibleClass` and adds `km-tooltip--hiding`; the element stays
+ * mounted (anchored, `pointer-events: none`) until its own `opacity` transition ends — or a timeout
+ * of the computed transition duration, so a hidden tab / `display: none` ancestor can't leave it
+ * stuck — then it is removed. No transition (motion `none`, OS reduced motion, a 0s duration) →
+ * removed at once. Showing again during the fade cancels it. `TOOLTIP_CSS` (layered, adopted into
+ * the container's root) draws the default fade + a 4px slide toward the anchor, timed by the motion
+ * token `--base-duration-fast`. `data-placement` carries the resolved placement (after flip / shift).
  */
 import { findOverlayContainer } from './overlay-container.js';
 import { anchor } from './anchor.js';
 import { coreLog } from '../logging/element-logger.js';
+import { adoptStyles } from '../dom/adopt-styles.js';
+import { adoptMotionStyles } from '../environment/motion.js';
 import type { AnchorHandle, Placement, Strategy, VirtualElement } from './types.js';
 
 /** Show/hide delays, in ms. A single number sets both. */
@@ -63,7 +73,10 @@ export interface TooltipOptions {
   shouldToggleOnTap?: boolean;
   /** Class(es) applied to the tooltip element. */
   cssClass?: string;
-  /** Class toggled on the tooltip while it is visible. Default `'is-visible'`. */
+  /**
+   * Class toggled on the tooltip while it is visible. Default `'is-visible'`. Removed when hiding
+   * starts; the element itself stays mounted through the exit fade (`km-tooltip--hiding`).
+   */
   visibleClass?: string;
   /** An arrow element (kept as the tooltip's last child, positioned by `anchor()`'s `arrow`). */
   arrow?: HTMLElement;
@@ -94,15 +107,80 @@ export interface TooltipHandle {
   readonly target: HTMLElement | null;
   /** Show now (ignores the show delay) — for `target` (delegated mode), else the trigger. */
   show(target?: HTMLElement): void;
-  /** Hide now (ignores the hide delay). */
+  /**
+   * Hide now (ignores the hide delay). The element fades out and is removed when its transition
+   * ends (at once without one); a show during the fade cancels it.
+   */
   hide(): void;
   /** Re-resolve the content for the current target (its data changed while shown). */
   refresh(): void;
-  /** Remove listeners, hide, and drop the element. Idempotent. */
+  /** Remove listeners, hide, and drop the element at once (no fade). Idempotent. */
   destroy(): void;
 }
 
 let tooltipSeq = 0;
+
+/** The class core puts on every tooltip element (the hook for {@link TOOLTIP_CSS}). */
+export const TOOLTIP_CLASS = 'km-tooltip';
+/** The class on a tooltip while it fades out (still mounted, `pointer-events: none`). */
+export const TOOLTIP_HIDING_CLASS = 'km-tooltip--hiding';
+
+/** The 4px slide toward the anchor, per resolved placement side (entry and exit). */
+const towardAnchor = (cls: string): string =>
+  [
+    `:where(.${cls}[data-placement^="top"]) { translate: 0 4px; }`,
+    `:where(.${cls}[data-placement^="bottom"]) { translate: 0 -4px; }`,
+    `:where(.${cls}[data-placement^="left"]) { translate: 4px 0; }`,
+    `:where(.${cls}[data-placement^="right"]) { translate: -4px 0; }`,
+  ].join(' ');
+
+/**
+ * The default tooltip motion (SPEC §12.2): fade + a tiny slide toward the anchor on show
+ * (`@starting-style`) and on hide (`km-tooltip--hiding`). In `@layer component` with
+ * zero-specificity `:where()` selectors, so a component's own tooltip rules (same layer, an
+ * `overrides` layer, or un-layered) win; durations only through the motion token
+ * `--base-duration-fast` (0s under `data-motion="none"` / OS reduced motion = instant).
+ * `createTooltip` adopts it into the root its container lives in.
+ */
+export const TOOLTIP_CSS = `
+@layer component {
+  :where(.${TOOLTIP_CLASS}) {
+    transition:
+      opacity var(--base-duration-fast, 0.1s) var(--base-ease-standard, ease),
+      translate var(--base-duration-fast, 0.1s) var(--base-ease-standard, ease);
+  }
+  :where(.${TOOLTIP_HIDING_CLASS}) { opacity: 0; pointer-events: none; }
+  ${towardAnchor(TOOLTIP_HIDING_CLASS)}
+  @starting-style {
+    :where(.${TOOLTIP_CLASS}) { opacity: 0; }
+    ${towardAnchor(TOOLTIP_CLASS)}
+  }
+}
+`;
+
+/**
+ * A CSS engine that can run transitions (not SSR / jsdom, whose stylesheet parser rejects
+ * `@layer` blocks — and which never animates anyway).
+ */
+const canAnimate = (): boolean => typeof CSS !== 'undefined' && typeof CSS.supports === 'function';
+
+/** Longest `duration + delay` of the element's computed transitions, in ms (0 = none). */
+function transitionMs(element: HTMLElement): number {
+  const style = getComputedStyle(element);
+  const toMs = (value: string): number => {
+    const n = parseFloat(value);
+    if (!Number.isFinite(n)) return 0;
+    return value.trim().endsWith('ms') ? n : n * 1000;
+  };
+  const durations = (style.transitionDuration || '').split(',').map(toMs);
+  const delays = (style.transitionDelay || '').split(',').map(toMs);
+  let max = 0;
+  // CSS repeats the shorter list to the longer one's length.
+  durations.forEach((duration, i) => {
+    max = Math.max(max, duration + (delays[i % delays.length] ?? 0));
+  });
+  return max;
+}
 
 /** How long after a touch the browser's emulated mouse / focus events are ignored (toggle-on-tap). */
 const TOUCH_GHOST_MS = 800;
@@ -139,6 +217,7 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
   const element = document.createElement('div');
   element.setAttribute('role', 'tooltip');
   if (opts.cssClass) element.className = opts.cssClass;
+  element.classList.add(TOOLTIP_CLASS);
   // The tooltip describes its target for assistive tech while it is shown (aria-describedby).
   element.id ||= `km-tooltip-${++tooltipSeq}`;
   if (typeof opts.content !== 'function') setContent(opts.content);
@@ -160,10 +239,14 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
   };
 
   let handle: AnchorHandle | undefined;
+  /** The target `handle` anchors to — kept through the exit fade (`current` is cleared at hide). */
+  let anchoredTarget: HTMLElement | null = null;
   let visible = false;
   let isDestroyed = false;
   /** The target shown (or about to be shown, while the show delay runs). */
   let current: HTMLElement | null = null;
+  /** The exit fade in progress: its fallback timer, transitionend listener, prior inline pointer-events. */
+  let fade: { timer?: ReturnType<typeof setTimeout>; onEnd: (event: TransitionEvent) => void; pointerEvents: string } | undefined;
   let showTimer: ReturnType<typeof setTimeout> | undefined;
   let hideTimer: ReturnType<typeof setTimeout> | undefined;
   let lastTouchAt = -Infinity;
@@ -225,11 +308,49 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     hide();
   };
 
-  /** Detach the tooltip from its current target (keeps it mounted when switching targets). */
+  /** Stop anchoring (the tooltip stays mounted — switching targets, or the end of the fade). */
   const detach = (): void => {
     handle?.destroy();
     handle = undefined;
-    if (current) removeDescribedBy(current, element.id);
+    if (anchoredTarget) removeDescribedBy(anchoredTarget, element.id);
+    anchoredTarget = null;
+  };
+
+  /** Stop the exit fade where it is (shown again, or finishing): the element stays mounted. */
+  const cancelFade = (): void => {
+    element.classList.remove(TOOLTIP_HIDING_CLASS);
+    if (!fade) return;
+    if (fade.timer) clearTimeout(fade.timer);
+    element.removeEventListener('transitionend', fade.onEnd);
+    element.style.pointerEvents = fade.pointerEvents;
+    fade = undefined;
+  };
+
+  /** The end of a hide: unanchor and unmount. */
+  const unmount = (): void => {
+    cancelFade();
+    detach();
+    element.removeAttribute('data-placement');
+    element.remove();
+  };
+
+  /** Fade out, then unmount — at once when the tooltip has no transition (motion none, reduced motion). */
+  const startFade = (): void => {
+    element.classList.add(TOOLTIP_HIDING_CLASS);
+    const ms = transitionMs(element);
+    if (ms <= 0) {
+      unmount();
+      return;
+    }
+    const onEnd = (event: TransitionEvent): void => {
+      if (event.target === element && event.propertyName === 'opacity') unmount();
+    };
+    // Hit-testing off while it fades (inline: a component's hoverable-tooltip CSS would win otherwise).
+    fade = { onEnd, pointerEvents: element.style.pointerEvents };
+    element.style.pointerEvents = 'none';
+    element.addEventListener('transitionend', onEnd);
+    // A hidden tab or a display:none ancestor never fires transitionend.
+    fade.timer = setTimeout(unmount, ms);
   };
 
   const show = (target: HTMLElement | null = current ?? (isDelegated ? null : rootElement)): void => {
@@ -248,29 +369,44 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
       hide();
       return;
     }
-    if (visible) detach();
+    // Shown again while fading out: continue from where the fade is (no remount, no new entry).
+    cancelFade();
+    if (handle && anchoredTarget !== target) detach();
     current = target;
     if (!visible) {
       visible = true;
       // Resolved at each show: a target inside a modal <dialog> mounts the tooltip in the dialog.
-      (opts.container ?? findOverlayContainer(target)).append(element);
+      const container = opts.container ?? findOverlayContainer(target);
+      // The requested placement until the first one resolves (the entry slide needs a side at once).
+      if (!handle) element.setAttribute('data-placement', placement);
+      if (element.parentNode !== container) container.append(element);
+      const styleRoot = element.getRootNode();
+      if (canAnimate() && (styleRoot.nodeType === 9 || styleRoot.nodeType === 11)) {
+        adoptStyles(styleRoot as unknown as DocumentOrShadowRoot, TOOLTIP_CSS);
+      }
+      adoptMotionStyles(element); // the data-motion copied from the target maps onto the tokens
       document.addEventListener('keydown', onKeydown, true);
       if (opts.shouldToggleOnTap) document.addEventListener('pointerdown', onDocumentPointerDown, true);
     }
-    const reference = opts.shouldFollowCursor ? cursorReference : target;
-    handle = anchor(element, reference, {
-      placement,
-      strategy: opts.strategy,
-      offset: opts.offset ?? 8,
-      inheritThemeFrom: opts.inheritThemeFrom ?? target,
-      ...(opts.arrow ? { arrow: { element: opts.arrow } } : {}),
-      ...(opts.shouldUseFixedContainingBlock ? { shouldUseFixedContainingBlock: true } : {}),
-      // A target removed from the page while its tooltip shows (a re-rendered row) takes the
-      // tooltip with it, instead of leaving it mounted with positioning running.
-      beforeComputeCallback: () => {
-        if (!target.isConnected) hide();
-      },
-    });
+    if (!handle) {
+      const reference = opts.shouldFollowCursor ? cursorReference : target;
+      anchoredTarget = target;
+      handle = anchor(element, reference, {
+        placement,
+        strategy: opts.strategy,
+        offset: opts.offset ?? 8,
+        inheritThemeFrom: opts.inheritThemeFrom ?? target,
+        ...(opts.arrow ? { arrow: { element: opts.arrow } } : {}),
+        ...(opts.shouldUseFixedContainingBlock ? { shouldUseFixedContainingBlock: true } : {}),
+        // The final placement after flip / shift, for direction-aware component CSS (arrow, motion).
+        onPlaced: (resolved) => element.setAttribute('data-placement', resolved),
+        // A target removed from the page while its tooltip shows (a re-rendered row) takes the
+        // tooltip with it at once, instead of leaving it mounted with positioning running.
+        beforeComputeCallback: () => {
+          if (!target.isConnected) hide(true);
+        },
+      });
+    }
     addDescribedBy(target, element.id);
     // Ensure cursor tracking is live. For a pointer show it was already attached on enter (so the
     // cursor was seeded through the show delay); for an imperative show() / focus show it's
@@ -279,37 +415,39 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     element.classList.add(visibleClass);
   };
 
-  const hide = (): void => {
+  /** Hide (with the exit fade); `isImmediate` unmounts at once (destroy, a removed target). */
+  const hide = (isImmediate = false): void => {
     clearTimers();
     // Always detach cursor tracking — the listener may have been attached on enter while the
     // show delay was still pending (never became visible).
     stopTrackingCursor();
     // A later focus / show() places the tooltip at the target, not where the pointer last was.
     cursorOffset = undefined;
+    current = null;
     if (!visible) {
-      current = null;
+      if (isImmediate && handle) unmount(); // cut a running fade short
       return;
     }
     visible = false;
     element.classList.remove(visibleClass);
-    detach();
-    current = null;
-    element.remove();
+    if (anchoredTarget) removeDescribedBy(anchoredTarget, element.id);
     document.removeEventListener('keydown', onKeydown, true);
     document.removeEventListener('pointerdown', onDocumentPointerDown, true);
+    if (isImmediate || !anchoredTarget?.isConnected) unmount();
+    else startFade();
   };
 
   const scheduleShow = (target: HTMLElement): void => {
     clearTimers();
-    // Moving between targets while one shows: switch at once.
-    if (delay.show > 0 && !visible) {
+    // Moving between targets while one shows (or still fades out): switch at once.
+    if (delay.show > 0 && !visible && !fade) {
       current = target;
       showTimer = setTimeout(() => show(target), delay.show);
     } else show(target);
   };
   const scheduleHide = (): void => {
     clearTimers();
-    if (delay.hide > 0) hideTimer = setTimeout(hide, delay.hide);
+    if (delay.hide > 0) hideTimer = setTimeout(() => hide(), delay.hide);
     else hide();
   };
 
@@ -391,7 +529,9 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     show(target?: HTMLElement) {
       show(target ?? (isDelegated ? current : rootElement));
     },
-    hide,
+    hide() {
+      hide();
+    },
     refresh() {
       if (!visible || !current || typeof opts.content !== 'function') return;
       const target = current;
@@ -404,7 +544,7 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     },
     destroy() {
       if (isDestroyed) return;
-      hide();
+      hide(true);
       isDestroyed = true;
       for (const [target, type, fn] of listeners) target.removeEventListener(type, fn);
     },

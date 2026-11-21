@@ -25,6 +25,8 @@
         #focus-basic  { left: 200px; top: 560px; width: 140px; height: 44px; }
         #host-card    { left: 200px; top: 640px; width: 180px; height: 44px; }
         #cells        { position: absolute; left: 600px; top: 300px; }
+        #still        { left: 400px; top: 480px; width: 140px; height: 44px; }
+        #edge         { left: 600px; top: 2px; width: 140px; height: 30px; }
 
         .tt {
             position: fixed;
@@ -56,6 +58,12 @@
 
     <!-- keyboard-focus tooltip (no cursor). -->
     <button class="trigger" id="focus-basic">focus</button>
+
+    <!-- motion none on a section: the exit fade (and entry) are instant. -->
+    <section data-motion="none"><div class="trigger" id="still" tabindex="0">motion none</div></section>
+
+    <!-- placement top at the viewport's top edge: flips, data-placement says so. -->
+    <div class="trigger" id="edge" tabindex="0">edge</div>
 
     <!-- a BlissElement that owns its tooltip: built in connect(), rebuilt on an on:'reinit' input. -->
     <fx-tooltip-host class="trigger" id="host-card" tooltip-text="A core tooltip">component trigger</fx-tooltip-host>
@@ -122,6 +130,20 @@
             trigger: document.getElementById('basic'),
             content: 'basic tooltip',
             cssClass: 'tt basic-tt',
+            placement: 'top',
+        });
+
+        window.stillTip = createTooltip({
+            trigger: document.getElementById('still'),
+            content: 'no motion',
+            cssClass: 'tt still-tt',
+            placement: 'top',
+        });
+
+        window.edgeTip = createTooltip({
+            trigger: document.getElementById('edge'),
+            content: 'flipped',
+            cssClass: 'tt edge-tt',
             placement: 'top',
         });
 

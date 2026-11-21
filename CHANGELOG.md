@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `createTooltip` (`/positioning`, SPEC §12.2) **fades out**: hiding removes `visibleClass` and adds
+  `km-tooltip--hiding`; the element stays mounted, anchored and `pointer-events: none` until its own `opacity`
+  transition ends (timeout fallback = its computed duration + delay, so a hidden tab / `display: none` ancestor never
+  leaves it stuck), then it is removed. `data-motion="none"` / OS reduced motion (0s) → removed at once; showing again
+  mid-fade cancels it (same element, same anchor; a delegated switch re-anchors without the show delay);
+  `destroy()` / a removed target → at once. New `TOOLTIP_CSS` (adopted into the container's root, `@layer component`
+  + `:where()` so component rules win): fade + 4px slide toward the anchor on hide and on show (`@starting-style`),
+  timed only by `--base-duration-fast`. Every tooltip element gets class `km-tooltip` (`TOOLTIP_CLASS` /
+  `TOOLTIP_HIDING_CLASS` exported). Components can drop their own tooltip opacity / transition / `@starting-style`.
+- `createTooltip`: `data-placement` on the tooltip element = the RESOLVED placement after flip / shift (`top`,
+  `bottom-start`, …; the requested one until the first computation), updated on every reposition — for arrows and
+  direction-aware motion in component CSS.
 - `iconsChanged()` (BlissElement, opt-in protected hook, SPEC §12.33) + `observeIconHook(listener)` (main index):
   setting / replacing / clearing `window.components.renderIconCallback` after components rendered (load order can't
   be ensured) now signals them — the hook fires while connected (not on the first connect, not for the same

@@ -168,6 +168,10 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | createTooltip: shows on keyboard focus, hides on blur | ✓ | `tooltip.spec.ts` | `tooltip.html` |
 | Follow-cursor + show delay: a stationary hover anchors at the cursor, not the trigger corner | ✓ | `tooltip.spec.ts` | `tooltip.html` |
 | Follow-cursor: tracks the pointer across the trigger | ✓ | `tooltip.spec.ts` | `tooltip.html` |
+| createTooltip exit fade: stays mounted + pointer-events none, removed after the token duration; mid-fade opacity < 1 | ✓ | `tooltip.spec.ts` | `tooltip.html` |
+| createTooltip: a show mid-fade cancels it (same element, never removed) | ✓ | `tooltip.spec.ts` | `tooltip.html` |
+| createTooltip: `data-motion="none"` section → removed at once | ✓ | `tooltip.spec.ts` | `tooltip.html` |
+| createTooltip: `data-placement` = resolved placement (top at the viewport edge → bottom) | ✓ | `tooltip.spec.ts` | `tooltip.html` |
 | BlissElement-owned tooltip (connect build, on:'reinit' rebuild) | ✓ | `tooltip.spec.ts` | `tooltip.html` |
 | createPopover: portaled, open/close/toggle, outside-click (page handler) | ✓ | `popover.spec.ts` | `popover.html` |
 | createPopover: placement + offset + matchWidth exact | △ (exact only) | `popover.spec.ts` | `popover.html` |

@@ -1114,6 +1114,15 @@ createTooltip(opts: { trigger; selector?; container; content; placement?; offset
 // selector (delegated mode): `trigger` is the ROOT (an element or a shadow root); ONE tooltip serves every
 // `closest(selector)` target inside it — hover (show delay once, then it switches at once), keyboard focus,
 // Escape; handle.target / show(target) / refresh(). shouldToggleOnTap: a tap toggles, emulated hover ignored.
+// Exit fade: hide() removes visibleClass and adds `km-tooltip--hiding` (inline pointer-events: none); the element
+// stays mounted and anchored until its own `opacity` transitionend, or a timeout of its computed transition
+// (duration + delay) — a hidden tab / display:none ancestor never sticks; 0s (data-motion="none", OS reduced
+// motion) = removed at once; a show during the fade cancels it (same element, same anchor; a delegated target
+// switch re-anchors without the show delay). destroy() / a removed target = at once. TOOLTIP_CSS (adopted into
+// the container's root, `@layer component` + `:where()` so component rules win): fade + a 4px slide toward the
+// anchor, entry via @starting-style, timed only by --base-duration-fast. Every tooltip has class `km-tooltip`.
+// data-placement on the tooltip = the RESOLVED placement after flip / shift (the requested one until the first
+// computation), updated on every reposition — component CSS draws arrows / direction-aware motion from it.
 createPopover(opts: { reference: Reference | (() => Reference); panel; shouldKeepMounted?; isAnchored?;
   container?: HTMLElement | ShadowRoot; inheritThemeFrom?: HTMLElement | false;
   visibleClass?; shouldCloseOnEscape?; shouldCloseOnOutsideClick?; getInsideElements?; returnFocusTo?;

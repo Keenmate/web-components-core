@@ -152,3 +152,121 @@ test.describe('delegated tooltip, toggle on tap (phone)', () => {
     await expect(tip).toHaveCount(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Exit fade + data-placement (SPEC §12.2). The fixture's tooltips only toggle opacity on
+// `.is-visible`; the fade timing is core's TOOLTIP_CSS (--base-duration-fast, 0.1s fallback).
+// ---------------------------------------------------------------------------
+
+/** Install, for the tooltip `selector`, a probe: ms from the hiding class appearing to the element leaving the DOM. */
+const watchFade = (page: import('@playwright/test').Page, selector: string) =>
+  page.evaluate((sel) => {
+    const el = document.querySelector<HTMLElement>(sel)!;
+    (window as unknown as { fade: Promise<{ ms: number; wasMountedWhileHiding: boolean }> }).fade = new Promise((resolve) => {
+      let t0 = -1;
+      let wasMountedWhileHiding = false;
+      const mo = new MutationObserver(() => {
+        if (t0 < 0 && el.classList.contains('km-tooltip--hiding')) {
+          t0 = performance.now();
+          wasMountedWhileHiding = el.isConnected;
+        }
+        if (!el.isConnected) {
+          mo.disconnect();
+          resolve({ ms: t0 < 0 ? 0 : performance.now() - t0, wasMountedWhileHiding });
+        }
+      });
+      mo.observe(el, { attributes: true, attributeFilter: ['class'] });
+      mo.observe(document.body, { childList: true });
+    });
+  }, selector);
+const fadeResult = (page: import('@playwright/test').Page) =>
+  page.evaluate(() => (window as unknown as { fade: Promise<{ ms: number; wasMountedWhileHiding: boolean }> }).fade);
+/** Wait out the ENTRY fade (a hide mid-entry reverses from there and ends sooner). */
+const settled = (page: import('@playwright/test').Page, selector: string) =>
+  expect.poll(() => page.locator(selector).evaluate((el) => getComputedStyle(el).opacity)).toBe('1');
+
+test.describe('exit fade + data-placement', () => {
+  test('hiding fades out: stays mounted, not hit-testable, removed after the token duration', async ({ page }) => {
+    await page.locator('#basic').hover();
+    const tip = page.locator('.basic-tt.is-visible');
+    await expect(tip).toBeVisible();
+    await expect(tip).toHaveAttribute('data-placement', 'top');
+    await settled(page, '.basic-tt');
+    expect(await tip.evaluate((el) => getComputedStyle(el).transitionDuration)).toContain('0.1s');
+    await watchFade(page, '.basic-tt');
+    await page.mouse.move(5, 5);
+    const { ms, wasMountedWhileHiding } = await fadeResult(page);
+    expect(wasMountedWhileHiding).toBe(true);
+    expect(ms).toBeGreaterThan(60); // the fade ran (0.1s), not an instant removal
+    expect(ms).toBeLessThan(1000);
+    await expect(page.locator('.basic-tt')).toHaveCount(0);
+  });
+
+  test('mid-fade: opacity is on its way down and pointer-events are off', async ({ page }) => {
+    await page.locator('#basic').hover();
+    await expect(page.locator('.basic-tt.is-visible')).toBeVisible();
+    await settled(page, '.basic-tt');
+    const mid = await page.evaluate(async () => {
+      const trigger = document.getElementById('basic')!;
+      const el = document.querySelector<HTMLElement>('.basic-tt')!;
+      trigger.dispatchEvent(new MouseEvent('mouseleave'));
+      await new Promise((r) => setTimeout(r, 40));
+      const style = getComputedStyle(el);
+      return { connected: el.isConnected, opacity: Number(style.opacity), pointerEvents: style.pointerEvents };
+    });
+    expect(mid.connected).toBe(true);
+    expect(mid.opacity).toBeLessThan(1);
+    expect(mid.pointerEvents).toBe('none');
+  });
+
+  test('showing again during the fade cancels it: same element, back to visible, never removed', async ({ page }) => {
+    await page.locator('#basic').hover();
+    await expect(page.locator('.basic-tt.is-visible')).toBeVisible();
+    await settled(page, '.basic-tt');
+    const result = await page.evaluate(async () => {
+      const trigger = document.getElementById('basic')!;
+      const el = document.querySelector<HTMLElement>('.basic-tt')!;
+      let removed = false;
+      const mo = new MutationObserver(() => {
+        if (!el.isConnected) removed = true;
+      });
+      mo.observe(document.body, { childList: true });
+      trigger.dispatchEvent(new MouseEvent('mouseleave'));
+      await new Promise((r) => setTimeout(r, 30));
+      const wasHiding = el.classList.contains('km-tooltip--hiding');
+      trigger.dispatchEvent(new MouseEvent('mouseenter'));
+      await new Promise((r) => setTimeout(r, 300));
+      mo.disconnect();
+      return {
+        wasHiding,
+        removed,
+        isSame: document.querySelector('.basic-tt') === el,
+        visible: el.classList.contains('is-visible'),
+        hiding: el.classList.contains('km-tooltip--hiding'),
+        opacity: Number(getComputedStyle(el).opacity),
+      };
+    });
+    expect(result).toEqual({ wasHiding: true, removed: false, isSame: true, visible: true, hiding: false, opacity: 1 });
+  });
+
+  test('data-motion="none" on a section: the tooltip is removed at once (no fade)', async ({ page }) => {
+    await page.locator('#still').hover();
+    const tip = page.locator('.still-tt.is-visible');
+    await expect(tip).toBeVisible();
+    await expect(tip).toHaveAttribute('data-motion', 'none'); // followed the section's level to <body>
+    expect(await tip.evaluate((el) => getComputedStyle(el).transitionDuration)).toMatch(/^0s(, 0s)*$/);
+    await watchFade(page, '.still-tt');
+    await page.mouse.move(5, 5);
+    const { ms } = await fadeResult(page);
+    expect(ms).toBeLessThan(20);
+  });
+
+  test('data-placement is the RESOLVED placement: top at the viewport edge flips to bottom', async ({ page }) => {
+    await page.locator('#edge').hover();
+    const tip = page.locator('.edge-tt.is-visible');
+    await expect(tip).toBeVisible();
+    await expect(tip).toHaveAttribute('data-placement', 'bottom');
+    const [tipBox, edgeBox] = await Promise.all([tip.boundingBox(), page.locator('#edge').boundingBox()]);
+    expect(tipBox!.y).toBeGreaterThanOrEqual(edgeBox!.y + edgeBox!.height);
+  });
+});

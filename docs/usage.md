@@ -1229,6 +1229,17 @@ const cellTip = createTooltip({
 `arrow` takes an arrow element; `handle.refresh()` re-reads the content of the shown target. Keyboard focus
 on a target shows its tooltip, Escape hides it. No component builds its own tooltip layer over `anchor()`.
 
+Motion: hiding **fades out** — the element stays mounted (`pointer-events: none`, class `km-tooltip--hiding`)
+until its `opacity` transition ends (timeout fallback = its computed duration), then it is removed; showing again
+mid-fade picks up from there. Core adopts `TOOLTIP_CSS` (fade + a 4px slide toward the anchor, entry via
+`@starting-style`, `--base-duration-fast`) in `@layer component` with `:where()` selectors, so a component needs
+**no** opacity / transition / `@starting-style` rules of its own — and any it keeps win. `data-motion="none"` /
+OS reduced motion → instant. `data-placement` on the tooltip is the resolved placement (after flip / shift):
+
+```css
+.xx__tooltip[data-placement^="bottom"] { /* drawn below the target: e.g. a direction-aware shadow */ }
+```
+
 `anchor(floating, reference, opts)` returns `{ update, destroy }`; options:
 `placement` (default `'bottom-start'`), `strategy` (default `'fixed'`), `offset`,
 `shouldFlip`, `shift`, `matchWidth: 'min' | 'exact' | 'max'`, `lockPlacement: 'initial' | 'freeze' | false`, `shouldAutoUpdate`,
