@@ -11,6 +11,7 @@
  * ```
  */
 import { blissInputsPlugin, type CemPlugin } from './plugin.js';
+import { publicApiPlugin } from './public-api.js';
 import { stableOutputPlugin } from './stable-output.js';
 
 /** The subset of the analyzer config this preset sets (loosely typed — the analyzer accepts more). */
@@ -33,7 +34,15 @@ export interface BlissAnalyzerOptions {
   exclude?: string[];
   /** Output directory for `custom-elements.json`. Default: `'.'`. */
   outdir?: string;
-  /** Extra plugins to run AFTER {@link blissInputsPlugin} and {@link stableOutputPlugin}. */
+  /**
+   * Keep the manifest to the public API ({@link publicApiPlugin}: no private / protected / `#` / `_`
+   * members, no modules or declarations the entries don't re-export). Default: `true`; `false` = the
+   * analyzer's full output.
+   */
+  isPublicApiOnly?: boolean;
+  /** The package entry modules for {@link publicApiPlugin} (manifest paths). Default: `['src/index.ts']`. */
+  publicApiEntries?: string[];
+  /** Extra plugins to run AFTER {@link blissInputsPlugin}, {@link stableOutputPlugin} and {@link publicApiPlugin}. */
   plugins?: CemPlugin[];
   /** Any other analyzer config keys, merged verbatim. */
   extra?: Record<string, unknown>;
@@ -43,14 +52,20 @@ export interface BlissAnalyzerOptions {
  * Build an analyzer config with the Bliss inputs plugin wired in. The plugin
  * runs first so downstream plugins see the table-derived attributes/members/
  * events already on each declaration; {@link stableOutputPlugin} runs next, so the
- * output is the same on every checkout and every run (LF strings, modules by path).
+ * output is the same on every checkout and every run (LF strings, modules by path); then
+ * {@link publicApiPlugin} keeps it to the package's public API.
  */
 export function blissAnalyzerConfig(options: BlissAnalyzerOptions = {}): BlissAnalyzerConfig {
   return {
     globs: options.globs ?? ['src/**/*.ts'],
     exclude: options.exclude ?? ['**/*.test.ts', '**/*.spec.ts', '**/*.d.ts'],
     outdir: options.outdir ?? '.',
-    plugins: [blissInputsPlugin(), stableOutputPlugin(), ...(options.plugins ?? [])],
+    plugins: [
+      blissInputsPlugin(),
+      stableOutputPlugin(),
+      ...(options.isPublicApiOnly === false ? [] : [publicApiPlugin({ entries: options.publicApiEntries })]),
+      ...(options.plugins ?? []),
+    ],
     ...(options.extra ?? {}),
   };
 }

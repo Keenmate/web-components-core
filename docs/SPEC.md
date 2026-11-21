@@ -1228,7 +1228,10 @@ recognizes — so without help the manifest would be empty.
   names or `EventDef` objects.
 - **`blissAnalyzerConfig(options?)`** — the shared config preset (globs,
   excludes, `outdir`, plugins) every component's `custom-elements-manifest.config.js`
-  extends, with the plugin pre-wired.
+  extends, with the plugin pre-wired. It also runs `stableOutputPlugin()` (LF strings, modules by path) and
+  `publicApiPlugin()` — the manifest is the PUBLIC API: no private / protected / `#` / `_` members, no module,
+  declaration or export the entries (`publicApiEntries`, default `src/index.ts`) don't re-export; custom-element
+  modules always kept; `isPublicApiOnly: false` opts out.
 
 The source-of-truth split (§8 amendment): structure from the table, prose from
 the optional `description` / `deprecated` fields on each row.

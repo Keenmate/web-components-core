@@ -1395,6 +1395,10 @@ import { blissAnalyzerConfig } from '@keenmate/web-components-core/cem';
 export default blissAnalyzerConfig();
 ```
 
+The manifest holds the package's public API only: private / protected / `#…` / `_…` members and the modules,
+declarations and exports `src/index.ts` doesn't re-export are dropped (`publicApiEntries: [...]` for other entries,
+`isPublicApiOnly: false` for the analyzer's full output).
+
 ```ts
 // a row carries its own help text — no @attr re-declaration to drift
 { configKey: 'selectionMode', attribute: 'selection-mode',
@@ -1436,7 +1440,7 @@ explain the main ones; [SPEC](SPEC.md) has the design notes.
 | `/dialog` | `openDialog(opts)` → `{ result, close, panel, body }`, `confirmDialog(opts)` → `Promise<boolean>`, `promptDialog(opts)` → `Promise<string \| null>`, `DIALOG_CSS` |
 | `/search` | `normalizeSearchText`, `prepareSearchTerm` / `matchesSearchTerm` / `NO_SEARCH_TERM`, `findTextMatches` / `matchesText`, `findRegexMatches` / `createRegexCompiler` / `statelessRegex`, `findHighlightRanges` / `wrapRanges` / `highlightHtml` / `escapeHtml` |
 | `/testing` | `mount`, `mountBeforeUpgrade`, `cleanup`, `defineOnce`, `uniqueTag`, `nextTick`, `nextFrame`, `listen` (event spy), `waitForEvent`, `captureConsole`, `resetPageState` |
-| `/cem` | `blissAnalyzerConfig`, `blissInputsPlugin`, `cssVariablesFromManifestPlugin`, `withCoreDeclared` / `CORE_DECLARED_API` / `CORE_DECLARED_INPUTS` / `CORE_DECLARED_EVENTS`, `extractBlissClass` / `extractBlissClasses` / `extractRegistrations` / `parseRegisterComponentCall` |
+| `/cem` | `blissAnalyzerConfig`, `blissInputsPlugin`, `publicApiPlugin` / `keepPublicApi`, `cssVariablesFromManifestPlugin`, `withCoreDeclared` / `CORE_DECLARED_API` / `CORE_DECLARED_INPUTS` / `CORE_DECLARED_EVENTS`, `extractBlissClass` / `extractBlissClasses` / `extractRegistrations` / `parseRegisterComponentCall` |
 
 ## Commands
 

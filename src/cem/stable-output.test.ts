@@ -27,6 +27,6 @@ describe('stableOutputPlugin', () => {
 
   it('blissAnalyzerConfig runs it right after the inputs plugin, before the extra plugins', () => {
     const config = blissAnalyzerConfig({ plugins: [{ name: 'generator' }] });
-    expect(config.plugins.map((p) => p.name)).toEqual(['keenmate-bliss-inputs', 'keenmate-stable-output', 'generator']);
+    expect(config.plugins.map((p) => p.name)).toEqual(['keenmate-bliss-inputs', 'keenmate-stable-output', 'keenmate-public-api', 'generator']);
   });
 });
