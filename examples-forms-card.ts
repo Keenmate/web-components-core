@@ -11,6 +11,10 @@
  *                          A value that isn't a whole number can't be produced →
  *                          `setFormatError(err, message, anchor)`; the hidden input submits ''.
  *                          `formResetCallback` is the COMPONENT's (core implements none).
+ *                          `required` (`isRequired`) + `readonly`: the field implements
+ *                          `isValueEmpty()` / `getRequiredMessage()` / `getValidityAnchor()` and
+ *                          calls `refreshRequired()` — core sets `valueMissing`, `aria-required`
+ *                          and `:state(required)` (SPEC §6.6).
  *   - `<core-demo-plain>`  the same idea without `formAssociated` — the "no constraint"
  *                          answers (`validity` undefined, `checkValidity()` true, …).
  *
@@ -58,6 +62,9 @@ export class CoreDemoField extends BlissElement<FieldEvents> {
     { configKey: 'value', attribute: 'value', converter: toText({ default: '' }) },
     // SPEC §6.4: must reflect on a form-associated element.
     { configKey: 'isDisabled', attribute: 'disabled', converter: toBool('presence'), default: false, shouldReflect: true },
+    { configKey: 'isReadonly', attribute: 'readonly', converter: toBool('presence'), default: false, shouldReflect: true },
+    // SPEC §6.6: core sets valueMissing / aria-required / :state(required) from this row + isValueEmpty().
+    { configKey: 'isRequired', attribute: 'required', converter: toBool('presence'), default: false, shouldReflect: true },
   ];
 
   protected static override events = ['field-log', 'change'];
@@ -65,6 +72,8 @@ export class CoreDemoField extends BlissElement<FieldEvents> {
   // Generated input accessors (typed for this file).
   declare value: string;
   declare isDisabled: boolean;
+  declare isReadonly: boolean;
+  declare isRequired: boolean;
 
   #root?: ShadowRoot;
   #input?: HTMLInputElement;
@@ -73,6 +82,21 @@ export class CoreDemoField extends BlissElement<FieldEvents> {
   /** Demo readout of the protected disabled state (SPEC §6.4). */
   get debugDisabled(): { isFormDisabled: boolean; isEffectivelyDisabled: boolean } {
     return { isFormDisabled: this.isFormDisabled, isEffectivelyDisabled: this.isEffectivelyDisabled };
+  }
+
+  /** Demo readout of what core set for `required` (SPEC §6.6). */
+  get debugRequired(): { hostAriaRequired: string | null; innerAriaRequired: string | null; isStateRequired: boolean } {
+    let isStateRequired = false;
+    try {
+      isStateRequired = this.matches(':state(required)');
+    } catch {
+      // an engine without CustomStateSet selectors
+    }
+    return {
+      hostAriaRequired: this.internals?.ariaRequired ?? null,
+      innerAriaRequired: this.#input?.getAttribute('aria-required') ?? null,
+      isStateRequired,
+    };
   }
 
   /** Demo: the light-DOM hidden input that carries the submitted value. */
@@ -118,6 +142,7 @@ export class CoreDemoField extends BlissElement<FieldEvents> {
     else this.#hidden.removeAttribute('form');
 
     this.#applyDisabled(this.isEffectivelyDisabled);
+    this.#input.readOnly = this.isReadonly;
     this.#produceValue();
     this.#log('reinit', `name="${this.config.name as string}", isEffectivelyDisabled=${this.isEffectivelyDisabled}`);
   }
@@ -128,6 +153,7 @@ export class CoreDemoField extends BlissElement<FieldEvents> {
       if (this.#input && this.#input.value !== partial.value) this.#input.value = partial.value as string;
       this.#produceValue();
     }
+    if ('isReadonly' in partial && this.#input) this.#input.readOnly = this.isReadonly;
     this.#log('update', JSON.stringify(Object.keys(partial)));
   }
 
@@ -143,6 +169,19 @@ export class CoreDemoField extends BlissElement<FieldEvents> {
     this.#log('formResetCallback', `value → ${JSON.stringify(this.value)}`);
   }
 
+  // ── required (SPEC §6.6): core decides WHEN it is missing (required, empty, not readonly / disabled) ──
+  protected override isValueEmpty(): boolean {
+    return (this.config.value as string).trim() === '';
+  }
+
+  protected override getRequiredMessage(): string {
+    return `${this.config.label as string} is required.`;
+  }
+
+  protected override getValidityAnchor(): HTMLElement | undefined {
+    return this.#input; // the bubble points at the visible input, which also gets aria-required
+  }
+
   #applyDisabled(isDisabled: boolean): void {
     if (this.#input) this.#input.disabled = isDisabled;
     // A light-DOM input is NOT disabled by the host's own `disabled` attribute — do it here.
@@ -153,6 +192,7 @@ export class CoreDemoField extends BlissElement<FieldEvents> {
   #produceValue(): void {
     const raw = (this.config.value as string).trim();
     const hint = this.#root?.querySelector('.hint');
+    this.refreshRequired(); // the value changed: core re-evaluates valueMissing (it also runs after every flush)
     if (raw === '' || /^-?\d+$/.test(raw)) {
       if (this.#hidden) this.#hidden.value = raw === '' ? '' : String(Number(raw));
       this.setFormatError(null);

@@ -133,7 +133,8 @@ export class CoreDemoRoving extends BlissElement {
     root.innerHTML = `
       <style>${BOX_CSS}
         .box { padding: .4rem; display: flex; flex-wrap: wrap; gap: .3rem; }
-        .box.grid { display: grid; grid-template-columns: repeat(7, 2.4rem); }
+        .box.grid { display: grid; grid-template-columns: repeat(7, minmax(0, 2.4rem)); }
+        .box.grid button { padding: .35rem 0; min-width: 0; }   /* the 7 columns shrink on a 320px phone */
         .head { text-align: center; font-size: .75rem; color: var(--kmwc-text-color-3); }
         button { font: inherit; padding: .35rem .6rem; border: 1px solid var(--kmwc-border-color); border-radius: 6px;
                  background: var(--kmwc-page-bg); color: inherit; cursor: pointer; }

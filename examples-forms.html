@@ -153,7 +153,7 @@ el.isDisabled = true;       // reflects disabled="" → still disabled → no se
                 when the component could not produce a value. The message is <code>message</code>, else the error's own
                 message, else <code>"The value is invalid."</code>; <code>anchor</code>, a descendant such as the visible
                 input, positions the bubble (an anchor the browser rejects is dropped with a warning). <code>null</code>
-                clears it, and clears <em>all</em> validity flags. While invalid, <code>:invalid</code> matches and the form
+                clears it — only <code>customError</code>: other flags (a <code>valueMissing</code>, FO05) stay. While invalid, <code>:invalid</code> matches and the form
                 fires <code>invalid</code> instead of <code>submit</code> — unless it is <code>&lt;form novalidate&gt;</code>.
                 Type something that isn't a whole number (<code>abc</code>) into either field, then submit both.
                 The buttons call <code>setFormatError()</code> directly and override the field's own check until the next
@@ -216,6 +216,61 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
         </div>
 
         <!-- ============================================================= -->
+        <!-- FO05 · Required                                               -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>FO05 · Required: <code>isRequired</code> → <code>valueMissing</code></h2>
+            <p>
+                A form-associated class whose input table has an <code>isRequired</code> row (attribute <code>required</code>)
+                gets core's required handling. The component only says when its value is empty
+                (<code>isValueEmpty()</code>), what the message is (<code>getRequiredMessage()</code> — its
+                <code>errors.required</code> label) and where the bubble points (<code>getValidityAnchor()</code>), and calls
+                <code>refreshRequired()</code> when the value changes. Core sets <code>valueMissing</code> while the field is
+                required, empty and editable — never while readonly or disabled, like a native field — through
+                <code>setValidityFlag</code>, so a format error (type <code>abc</code>) and a missing value never clear each
+                other. It also keeps <code>aria-required</code> on the host AND on the inner input (focus sits there, so a
+                screen reader announces "required") and <code>:state(required)</code> (the native <code>:required</code>
+                doesn't match a custom element). Clear the field and submit; toggle <code>required</code> /
+                <code>readonly</code> / <code>disabled</code> and watch the readout.
+            </p>
+            <div class="controls">
+                <button id="fo05-required">toggle <code>required</code></button>
+                <button id="fo05-readonly">toggle <code>readonly</code></button>
+                <button id="fo05-disabled">toggle <code>disabled</code></button>
+                <button id="fo05-report"><code>reportValidity()</code></button>
+                <button id="fo05-demo-reset" class="btn-danger" title="Reset the form and the log">↺ Reset demo</button>
+            </div>
+            <div class="demo-area">
+                <form class="fo-form" id="do-fo05-form" action="#">
+                    <span class="demo-label"><code>&lt;form&gt;</code> with a required field</span>
+                    <core-demo-field id="demo-fo05-el" name="qty" label="Quantity" required></core-demo-field>
+                    <div class="field-row"><button type="submit" id="fo05-submit">Submit</button></div>
+                    <div class="output"><pre id="fo05-readout"></pre></div>
+                </form>
+                <div class="output">
+                    <div class="output-label">Log:</div>
+                    <div class="log-panel" id="fo05-log"></div>
+                </div>
+            </div>
+            <div class="code-block" data-language="js"><pre><code>static formAssociated = true;
+static inputs = [
+  { configKey: 'isRequired', attribute: 'required', converter: toBool('presence'), default: false, shouldReflect: true, on: 'update' },
+  // … isReadonly / isDisabled
+];
+protected isValueEmpty() { return this.config.value.trim() === ''; }
+protected getRequiredMessage() { return this.#labels.text('errors.required'); }   // "Quantity is required."
+protected getValidityAnchor() { return this.#input; }       // the bubble + aria-required go to the visible input
+#produceValue() {
+  this.refreshRequired();                                   // the value changed (core also runs it after every flush)
+  // … setFormatError(…) for a value that can't be produced — a separate flag
+}
+
+el.validity.valueMissing;          // true while required + empty + editable
+el.matches(':state(required)');    // true while required
+el.isReadonly = true;              // → valid: a readonly field is never "missing"</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
         <!-- FO04 · API summary                                            -->
         <!-- ============================================================= -->
         <div class="card">
@@ -233,7 +288,11 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
                     <tr><td><code>disabledChanged(isDisabled)</code></td><td>protected hook</td><td>The effective state flipped on a built element (input or fieldset). Not called for a rebuild or before the first build.</td></tr>
                     <tr><td><code>validity</code> · <code>validationMessage</code> · <code>willValidate</code></td><td>getters</td><td>From <code>internals</code>; "no constraint" answers (<code>undefined</code> / <code>''</code> / <code>false</code>) when not form-associated.</td></tr>
                     <tr><td><code>checkValidity()</code> · <code>reportValidity()</code></td><td>methods</td><td>Like a native control (<code>invalid</code> event; the bubble for <code>reportValidity</code>). <code>true</code> when not form-associated.</td></tr>
-                    <tr><td><code>setFormatError(error | null, message?, anchor?)</code></td><td>protected method</td><td>Non-null → <code>customError</code> with the resolved message (anchor positions the bubble; an anchor the browser rejects is dropped with a warning); <code>null</code> → valid (clears all flags). No-op when not form-associated.</td></tr>
+                    <tr><td><code>setFormatError(error | null, message?, anchor?)</code></td><td>protected method</td><td>Non-null → <code>customError</code> with the resolved message (anchor positions the bubble; an anchor the browser rejects is dropped with a warning); <code>null</code> → clears <code>customError</code> only (other flags stay). No-op when not form-associated.</td></tr>
+                    <tr><td><code>setValidityFlag(flag, message | null, anchor?)</code></td><td>protected method</td><td>One flag at a time (<code>rangeUnderflow</code> for a minimum count, <code>rangeOverflow</code>, <code>tooLong</code>, …); none clears another. Never <code>internals.setValidity()</code> directly (rulebook C-CA-41).</td></tr>
+                    <tr><td><code>isRequired</code> / <code>required</code></td><td>input / attribute</td><td>A row with this <code>configKey</code> (presence boolean, reflects) turns on core's required handling: <code>valueMissing</code> while empty and editable, <code>aria-required</code> on the host and the validity anchor, <code>:state(required)</code> (FO05).</td></tr>
+                    <tr><td><code>isValueEmpty()</code> · <code>getRequiredMessage()</code> · <code>getValidityAnchor()</code></td><td>protected hooks</td><td>The component says when its value is empty, the <code>errors.required</code> text and the inner input; core does the rest.</td></tr>
+                    <tr><td><code>refreshRequired()</code></td><td>protected method</td><td>Call it when the value changes; core also runs it after every flush (a <code>required</code> / <code>readonly</code> / disabled change).</td></tr>
                     <tr><td><code>formResetCallback()</code></td><td>browser callback</td><td><strong>Not</strong> implemented by core: what "reset" means is the component's call. The demo field returns to its <code>value</code> attribute, like a native input (FO01).</td></tr>
                 </tbody>
             </table>
@@ -241,8 +300,8 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
                 <div class="note-title">What core leaves to the component</div>
                 Submission (Keenmate components render light-DOM hidden inputs named by <code>name</code>, with a
                 <code>value-format</code>, rather than <code>internals.setFormValue()</code>), <code>formResetCallback</code>,
-                <code>formStateRestoreCallback</code>, and any validity constraint other than the format error (set through
-                <code>internals</code> directly — <code>setFormatError(null)</code> clears every flag).
+                <code>formStateRestoreCallback</code>, and the component's own constraints (a minimum count, a pattern) — set
+                each through <code>setValidityFlag()</code>, never <code>internals.setValidity()</code>, so no constraint clears another.
             </div>
         </div>
 
@@ -363,6 +422,50 @@ plain.form;                // null — even inside a &lt;form&gt;: no associatio
                 panel.replaceChildren();
                 render();
             });
+            render();
+        }
+
+        // ── FO05 · required ──────────────────────────────────────────────────
+        {
+            const el = $('demo-fo05-el');
+            const form = $('do-fo05-form');
+            const panel = $('fo05-log');
+            const render = () => {
+                const r = el.debugRequired;
+                $('fo05-readout').innerHTML = [
+                    `<b>required</b> ${el.isRequired} · <b>readonly</b> ${el.isReadonly} · <b>disabled</b> ${el.isDisabled}`,
+                    `<b>validity.valueMissing</b> ${!!el.validity?.valueMissing} · <b>customError</b> ${!!el.validity?.customError} · <b>valid</b> ${el.validity?.valid}`,
+                    `<b>validationMessage</b> ${escapeHtml(JSON.stringify(el.validationMessage))}`,
+                    `<b>:state(required)</b> ${r.isStateRequired} · <b>internals.ariaRequired</b> ${r.hostAriaRequired} · <b>inner input aria-required</b> ${r.innerAriaRequired}`,
+                ].join('\n');
+            };
+            el.addEventListener('field-log', render);
+            el.addEventListener('invalid', () => log(panel, `'invalid' event — "${el.validationMessage}"`, 'warn'));
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                log(panel, `'submit' → FormData ${fmtEntries(form)}`, 'ok');
+            });
+            $('fo05-submit').addEventListener('click', () => { if (!form.noValidate) el.reportValidity(); });
+            const toggle = (id, key) => $(id).addEventListener('click', async () => {
+                el[key] = !el[key];
+                await el.whenSettled();
+                log(panel, `▶ el.${key} = ${el[key]}`, 'action');
+                render();
+            });
+            toggle('fo05-required', 'isRequired');
+            toggle('fo05-readonly', 'isReadonly');
+            toggle('fo05-disabled', 'isDisabled');
+            $('fo05-report').addEventListener('click', () => log(panel, `reportValidity() → ${el.reportValidity()}`, 'info'));
+            $('fo05-demo-reset').addEventListener('click', async () => {
+                el.isRequired = true;
+                el.isReadonly = false;
+                el.isDisabled = false;
+                form.reset();
+                await el.whenSettled();
+                panel.replaceChildren();
+                render();
+            });
+            await el.whenReady();
             render();
         }
 
