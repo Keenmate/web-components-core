@@ -658,7 +658,8 @@ optionally `getRequiredMessage()` (its `errors.required` label) and `getValidity
 `refreshRequired()` from its value-change path; core also runs it after every flush. `valueMissing` is set while
 required AND empty AND not readonly AND not effectively disabled (native: a readonly / disabled control is never
 "missing"); `internals.ariaRequired` and `:state(required)` follow `isRequired` (the native `:required` doesn't match a
-custom element). A class without an `isRequired` row is untouched. Count rules are separate flags: a minimum not met →
+custom element), and so does `aria-required` on the validity anchor — focus sits on that inner input, where the host's
+value is never announced (only a native field or a role that allows it: combobox, textbox, listbox, …; never a button). A class without an `isRequired` row is untouched. Count rules are separate flags: a minimum not met →
 `rangeUnderflow`, above a maximum → `rangeOverflow` (web-multiselect `min/maxSelectedCount`, web-dropzone
 `min/maxFileCount`), so `validity` tells "empty" from "too few", as an app's custom message needs.
 

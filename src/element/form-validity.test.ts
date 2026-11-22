@@ -255,6 +255,25 @@ describe('isRequired → valueMissing (SPEC §6.6)', () => {
     expect(el.validity?.valueMissing).toBeFalsy();
   });
 
+  it('the anchor (focus target) gets aria-required when its role supports it; cleared when not required / swapped', async () => {
+    const { el } = mount('required');
+    const input = document.createElement('input');
+    const button = document.createElement('button');
+    el.append(input, button);
+    el.anchor = input;
+    el.setValue(['a']); // valid, still required → announced
+    expect(input.getAttribute('aria-required')).toBe('true');
+    el.isRequired = false;
+    await el.whenSettled();
+    expect(input.hasAttribute('aria-required')).toBe(false);
+    el.isRequired = true;
+    await el.whenSettled();
+    el.anchor = button; // a button can't be required (ARIA) → the old anchor is cleared, the button untouched
+    el.setValue([]);
+    expect(input.hasAttribute('aria-required')).toBe(false);
+    expect(button.hasAttribute('aria-required')).toBe(false);
+  });
+
   it('a class without an isRequired row never touches valueMissing (its own flag stays)', async () => {
     const el = new RequiredFlagField();
     const internals = fakeInternals(el);

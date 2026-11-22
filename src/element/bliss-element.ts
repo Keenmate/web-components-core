@@ -117,6 +117,15 @@ const RESPONSIVE_ATTRIBUTE_CONVERTER = toValue<ResponsiveMap | null>({
  * descriptor — non-enumerable fields and getters an engine already attached survive.
  * Arrays and class instances are left as they are (a copy would lose their type).
  */
+/** Roles where `aria-required` is allowed (ARIA 1.2); native `input` / `select` / `textarea` too. */
+const ARIA_REQUIRED_ROLES = new Set(['checkbox', 'combobox', 'gridcell', 'listbox', 'radiogroup', 'searchbox', 'spinbutton', 'textbox', 'tree', 'treegrid']);
+
+function supportsAriaRequired(el: HTMLElement): boolean {
+  const role = el.getAttribute('role');
+  if (role) return ARIA_REQUIRED_ROLES.has(role);
+  return el.localName === 'input' || el.localName === 'select' || el.localName === 'textarea';
+}
+
 function copyPlainDetail(detail: object): object {
   const proto = Object.getPrototypeOf(detail);
   if (proto !== Object.prototype && proto !== null) return detail;
@@ -1716,13 +1725,30 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
         // CustomStateSet unavailable / an older engine (`--dashed` idents only): the reflected `required` attribute is the hook.
       }
     }
+    const anchor = this.getValidityAnchor();
+    this.#syncAnchorRequired(isRequired ? anchor : undefined);
     const isMissing = isRequired && this.#config.isReadonly !== true && !this.isEffectivelyDisabled && this.isValueEmpty();
     this.#setValidityFlag(
       'valueMissing',
       isMissing ? this.getRequiredMessage() || 'Please fill out this field.' : null,
-      isMissing ? this.getValidityAnchor() : undefined,
+      isMissing ? anchor : undefined,
       'refreshRequired',
     );
+  }
+
+  /** The inner element core marked `aria-required` (the validity anchor). */
+  #ariaRequiredAnchor?: HTMLElement;
+
+  /**
+   * Focus sits on the inner input, not the host, so the host's `aria-required` is never announced: the anchor gets
+   * `aria-required="true"` too — only a native field or a role that supports it (a button doesn't). The previous
+   * anchor (a rebuild swapped it, `isRequired` turned off) is cleared.
+   */
+  #syncAnchorRequired(anchor: HTMLElement | undefined): void {
+    const target = anchor && anchor !== (this as unknown as HTMLElement) && supportsAriaRequired(anchor) ? anchor : undefined;
+    if (this.#ariaRequiredAnchor && this.#ariaRequiredAnchor !== target) this.#ariaRequiredAnchor.removeAttribute('aria-required');
+    if (target) target.setAttribute('aria-required', 'true');
+    this.#ariaRequiredAnchor = target;
   }
 
   /** After a successful flush: report a flip of the effective disabled state. */

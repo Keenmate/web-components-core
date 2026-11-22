@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   row (attribute `required`) implements the protected `isValueEmpty()` (+ optional `getRequiredMessage()` — its
   `errors.required` label — and `getValidityAnchor()`) and calls `refreshRequired()` when its value changes; core runs
   it after every flush too. While required, empty, not readonly and not effectively disabled the host has
-  `valueMissing` (through `setValidityFlag`, other flags kept); `internals.ariaRequired` and `:state(required)` follow
+  `valueMissing` (through `setValidityFlag`, other flags kept); `internals.ariaRequired`, `:state(required)` and
+  `aria-required` on the validity anchor (the focused inner input — a native field or a role that allows it) follow
   `isRequired`. A class without the row is untouched. Min / max count rules use `rangeUnderflow` / `rangeOverflow`.
 - **Label placeholders read dotted paths** (`/locale`, SPEC §12.24): `{ctx.remaining}`, `{ctx.item.text}` — a
   component passes its text spot's callback context as `labels.text(key, { ctx })`, so a label template and the

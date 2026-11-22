@@ -135,7 +135,7 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
 
    **Required (SPEC §6.6):** a form-associated class with an `isRequired` row (attribute `required`) implements
    `isValueEmpty()` (+ optional `getRequiredMessage()` / `getValidityAnchor()`) and calls `refreshRequired()` on a value
-   change; core sets `valueMissing` (not while readonly / disabled), `aria-required`, `:state(required)` after every flush.
+   change; core sets `valueMissing` (not while readonly / disabled), `aria-required` (host internals + the anchor input), `:state(required)` after every flush.
    Min / max counts → `rangeUnderflow` / `rangeOverflow`.
 
    **Form validity (SPEC §6.6):** a form-associated class gets `validity`,
@@ -198,7 +198,7 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
   `null` exempt), or `getLiveValue` on an `on: 'none'` row (the write never reaches the live
   state; read-only state is a plain getter, not a row), or a `configKey` naming the component's own
   getter / setter / method (the input accessor silently replaces it). Watch the console when authoring a table. `toBool(mode)` takes a REQUIRED
-  mode; `'presence'` (any value → true) is for `disabled` / `readonly` only.
+  mode; `'presence'` (any value → true) is for `disabled` / `readonly` / `required` only.
 - Removing an attribute is reactive: it resets that input to its `default`
   (absent == default), consistent with construction. `el.x = undefined` resets
   it the same way on the property path.
