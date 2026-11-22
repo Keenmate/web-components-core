@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Label placeholders read dotted paths** (`/locale`, SPEC §12.24): `{ctx.remaining}`, `{ctx.item.text}` — a
+  component passes its text spot's callback context as `labels.text(key, { ctx })`, so a label template and the
+  spot's `get*Callback(ctx)` read the same fields (rulebook D-NC-24, 2026-11-22: `ctx.count` = the number the noun
+  agrees with — one generic `translateCallback` pluralizes every key). Numbers are locale-formatted and, in
+  `html()`, strings escaped at any depth (the translate callback gets the same escaped copy, numbers raw). Flat
+  `{name}` params work as before; `formatLabel(template, params, formatValue?)`.
 - `createTooltip` (`/positioning`, SPEC §12.2) **fades out**: hiding removes `visibleClass` and adds
   `km-tooltip--hiding`; the element stays mounted, anchored and `pointer-events: none` until its own `opacity`
   transition ends (timeout fallback = its computed duration + delay, so a hidden tab / `display: none` ancestor never

@@ -9,8 +9,10 @@
  * goes to the element's own `translateCallback`, then `window.components.locale.translateCallback` (i18next / ICU /
  * the app's own lookup — one element needs no page setup; each gets the
  * full key, the resolved template and the RAW params; `null` / `undefined` = "not mine"), else the default
- * `{name}` replacement — a NUMBER param is shown through `formatNumber` (the resolved locale and separators:
- * `12 345` in Czech). Pass a string for a number that mustn't be grouped (a year, an id). Then escaping:
+ * `{name}` replacement — `{ctx.remaining}` reads a dotted path (a component passes the text spot's callback context as
+ * `{ ctx }`; `ctx.count` = the number the text's noun agrees with, for plural rules) — a NUMBER is shown through
+ * `formatNumber` (the resolved locale and separators: `12 345` in Czech). Pass a string for a number that mustn't be
+ * grouped (a year, an id). Then escaping:
  *
  * - {@link Labels.text} — for `textContent` / attributes: nothing is escaped (text can't inject).
  * - {@link Labels.html} — for `innerHTML`: with `window.components.security.shouldEscapeLabels`
@@ -68,10 +70,51 @@ export interface CreateLabelsOptions {
   getTranslateCallback?: () => TranslateCallback | null | undefined;
 }
 
-/** `{name}` → `params.name`; an unknown placeholder stays as written. */
-export function formatLabel(template: string, params?: LabelParams): string {
+const hasOwn = (value: unknown, name: string): boolean =>
+  value !== null && (typeof value === 'object' || typeof value === 'function') && Object.prototype.hasOwnProperty.call(value, name);
+
+/**
+ * `{name}` → `params.name`; `{ctx.item.text}` → a dotted path, own properties at every step (a component passes the
+ * text spot's callback context as `{ ctx }`, so a label template and the `get*Callback` read the same fields). An
+ * unknown placeholder stays as written; `null` / `undefined` → `''`. `formatValue` turns a found value into its
+ * display text (default `String`).
+ */
+export function formatLabel(template: string, params?: LabelParams, formatValue: (value: unknown) => string = String): string {
   if (!params) return template;
-  return template.replace(/\{(\w+)\}/g, (match, name: string) => (Object.prototype.hasOwnProperty.call(params, name) ? String(params[name] ?? '') : match));
+  return template.replace(/\{(\w+(?:\.\w+)*)\}/g, (match, path: string) => {
+    let value: unknown = params;
+    for (const name of path.split('.')) {
+      if (!hasOwn(value, name)) return match;
+      value = (value as Record<string, unknown>)[name];
+    }
+    return value === null || value === undefined ? '' : formatValue(value);
+  });
+}
+
+const isPlain = (value: unknown): value is Record<string, unknown> | unknown[] => {
+  if (Array.isArray(value)) return true;
+  if (value === null || typeof value !== 'object') return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+};
+
+/**
+ * Params for an HTML label: every string escaped, at any depth of plain objects / arrays (a `ctx.item.text`
+ * is data too). Other values (numbers, elements, class instances, functions) pass as they are; a cycle is kept.
+ */
+function escapeParams(params: LabelParams): LabelParams {
+  const seen = new WeakMap<object, unknown>();
+  const visit = (value: unknown): unknown => {
+    if (typeof value === 'string') return escapeHtml(value);
+    if (!isPlain(value)) return value;
+    const done = seen.get(value);
+    if (done) return done;
+    const copy: Record<string, unknown> | unknown[] = Array.isArray(value) ? [] : {};
+    seen.set(value, copy);
+    for (const [name, item] of Object.entries(value)) (copy as Record<string, unknown>)[name] = visit(item);
+    return copy;
+  };
+  return visit(params) as LabelParams;
 }
 
 type LabelSource = 'instance' | 'page' | 'default';
@@ -187,10 +230,7 @@ export function createLabels<L extends object>(
 
   const format = (key: keyof L & string, params: LabelParams | undefined, isHtml: boolean): string => {
     const shouldEscapeAll = isHtml && getPageSecurity()?.shouldEscapeLabels === true;
-    const values: LabelParams | undefined =
-      params && isHtml && !shouldEscapeAll
-        ? Object.fromEntries(Object.entries(params).map(([name, v]) => [name, typeof v === 'string' ? escapeHtml(v) : v]))
-        : params;
+    const values: LabelParams | undefined = params && isHtml && !shouldEscapeAll ? escapeParams(params) : params;
     let resolved = resolveOne(key, values);
     let isFromTwin = false;
     if (resolved.source === 'default') {
@@ -206,13 +246,9 @@ export function createLabels<L extends object>(
     }
     let out = resolved.text;
     if (out === undefined) {
-      // The default display formats numbers for the locale; the callback gets the raw values.
-      const shown = values
-        ? Object.fromEntries(
-            Object.entries(values).map(([name, v]) => [name, typeof v === 'number' && Number.isFinite(v) ? formatNumber(v, { locale: options.getLocale?.() ?? undefined }) : v]),
-          )
-        : values;
-      out = formatLabel(resolved.template, shown);
+      // The default display formats numbers for the locale (at any depth: `{ctx.count}`); the callback gets the raw values.
+      out = formatLabel(resolved.template, values, (v) =>
+        typeof v === 'number' && Number.isFinite(v) ? formatNumber(v, { locale: options.getLocale?.() ?? undefined }) : String(v));
     }
     // A twin may be a content label with markup (`buttons.x: '<b>Next</b>'`); a text use (an aria-label / title)
     // takes its text, never the tags.

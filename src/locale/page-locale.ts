@@ -35,7 +35,11 @@ export interface LabelTranslateContext {
   key: string;
   /** The resolved template: the page-wide `labels[key]` → the component's English default. */
   template: string;
-  /** Placeholder values; HTML-escaped already when the label goes into HTML and labels aren't escaped as a whole. */
+  /**
+   * Placeholder values — `{ ctx }` (the text spot's callback context; `ctx.count` = the number to pluralize by) or
+   * flat `{name}` values. Strings HTML-escaped already (at any depth) when the label goes into HTML and labels
+   * aren't escaped as a whole.
+   */
   params: Readonly<Record<string, unknown>>;
   /** The resolved BCP-47 locale. */
   locale: string;

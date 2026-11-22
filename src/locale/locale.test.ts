@@ -359,6 +359,29 @@ describe('labels', () => {
   it('formatLabel leaves unknown placeholders', () => {
     expect(formatLabel('{a} {b}', { a: 1 })).toBe('1 {b}');
   });
+
+  it('formatLabel reads dotted paths (own properties only); a missing step stays as written', () => {
+    const ctx = { remaining: 2, item: { text: 'Apple', tags: ['a'] }, none: null };
+    expect(formatLabel('Up to {ctx.remaining} more: {ctx.item.text}', { ctx })).toBe('Up to 2 more: Apple');
+    expect(formatLabel('{ctx.item.tags.0}|{ctx.none}|{ctx.nope}|{ctx.item.text.length}', { ctx })).toBe('a||{ctx.nope}|{ctx.item.text.length}');
+    expect(formatLabel('{ctx.toString}', { ctx })).toBe('{ctx.toString}'); // inherited → not a param
+  });
+
+  it('{ctx.*}: numbers locale-formatted at any depth, strings escaped at any depth in html(), the callback gets the ctx', () => {
+    const DEFS = { 'placeholders.search': 'Up to {ctx.remaining} more of {ctx.total} ({ctx.item.text})' };
+    const labels = createLabels(host, DEFS, () => null, { getLocale: () => 'cs' });
+    const ctx = { remaining: 2, total: 12345, count: 2, item: { text: '<i>' } };
+    expect(labels.text('placeholders.search', { ctx })).toBe('Up to 2 more of 12 345 (<i>)');
+    expect(labels.html('placeholders.search', { ctx })).toBe('Up to 2 more of 12 345 (&lt;i&gt;)');
+    expect(ctx.item.text).toBe('<i>'); // the caller's object is never touched
+    const seen: Array<Record<string, unknown>> = [];
+    page().locale = {
+      translateCallback: ({ params }: { params: Record<string, unknown> }) => (seen.push(params), `n=${(params.ctx as { count: number }).count}`),
+    };
+    expect(labels.html('placeholders.search', { ctx })).toBe('n=2');
+    expect((seen[0]!.ctx as { item: { text: string }; total: number }).item.text).toBe('&lt;i&gt;'); // HTML: escaped data
+    expect((seen[0]!.ctx as { total: number }).total).toBe(12345); // raw number for plural rules
+  });
 });
 
 describe('BlissElement.localeChanged()', () => {

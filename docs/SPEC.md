@@ -2562,6 +2562,13 @@ every element. Decided 2026-10-26 / 10-27 / 10-28 (rulebook D-NC-24), built 2026
   strings), while `translateCallback` receives the raw number (ICU / i18next plural rules need it); a string param
   (a year, an id) is shown as given. Decided 2026-11-17 (web-commandpalette's pass: pre-formatted counts reached the
   callback as `"12 345"`).
+  **Placeholders read dotted paths (2026-11-22):** `{ctx.remaining}` / `{ctx.item.text}` — own properties at every
+  step, a missing step leaves the placeholder as written. A component passes the text spot's callback context as
+  `{ ctx }`, so a label template and the spot's `get*Callback(ctx)` share one context (rulebook D-NC-24 amendment:
+  callback → label chain → English; `ctx.count` = the number the text's noun agrees with, so one generic
+  `translateCallback` pluralizes every key). Numbers are locale-formatted and (in `html()`) strings escaped at
+  ANY depth of plain objects / arrays — the translate callback gets that same deep-escaped copy, numbers raw.
+  Flat `{name}` params keep working. Core stays a formatter: no plural / select syntax (the app's library does it).
 - **Live:** `observeLocale(listener)` hears page-locale / security assignments and the browser `languagechange`;
   BlissElement's opt-in `localeChanged()` hook (override = subscribed while connected) re-renders texts. Not
   called on the first connect (`reinit()` read the locale); a change while detached fires on reconnect (a
