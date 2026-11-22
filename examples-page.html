@@ -430,6 +430,13 @@ owner.customStyles = '.pgc { border-color: #ea580c }';</code></pre></div>
                     <core-demo-pg-locale id="demo-pg-locale-b" locale="de-DE" labels='{"buttons.remove":"Entfernen {ctx.name}"}'></core-demo-pg-locale>
                     <core-demo-pg-locale id="demo-pg-locale-c"></core-demo-pg-locale>
                 </div>
+                <p class="muted">
+                    Element B mixes on purpose: its WORDS come from the page dictionary (one app language — Czech here),
+                    its NUMBERS and dates from its own <code>locale="de-DE"</code> — <code>12.345</code>, <code>DD.MM.YYYY</code>,
+                    <i>November</i>. <code>locale</code> is a formatting preference, <code>labels</code> are the app's language.
+                    A different language per element goes through <code>translateCallback</code>: it gets
+                    <code>{ key, params, locale }</code> and can pick the text for that <code>locale</code>.
+                </p>
                 <div class="output"><pre id="pg07-readout"></pre></div>
             </div>
             <div class="code-block" data-language="js"><pre><code>// component side
