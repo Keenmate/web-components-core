@@ -339,6 +339,13 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   #rejections: InputRejection[] | null = null;
   /** `connect()` ran and `disconnect()` hasn't yet — keeps the two balanced when a build throws. */
   #isActive = false;
+  /** A `connectedCallback` / `disconnectedCallback` body is running (see #runLifecycle). */
+  #isInLifecycle = false;
+  /**
+   * Lifecycle callbacks the browser delivered while another one was still running, in
+   * arrival order — replayed once it finished (see #runLifecycle).
+   */
+  #deferredLifecycle: Array<'connect' | 'disconnect'> = [];
   /**
    * The last `reinit()` threw, so the structure may be missing or half-built.
    * The next flush rebuilds instead of patching. Separate from `#pendingReinit`
@@ -588,6 +595,47 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   }
 
   connectedCallback(): void {
+    this.#runLifecycle('connect', () => this.#connected());
+  }
+
+  /**
+   * Run one lifecycle callback without re-entrancy. A DOM write to an OBSERVED attribute
+   * flushes the custom-element reaction queue: during a move, `disconnect()` removing an
+   * attribute makes the browser run the already-queued `connectedCallback` right there,
+   * inside `disconnect()` (and the reverse — a `disconnectedCallback` queued behind a
+   * `connectedCallback` arrives inside `connect()`). The rest of the outer hook would then
+   * undo the nested one. A callback that arrives while another runs is deferred instead and
+   * replayed, in arrival order, after it finished — so `connect()` / `disconnect()` never
+   * nest and always alternate. The first error is rethrown after the replay.
+   */
+  #runLifecycle(kind: 'connect' | 'disconnect', run: () => void): void {
+    if (this.#isInLifecycle) {
+      this.#deferredLifecycle.push(kind);
+      return;
+    }
+    let firstError: { error: unknown } | undefined;
+    this.#isInLifecycle = true;
+    try {
+      run();
+    } catch (error) {
+      firstError = { error };
+    } finally {
+      this.#isInLifecycle = false;
+    }
+    // Replay what arrived meanwhile; each replay runs guarded too (and drains the same queue).
+    const next = this.#deferredLifecycle.shift();
+    if (next !== undefined) {
+      try {
+        if (next === 'connect') this.connectedCallback();
+        else this.disconnectedCallback();
+      } catch (error) {
+        firstError ??= { error };
+      }
+    }
+    this.#rethrow(firstError);
+  }
+
+  #connected(): void {
     if (this.#isDestroyed) {
       // Destroyed elements stay inert: no rebuild, no connect(), no subscriptions.
       coreLog(this, 'INIT', 'ELEMENT').warn(`<${this.localName}> was destroyed — reconnecting it does nothing; create a new element instead`);
@@ -750,6 +798,10 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   }
 
   disconnectedCallback(): void {
+    this.#runLifecycle('disconnect', () => this.#disconnected());
+  }
+
+  #disconnected(): void {
     if (this.#isDestroyed) return; // destroy() already stopped everything
     untrackInstance(this.localName, this);
     this.#stopResponsive();

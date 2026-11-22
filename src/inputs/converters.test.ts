@@ -122,6 +122,19 @@ describe('toBool', () => {
     expect(c.toAttribute!(false)).toBeNull();
   });
 
+  it('reflection removes the attribute at the mode absent value (absent == default)', () => {
+    const off = toBool('default-false');
+    expect(off.toAttribute!(false)).toBeNull();
+    expect(off.toAttribute!(true)).toBe('true');
+    const on = toBool('default-true');
+    expect(on.toAttribute!(true)).toBeNull();
+    expect(on.toAttribute!(false)).toBe('false');
+    const tri = toBool('tristate');
+    expect(tri.toAttribute!(null)).toBeNull();
+    expect(tri.toAttribute!(true)).toBe('true');
+    expect(tri.toAttribute!(false)).toBe('false');
+  });
+
   it('default-true mode', () => {
     const c = toBool('default-true');
     expect(c.fromAttribute!(null, reader(), 'x')).toBe(true);

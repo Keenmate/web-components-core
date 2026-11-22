@@ -164,7 +164,9 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    A DOM move (reorder/re-parent) fires `disconnect()`→`connect()` and
    **re-activates without rebuilding** (`reinit()` runs only on first connect or
    an `on:'reinit'` change) — so transient UI state survives. `connect()`/
-   `disconnect()` can run many times; keep them balanced. Config changed while
+   `disconnect()` can run many times; keep them balanced. They never nest: a lifecycle callback
+   arriving while the other runs (a `disconnect()` writing an observed attribute flushes the
+   queued `connectedCallback`) is deferred and replayed right after. Config changed while
    detached is held and applied on reconnect, before `connect()`.
 
    A hook that throws is rethrown to whoever flushed, but never wedges the

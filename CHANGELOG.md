@@ -211,6 +211,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   them by hand after floating its host). pure-css port affected.
 
 ### Changed
+- **`toBool` reflection keeps absent == default** (visible change): reflecting the mode's ABSENT value now REMOVES
+  the attribute — `default-false` + `false`, `default-true` + `true`, `tristate` + `null` — instead of writing
+  `x="false"` / `x="true"`, which left the attribute present so `[x]` selectors lied. Other values are written as
+  text (`default-false` + `true` → `x="true"`, `default-true` + `false` → `x="false"`); `presence` is unchanged
+  (bare / removed). The invalid-attribute write-back follows it (`open="maybe"` on a `false` default-false input is
+  removed). CSS keyed on `[x="false"]` for a reflected `default-false` input (or `[x="true"]` for `default-true`) no
+  longer matches — use `:not([x])`. A markup attribute spelled at the default (`open="false"`) stays as written.
 - `/cem` `blissAnalyzerConfig()` keeps the manifest to the PUBLIC API (new `publicApiPlugin()` / `keepPublicApi()`,
   after `stableOutputPlugin()`): private / protected / `#…` / `_…` members and the modules, declarations and exports
   `src/index.ts` doesn't re-export are dropped — re-export chains are followed (a folder specifier
@@ -253,6 +260,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and, while open, runs the item on a chord too (`Ctrl+C`), not only on a bare letter / key name.
 
 ### Fixed
+- Lifecycle re-entrancy: during a DOM move, a `disconnect()` that writes an OBSERVED attribute (e.g. a reflected
+  `open` removed by `close()`) made the browser run the queued `connectedCallback` synchronously inside it, so
+  `connect()` ran nested in `disconnect()` and the rest of `disconnect()` undid it (web-commandpalette's global hotkeys
+  ended up off after a move). BlissElement now defers a `connectedCallback` / `disconnectedCallback` that arrives while
+  the other runs and replays it, in arrival order, right after (the reverse — a removal arriving inside `connect()` —
+  too): `connect()` / `disconnect()` always alternate, a move still re-activates without a rebuild, the removal check
+  is cancelled as for any move. A throw from either side is rethrown after the replay.
 - A rejected-input warning labels its value: `got: <value>` on the property path, `kept: <value>` on the attribute
   path. The property warning printed the REJECTED value right after "keeping previous value", which read as the kept one.
 - The form-validity anchor warning names the method that was called (`setFormatError` / `setValidityFlag`);

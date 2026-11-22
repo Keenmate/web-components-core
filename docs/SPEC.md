@@ -176,7 +176,7 @@ toInt({ min?, max?, default?, isNullable? }) // isNullable: absent / empty → n
 toFloat({ min?, max?, default? })              // the whole attribute is a finite decimal ("1.5", "-2e3"); "1.5em" / "1,5" / "Infinity" are invalid
 toCssLength({ default?, allowNegative?, keywords? })  // a CSS length for style-only inputs: "12px" | "2rem" | "50%" | calc(…) | var(…); a bare number (attribute or property) → px
 toText({ shouldTrim?, isEmptyAllowed?, isNullable?, default? })  // string (NOT toString). isNullable:true → absent/empty is null (optional string), not ''
-toBool('default-false' | 'default-true' | 'tristate' | 'presence')  // mode REQUIRED; presence = native rule (any value, "false" too → true) — for disabled/readonly only
+toBool('default-false' | 'default-true' | 'tristate' | 'presence')  // mode REQUIRED; presence = native rule (any value, "false" too → true) — for disabled/readonly only; reflecting the mode's absent value (false / true / null / false) REMOVES the attribute (absent == default), any other value writes "true" / "false" (presence: bare)
 toBytes({ default? })                          // binary units, case-insensitive: "10mb" → 10485760, "300 kB", "1.5G", "5MiB"; "1.2.3mb" / "1.5b" invalid
 toList({ itemType: 'string' | 'int', separator?, requiredCount? }) // CSV / pipe-list or a JSON array (int items: whole-string integers; an empty item — "a,b," / "a,,b" — is invalid, write ["a",""] for one), optional fixed length; reflects JSON when an item holds the separator or is empty, [] as "[]"
 toCustom(parseFn)                              // wrap any bespoke parser  (month-names, 'auto'|0..6)
@@ -330,7 +330,15 @@ properties/callbacks — so everything is reactive by construction:
   `reinit()`/`update()` is rethrown but doesn't wedge the element: settle
   waiters resolve, a failed `reinit()` is retried on the next flush, and
   `connect()` waits for a successful build (`disconnect()` runs only after
-  `connect()` did).
+  `connect()` did). **No nesting (rc25):** a DOM write to an observed attribute
+  flushes the browser's custom-element reaction queue, so during a move a
+  `disconnect()` that removes such an attribute would get the already-queued
+  `connectedCallback` run INSIDE it (and a `disconnectedCallback` queued behind a
+  `connectedCallback` would arrive inside `connect()`). Core defers a lifecycle
+  callback that arrives while another runs and replays it, in arrival order, right
+  after — `connect()` / `disconnect()` always alternate and never nest; a move whose
+  `disconnect()` writes attributes still ends active, still without a rebuild, and
+  the pending removal check is cancelled as for any move.
 - **Removal vs move** — `removedCallback()` (opt-in: the base schedules the
   check only when a subclass overrides it) fires after `disconnect()` once the
   element is still detached at the next animation frame (a macrotask where rAF
@@ -366,7 +374,10 @@ value the previous value is the default, so `<x page-size="abc">` in markup ends
 at the default. After a rejected attribute, an input with `shouldReflect` writes
 its current value back (before the first connect: at that connect's flush), so
 the DOM shows what the element uses; a non-reflected input leaves the markup
-alone. The write-back runs inside the reflect guard, so it can't re-enter.
+alone. The write-back runs inside the reflect guard, so it can't re-enter. "Writes back"
+follows the converter's `toAttribute`, so a value at the default may mean REMOVING the
+attribute (`toBool('default-false')` keeping `false` → `open="maybe"` is removed, never
+`open="false"`) — absent == default holds for reflection too (rc25).
 
 The warning goes through the element's instance logger (`INIT` category, else the
 bundle's first; `[CORE:ELEMENT] tag#id` when the tag has no logging bundle) — it is

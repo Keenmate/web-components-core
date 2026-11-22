@@ -201,6 +201,13 @@ const FALSEISH = new Set(['false', '0', 'no', 'off']);
  *
  * The mode's absent value replaces the row's `default` — declare a matching one or none
  * (BlissElement warns on a mismatch).
+ *
+ * Reflection keeps absent == default: the mode's ABSENT value removes the attribute
+ * (`default-false` → `false`, `default-true` → `true`, `tristate` → `null`, `presence` → `false`),
+ * so `[x]` selectors never see a present attribute that means "off". Any other value is
+ * written as its text — `default-false` reflects `true` as `x="true"`, `default-true`
+ * reflects `false` as `x="false"`, `tristate` writes `"true"` / `"false"`; `presence`
+ * reflects `true` as a bare `x`.
  */
 export type BoolMode = 'presence' | 'default-true' | 'default-false' | 'tristate';
 
@@ -211,10 +218,11 @@ export function toBool(mode: BoolMode): Converter<boolean | null> {
     if (FALSEISH.has(v)) return false;
     return null;
   };
+  // What a missing attribute means — and, reflected, the value that removes it (absent == default).
+  const unset = mode === 'default-true' ? true : mode === 'default-false' ? false : null;
   return {
     fromAttribute(raw, _el, _attr, reportInvalid) {
       if (mode === 'presence') return raw !== null; // any value means "on" — never invalid
-      const unset = mode === 'default-true' ? true : mode === 'default-false' ? false : null;
       if (raw === null) return unset;
       const parsed = parse(raw);
       if (parsed === null) reportInvalid?.('expected true | false');
@@ -226,7 +234,7 @@ export function toBool(mode: BoolMode): Converter<boolean | null> {
     },
     toAttribute(value) {
       if (mode === 'presence') return value ? '' : null;
-      return scalarToAttribute(value);
+      return value === unset ? null : scalarToAttribute(value);
     },
   };
 }
