@@ -1674,6 +1674,57 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     /* opt-in */
   }
 
+  // ── required (SPEC §6.6) ──────────────────────────────────────────────────
+
+  /**
+   * Whether the value is empty for the `isRequired` input (SPEC §6.6) — nothing selected, no complete range, an
+   * empty document. Opt-in: the default `false` never reports a missing value.
+   */
+  protected isValueEmpty(): boolean {
+    return false;
+  }
+
+  /** The `valueMissing` message — return the component's `errors.required` label. Default: generic English. */
+  protected getRequiredMessage(): string {
+    return 'Please fill out this field.';
+  }
+
+  /** Where the browser anchors the validation bubble (the visible input); `undefined` = the host. */
+  protected getValidityAnchor(): HTMLElement | undefined {
+    return undefined;
+  }
+
+  /**
+   * Re-evaluate `isRequired` after the VALUE changed (SPEC §6.6). Core runs it itself after every flush (an
+   * `isRequired` / `isReadonly` / disabled change, a rebuild); the component calls it from its value-change path.
+   * A form-associated class whose table has an `isRequired` row gets: `valueMissing` (through
+   * {@link setValidityFlag}, so its other flags stay) while required, empty, NOT readonly and NOT effectively
+   * disabled (native: a readonly / disabled control is never "missing"); `aria-required` on the internals and
+   * `:state(required)` (the native `:required` doesn't match a custom element). No-op otherwise.
+   */
+  protected refreshRequired(): void {
+    if ((this.constructor as { formAssociated?: boolean }).formAssociated !== true) return;
+    if (!this.#byConfigKey.has('isRequired') || !this.#hasBuilt) return;
+    const isRequired = this.#config.isRequired === true;
+    const internals = this.internals;
+    if (internals) {
+      internals.ariaRequired = isRequired ? 'true' : null;
+      try {
+        if (isRequired) internals.states?.add('required');
+        else internals.states?.delete('required');
+      } catch {
+        // CustomStateSet unavailable / an older engine (`--dashed` idents only): the reflected `required` attribute is the hook.
+      }
+    }
+    const isMissing = isRequired && this.#config.isReadonly !== true && !this.isEffectivelyDisabled && this.isValueEmpty();
+    this.#setValidityFlag(
+      'valueMissing',
+      isMissing ? this.getRequiredMessage() || 'Please fill out this field.' : null,
+      isMissing ? this.getValidityAnchor() : undefined,
+      'refreshRequired',
+    );
+  }
+
   /** After a successful flush: report a flip of the effective disabled state. */
   #syncDisabled(isRebuilt: boolean): void {
     const next = this.isEffectivelyDisabled;
@@ -2449,6 +2500,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     if (reinit) this.#hasBuilt = true;
     try {
       this.#syncDisabled(reinit);
+      this.refreshRequired();
     } finally {
       // A rebuild that finally succeeded while connected activates what the failed one
       // skipped — even when disabledChanged() threw.

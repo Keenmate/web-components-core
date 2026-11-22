@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BlissElement } from './bliss-element.js';
 import { define } from './define.js';
+import { toBool } from '../inputs/converters.js';
 
 /**
  * jsdom's ElementInternals has no constraint-validation support, so model the
@@ -35,6 +36,8 @@ function fakeInternals(host: HTMLElement) {
       return false;
     }),
     reportValidity: vi.fn(() => internals.checkValidity()),
+    ariaRequired: null as string | null,
+    states: new Set<string>(),
   };
   return internals;
 }
@@ -157,5 +160,110 @@ describe('form validity API (SPEC §6.6)', () => {
     el.flag('valueMissing', null);
     expect(el.validity?.valid).toBe(true);
     expect(el.validationMessage).toBe('');
+  });
+});
+
+class RequiredField extends BlissElement {
+  static formAssociated = true;
+  static override inputs = [
+    { configKey: 'isRequired', attribute: 'required', converter: toBool('presence'), default: false, shouldReflect: true, on: 'update' as const },
+    { configKey: 'isReadonly', attribute: 'readonly', converter: toBool('presence'), default: false, shouldReflect: true, on: 'update' as const },
+    { configKey: 'isDisabled', attribute: 'disabled', converter: toBool('presence'), default: false, shouldReflect: true, on: 'update' as const },
+  ];
+  value: string[] = [];
+  anchor?: HTMLElement;
+  setValue(next: string[]): void {
+    this.value = next;
+    this.refreshRequired();
+  }
+  protected override isValueEmpty(): boolean {
+    return this.value.length === 0;
+  }
+  protected override getRequiredMessage(): string {
+    return 'Pick something.';
+  }
+  protected override getValidityAnchor(): HTMLElement | undefined {
+    return this.anchor;
+  }
+}
+define('required-field-element', RequiredField as unknown as CustomElementConstructor);
+
+class RequiredFlagField extends FormatField {}
+define('required-flag-field-element', RequiredFlagField as unknown as CustomElementConstructor);
+
+describe('isRequired → valueMissing (SPEC §6.6)', () => {
+  function mount(attrs = ''): { el: RequiredField & Record<string, unknown>; internals: ReturnType<typeof fakeInternals> } {
+    const el = new RequiredField() as RequiredField & Record<string, unknown>;
+    const internals = fakeInternals(el);
+    vi.spyOn(el, 'attachInternals').mockReturnValue(internals as unknown as ElementInternals);
+    for (const name of attrs.split(' ').filter(Boolean)) el.setAttribute(name, '');
+    document.body.append(el);
+    return { el, internals };
+  }
+  afterEach(() => document.body.replaceChildren());
+
+  it('required + empty → valueMissing with the component message, aria-required, :state(required); a value clears it', async () => {
+    const { el, internals } = mount('required');
+    await el.whenSettled();
+    expect(el.validity?.valueMissing).toBe(true);
+    expect(el.validationMessage).toBe('Pick something.');
+    expect(internals.ariaRequired).toBe('true');
+    expect(internals.states.has('required')).toBe(true);
+    el.setValue(['a']);
+    expect(el.validity?.valid).toBe(true);
+    el.setValue([]);
+    expect(el.validity?.valueMissing).toBe(true);
+  });
+
+  it('toggling isRequired re-evaluates on the flush; not required → valid, no aria-required / state', async () => {
+    const { el, internals } = mount();
+    await el.whenSettled();
+    expect(el.validity?.valid).toBe(true);
+    expect(internals.ariaRequired).toBeNull();
+    el.isRequired = true;
+    await el.whenSettled();
+    expect(el.validity?.valueMissing).toBe(true);
+    el.isRequired = false;
+    await el.whenSettled();
+    expect(el.validity?.valid).toBe(true);
+    expect(internals.states.has('required')).toBe(false);
+  });
+
+  it('readonly / disabled is never missing (native semantics); the flag returns when it is editable again', async () => {
+    const { el } = mount('required readonly');
+    await el.whenSettled();
+    expect(el.validity?.valid).toBe(true);
+    el.isReadonly = false;
+    await el.whenSettled();
+    expect(el.validity?.valueMissing).toBe(true);
+    el.isDisabled = true;
+    await el.whenSettled();
+    expect(el.validity?.valid).toBe(true);
+  });
+
+  it('keeps the other flags (a format error) and passes the anchor', async () => {
+    const { el, internals } = mount('required');
+    const anchor = document.createElement('input');
+    el.append(anchor);
+    el.anchor = anchor;
+    el.setValue([]);
+    await el.whenSettled();
+    expect(internals.setValidity).toHaveBeenLastCalledWith({ valueMissing: true }, 'Pick something.', anchor);
+    (el as unknown as { setFormatError(e: unknown): void }).setFormatError.call(el, new Error('bad'));
+    el.setValue(['a']);
+    expect(el.validity?.customError).toBe(true);
+    expect(el.validity?.valueMissing).toBeFalsy();
+  });
+
+  it('a class without an isRequired row never touches valueMissing (its own flag stays)', async () => {
+    const el = new RequiredFlagField();
+    const internals = fakeInternals(el);
+    vi.spyOn(el, 'attachInternals').mockReturnValue(internals as unknown as ElementInternals);
+    document.body.append(el);
+    el.flag('valueMissing', 'Mine.');
+    el.setAttribute('data-x', '1');
+    (el as unknown as { flush(): void }).flush();
+    expect(el.validity?.valueMissing).toBe(true);
+    expect(el.validationMessage).toBe('Mine.');
   });
 });

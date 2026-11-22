@@ -640,7 +640,7 @@ value the component could not produce (e.g. a throwing `getValueFormatCallback`)
 - No-op on a non-form-associated class.
 
 **`setValidityFlag(flag, message | null, anchor?)`** (protected) — one validity flag at a time
-(`'valueMissing'` for a required / min-count rule, `'rangeUnderflow'`, `'tooLong'`, …): set with a message,
+(`'valueMissing'` for the required rule, `'rangeUnderflow'` / `'rangeOverflow'` for a min / max count, `'tooLong'`, …): set with a message,
 clear with `null`; the others are kept, so independent constraints never clear each other (a raw
 `internals.setValidity({})` would). The shown message is the earliest flag still set. `setFormatError` is
 its `customError` case. Components don't call `internals.setValidity` themselves.
@@ -650,6 +650,17 @@ unless `<form novalidate>`, and `:invalid` matches the host. Typical component
 flow: catch the callback's throw → log it at `error` → submit `''` →
 `setFormatError(err, label)` → emit a `*-error` event; the next successful
 format calls `setFormatError(null)`.
+
+**Required (decided 2026-11-22).** Every form-associated data-input component has `isRequired` (attribute
+`required`, `toBool('presence')`, reflects — like native). Core owns the rest, keyed on the `isRequired` row (like
+`isDisabled`): the component implements `isValueEmpty()` (nothing selected / no complete range / an empty document),
+optionally `getRequiredMessage()` (its `errors.required` label) and `getValidityAnchor()` (the visible input), and calls
+`refreshRequired()` from its value-change path; core also runs it after every flush. `valueMissing` is set while
+required AND empty AND not readonly AND not effectively disabled (native: a readonly / disabled control is never
+"missing"); `internals.ariaRequired` and `:state(required)` follow `isRequired` (the native `:required` doesn't match a
+custom element). A class without an `isRequired` row is untouched. Count rules are separate flags: a minimum not met →
+`rangeUnderflow`, above a maximum → `rangeOverflow` (web-multiselect `min/maxSelectedCount`, web-dropzone
+`min/maxFileCount`), so `validity` tells "empty" from "too few", as an app's custom message needs.
 
 **Form reset / restore.** Components implement the platform `formResetCallback()` themselves
 (core has nothing generic to reset — "the value" is a different input per component):

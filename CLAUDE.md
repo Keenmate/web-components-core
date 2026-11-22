@@ -133,6 +133,11 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    browser disables a form-associated host by its own `disabled` attribute (core
    warns on a non-reflecting one); `isFormDisabled` is fieldset-only.
 
+   **Required (SPEC §6.6):** a form-associated class with an `isRequired` row (attribute `required`) implements
+   `isValueEmpty()` (+ optional `getRequiredMessage()` / `getValidityAnchor()`) and calls `refreshRequired()` on a value
+   change; core sets `valueMissing` (not while readonly / disabled), `aria-required`, `:state(required)` after every flush.
+   Min / max counts → `rangeUnderflow` / `rangeOverflow`.
+
    **Form validity (SPEC §6.6):** a form-associated class gets `validity`,
    `validationMessage`, `willValidate`, `checkValidity()`, `reportValidity()`
    (via `internals`; "no constraint" answers when not form-associated). The
