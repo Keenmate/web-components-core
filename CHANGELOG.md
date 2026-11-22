@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc25] - 2026-11-22
+
 ### Added
 - **`isRequired` support** (BlissElement, SPEC §6.6): a form-associated class whose input table has an `isRequired`
   row (attribute `required`) implements the protected `isValueEmpty()` (+ optional `getRequiredMessage()` — its

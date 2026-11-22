@@ -22,7 +22,7 @@ theme context, motion level, a shared scroll lock and overlay tree, container sc
 
 ## What's New in v1.0.0-rc25
 
-Upgrade guide: the [1.0.0-rc25 release notes](release-notes/1.0.0-rc25.md); full list: the [CHANGELOG Unreleased section](CHANGELOG.md) (becomes 1.0.0-rc25 at publish).
+Upgrade guide: the [1.0.0-rc25 release notes](release-notes/1.0.0-rc25.md); full list: the [CHANGELOG 1.0.0-rc25 section](CHANGELOG.md).
 
 The consolidation release: the copies the Keenmate components kept of the same plumbing move into core. No change for apps on the released components; component authors adopt the helpers, implement `iconsChanged()` and regenerate their manifests.
 
@@ -33,6 +33,7 @@ The consolidation release: the copies the Keenmate components kept of the same p
 - **Drag, clipboard, text input — touch-capable and IME-safe** — `createPointerDrag` runs in-page drags on pointer events, so a long press drags with a finger, the container auto-scrolls and Escape cancels; `createLayer` draws the ghost outside the component in its theme. `watchPageDrag` gives drop targets the page-wide "files over the page" state. `copyText` falls back to `execCommand` on plain-http intranets, and `onTextInput` / `isImeEnter` deliver one callback per committed text through IME composition.
 - **Tooltips fade out** — `createTooltip` keeps a hidden tooltip mounted until its opacity transition ends, with core's `TOOLTIP_CSS` (fade + 4px slide on `--base-duration-fast`, in `@layer component` so component rules win) on every `.km-tooltip`; reduced motion removes it at once. `data-placement` carries the resolved placement after flip / shift. The delegated mode (`selector`) serves every matching target with one tooltip, replacing the per-cell / per-day layers web-grid and web-daterangepicker built over `anchor()`.
 - **Responsive rules — the `container` axis** — Rules can be keyed by the component's OWN width (`narrow` / `medium` / `wide`, lines from `--base-container-narrow` / `-medium` read at the element), so a component in a sidebar adapts on a wide monitor. It replaces per-component thresholds such as web-daterangepicker's `compact-below`.
+- **Forms and labels — `isRequired`, `{ctx.*}` templates** — None of the form-associated components could be made required, and web-dropzone set its minimum-count validity straight on the internals, wiping core's flags. A class with an `isRequired` row now implements `isValueEmpty()` and calls `refreshRequired()`; core sets `valueMissing` (never while readonly / disabled), `aria-required` on the host and on the focused inner input, and `:state(required)`, through `setValidityFlag` so a format error and a missing value never clear each other. Label templates read dotted paths (`{ctx.remaining}`): a component passes its text spot's context, and `ctx.count` is the number the noun agrees with, so one generic `translateCallback` (i18next / ICU) pluralizes every key.
 - **`/cem` — the manifest is the public API** — `blissAnalyzerConfig()` now runs `publicApiPlugin()`: private / protected members and everything `src/index.ts` doesn't re-export are dropped, following re-export chains (web-treeview's manifest went from 19k to 12k lines). Regenerate each component's `custom-elements.json`; `isPublicApiOnly: false` keeps the full output.
 
 ## What's New in v1.0.0-rc24
