@@ -10,7 +10,10 @@
  *   weekStartDay: 1,
  *   decimalSeparator: ',', thousandsSeparator: ' ',
  *   labels: { 'web-dropzone.buttons.cancelFile': 'Zrušit {name}' },   // flat — the app's whole JSON fits
- *   translateCallback: ({ key, params }) => (i18next.exists(key) ? i18next.t(key, params) : null),
+ *   translateCallback: ({ key, params }) => {
+ *     const options = { ...params, count: params.ctx?.count };   // ctx.count → the plural count (exists() needs it too)
+ *     return i18next.exists(key, options) ? i18next.t(key, options) : null;
+ *   },
  *   parseNumberCallback: ({ text, parseDefault }) => parseDefault() ?? myNumberParser(text),   // optional
  * };
  * window.components.security = { shouldEscapeLabels: true };

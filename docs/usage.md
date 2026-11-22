@@ -476,7 +476,12 @@ window.components.locale = {
 // or delegate to the app's own i18n: the FULL key, the template, the RAW params (12345, for plurals);
 // null / undefined = not mine (core uses `labels` / the English default)
 window.components.locale = {
-  translateCallback: ({ key, params }) => (i18next.exists(key) ? i18next.t(key, params) : null),
+  translateCallback: ({ key, params }) => {
+    // a label's context arrives as params.ctx; ctx.count = the number to pluralize by (i18next's `count`,
+    // which exists() needs too — a key with only _one / _other forms doesn't exist without it)
+    const options = { ...params, count: params.ctx?.count };
+    return i18next.exists(key, options) ? i18next.t(key, options) : null;
+  },
 };
 
 window.components.security = { shouldEscapeLabels: true };   // labels are plain text, not HTML
