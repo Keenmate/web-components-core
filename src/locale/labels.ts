@@ -12,7 +12,8 @@
  * `{name}` replacement — `{ctx.remaining}` reads a dotted path (a component passes the text spot's callback context as
  * `{ ctx }`; `ctx.count` = the number the text's noun agrees with, for plural rules) — a NUMBER is shown through
  * `formatNumber` (the resolved locale and separators: `12 345` in Czech). Pass a string for a number that mustn't be
- * grouped (a year, an id). Then escaping:
+ * grouped (a year, an id). A per-call `{ fallback }` ({@link LabelOptions}) stands in for the built-in default (a key
+ * with neither shows the key itself). Then escaping:
  *
  * - {@link Labels.text} — for `textContent` / attributes: nothing is escaped (text can't inject).
  * - {@link Labels.html} — for `innerHTML`: with `window.components.security.shouldEscapeLabels`
@@ -28,13 +29,25 @@ import { formatNumber } from './numbers.js';
 
 export type LabelParams = Readonly<Record<string, unknown>>;
 
+/** Per-call options of {@link Labels.text} / {@link Labels.html}. */
+export interface LabelOptions {
+  /**
+   * This call's default text — used exactly where the built-in default (`defaults[key]`) would be, and
+   * instead of it: after the instance `labels`, the page dictionary and the `translateCallback`s (which
+   * get it as `template`); `{name}` / `{ctx.*}` placeholders and the `html()` escaping apply to it like
+   * to a built-in default (a template, not data). For a key with no built-in entry (a derived key: a
+   * command, a group); without it such a key shows the key itself.
+   */
+  fallback?: string;
+}
+
 export interface Labels<L extends object> {
   /** The resolved template for `key` (unformatted). */
   template(key: keyof L & string): string;
   /** Formatted, NOT escaped — for `textContent`, `aria-label`, `title`, `placeholder`. */
-  text(key: keyof L & string, params?: LabelParams): string;
+  text(key: keyof L & string, params?: LabelParams, options?: LabelOptions): string;
   /** Formatted for `innerHTML` (escaping per `window.components.security.shouldEscapeLabels`). */
-  html(key: keyof L & string, params?: LabelParams): string;
+  html(key: keyof L & string, params?: LabelParams, options?: LabelOptions): string;
   /** Every resolved template — for a renderer that takes a labels object. */
   all(): L;
 }
@@ -49,8 +62,8 @@ export type LabelsView<L extends object> = Readonly<Pick<Labels<L>, 'text' | 'ht
 /** `ctx.labels` for a callback context: a frozen `{ text, html }` over the component's labels (SPEC §12.24). */
 export function createLabelsView<L extends object>(labels: Labels<L>): LabelsView<L> {
   return Object.freeze({
-    text: (key: keyof L & string, params?: LabelParams) => labels.text(key, params),
-    html: (key: keyof L & string, params?: LabelParams) => labels.html(key, params),
+    text: (key: keyof L & string, params?: LabelParams, options?: LabelOptions) => labels.text(key, params, options),
+    html: (key: keyof L & string, params?: LabelParams, options?: LabelOptions) => labels.html(key, params, options),
   });
 }
 
@@ -140,22 +153,28 @@ export function getLabelFallbackKeys(key: string): string[] {
   return types ? types.map((type) => `${type}${key.slice(dot)}`) : [];
 }
 
-function lookup<L extends object>(tag: string, defaults: L, own: OwnLabels<L>, key: string): { template: string; source: LabelSource } {
+/** The default of `key`: this call's `fallback` → the built-in `defaults[key]` → the key itself. */
+function defaultTemplate(defaults: object, key: string, fallback?: string): string {
+  if (typeof fallback === 'string') return fallback;
+  const builtIn = (defaults as Record<string, unknown>)[key];
+  return typeof builtIn === 'string' ? builtIn : key;
+}
+
+function lookup<L extends object>(tag: string, defaults: L, own: OwnLabels<L>, key: string, fallback?: string): { template: string; source: LabelSource } {
   const full = `${tag}.${key}`;
   const mine = (own as Record<string, unknown> | null | undefined)?.[key] ?? (own as Record<string, unknown> | null | undefined)?.[full];
   if (typeof mine === 'string') return { template: mine, source: 'instance' };
   const page = getPageLocale()?.labels?.[full];
   if (typeof page === 'string') return { template: page, source: 'page' };
-  const fallback = (defaults as Record<string, unknown>)[key];
-  return { template: typeof fallback === 'string' ? fallback : '', source: 'default' };
+  return { template: defaultTemplate(defaults, key, fallback), source: 'default' };
 }
 
 const hasKey = (defaults: object, key: string): boolean => Object.prototype.hasOwnProperty.call(defaults, key);
 
 /**
  * Resolve `key` (short: `buttons.add`): `own[key]` / `own['<tag>.<key>']` → page-wide `labels['<tag>.<key>']`
- * → a customized sibling (`ariaLabels.x` / `tooltips.x` only, {@link getLabelFallbackKeys}) → `defaults[key]`. A string
- * wins (`''` is a deliberate empty label); anything else falls through.
+ * → a customized sibling (`ariaLabels.x` / `tooltips.x` only, {@link getLabelFallbackKeys}) → `defaults[key]` → the key
+ * itself. A string wins (`''` is a deliberate empty label); anything else falls through.
  */
 export function resolveLabel<L extends object>(tag: string, defaults: L, own: OwnLabels<L>, key: keyof L & string): string {
   const found = lookup(tag, defaults, own, key);
@@ -207,10 +226,10 @@ export function createLabels<L extends object>(
   /**
    * One key, without the sibling fallback: the instance text (a template, never sent to a callback) → the
    * element's `translateCallback` → the page-wide one (a finished text) → the page dictionary → the built-in
-   * default (`source: 'default'`).
+   * default (`source: 'default'`) — this call's `fallback` in its place when given.
    */
-  const resolveOne = (key: string, values: LabelParams | undefined): { template: string; text?: string; source: LabelSource | 'callback' } => {
-    const found = lookup(tag, defaults, own(), key);
+  const resolveOne = (key: string, values: LabelParams | undefined, fallback?: string): { template: string; text?: string; source: LabelSource | 'callback' } => {
+    const found = lookup(tag, defaults, own(), key, fallback);
     if (found.source === 'instance') return found; // written for this element: the app dictionary must not overwrite it
     const ownCallback = options.getTranslateCallback ? options.getTranslateCallback() : (host as { translateCallback?: unknown } | null)?.translateCallback;
     const callbacks: Array<[unknown, string]> = [
@@ -228,10 +247,10 @@ export function createLabels<L extends object>(
     return found;
   };
 
-  const format = (key: keyof L & string, params: LabelParams | undefined, isHtml: boolean): string => {
+  const format = (key: keyof L & string, params: LabelParams | undefined, isHtml: boolean, fallback: string | undefined): string => {
     const shouldEscapeAll = isHtml && getPageSecurity()?.shouldEscapeLabels === true;
     const values: LabelParams | undefined = params && isHtml && !shouldEscapeAll ? escapeParams(params) : params;
-    let resolved = resolveOne(key, values);
+    let resolved = resolveOne(key, values, fallback);
     let isFromTwin = false;
     if (resolved.source === 'default') {
       for (const sibling of getLabelFallbackKeys(key)) {
@@ -258,8 +277,8 @@ export function createLabels<L extends object>(
 
   return {
     template,
-    text: (key, params) => format(key, params, false),
-    html: (key, params) => format(key, params, true),
+    text: (key, params, options) => format(key, params, false, options?.fallback),
+    html: (key, params, options) => format(key, params, true, options?.fallback),
     all: () => {
       const out = {} as Record<string, string>;
       for (const key of Object.keys(defaults)) out[key] = template(key as keyof L & string);

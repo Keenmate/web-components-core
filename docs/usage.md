@@ -498,6 +498,9 @@ protected override localeChanged(): void { this.#renderTexts(); }   // a page-wi
 
 // a user callback gets ctx.labels = { text, html } — the same chain (translateCallbacks included), never a plain object
 ctx.labels = createLabelsView(this.#labels);   // ctx.labels.html('labels.days', { count })
+
+// a derived key with no built-in entry: a per-call default, used where DEFAULT_LABELS[key] would be
+this.#labels.text(`menuItems.${name}`, undefined, { fallback: spec.text ?? name });
 ```
 
 The page sets it once, for every component:
@@ -1514,7 +1517,7 @@ The main index is in 13 sections (the comments in `src/index.ts`), one row each:
 | `/actions` | `runAction`, `resolveActionItem`, `resolveMenuEntries`, `loadMenuChildren`, `normalizeActionItems` (string shorthand → items), `readActionDataset(trigger)`, `isActionBusy`, `createMenuDivider` / `isMenuDivider`, shortcuts: `bindShortcuts`, `matchesShortcut`, `parseShortcut`, `formatShortcut`, `getShortcutKeycaps`, `isTypingTarget` |
 | `/menu` | `openMenu(entries, ctx, opts)`, `MENU_CSS` |
 | `/a11y` | `createActiveDescendant(input, listbox, opts)` → `{ active, activeIndex, setActive, move, refresh, destroy }`, `createRovingFocus(container, opts)` → `{ current, currentIndex, focusItem, refresh, destroy }`, `createTypeahead(ms)`, `isPrintableKey`, `TYPEAHEAD_TIMEOUT_MS`, `createFocusTrap(panel, opts)` / `getTabbables(container)` (the focus trap a modal session uses) |
-| `/locale` | `createLabels(host, defaults, getOwn, { getLocale })` → `{ template, text, html, all }`, `createLabelsView(labels)` → `{ text, html }` (a callback's `ctx.labels`), `resolveLabel`, `formatLabel`, `resolveLocale`, `resolveLocaleSettings`, `getDateFormat` / `getTimeFormat` / `getWeekStartDay` / `getNumberSeparators`, `getMonthNames` / `getWeekdayNames`, `formatNumber` / `parseNumber`, `getPageLocale` / `getPageSecurity` / `observePageLocale` |
+| `/locale` | `createLabels(host, defaults, getOwn, { getLocale })` → `{ template, text, html, all }` (`text` / `html(key, params?, { fallback? })`), `createLabelsView(labels)` → `{ text, html }` (a callback's `ctx.labels`), `resolveLabel`, `formatLabel`, `resolveLocale`, `resolveLocaleSettings`, `getDateFormat` / `getTimeFormat` / `getWeekStartDay` / `getNumberSeparators`, `getMonthNames` / `getWeekdayNames`, `formatNumber` / `parseNumber`, `getPageLocale` / `getPageSecurity` / `observePageLocale` |
 | `/dialog` | `openDialog(opts)` → `{ result, close, panel, body }`, `confirmDialog(opts)` → `Promise<boolean>`, `promptDialog(opts)` → `Promise<string \| null>`, `DIALOG_CSS` |
 | `/search` | `normalizeSearchText`, `prepareSearchTerm` / `matchesSearchTerm` / `NO_SEARCH_TERM`, `findTextMatches` / `matchesText`, `findRegexMatches` / `createRegexCompiler` / `createStatelessRegex`, `findHighlightRanges` / `wrapRanges` / `highlightHtml` (`escapeHtml` → main index) |
 | `/testing` | `mount`, `mountBeforeUpgrade`, `cleanup`, `defineOnce`, `uniqueTag`, `nextTick`, `nextFrame`, `listen` (event spy), `waitForEvent`, `captureConsole`, `resetPageState` |

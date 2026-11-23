@@ -274,6 +274,46 @@ describe('labels', () => {
     expect(Object.isFrozen(view)).toBe(true);
   });
 
+  describe('{ fallback } — a per-call default in place of the built-in one (Q11)', () => {
+    it('used where the built-in default would be: after instance / page / callbacks; replaces a built-in; no default → the key', () => {
+      const labels = createLabels(host, DEFAULTS as Record<string, string>, () => null);
+      expect(labels.text('buttons.bold', undefined, { fallback: 'Bold' })).toBe('Bold'); // derived key, no built-in
+      expect(labels.text('buttons.bold')).toBe('buttons.bold'); // no default, no fallback → the key
+      expect(labels.text('messages.empty', undefined, { fallback: 'Empty here' })).toBe('Empty here'); // in place of the built-in
+      expect(labels.text('messages.empty', undefined, { fallback: '' })).toBe(''); // '' is a deliberate empty default
+      page().locale = { labels: { 'web-x.buttons.bold': 'Tučně' } };
+      expect(labels.text('buttons.bold', undefined, { fallback: 'Bold' })).toBe('Tučně'); // page dictionary wins
+      const own = { 'buttons.bold': 'Mine' };
+      expect(createLabels(host, DEFAULTS as Record<string, string>, () => own).text('buttons.bold', undefined, { fallback: 'Bold' })).toBe('Mine');
+      expect(labels.text('buttons.bold')).toBe('Tučně'); // per call: nothing is remembered
+    });
+
+    it('translateCallback gets the fallback as template; null → the fallback', () => {
+      const seen: string[] = [];
+      page().locale = { translateCallback: (ctx: { key: string; template: string }) => (seen.push(ctx.template), ctx.key === 'web-x.buttons.a' ? 'A!' : null) };
+      const labels = createLabels(host, DEFAULTS as Record<string, string>, () => null);
+      expect(labels.text('buttons.a', undefined, { fallback: 'A' })).toBe('A!');
+      expect(labels.text('buttons.b', undefined, { fallback: 'B' })).toBe('B');
+      expect(seen).toEqual(['A', 'B']);
+    });
+
+    it('placeholders + number formatting apply; html() treats it as a template (values escaped, or all with shouldEscapeLabels)', () => {
+      const labels = createLabels(host, DEFAULTS as Record<string, string>, () => null, { getLocale: () => 'en-US' });
+      expect(labels.text('labels.n', { ctx: { count: 12345 } }, { fallback: '{ctx.count} words' })).toBe('12,345 words');
+      expect(labels.html('labels.v', { value: '<i>' }, { fallback: '<b>Add</b> {value}' })).toBe('<b>Add</b> &lt;i&gt;');
+      page().security = { shouldEscapeLabels: true };
+      expect(labels.html('labels.v', { value: '<i>' }, { fallback: '<b>Add</b> {value}' })).toBe('&lt;b&gt;Add&lt;/b&gt; &lt;i&gt;');
+    });
+
+    it('an ariaLabels key on its fallback still takes a customized sibling; createLabelsView passes the option', () => {
+      const labels = createLabels(host, { 'buttons.bold': 'Bold' } as Record<string, string>, () => ({ 'buttons.bold': 'Tučně' }));
+      expect(labels.text('ariaLabels.bold', undefined, { fallback: 'Bold' })).toBe('Tučně');
+      const view = createLabelsView(createLabels(host, DEFAULTS as Record<string, string>, () => null));
+      expect(view.text('buttons.x', undefined, { fallback: 'X' })).toBe('X');
+      expect(view.html('buttons.x', { v: '<' }, { fallback: '{v}' })).toBe('&lt;');
+    });
+  });
+
   it('a number param is shown locale-formatted; translateCallback gets the raw number; a string stays as is', () => {
     const labels = createLabels(host, DEFAULTS, () => null, { getLocale: () => 'en-US' });
     expect(labels.text('labels.count', { count: 12345 })).toBe('12,345 files');

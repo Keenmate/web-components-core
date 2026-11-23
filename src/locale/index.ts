@@ -15,4 +15,4 @@ export type { ResolvedLocaleSettings } from './settings.js';
 export { formatNumber, parseNumber } from './numbers.js';
 export type { NumberFormatOptions, ParseNumberCallback, ParseNumberContext, ParseNumberOptions } from './numbers.js';
 export { createLabels, createLabelsView, formatLabel, getLabelFallbackKeys, resolveLabel } from './labels.js';
-export type { CreateLabelsOptions, LabelParams, Labels, LabelsView, OwnLabels } from './labels.js';
+export type { CreateLabelsOptions, LabelOptions, LabelParams, Labels, LabelsView, OwnLabels } from './labels.js';

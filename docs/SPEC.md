@@ -2626,7 +2626,11 @@ every element. Decided 2026-10-26 / 10-27 / 10-28 (rulebook D-NC-24), built 2026
   `translateCallback({ component, key: '<tag>.<key>', template, params, locale })` first — the app's own i18n;
   `null` / `undefined` = not mine; a throw → logged; then the default `{name}` replacement. The element's own
   `translateCallback` (`getTranslateCallback` option, else `host.translateCallback` — the component's input row) is
-  asked first, the same way; its `null` passes to the page-wide one. **One text, one key:**
+  asked first, the same way; its `null` passes to the page-wide one. **Per-call default:** `text(key, params, {
+  fallback })` / `html(key, params, { fallback })` use `fallback` exactly where (and instead of) the built-in
+  `DEFAULT_LABELS` entry — the callbacks get it as `template`, placeholders and `html()` escaping apply as to a
+  built-in default; a key with neither shows the key itself. For derived keys with no built-in entry (web-editor's
+  command / group texts) — never mutate `defaults` around a call. Decided 2026-11-23 (Q11). **One text, one key:**
   a visible text names its element (a text button has no `aria-label`; an input points at its caption with
   `aria-labelledby`), so no twin key exists to drift. Where twins remain (an icon button's tooltip + screen-reader
   name), an `ariaLabels.x` / `tooltips.x` NOBODY set (still the built-in English) takes the first CUSTOMIZED sibling

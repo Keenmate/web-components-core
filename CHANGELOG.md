@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Labels per-call default: `labels.text(key, params?, { fallback })` / `html(key, params?, { fallback })`** (also on
+  `createLabelsView`; type `LabelOptions`). `fallback` is used exactly where the built-in `DEFAULT_LABELS` entry would
+  be (and instead of it): instance `labels` → page dictionary → `translateCallback`s (which get it as `template`) →
+  `fallback` → the key itself. Placeholders and `html()` escaping apply as to a built-in default. For derived keys
+  with no built-in entry (web-editor's command / group texts) — no more mutating `defaults` around a call. A key with
+  neither a built-in default nor a fallback now shows the key (was `''`).
 - **`bindShortcuts` binding gate gets the event: `isEnabled?(event: KeyboardEvent)`**, asked only for the binding
   that matched the key (it was asked with no arguments for every binding on every key). `false` skips the binding
   without consuming the key (no `preventDefault()`), so it falls through to an outer `bindShortcuts` on an ancestor.
