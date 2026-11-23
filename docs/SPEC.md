@@ -1155,7 +1155,7 @@ anchor(floating: HTMLElement, reference: HTMLElement | VirtualElement, opts: {
 }): { update(): void; destroy(): void };
 
 createTooltip(opts: { trigger; selector?; container; content; placement?; offset?; delay?; cssClass?; visibleClass?;
-                      arrow?; shouldToggleOnTap?; beforeShowCallback?(target): boolean | void }): TooltipHandle;
+                      arrow?; shouldToggleOnTap?; shouldHideOnScroll?; beforeShowCallback?(target): boolean | void }): TooltipHandle;
 // content: string | HTMLElement | (target) => string | HTMLElement | null — resolved at every show; empty = no tooltip.
 // selector (delegated mode): `trigger` is the ROOT (an element or a shadow root); ONE tooltip serves every
 // `closest(selector)` target inside it — hover (show delay once, then it switches at once), keyboard focus,
@@ -1174,6 +1174,12 @@ createTooltip(opts: { trigger; selector?; container; content; placement?; offset
 // anchor, entry via @starting-style, timed only by --base-duration-fast. Every tooltip has class `km-tooltip`.
 // data-placement on the tooltip = the RESOLVED placement after flip / shift (the requested one until the first
 // computation), updated on every reposition — component CSS draws arrows / direction-aware motion from it.
+// shouldHideOnScroll (default TRUE, audit G9b): while shown, a scroll of the page or of a scroller around the
+// target that moved it (>= 3px) hides it — watchScrollClose(), the createPopover shouldCloseOnScroll rule; a scroll
+// inside the tooltip / of an unrelated scroller never does; watched only while visible, re-baselined on a delegated
+// target switch. A KEYBOARD-FOCUS-shown tooltip is exempt: focus is still on its target and it follows it
+// (autoUpdate), so it stays until focus leaves / Escape (WCAG 1.4.13 persistent) — arrowing a list that
+// scrollIntoContainer()s the next item never hides it. false = it follows the target through any scroll.
 createPopover(opts: { reference: Reference | (() => Reference); panel; shouldKeepMounted?; isAnchored?;
   container?: HTMLElement | ShadowRoot; inheritThemeFrom?: HTMLElement | false;
   visibleClass?; shouldCloseOnEscape?; shouldCloseOnOutsideClick?; getInsideElements?; returnFocusTo?;

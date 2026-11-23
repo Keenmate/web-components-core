@@ -28,6 +28,14 @@
         #still        { left: 400px; top: 480px; width: 140px; height: 44px; }
         #edge         { left: 600px; top: 2px; width: 140px; height: 30px; }
 
+        /* G9b: tooltips on items inside scroll containers (shouldHideOnScroll). */
+        .scroll-box { position: absolute; top: 480px; width: 200px; height: 120px; overflow: auto; border: 1px solid #999; }
+        #scroll-box      { left: 900px; }
+        #scroll-box-keep { left: 1120px; }
+        .scroll-box .spacer-top { height: 40px; }
+        .scroll-box .spacer-bottom { height: 400px; }
+        .scroll-tt-body { max-height: 40px; overflow: auto; }
+
         .tt {
             position: fixed;
             top: 0;
@@ -68,6 +76,14 @@
 
     <!-- placement top at the viewport's top edge: flips, data-placement says so. -->
     <div class="trigger" id="edge" tabindex="0">edge</div>
+
+    <!-- G9b: shouldHideOnScroll (default true) vs false; the default one has scrollable content. -->
+    <div class="scroll-box" id="scroll-box">
+        <div class="spacer-top"></div><div id="scroll-item" tabindex="0">scroll item</div><div class="spacer-bottom"></div>
+    </div>
+    <div class="scroll-box" id="scroll-box-keep">
+        <div class="spacer-top"></div><div id="scroll-keep" tabindex="0">keep on scroll</div><div class="spacer-bottom"></div>
+    </div>
 
     <!-- a BlissElement that owns its tooltip: built in connect(), rebuilt on an on:'reinit' input. -->
     <fx-tooltip-host class="trigger" id="host-card" tooltip-text="A core tooltip">component trigger</fx-tooltip-host>
@@ -169,6 +185,25 @@
             // What a component sees after the router / tooltip: was the Escape consumed?
             window.escapes = [];
             document.addEventListener('keydown', (e) => { if (e.key === 'Escape') window.escapes.push(e.defaultPrevented); });
+        }
+
+        {
+            const body = document.createElement('div');
+            body.className = 'scroll-tt-body';
+            body.innerHTML = Array.from({ length: 10 }, (_, i) => `line ${i + 1}`).join('<br>');
+            window.scrollTip = createTooltip({
+                trigger: document.getElementById('scroll-item'),
+                content: body,
+                cssClass: 'tt scroll-tt',
+                placement: 'top',
+            });
+            window.scrollKeepTip = createTooltip({
+                trigger: document.getElementById('scroll-keep'),
+                content: 'stays on scroll',
+                cssClass: 'tt scroll-keep-tt',
+                placement: 'top',
+                shouldHideOnScroll: false,
+            });
         }
 
         createTooltip({

@@ -298,3 +298,48 @@ test.describe('exit fade + data-placement', () => {
     expect(tipBox!.y).toBeGreaterThanOrEqual(edgeBox!.y + edgeBox!.height);
   });
 });
+
+// G9b: createTooltip({ shouldHideOnScroll }) — default true. Shown via show() and scrolled by script, so no
+// synthetic pointer event after the scroll can be what hides it.
+test.describe('hide on scroll', () => {
+  const scrollBox = (page: import('@playwright/test').Page, id: string, top: number) =>
+    page.evaluate(([boxId, y]) => { document.getElementById(boxId as string)!.scrollTop = y as number; }, [id, top]);
+
+  test('default: scrolling the container around the target hides it', async ({ page }) => {
+    await page.evaluate(() => (window as any).scrollTip.show());
+    await expect(page.locator('.scroll-tt.is-visible')).toBeVisible();
+    await scrollBox(page, 'scroll-box', 30);
+    await expect(page.locator('.scroll-tt.is-visible')).toHaveCount(0);
+    expect(await page.evaluate(() => (window as any).scrollTip.isVisible)).toBe(false);
+  });
+
+  test('scrolling inside the tooltip keeps it', async ({ page }) => {
+    await page.evaluate(() => (window as any).scrollTip.show());
+    const body = page.locator('.scroll-tt.is-visible .scroll-tt-body');
+    await expect(body).toBeVisible();
+    await body.evaluate((el) => { el.scrollTop = 30; });
+    expect(await body.evaluate((el) => el.scrollTop)).toBeGreaterThan(0); // it really scrolled
+    await page.waitForTimeout(100);
+    await expect(page.locator('.scroll-tt.is-visible')).toBeVisible();
+  });
+
+  test('shouldHideOnScroll: false keeps it through the scroll (it follows the target)', async ({ page }) => {
+    await page.evaluate(() => (window as any).scrollKeepTip.show());
+    const tip = page.locator('.scroll-keep-tt.is-visible');
+    await expect(tip).toBeVisible();
+    const before = (await tip.boundingBox())!;
+    await scrollBox(page, 'scroll-box-keep', 30);
+    await page.waitForTimeout(100);
+    await expect(tip).toBeVisible();
+    await expect.poll(async () => (await tip.boundingBox())!.y).toBeLessThan(before.y - 20);
+  });
+
+  test('a keyboard-focus-shown tooltip stays when its container scrolls (WCAG 1.4.13)', async ({ page }) => {
+    await page.locator('#scroll-item').focus();
+    await expect(page.locator('.scroll-tt.is-visible')).toBeVisible();
+    expect(await page.evaluate(() => (window as any).scrollTip.isFocusShown)).toBe(true);
+    await scrollBox(page, 'scroll-box', 30);
+    await page.waitForTimeout(100);
+    await expect(page.locator('.scroll-tt.is-visible')).toBeVisible();
+  });
+});

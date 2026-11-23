@@ -1357,6 +1357,12 @@ const cellTip = createTooltip({
 `arrow` takes an arrow element; `handle.refresh()` re-reads the content of the shown target. Keyboard focus
 on a target shows its tooltip, Escape hides it. No component builds its own tooltip layer over `anchor()`.
 
+Scroll: by default (`shouldHideOnScroll: true`) a tooltip hides when the page or a scroll container around its
+target scrolls (the `createPopover({ shouldCloseOnScroll })` rule) — a hovered tooltip would otherwise trail its
+row (or a recycled virtual row) while the pointer is elsewhere. Scrolling inside the tooltip keeps it, and so does
+any scroll while it is shown by keyboard focus (it follows the focused target until focus leaves). Don't add your
+own capture `scroll` listener to hide tooltips; pass `shouldHideOnScroll: false` to keep one through scrolling.
+
 Motion: hiding **fades out** — the element stays mounted (`pointer-events: none`, class `km-tooltip--hiding`)
 until its `opacity` transition ends (timeout fallback = its computed duration), then it is removed; showing again
 mid-fade picks up from there. Core adopts `TOOLTIP_CSS` (fade + a 4px slide toward the anchor, entry via

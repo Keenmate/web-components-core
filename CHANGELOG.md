@@ -147,6 +147,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     **`/a11y`** (next to the other keyboard / focus helpers; `startModalSession` stays in the main index).
 
 ### Changed
+- **`createTooltip()` hides on scroll by default** (audit G9b, `/positioning`): new option `shouldHideOnScroll`
+  (default `true`). While shown, a scroll of the page or of a scroll container around the target (also inside shadow
+  roots) that moved the target hides it — the same `watchScrollClose()` rule as `createPopover({ shouldCloseOnScroll })`;
+  a scroll inside the tooltip, of an unrelated scroller, or a late event that didn't move the target never does.
+  Watched only while visible (re-baselined on a delegated target switch). A tooltip shown by keyboard focus stays
+  (it follows the focused target; WCAG 1.4.13) — arrowing a list that scrolls the next item into view keeps it.
+  Previously a hovered tooltip trailed its scrolling row (or a recycled virtual row); `false` restores that.
+  Replaces web-multiselect's own capture `scroll` listener over its option tooltips.
 - **`createAsyncRunner().run()` returns a boolean** (was `void`): `true` = started / scheduled, `false` = refused
   (`concurrency: 'exclusive'` while a task runs). Always `true` in the default `'latest'` mode.
 - **`/menu`'s phone sheet / drawer is modal** (rule C-CA-19): it runs through `startModalSession` — the page behind

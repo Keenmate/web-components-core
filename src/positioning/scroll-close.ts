@@ -1,5 +1,6 @@
 /**
- * The one "close on scroll" rule for core's floating layers (`createPopover()`, `openMenu()`):
+ * The one "close on scroll" rule for core's floating layers (`createPopover()`, `openMenu()`,
+ * `createTooltip()`):
  * like a native `<select>`, close when the user scrolls the content the layer belongs to —
  *   - never a scroll inside the layer itself (its own list);
  *   - only a scroll of the page or of a scroller AROUND the reference (an unrelated scroller —

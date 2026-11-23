@@ -22,9 +22,18 @@
  * Escape: a tooltip shown by keyboard focus takes the first press alone (hides + `preventDefault()`,
  * on `window` capture so it runs before the overlay router) — an open panel and focus stay (WCAG
  * 1.4.13). A hover / tap / `show()` tooltip hides and lets the press through.
+ *
+ * Scroll (`shouldHideOnScroll`, default on): while shown, a scroll of the page or of a scroller
+ * around the target hides it — `watchScrollClose()`, the rule `createPopover({ shouldCloseOnScroll })`
+ * uses (a scroll inside the tooltip, of an unrelated scroller, or one that moved the target < 3px
+ * doesn't count). The pointer no longer rests on the content that moved under it, and a tooltip
+ * would trail its target (or a recycled virtual row). A FOCUS-shown tooltip stays: focus is still
+ * on its target, it follows it (`autoUpdate`) and stays until focus leaves / Escape (WCAG 1.4.13
+ * "persistent") — so arrowing through a list that scrolls the next item into view never hides it.
  */
 import { findOverlayContainer } from './overlay-container.js';
 import { anchor } from './anchor.js';
+import { watchScrollClose } from './scroll-close.js';
 import { coreLog } from '../logging/element-logger.js';
 import { adoptStyles } from '../dom/adopt-styles.js';
 import { adoptMotionStyles } from '../environment/motion.js';
@@ -99,6 +108,14 @@ export interface TooltipOptions {
    * remove-button tooltip hiding its parent badge tooltip).
    */
   beforeShowCallback?(target: HTMLElement): boolean | void;
+  /**
+   * Hide when the page, or a scroll container around the target (also inside shadow roots),
+   * scrolls while the tooltip shows and the target actually moved — the `createPopover()`
+   * `shouldCloseOnScroll` rule. A scroll inside the tooltip itself never hides it, and neither does
+   * any scroll while the tooltip is shown by keyboard focus (it follows its focused target).
+   * Default `true`.
+   */
+  shouldHideOnScroll?: boolean;
 }
 
 /** Handle returned by {@link createTooltip}. */
@@ -222,6 +239,7 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
   const placement = opts.placement ?? 'top';
   const visibleClass = opts.visibleClass ?? 'is-visible';
   const delay = normalizeDelay(opts.delay);
+  const shouldHideOnScroll = opts.shouldHideOnScroll ?? true;
 
   const element = document.createElement('div');
   element.setAttribute('role', 'tooltip');
@@ -300,6 +318,28 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
   };
   const stopTrackingCursor = (): void => {
     root.removeEventListener('mousemove', onMouseMove);
+  };
+
+  /** The scroll watch while shown (`shouldHideOnScroll`), and the target it measures. */
+  let stopScrollWatch: (() => void) | undefined;
+  let scrollWatchTarget: HTMLElement | null = null;
+  const unwatchScroll = (): void => {
+    stopScrollWatch?.();
+    stopScrollWatch = undefined;
+    scrollWatchTarget = null;
+  };
+  /** (Re)start the watch for `target` — a new target in delegated mode gets a fresh baseline. */
+  const watchScroll = (target: HTMLElement): void => {
+    if (!shouldHideOnScroll || scrollWatchTarget === target) return;
+    unwatchScroll();
+    scrollWatchTarget = target;
+    stopScrollWatch = watchScrollClose({
+      reference: target,
+      isInside: (event) => event.composedPath().includes(element), // the tooltip's own content scrolling
+      scrollCallback: () => {
+        if (visible && !isFocusShown) hide();
+      },
+    });
   };
 
   const clearTimers = (): void => {
@@ -427,6 +467,7 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
       });
     }
     addDescribedBy(target, element.id);
+    watchScroll(target);
     // Ensure cursor tracking is live. For a pointer show it was already attached on enter (so the
     // cursor was seeded through the show delay); for an imperative show() / focus show it's
     // attached here. addEventListener is idempotent on the same function ref.
@@ -449,6 +490,7 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     }
     visible = false;
     isFocusShown = false;
+    unwatchScroll();
     element.classList.remove(visibleClass);
     if (anchoredTarget) removeDescribedBy(anchoredTarget, element.id);
     window.removeEventListener('keydown', onKeydown, true);
