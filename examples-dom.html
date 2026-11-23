@@ -197,6 +197,39 @@ cell.innerHTML = renderIcon(item.icon, { prefix: 'grid', host: this });</code></
         </div>
 
         <!-- ============================================================= -->
+        <!-- DH05b · icon maps                                             -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DH05b · Icon maps: <code>el.icons</code> and <code>window.components.icons</code></h2>
+            <p>
+                A component names its icons (<code>rowAdd</code>, <code>rowDelete</code>, <code>rowEdit</code>) and
+                renders them with <code>renderIcon(name, { defaults })</code>. The page replaces any of them without a
+                callback: the element's <code>icons</code> map is asked right after the built-in names, the page-wide flat
+                <code>window.components.icons</code> (<code>'&lt;tag&gt;.&lt;name&gt;'</code> before
+                <code>'&lt;name&gt;'</code>) after both <code>renderIconCallback</code>s, the component's defaults last.
+                A map value is an icon string itself: <code>'star'</code> below goes through DH05's page hook. Changing a
+                map repaints through <code>iconsChanged()</code>.
+            </p>
+            <div class="controls">
+                <label><input type="checkbox" id="dh05b-own"> <code>el.icons = { rowDelete: '🗑️' }</code></label>
+                <label><input type="checkbox" id="dh05b-page"> <code>window.components.icons = { 'core-demo-icon-bar.rowEdit': 'star', rowAdd: 'demo-font-heart', rowDelete: '❌' }</code></label>
+            </div>
+            <div class="output">
+                <core-demo-icon-bar id="dh05b-bar"></core-demo-icon-bar>
+            </div>
+            <div class="code-block" data-language="js"><pre><code>// one element
+grid.icons = { rowDelete: 'fa-solid fa-trash' };          // or the JSON attribute icons='{"rowDelete":"…"}'
+
+// every component on the page — one flat dictionary, the tag key wins over the bare name
+window.components.icons = { 'web-grid.rowEdit': 'star', rowDelete: '❌' };
+
+// in a component: name the icons, keep the look as defaults
+{ configKey: 'icons', attribute: 'icons', converter: toObject({ validate: isIconMap }), on: 'update' }
+cell.innerHTML = renderIcon('rowDelete', { prefix: 'grid', host: this, defaults: { rowDelete: '&lt;svg …&gt;' } });
+protected override iconsChanged(): void { this.#renderIcons(); }</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
         <!-- DH06 · renderSlot                                             -->
         <!-- ============================================================= -->
         <div class="card">
@@ -279,7 +312,7 @@ protected override createController() {
                     <tr><td><code>.km-drawer</code> · <code>--start</code> / <code>--end</code> / <code>--top</code> / <code>--bottom</code> / <code>--closing</code> (<code>SHEET_CHROME_CSS</code>)</td><td>An edge drawer; <code>--km-sheet-drawer-size</code> / <code>-max-height</code> / <code>-bg</code> / <code>-color</code> / <code>-shadow</code> / <code>-border-radius</code> / <code>-duration</code>.</td></tr>
                     <tr><td><code>.km-sheet</code> · <code>.km-sheet-body</code> · <code>--closing</code> (<code>SHEET_CHROME_CSS</code>)</td><td>The phone full-screen sheet frame (fixed, 100dvw × 100dvh, safe areas, modal tier, header + scrolling body); <code>--km-sheet-bg</code> / <code>-color</code> / <code>-z-index</code> / <code>-duration</code> / <code>-enter-offset</code>.</td></tr>
                     <tr><td><code>copyText(text)</code> · <code>readPasteText(event, { type, shouldNormalizeNewlines })</code></td><td>Copy with the Clipboard API or the <code>execCommand</code> fallback (→ <code>Promise&lt;boolean&gt;</code>); a paste's text, CRLF → LF.</td></tr>
-                    <tr><td><code>renderIcon(icon, { prefix })</code> · <code>ICON_CSS</code></td><td>Markup raw → a built-in name masked from <code>--base-icon-&lt;name&gt;</code> → the page-wide <code>renderIconCallback</code> → class names as an icon font → escaped text.</td></tr>
+                    <tr><td><code>renderIcon(icon, { prefix, defaults })</code> · <code>ICON_CSS</code></td><td>Markup raw → a built-in name masked from <code>--base-icon-&lt;name&gt;</code> → <code>el.icons</code> → the element's, then the page-wide <code>renderIconCallback</code> → <code>window.components.icons</code> → the component's <code>defaults</code> → class names as an icon font → escaped text.</td></tr>
                     <tr><td><code>renderSlot(container, result | () =&gt; result, { renderDefault, memoKey })</code></td><td>String = HTML, node = mounted, <code>null</code> = default, <code>false</code> = hidden; a same <code>memoKey</code> skips the hook. Returns <code>'custom' | 'default' | 'hidden'</code>.</td></tr>
                     <tr><td><code>createControllerFacade(target | () =&gt; target, methods | { methods, state, writable, emptyResults })</code></td><td>A frozen public controller over a lazily-read engine.</td></tr>
                 </tbody>
@@ -420,6 +453,15 @@ protected override createController() {
             b.addEventListener('click', () => { $('dh05-icon').value = b.dataset.icon; showIcon(); });
         }
         showIcon();
+
+        // DH05b
+        const iconBar = $('dh05b-bar');
+        $('dh05b-own').addEventListener('change', (e) => { iconBar.icons = e.target.checked ? { rowDelete: '🗑️' } : undefined; });
+        $('dh05b-page').addEventListener('change', (e) => {
+            window.components.icons = e.target.checked
+                ? { 'core-demo-icon-bar.rowEdit': 'star', rowAdd: 'demo-font-heart', rowDelete: '❌' }
+                : undefined;
+        });
 
         // DH06
         let calls = 0;

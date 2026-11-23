@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Icon maps — `el.icons` + `window.components.icons` + `renderIcon(…, { defaults })`** (audit Q12): icons work like
+  labels. `renderIcon` order: markup → built-in name → the element's `icons` map → the element's `renderIconCallback` →
+  the page-wide `renderIconCallback` → the page-wide flat `window.components.icons` (`'<tag>.<name>'` before `'<name>'`,
+  non-enumerable, assigning replaces it) → the component's `defaults` (new option) → class names → text. A map value is
+  an icon string resolved by the same rules (loops skipped). New export `isIconMap` for the component's `icons` row
+  (`toObject({ validate: isIconMap })`, `on: 'update'`). `iconsChanged()` now also fires on a `window.components.icons`
+  assignment and after `update()` for an `icons` change. Example: DH05b in `examples-dom.html`.
 - **Labels per-call default: `labels.text(key, params?, { fallback })` / `html(key, params?, { fallback })`** (also on
   `createLabelsView`; type `LabelOptions`). `fallback` is used exactly where the built-in `DEFAULT_LABELS` entry would
   be (and instead of it): instance `labels` → page dictionary → `translateCallback`s (which get it as `template`) →

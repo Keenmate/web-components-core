@@ -16,9 +16,10 @@
     <p>Targeted by <code>e2e/icons.spec.ts</code>.</p>
     <div id="icons"></div>
     <button id="menu-trigger">menu</button>
+    <fx-iconed id="iconed"></fx-iconed>
 
     <script type="module">
-        import { renderIcon, ICON_CSS, adoptStyles } from '/src/index.ts';
+        import { renderIcon, ICON_CSS, adoptStyles, BlissElement, define, toObject, isIconMap } from '/src/index.ts';
         import { openMenu } from '/src/menu/index.ts';
         adoptStyles(document, ICON_CSS);
         // The page-wide hook maps app names; null = not mine. Built-ins never reach it.
@@ -39,6 +40,18 @@
         trigger.addEventListener('click', () => {
             openMenu([{ id: 'settings', text: 'Settings', icon: 'settings' }, { id: 'star', text: 'Star', icon: 'star' }, { id: 'go', text: 'Go', icon: '🚀' }], {}, { host: document.body, at: trigger, returnFocusTo: trigger, presentation: 'floating' });
         });
+        // An icon-rendering component: its own names + defaults, an `icons` row, iconsChanged() repaints.
+        class FxIconed extends BlissElement {
+            static inputs = [{ configKey: 'icons', attribute: 'icons', converter: toObject({ validate: isIconMap }), on: 'update' }];
+            reinit() { this.#paint(); }
+            iconsChanged() { this.#paint(); }
+            #paint() {
+                const defaults = { rowDelete: 'delete', rowAdd: '<svg class="default-add"></svg>' };
+                this.innerHTML = ['rowDelete', 'rowAdd'].map((name) =>
+                    `<span data-icon="${name}">${renderIcon(name, { prefix: 'fx', host: this, defaults })}</span>`).join('');
+            }
+        }
+        define('fx-iconed', FxIconed);
     </script>
 </body>
 </html>

@@ -12,7 +12,7 @@
  * Their CSS is the element's own (shadow) CSS, like any component's; page tokens (--kmwc-*) inherit in, so
  * they follow light / dark. Demo-only — not part of the published package.
  */
-import { BlissElement, define, escapeHtml, observePageDrag, setDropActiveState, createPointerDrag, createControllerFacade } from './src/index.js';
+import { BlissElement, define, escapeHtml, observePageDrag, setDropActiveState, createPointerDrag, createControllerFacade, renderIcon, toObject, isIconMap } from './src/index.js';
 import type { InputDef, PointerDrag } from './src/index.js';
 import { createLayer } from './src/positioning/index.js';
 import type { Layer } from './src/positioning/index.js';
@@ -200,6 +200,38 @@ export class CoreDemoCounter extends BlissElement {
   }
 }
 
+/** The icons this demo component names (its documented icon names) — markup defaults, like web-grid's row icons. */
+const ICON_BAR_DEFAULTS: Readonly<Record<string, string>> = {
+  rowAdd: '<svg viewBox="0 0 10 10" width="1em" height="1em"><path d="M5 1v8M1 5h8" stroke="currentColor" stroke-width="1.6"/></svg>',
+  rowDelete: '<svg viewBox="0 0 10 10" width="1em" height="1em"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.6"/></svg>',
+  rowEdit: '<svg viewBox="0 0 10 10" width="1em" height="1em"><path d="M2 8l1-3 4-4 2 2-4 4z" fill="currentColor"/></svg>',
+};
+
+/**
+ * An icon-rendering component (SPEC §12.33): names its icons, renders them through `renderIcon(name, { defaults })`,
+ * has an `icons` input row, repaints in `iconsChanged()` (el.icons, window.components.icons / renderIconCallback).
+ */
+export class CoreDemoIconBar extends BlissElement {
+  protected static override inputs: readonly InputDef[] = [
+    { configKey: 'icons', attribute: 'icons', converter: toObject({ validate: isIconMap }), on: 'update' },
+  ];
+
+  protected override reinit(): void {
+    this.#paint();
+  }
+
+  protected override iconsChanged(): void {
+    this.#paint();
+  }
+
+  #paint(): void {
+    this.innerHTML = Object.keys(ICON_BAR_DEFAULTS)
+      .map((name) => `<button type="button" data-icon-name="${name}">${renderIcon(name, { prefix: 'demo', host: this, defaults: ICON_BAR_DEFAULTS })} ${name}</button>`)
+      .join(' ');
+  }
+}
+
 define('core-demo-sortable', CoreDemoSortable);
 define('core-demo-drop', CoreDemoDrop);
 define('core-demo-counter', CoreDemoCounter);
+define('core-demo-icon-bar', CoreDemoIconBar);

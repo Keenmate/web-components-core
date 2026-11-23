@@ -298,6 +298,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | A built-in name → masked from its `--base-icon-*` token, `currentColor`, 1em; unset token → transparent; emoji text; svg raw | ✓ | `icons.spec.ts` | `icons.html` |
 | `window.components.renderIconCallback` maps an app name (gets the component); other class names → `<i class="<prefix>__icon …">` | ✓ | `icons.spec.ts` | `icons.html` |
 | `/menu` renders an item icon name through `renderIcon`, an emoji as text | ✓ | `icons.spec.ts` | `icons.html` |
+| Icon maps: a component's `defaults` (built-in name / markup); `window.components.icons` (`<tag>.<name>` before `<name>`) assigned after render repaints via `iconsChanged()`; the `icons` JSON attribute beats the page map | ✓ | `icons.spec.ts` | `icons.html` |
 
 ## 13r. Clipboard (`clipboard.spec.ts`)
 

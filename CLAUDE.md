@@ -258,10 +258,13 @@ A `render*Callback` result goes through `renderSlot(container, result, { renderD
 
 `createController()` returns `createControllerFacade(() => engine, { methods, state, writable })` (SPEC §12.34).
 
-Icon strings render through `renderIcon(icon, { prefix, host })` + `ICON_CSS` (SPEC §12.33): markup → built-in name
-(mask) → the element's `renderIconCallback` → page `window.components.renderIconCallback` → icon-font `<i class="<prefix>__icon …">` → text.
-The page hook may be set after render: a component that renders icons implements the opt-in `iconsChanged()` hook
-(re-render the icons, keep state; wired like `localeChanged()`; `observeIconHook` outside an element).
+Icon strings render through `renderIcon(icon, { prefix, host, defaults })` + `ICON_CSS` (SPEC §12.33): markup → built-in name
+(mask) → `el.icons` → the element's `renderIconCallback` → page `window.components.renderIconCallback` → page
+`window.components.icons` (flat, `'<tag>.<name>'` before `'<name>'`) → the component's `defaults` → icon-font `<i class="<prefix>__icon …">`
+→ text; a map value is an icon string resolved by the same rules (loop-guarded). An icon-rendering component names its icons,
+declares an `icons` row (`toObject({ validate: isIconMap })`, `on: 'update'`) and implements the opt-in `iconsChanged()` hook
+(re-render the icons, keep state): fired on a page hook / page map change (wired like `localeChanged()`; `observeIconHook`
+outside an element) and after `update()` for an `icons` change.
 
 Clipboard: `copyText(text)` (API + execCommand fallback) and `readPasteText(event)` (SPEC §12.32).
 

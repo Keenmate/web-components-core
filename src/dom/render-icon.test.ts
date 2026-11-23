@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BlissElement } from '../element/bliss-element.js';
 import { define } from '../element/define.js';
+import { toObject, toText } from '../inputs/converters.js';
 import {
   BUILT_IN_ICON_NAMES,
+  isIconMap,
   getIconHookRevision,
   observeIconHook,
   publishIconHook,
@@ -215,6 +217,163 @@ describe('BlissElement.iconsChanged()', () => {
     setHook(() => 'x');
     expect(listener).toHaveBeenCalledTimes(1);
     off();
+    el.remove();
+  });
+});
+
+describe('icon maps: el.icons, window.components.icons, defaults (Q12)', () => {
+  const setPageIcons = (icons: unknown): void => {
+    publishIconHook();
+    (window.components as { icons?: unknown }).icons = icons;
+  };
+  afterEach(() => {
+    setHook(undefined);
+    setPageIcons(undefined);
+  });
+
+  it('the full order: markup → built-in → el.icons → own hook → page hook → page map → defaults → class list → text', () => {
+    const host = Object.assign(document.createElement('web-gx'), {
+      icons: { a: '<i>instance-a</i>' } as Record<string, string>,
+      renderIconCallback: (name: string) => (name === 'a' || name === 'b' ? `<i>own-${name}</i>` : null),
+    });
+    setHook((name) => (['a', 'b', 'c'].includes(name) ? `<i>page-${name}</i>` : null));
+    setPageIcons({ a: '<i>map-a</i>', b: '<i>map-b</i>', c: '<i>map-c</i>', d: '<i>map-d</i>' });
+    const defaults = { a: '<i>def-a</i>', d: '<i>def-d</i>', e: '<i>def-e</i>', close: '<i>def-close</i>' };
+    const r = (name: string): string => renderIcon(name, { host, defaults });
+    expect(r('<svg></svg>')).toBe('<svg></svg>'); // markup
+    expect(r('close')).toContain('km-icon'); // built-in, reserved: maps never see it
+    expect(r('a')).toBe('<i>instance-a</i>'); // el.icons
+    expect(r('b')).toBe('<i>own-b</i>'); // el.renderIconCallback
+    expect(r('c')).toBe('<i>page-c</i>'); // window.components.renderIconCallback
+    expect(r('d')).toBe('<i>map-d</i>'); // window.components.icons
+    expect(r('e')).toBe('<i>def-e</i>'); // defaults
+    expect(r('fa-solid fa-x')).toBe('<i class="fa-solid fa-x" aria-hidden="true"></i>'); // class list
+    expect(r('🚀')).toBe('🚀'); // text
+  });
+
+  it('a map value is an icon string resolved by the same rules (markup / built-in / hooks / class list / text)', () => {
+    const host = Object.assign(document.createElement('web-gx'), { icons: { del: 'delete', trash: 'fa-solid fa-trash', go: 'rocket' } });
+    setHook((name) => (name === 'rocket' ? '<svg class="rocket"></svg>' : null));
+    expect(renderIcon('del', { host, prefix: 'gx' })).toContain('gx__icon--delete');
+    expect(renderIcon('trash', { host, prefix: 'gx' })).toBe('<i class="gx__icon fa-solid fa-trash" aria-hidden="true"></i>');
+    expect(renderIcon('go', { host })).toBe('<svg class="rocket"></svg>');
+    expect(renderIcon('rowDelete', { host, defaults: { rowDelete: 'del' } })).toContain('km-icon'); // defaults → el.icons → built-in
+    expect(renderIcon('none', { host, defaults: { none: '' } })).toBe(''); // '' = deliberately no icon
+  });
+
+  it('a map loop is skipped (the next rule decides), never recursion', () => {
+    const host = Object.assign(document.createElement('web-gx'), { icons: { a: 'b', b: 'a', self: 'self' } });
+    // a → b (resolved by the same rules) → b's value 'a' was already met → skipped → b falls to the class list.
+    expect(renderIcon('a', { host })).toBe('<i class="b" aria-hidden="true"></i>');
+    expect(renderIcon('self', { host })).toBe('<i class="self" aria-hidden="true"></i>');
+  });
+
+  it('page map: "<tag>.<name>" before "<name>"; the component option names the tag', () => {
+    setPageIcons({ 'web-gx.star': '<i>gx-star</i>', star: '<i>any-star</i>' });
+    expect(renderIcon('star', { host: document.createElement('web-gx') })).toBe('<i>gx-star</i>');
+    expect(renderIcon('star', { host: document.createElement('web-other') })).toBe('<i>any-star</i>');
+    expect(renderIcon('star', { component: 'web-gx' })).toBe('<i>gx-star</i>');
+    expect(renderIcon('star')).toBe('<i>any-star</i>');
+  });
+
+  it('window.components.icons: non-enumerable, a frozen flat copy; nested / non-string values and a non-object warn', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const source: Record<string, unknown> = { star: '<i>s</i>', nested: { a: 'b' } };
+    setPageIcons(source);
+    const icons = window.components?.icons;
+    expect(icons).toEqual({ star: '<i>s</i>' });
+    expect(Object.isFrozen(icons)).toBe(true);
+    expect(Object.keys(window.components ?? {})).not.toContain('icons');
+    source.star = '<i>changed</i>'; // assigning replaces; a later mutation of the source is not seen
+    expect(renderIcon('star')).toBe('<i>s</i>');
+    expect(warn).toHaveBeenCalledTimes(1);
+    setPageIcons(['x']);
+    expect(window.components?.icons).toBeUndefined();
+    expect(warn).toHaveBeenCalledTimes(2);
+    warn.mockRestore();
+  });
+
+  it('an explicit icons option wins over host.icons; null = none; non-string values and inherited keys are ignored', () => {
+    const host = Object.assign(document.createElement('web-gx'), { icons: { a: '<i>host</i>', n: 5 } });
+    expect(renderIcon('a', { host, icons: { a: '<i>opt</i>' } })).toBe('<i>opt</i>');
+    expect(renderIcon('a', { host, icons: null, defaults: { a: '<i>def</i>' } })).toBe('<i>def</i>');
+    expect(renderIcon('n', { host })).toBe('<i class="n" aria-hidden="true"></i>');
+    expect(renderIcon('toString', { host })).toBe('<i class="toString" aria-hidden="true"></i>');
+  });
+
+  it('isIconMap: a plain object of strings', () => {
+    expect(isIconMap({ a: 'b' })).toBe(true);
+    expect(isIconMap({})).toBe(true);
+    expect(isIconMap({ a: 1 })).toBe(false);
+    expect(isIconMap(['a'])).toBe(false);
+    expect(isIconMap(null)).toBe(false);
+  });
+
+  it('a window.components.icons assignment notifies observeIconHook; clearing an unset map does not', () => {
+    const listener = vi.fn();
+    const off = observeIconHook(listener);
+    const before = getIconHookRevision();
+    setPageIcons({ a: 'b' });
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(getIconHookRevision()).toBe(before + 1);
+    setPageIcons(undefined);
+    setPageIcons(undefined);
+    expect(listener).toHaveBeenCalledTimes(2);
+    off();
+  });
+});
+
+describe('BlissElement.iconsChanged() for the icons maps', () => {
+  class MapEl extends BlissElement {
+    static inputs = [
+      { configKey: 'icons', attribute: 'icons', converter: toObject({ validate: isIconMap }), on: 'update' as const },
+      { configKey: 'size', attribute: 'size', converter: toText(), on: 'reinit' as const },
+    ];
+    calls = 0;
+    updates: string[][] = [];
+    protected override update(partial: Record<string, unknown>): void {
+      this.updates.push(Object.keys(partial));
+    }
+    protected override iconsChanged(): void {
+      this.calls++;
+    }
+  }
+  define('icons-map-el', MapEl);
+  afterEach(() => {
+    publishIconHook();
+    (window.components as { icons?: unknown }).icons = undefined;
+  });
+
+  it('el.icons (property or JSON attribute) fires iconsChanged() after update(); not on the first build nor in a rebuild batch', async () => {
+    const el = document.createElement('icons-map-el') as MapEl & { icons?: unknown };
+    el.icons = { a: 'b' };
+    document.body.append(el);
+    await el.whenSettled();
+    expect(el.calls).toBe(0);
+    el.icons = { a: 'c' };
+    await el.whenSettled();
+    expect(el.calls).toBe(1);
+    expect(el.updates.at(-1)).toEqual(['icons']);
+    el.setAttribute('icons', '{"a":"d"}');
+    await el.whenSettled();
+    expect(el.calls).toBe(2);
+    el.setProperties({ icons: { a: 'e' }, size: 'x' }); // reinit absorbs it
+    expect(el.calls).toBe(2);
+    el.remove();
+  });
+
+  it('window.components.icons assigned while connected fires it; one missed while detached replays on reconnect', async () => {
+    const el = document.createElement('icons-map-el') as MapEl;
+    document.body.append(el);
+    await el.whenSettled();
+    publishIconHook();
+    (window.components as { icons?: unknown }).icons = { a: '<b>a</b>' };
+    expect(el.calls).toBe(1);
+    el.remove();
+    (window.components as { icons?: unknown }).icons = { a: '<b>b</b>' };
+    expect(el.calls).toBe(1);
+    document.body.append(el);
+    expect(el.calls).toBe(2);
     el.remove();
   });
 });

@@ -105,7 +105,7 @@ export interface RegisterComponentOptions {
 /**
  * `window.components`: one entry per component tag, plus the NON-enumerable
  * page-wide `logging` switch (every bundle — components + CORE) and the
- * NON-enumerable page-wide `renderLoadingCallback` (SPEC §12.14) / `renderIconCallback` (§12.33) hooks and
+ * NON-enumerable page-wide `renderLoadingCallback` (SPEC §12.14) / `renderIconCallback` + `icons` (§12.33) hooks and
  * `responsive` / `responsiveCallback` rules (SPEC §6.7). Tag names
  * always contain a hyphen, so neither can clash, and enumerating the object
  * still yields tags only.
@@ -123,6 +123,12 @@ export type ComponentsRegistry = Record<string, RegisteredComponent | undefined>
    * `null` = not mine (icon-font classes / text follow). Non-enumerable.
    */
   renderIconCallback?: RenderIconCallback;
+  /**
+   * Page-wide icon map (SPEC §12.33): ONE flat dictionary, `'<tag>.<name>'` checked before `'<name>'`; a value is an
+   * icon string (markup, a built-in name, class names). Asked after the hooks, before the component's defaults.
+   * Assigning replaces it. Non-enumerable.
+   */
+  icons?: Readonly<Record<string, string>>;
   /** Page-wide motion level (SPEC §12.16) for every component whose own `motion` is `auto`. Non-enumerable. */
   motion?: Motion;
   /** Page-wide locale, settings, the flat `labels` dictionary and `translateCallback` (SPEC §12.24). Non-enumerable; assigning replaces it. */

@@ -606,10 +606,16 @@ Icons on items / options / nodes are data — read them with one rule ([SPEC §1
 1. markup (`'<svg …>'`) → raw;
 2. a built-in name (`'close'`, `'chevron'`, `'check'`, … — `BUILT_IN_ICON_NAMES`, the base-css-variables glyphs) →
    masked from `--base-icon-<name>` in `currentColor`; reserved, the page hook never sees it;
-3. the element's own `renderIconCallback`, then the page-wide `window.components.renderIconCallback(name, { component,
+3. the element's own `icons` map (`el.icons[name]`);
+4. the element's own `renderIconCallback`, then the page-wide `window.components.renderIconCallback(name, { component,
    element, prefix })` → markup, `null` = not mine (the next one decides);
-4. other class names (`'fa-solid fa-folder'`, `'bi-gear'`) → `<i class="<prefix>__icon fa-solid fa-folder" aria-hidden="true">`;
-5. anything else (`'🚀'`) → escaped text.
+5. the page-wide flat `window.components.icons` map — `'<tag>.<name>'` before `'<name>'`;
+6. the component's own `defaults` (the `renderIcon` option: its icon names → icons);
+7. other class names (`'fa-solid fa-folder'`, `'bi-gear'`) → `<i class="<prefix>__icon fa-solid fa-folder" aria-hidden="true">`;
+8. anything else (`'🚀'`) → escaped text.
+
+A map value (3, 5, 6) is an icon string itself, read by the same rules (`{ rowDelete: 'delete' }` → the built-in
+glyph, `{ rowEdit: 'star' }` → the hooks); a loop (`{ a: 'b', b: 'a' }`) is skipped, `''` = no icon.
 
 ```ts
 import { renderIcon, ICON_CSS, adoptStyles } from '@keenmate/web-components-core';
@@ -631,10 +637,34 @@ changes. In a component that renders icons, implement the opt-in `iconsChanged()
 connect; a change while detached fires on reconnect) — re-render the icons, keep the state:
 
 ```ts
-protected override iconsChanged(): void { this.#renderIcons(); }   // window.components.renderIconCallback changed
+protected override iconsChanged(): void { this.#renderIcons(); }   // a page hook / page map / el.icons changed
 ```
 
 Outside a BlissElement: `observeIconHook(listener)` → unsubscribe.
+
+**Icon maps — replace a component's icons without a callback.** A component that draws its own icons (a row's delete
+button, a toolbar's bold) names them and keeps its look as `defaults`; it declares an `icons` row (like `labels`) and
+lists its icon names in the row's description:
+
+```ts
+import { renderIcon, toObject, isIconMap } from '@keenmate/web-components-core';
+
+const DEFAULT_ICONS = { rowDelete: '<svg …>', rowAdd: 'add' };   // markup, built-in names, class names
+static inputs = [
+  { configKey: 'icons', attribute: 'icons', converter: toObject({ validate: isIconMap }), on: 'update',
+    description: 'Icon overrides by name: `rowDelete`, `rowAdd`. …' },
+];
+cell.innerHTML = renderIcon('rowDelete', { prefix: 'grid', host: this, defaults: DEFAULT_ICONS });
+```
+
+```js
+grid.icons = { rowDelete: 'fa-solid fa-trash' };                        // this element (or icons='{"rowDelete":"…"}')
+window.components.icons = { 'web-grid.rowDelete': '❌', rowAdd: 'star' }; // every component; the tag key wins
+```
+
+`window.components.icons` is ONE flat dictionary (non-enumerable; assigning replaces it; non-string values are dropped
+with a warning). Use a name that isn't a built-in (`rowDelete`, not `delete`) — built-ins are reserved and never
+reach a map. `iconsChanged()` fires when either map changes (`el.icons` after `update()`).
 
 ## Clipboard
 

@@ -1398,11 +1398,12 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   }
 
   /**
-   * React to a change of the page-wide `window.components.renderIconCallback` (SPEC §12.33) — the page may set
-   * it after the component rendered (load order can't be ensured). Re-render the icons through `renderIcon()` —
-   * keep the state. Not called on the first connect (`reinit()` renders with the current hook) nor for an
-   * assignment of the same function; a change while detached fires on reconnect. Overriding opts in (no listener
-   * otherwise). No-op by default.
+   * React to a change of the page-wide `window.components.renderIconCallback` / `window.components.icons`, or of
+   * the element's own `icons` input in a patch batch (after `update()`; SPEC §12.33) — the page may set them after
+   * the component rendered (load order can't be ensured). Re-render the icons through `renderIcon()` — keep the
+   * state. Not called on the first connect (`reinit()` renders with the current settings), for a rebuild batch, nor
+   * for an assignment of the same function; a page change while detached fires on reconnect. Overriding opts in (no
+   * listener otherwise). No-op by default.
    */
   protected iconsChanged(): void {
     /* opt-in */
@@ -2527,6 +2528,11 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     try {
       this.#syncDisabled(reinit);
       this.refreshRequired();
+      // The instance `icons` map (SPEC §12.33) changed in a patch batch: repaint through the same opt-in hook as the
+      // page-wide icon settings (a rebuild already rendered with the new map).
+      if (!reinit && partial && 'icons' in partial && this.#hasBuilt && this.iconsChanged !== BlissElement.prototype.iconsChanged) {
+        this.iconsChanged();
+      }
     } finally {
       // A rebuild that finally succeeded while connected activates what the failed one
       // skipped — even when disabledChanged() threw.

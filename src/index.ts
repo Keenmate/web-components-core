@@ -150,9 +150,10 @@ export type { CssVarFinding } from './dom/css-var-lint.js';
 // One contract for every render*Callback: string = HTML, node, null = default, false = hidden, memo (SPEC §12.35).
 export { renderSlot, renderSlotHtml } from './dom/render-slot.js';
 export type { RenderSlotOptions, SlotHtml, SlotKind, SlotResult } from './dom/render-slot.js';
-// Icons are data (SPEC §12.33): markup raw → built-in name masked → window.components.renderIconCallback →
+// Icons are data (SPEC §12.33): markup raw → built-in name masked → el.icons → renderIconCallbacks →
+// window.components.icons → the component's defaults →
 // icon-font classes <i class> → escaped text.
-export { renderIcon, ICON_CSS, BUILT_IN_ICON_NAMES, observeIconHook } from './dom/render-icon.js';
+export { renderIcon, ICON_CSS, BUILT_IN_ICON_NAMES, observeIconHook, isIconMap } from './dom/render-icon.js';
 export type { RenderIconOptions, RenderIconCallback, IconRenderContext } from './dom/render-icon.js';
 // Shared loader (SPEC §12.14): instance renderLoadingCallback > window.components.renderLoadingCallback > <prefix>__loader span.
 export { renderLoader } from './dom/render-loader.js';
