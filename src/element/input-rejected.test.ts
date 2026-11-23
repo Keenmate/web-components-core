@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BlissElement, INPUT_REJECTED_EVENT, type InputRejection } from './bliss-element.js';
 import { define } from './define.js';
-import { toEnum, toInt } from '../inputs/converters.js';
+import { toEnum, toInt, toObject } from '../inputs/converters.js';
 import type { InputDef } from '../inputs/types.js';
 
 // `input-rejected` (SPEC §6): a refused write is reported to the page, not only logged —
@@ -11,11 +11,12 @@ class RejectingElement extends BlissElement {
   protected static override inputs: readonly InputDef[] = [
     { configKey: 'limit', attribute: 'limit', converter: toInt({ min: 1, default: 50 }) },
     { configKey: 'size', attribute: 'size', converter: toEnum(['sm', 'lg'], { default: 'sm' }), shouldReflect: true },
+    { configKey: 'labels', attribute: 'labels', converter: toObject() },
   ];
 }
 define('rejecting-element', RejectingElement as unknown as CustomElementConstructor);
 
-type El = RejectingElement & { limit: number; size: string; onInputRejected: ((d: InputRejection) => void) | null };
+type El = RejectingElement & { limit: number; size: string; labels: Record<string, string> | undefined; onInputRejected: ((d: InputRejection) => void) | null };
 
 function make(): El {
   const el = document.createElement('rejecting-element') as unknown as El;
@@ -43,6 +44,23 @@ describe('input-rejected', () => {
     expect(seen).toEqual([
       { configKey: 'limit', attribute: 'limit', value: 'abc', reason: 'expected an integer', kept: 50, source: 'attribute' },
     ]);
+  });
+
+  // WORK-PLAN item 12 (tv finding): `el.labels = null` keeps the previous labels. By the documented rule, not a bug —
+  // `toObject()` does not admit null (not clearable, SPEC §6.1); the reset is `el.labels = undefined` (or removing the
+  // attribute), and the refused null is reported like any invalid write.
+  it('a toObject input: null is refused (kept + reported); undefined resets to the default', async () => {
+    const el = make();
+    const seen: unknown[] = [];
+    el.addEventListener(INPUT_REJECTED_EVENT, (e) => seen.push(data((e as CustomEvent).detail)));
+    el.labels = { 'buttons.ok': 'Dobře' };
+    el.labels = null as unknown as undefined;
+    await el.whenSettled();
+    expect(el.labels).toEqual({ 'buttons.ok': 'Dobře' });
+    expect(seen).toEqual([{ configKey: 'labels', value: null, kept: { 'buttons.ok': 'Dobře' }, source: 'property' }]);
+    el.labels = undefined;
+    await el.whenSettled();
+    expect(el.labels).toBeUndefined();
   });
 
   it('an invalid property fires it before the assignment returns; the twin gets the same detail', () => {
