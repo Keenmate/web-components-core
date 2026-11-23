@@ -1394,7 +1394,9 @@ free functions taking a root + CSS strings, NOT `BlissElement` methods.
   it with the same inputs and `shouldShareLayers: false`: same page + instance CSS in that root, but it is not the
   host's registered layers — its `refresh()` / `destroy()` never notify or unregister what managed children read
   from the host's MAIN handle (one shared entry per host; the extra one used to replace it, and its `destroy()`
-  dropped the children's owner layers).
+  dropped the children's owner layers). It FOLLOWS the main handle instead (audit G2, 2026-11-23): every main
+  `refresh()` — the component's instance inputs changed — re-resolves it too, so the component refreshes only its
+  main handle. A `createLayer` overlay takes it from `createLayer(host, { customStylesOptions })` (§12.29).
 
   **Managed children (`getOwner`, decided 2026-11-10, Q24):** an element a component mounts
   and owns (web-dropzone's bulk-mode satellites — picker / summary / queue bound to one store)
@@ -2789,7 +2791,7 @@ Audit B13 / B14: web-treeview drew its drop pads and drag ghost by hand, web-dro
 `<body>` with its CSS variables copied inline, and its side panel was a dummy `createPopover` with no anchor.
 Decided 2026-11-17:
 
-- **`createLayer(host, { css, className, zIndex = Z_INDEX.dropdown, isInteractive = true, container, cssVars })`** →
+- **`createLayer(host, { css, className, zIndex = Z_INDEX.dropdown, isInteractive = true, container, cssVars, customStylesOptions })`** →
   `{ element, layer, place(rect), syncTheme(), destroy() }`. A fixed `div.km-layer` in
   `findOverlayContainer(host)` (`<body>` or the open top-layer `<dialog>` / popover around the host) with its OWN
   shadow root: `css` + `MOTION_CSS` adopted there, `element` (`.km-layer__content` + `className`, `inset: 0`) is
@@ -2804,6 +2806,14 @@ Decided 2026-11-17:
   height, colour, letter spacing) and `dir` are copied inline on the layer — what it would have inherited inside the
   host (web-treeview's pass); `syncTheme()` re-reads them (found in web-dropzone's pass: a layered
   `:host([data-theme]) { color-scheme }` lost to the unlayered reset).
+- **The component's custom CSS (`customStylesOptions`, audit G2, 2026-11-23):** page CSS can't reach the layer's
+  shadow root, and neither can the custom CSS (§12.8) in the host's root. `customStylesOptions` takes the SAME
+  `CustomStylesOptions` object the component passes to its main `createCustomStyles`; the layer creates an unshared
+  handle for its own root (`shouldShareLayers: false` forced — not the host's registered layers, managed children keep
+  reading the main handle), so the tag's page-wide `customStyles` / `getCustomStylesCallback` and the instance's sit in
+  the layer too. Live: a page write for the tag and every `refresh()` of the host's MAIN handle re-resolve it (an
+  unshared handle follows its host's main handle, §12.8), `syncTheme()` refreshes it, `destroy()` removes it. Replaces
+  the hand-made `createLayer` + second `createCustomStyles` wrapper in web-treeview, web-grid and web-dropzone.
 - **Drawer preset**: `.km-drawer` + `.km-drawer--start | --end | --top | --bottom` in `SHEET_CHROME_CSS` — fixed on
   one edge (start / end follow the panel's writing direction), the modal tier, safe-area padding, slide in / out on
   `--km-sheet-drawer-duration` (→ `--base-duration-medium`, so `data-motion` / reduced motion apply),

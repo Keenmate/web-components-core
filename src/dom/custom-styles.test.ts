@@ -204,6 +204,25 @@ describe('createCustomStyles', () => {
       expect(styles(child.root)).toContain('c--owner-page: .owner-page2 {}');
     });
 
+    it('shouldShareLayers: false follows the host’s MAIN handle: its refresh() re-resolves the extra root; destroy() stops it', () => {
+      const tag = registeredTag();
+      const main = host(tag);
+      let css = '.v1 {}';
+      const sameOptions = { cssClass: 'm', getContext: () => ({}), getInstanceStyles: () => ({ css }) };
+      const mainHandle = createCustomStyles(main.el, main.root, sameOptions);
+      const overlayRoot = document.createElement('div').attachShadow({ mode: 'open' });
+      const extra = createCustomStyles(main.el, overlayRoot, { ...sameOptions, shouldShareLayers: false });
+      expect(styles(overlayRoot)).toEqual(['m: .v1 {}']);
+      css = '.v2 {}';
+      mainHandle.refresh(); // only the main handle is refreshed by the component
+      expect(styles(overlayRoot)).toEqual(['m: .v2 {}']);
+      extra.destroy();
+      css = '.v3 {}';
+      mainHandle.refresh();
+      expect(styles(overlayRoot)).toEqual([]);
+      expect(styles(main.root)).toEqual(['m: .v3 {}']);
+    });
+
     it("position 'first' keeps the four slots in order at the top", () => {
       const ownerTag = registeredTag({ customStyles: '.op {}' });
       const childTag = registeredTag({ customStyles: '.cp {}' });

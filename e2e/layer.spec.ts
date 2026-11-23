@@ -35,6 +35,29 @@ test('place() compensates a transformed container (containing block for fixed el
   expect(Math.round(box.y)).toBe(300);
 });
 
+test('customStylesOptions: the component’s instance + page-wide custom CSS style the layer, live, removed on destroy()', async ({ page }) => {
+  await page.evaluate(() => (window as unknown as { __openStyledLayer(): void }).__openStyledLayer());
+  const ghost = page.locator('.km-layer .ghost');
+  await expect(ghost).toHaveText('ghost');
+  expect(await ghost.evaluate((el) => getComputedStyle(el).color)).toBe('rgb(255, 0, 0)');
+  // the component changes its instance CSS and refreshes only its MAIN handle: the layer follows
+  await page.evaluate(() => (document.getElementById('styled') as unknown as { setInstanceCss(css: string): void }).setInstanceCss('.ghost { color: rgb(0, 128, 0); }'));
+  expect(await ghost.evaluate((el) => getComputedStyle(el).color)).toBe('rgb(0, 128, 0)');
+  // a page-wide write for the tag reaches the layer root too (page layer, before the instance layer)
+  await page.evaluate(() => {
+    (window as unknown as { components: Record<string, { customStyles?: string }> }).components['fx-layer-styled']!.customStyles = '.ghost { text-decoration: underline; }';
+  });
+  expect(await ghost.evaluate((el) => getComputedStyle(el).textDecorationLine)).toBe('underline');
+  const count = await page.evaluate(() => {
+    const layer = (window as unknown as { __styledLayer: { layer: HTMLElement; destroy(): void } }).__styledLayer;
+    const root = layer.layer.shadowRoot!;
+    const before = root.querySelectorAll('style.fx-custom, style.fx-custom--page').length;
+    layer.destroy();
+    return [before, root.querySelectorAll('style.fx-custom, style.fx-custom--page').length];
+  });
+  expect(count).toEqual([2, 0]);
+});
+
 test('drawer preset: on the end edge, full height, modal; Escape slides it out and focus returns', async ({ page }) => {
   await page.click('#open-drawer');
   const drawer = page.locator('#drawer');

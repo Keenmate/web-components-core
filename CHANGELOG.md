@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`createLayer(host, { customStylesOptions })`** (audit G2, `/positioning`): the component's custom CSS in its layer.
+  Pass the same `CustomStylesOptions` object the main `createCustomStyles` takes; the layer writes the tag's page-wide
+  and the instance's custom CSS into its own shadow root (an unshared handle, `shouldShareLayers: false` forced), keeps it
+  live (page writes, the host's main `refresh()`, `syncTheme()`) and removes it on `destroy()`. Replaces the hand-made
+  `createLayer` + second `createCustomStyles` wrapper (web-treeview `#openLayer`, web-grid `#openLayer`, web-dropzone
+  `#attachLayerStyles` / engine option `attachLayerStyles`). `createCustomStyles({ shouldShareLayers: false })` now
+  follows the host's MAIN handle: its `refresh()` re-resolves the extra root too (previously only page writes did, so
+  an instance `customStyles` change missed an open layer unless the component refreshed it by hand).
 - **Icon maps — `el.icons` + `window.components.icons` + `renderIcon(…, { defaults })`** (audit Q12): icons work like
   labels. `renderIcon` order, MAPS FIRST: markup → the element's `icons` map → the page-wide flat
   `window.components.icons` (`'<tag>.<name>'` before `'<name>'`, non-enumerable, assigning replaces it) → built-in name →

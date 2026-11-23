@@ -19,6 +19,11 @@
  * They sit inline on the layer, so the component styles its content elements, not the layer's `:host`.
  * Core's reset (`:host { all: initial }`) sits in the lowest cascade layer (`km-layer-base`), so any of the
  * component's rules — layered or not — win over it (a `:host([data-theme="dark"]) { color-scheme: dark }`).
+ *
+ * Page CSS can't reach the layer's shadow root, and neither does the component's custom CSS in the host's root. Pass
+ * `customStylesOptions` — the same object the component gives its main `createCustomStyles` — and the layer writes the
+ * same page-wide + instance custom CSS into its own root (an unshared handle, `shouldShareLayers: false`): it follows
+ * page writes for the tag and every refresh of the host's main handle, `syncTheme()` refreshes it, `destroy()` removes it.
  */
 
 import { adoptStyles } from '../dom/adopt-styles.js';
@@ -28,6 +33,7 @@ import { findOverlayContainer } from './overlay-container.js';
 import { getFixedPositionOffsetParent } from './containing-block.js';
 import { inheritTheme } from './inherit-theme.js';
 import { isRtl } from '../dom/direction.js';
+import { createCustomStyles, type CustomStylesOptions } from '../dom/custom-styles.js';
 
 export interface LayerRect {
   top: number;
@@ -52,6 +58,12 @@ export interface LayerOptions {
    * are set on the layer, so instance-level overrides reach the layer CSS. Re-read by `syncTheme()`.
    */
   cssVars?: readonly string[];
+  /**
+   * The component's custom-CSS options — the same object it passes to its main `createCustomStyles` (SPEC §12.8). The
+   * page-wide + instance custom CSS is written into the layer root too (`shouldShareLayers: false` forced), kept live
+   * (page writes, the host's main `refresh()`, `syncTheme()`) and removed on `destroy()`. Omitted = no custom CSS.
+   */
+  customStylesOptions?: CustomStylesOptions;
 }
 
 export interface Layer {
@@ -61,7 +73,7 @@ export interface Layer {
   readonly layer: HTMLElement;
   /** Position + size in viewport coordinates (`host.getBoundingClientRect()` to cover the host). */
   place(rect: LayerRect | DOMRectReadOnly): void;
-  /** Copy the host's theme attributes (and `cssVars`) again — after a theme switch or a token change while open. */
+  /** Copy the host's theme attributes (and `cssVars`) again, re-resolve `customStylesOptions`' CSS — after a theme switch or a token change while open. */
   syncTheme(): void;
   destroy(): void;
 }
@@ -119,6 +131,9 @@ export function createLayer(host: HTMLElement, options: LayerOptions = {}): Laye
   const cssVars = options.cssVars ?? [];
   copyCssVars(host, layer, cssVars);
   copyInheritedText(host, layer);
+  const customStyles = options.customStylesOptions
+    ? createCustomStyles(host, root, { ...options.customStylesOptions, shouldShareLayers: false })
+    : null;
 
   return {
     element,
@@ -141,8 +156,10 @@ export function createLayer(host: HTMLElement, options: LayerOptions = {}): Laye
       restoreTheme = inheritTheme(host, layer);
       copyCssVars(host, layer, cssVars);
       copyInheritedText(host, layer);
+      customStyles?.refresh();
     },
     destroy() {
+      customStyles?.destroy();
       restoreTheme();
       layer.remove();
     },

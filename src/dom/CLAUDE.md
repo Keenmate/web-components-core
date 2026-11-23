@@ -26,7 +26,8 @@ Released on real removal too (`watchRemoval`, `src/element/removal-watch.ts`, dr
 BlissElement's removal check). Page decides: `window.components[tag].shouldHoistImports` >
 `window.components.shouldHoistImports` (non-enumerable) > the component option.
 `shouldShareLayers: false` = an extra root of the same host (overlay layer): not written to / deleted from
-`layers`, no `notifyDependents`. Managed child (`getOwner?: () => HTMLElement | null`, SPEC §12.8, Q24): two more slots
+`layers`, no `notifyDependents`; registered in `dependents` under its OWN host, so the main handle's refresh
+re-resolves it (G2; `createLayer({ customStylesOptions })` builds one). Managed child (`getOwner?: () => HTMLElement | null`, SPEC §12.8, Q24): two more slots
 (`--owner-page`, `--owner`); order child page → owner page → owner instance → child instance.
 The owner's CSS = what the owner's own live handle last wrote (shared state `layers`: host →
 resolved layers; `dependents`: owner host → child handles, WeakRefs, registered even before the

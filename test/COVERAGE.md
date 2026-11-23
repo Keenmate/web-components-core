@@ -327,6 +327,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | ------- | :----: | ---- | ------- |
 | A layer covers past an `overflow: hidden` parent and above a z-indexed neighbour; component CSS + page token + host theme reach its shadow root | ✓ | `layer.spec.ts` | `layer.html` |
 | `place()` in a transformed container lands at the viewport coordinates | ✓ | `layer.spec.ts` | `layer.html` |
+| `customStylesOptions`: instance + page-wide custom CSS style the layer; main-handle refresh + page write follow; gone on `destroy()` | ✓ | `layer.spec.ts` | `layer.html` |
 | Drawer `--end`: right edge, full height, modal tier, inert page, focus in; Escape slides out, focus returns | ✓ | `layer.spec.ts` | `layer.html` |
 | Drawer `--start` in RTL: right edge; backdrop closes | ✓ | `layer.spec.ts` | `layer.html` |
 

@@ -18,6 +18,7 @@
     <div class="clip"><fx-layer-host id="host" data-theme="dark" style="--fx-instance-border: red; font-family: monospace"></fx-layer-host></div>
     <div class="covering">a neighbour with z-index 50</div>
     <div class="transformed" id="transformed"></div>
+    <fx-layer-styled id="styled"></fx-layer-styled>
     <button id="open-drawer">open drawer</button>
     <button id="open-drawer-rtl">open drawer (rtl, start)</button>
     <button id="open-panel-drawer">open non-modal drawer</button>
@@ -25,7 +26,7 @@
     <input id="page-field" aria-label="page field">
 
     <script type="module">
-        import { startModalSession, startPanelSession, animateOut, SHEET_CHROME_CSS, adoptStyles, createSheetHeader } from '/src/index.ts';
+        import { startModalSession, startPanelSession, animateOut, SHEET_CHROME_CSS, adoptStyles, createSheetHeader, registerComponent, createCustomStyles } from '/src/index.ts';
         import { createLayer } from '/src/positioning/index.ts';
 
         customElements.define('fx-layer-host', class extends HTMLElement {
@@ -50,6 +51,25 @@
             const layer = createLayer(host, { container: box, className: 'cover', css: CSS });
             layer.place({ top: 300, left: 100, width: 50, height: 20 });
             window.__layer2 = layer;
+        };
+
+        // G2: a component's custom CSS (page-wide + instance) reaches its layer via customStylesOptions.
+        class FxLayerStyled extends HTMLElement {
+            instanceCss = '.ghost { color: rgb(255, 0, 0); }';
+            connectedCallback() {
+                const root = this.attachShadow({ mode: 'open' });
+                this.customStylesOptions = { cssClass: 'fx-custom', getContext: () => ({}), getInstanceStyles: () => ({ css: this.instanceCss }) };
+                this.styles = createCustomStyles(this, root, this.customStylesOptions);
+            }
+            setInstanceCss(css) { this.instanceCss = css; this.styles.refresh(); }
+        }
+        registerComponent('fx-layer-styled', FxLayerStyled, { config: { name: 'fx', version: '0.0.0' } });
+        window.__openStyledLayer = () => {
+            const el = document.getElementById('styled');
+            const layer = createLayer(el, { className: 'ghost', customStylesOptions: el.customStylesOptions });
+            layer.element.textContent = 'ghost';
+            layer.place({ top: 400, left: 10, width: 100, height: 30 });
+            window.__styledLayer = layer;
         };
 
         adoptStyles(document, SHEET_CHROME_CSS);

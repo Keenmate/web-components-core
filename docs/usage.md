@@ -733,6 +733,24 @@ The host's theme, font, line height, colour and writing direction come along. In
 CSS reads in `cssVars` (their computed values are copied; `syncTheme()` re-reads them). Your `:host` rules beat
 core's reset even inside `@layer component`.
 
+The page's and the instance's custom CSS ([Style injection](#style-injection)) don't reach the layer's shadow root on
+their own — pass the same options your main `createCustomStyles` takes:
+
+```ts
+#customStylesOptions(): CustomStylesOptions {
+  return {
+    cssClass: 'dz-custom-styles',
+    getContext: () => this.withContext({}),
+    getInstanceStyles: () => ({ css: this.config.customStyles, callback: this.config.getCustomStylesCallback }),
+  };
+}
+// main root: this.#customStyles = createCustomStyles(this, this.shadowRoot!, this.#customStylesOptions());
+const layer = createLayer(this, { css: OVERLAY_CSS, className: 'dz-cover', customStylesOptions: this.#customStylesOptions() });
+```
+
+The layer keeps it live (a page write, your main handle's `refresh()`, `syncTheme()`) and removes it on `destroy()` —
+no second handle to create, refresh or destroy.
+
 A **drawer** is a panel on one edge — the preset classes in `SHEET_CHROME_CSS` plus a modal session (or a panel
 session when the page must stay usable, below):
 
@@ -1219,12 +1237,13 @@ this.#customStyles = createCustomStyles(this, this.shadowRoot!, {
 // re-bound to another store → this.#customStyles.refresh()
 ```
 
-A second root of your own (a `createLayer` overlay) gets the same custom CSS from a second handle that stays out of
-the host's shared entry:
+A `createLayer` overlay takes the same custom CSS from `createLayer(this, { customStylesOptions: sameOptions })`
+([Layers and drawers](#layers-and-drawers)). Any OTHER second root of your own (a portaled panel) gets it from a second
+handle that stays out of the host's shared entry and follows your main handle's `refresh()`:
 
 ```ts
-const overlayStyles = createCustomStyles(this, layer.layer.shadowRoot!, { ...sameOptions, shouldShareLayers: false });
-// layer closes → overlayStyles.destroy()  (the main handle and the satellites are untouched)
+const panelStyles = createCustomStyles(this, panelRoot, { ...sameOptions, shouldShareLayers: false });
+// panel goes → panelStyles.destroy()  (the main handle and the satellites are untouched)
 ```
 
 ## Persisted UI state

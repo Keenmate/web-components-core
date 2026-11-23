@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createLayer } from './layer.js';
+import { createCustomStyles } from '../dom/custom-styles.js';
+import { registerComponent } from '../global/register-component.js';
 
 afterEach(() => {
   document.body.innerHTML = '';
@@ -79,5 +81,59 @@ describe('createLayer', () => {
     const layer = createLayer(host, { container: dialog });
     expect(layer.layer.parentElement).toBe(dialog);
     layer.destroy();
+  });
+
+  it('customStylesOptions: the host’s page-wide + instance custom CSS in the layer root, kept live, gone on destroy()', () => {
+    const tag = 'layer-cs-test';
+    (window.components ??= {})[tag] = { customStyles: '.page {}' } as never;
+    registerComponent(tag, class extends HTMLElement {}, { config: { name: 'x', version: '0.0.0' } });
+    const host = document.createElement(tag);
+    document.body.append(host);
+    const hostRoot = host.attachShadow({ mode: 'open' });
+    let instanceCss = '.inst-1 {}';
+    const sameOptions = { cssClass: 'x-custom', getContext: () => ({}), getInstanceStyles: () => ({ css: instanceCss }) };
+    const main = createCustomStyles(host, hostRoot, sameOptions);
+    const layer = createLayer(host, { css: '.pads {}', customStylesOptions: sameOptions });
+    const root = layer.layer.shadowRoot!;
+    const custom = (): string[] => [...root.querySelectorAll('style[class^="x-custom"]')].map((s) => `${s.className}: ${s.textContent}`);
+    expect(custom()).toEqual(['x-custom--page: .page {}', 'x-custom: .inst-1 {}']);
+    // the component refreshes only its main handle (instance inputs changed): the layer follows
+    instanceCss = '.inst-2 {}';
+    main.refresh();
+    expect(custom()).toEqual(['x-custom--page: .page {}', 'x-custom: .inst-2 {}']);
+    // a page write for the tag reaches the layer
+    (window.components as unknown as Record<string, { customStyles?: string }>)[tag]!.customStyles = '.page-2 {}';
+    expect(custom()).toEqual(['x-custom--page: .page-2 {}', 'x-custom: .inst-2 {}']);
+    // syncTheme() re-resolves too
+    instanceCss = '.inst-3 {}';
+    layer.syncTheme();
+    expect(custom()).toContain('x-custom: .inst-3 {}');
+    layer.destroy();
+    expect(custom()).toEqual([]);
+    // after destroy(): neither the main refresh nor a page write touch it; the host's own root is intact
+    main.refresh();
+    (window.components as unknown as Record<string, { customStyles?: string }>)[tag]!.customStyles = '.page-3 {}';
+    expect(custom()).toEqual([]);
+    expect([...hostRoot.querySelectorAll('style[class^="x-custom"]')].map((s) => s.textContent)).toEqual(['.page-3 {}', '.inst-3 {}']);
+    main.destroy();
+  });
+
+  it('customStylesOptions: the layer handle is unshared — a managed child of the host still reads the MAIN handle', () => {
+    const tag = 'layer-cs-owner';
+    const childTag = 'layer-cs-child';
+    registerComponent(tag, class extends HTMLElement {}, { config: { name: 'x', version: '0.0.0' } });
+    registerComponent(childTag, class extends HTMLElement {}, { config: { name: 'x', version: '0.0.0' } });
+    const host = document.createElement(tag);
+    const child = document.createElement(childTag);
+    document.body.append(host, child);
+    const hostRoot = host.attachShadow({ mode: 'open' });
+    const childRoot = child.attachShadow({ mode: 'open' });
+    createCustomStyles(host, hostRoot, { cssClass: 'o', getContext: () => ({}), getInstanceStyles: () => ({ css: '.main {}' }) });
+    createCustomStyles(child, childRoot, { cssClass: 'c', getContext: () => ({}), getInstanceStyles: () => ({}), getOwner: () => host });
+    const layer = createLayer(host, { customStylesOptions: { cssClass: 'o', getContext: () => ({}), getInstanceStyles: () => ({ css: '.layer-only {}' }) } });
+    const ownerSlot = (): string | null | undefined => childRoot.querySelector('style.c--owner')?.textContent;
+    expect(ownerSlot()).toBe('.main {}');
+    layer.destroy();
+    expect(ownerSlot()).toBe('.main {}');
   });
 });

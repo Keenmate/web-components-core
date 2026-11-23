@@ -76,7 +76,9 @@ export interface CustomStylesOptions<Ctx = any> {
   /**
    * `false` = an EXTRA root of the same host (a `createLayer` overlay, a portaled panel): the handle writes the
    * same page + instance custom CSS into `root`, but it isn't the host's registered layers — its `refresh()` /
-   * `destroy()` never touch what the host's managed children read from the host's main handle. Default `true`.
+   * `destroy()` never touch what the host's managed children read from the host's main handle. It follows the host's
+   * main handle instead: every main `refresh()` (the component's instance inputs changed) refreshes it too, like a page
+   * write for the tag does. `createLayer(host, { customStylesOptions })` makes one for its root. Default `true`.
    */
   shouldShareLayers?: boolean;
 }
@@ -490,6 +492,7 @@ export function createCustomStyles<Ctx = any>(
       page = instance = ownerPage = ownerInstance = null;
       state().listeners.get(tag)?.delete(ref);
       bindOwner(null);
+      if (!isShared) state().dependents?.get(host)?.delete(ref);
       if (isShared && state().layers?.get(host) === exposed) {
         state().layers!.delete(host);
         notifyDependents(host);
@@ -512,6 +515,13 @@ export function createCustomStyles<Ctx = any>(
   const listeners = state().listeners;
   if (!listeners.has(tag)) listeners.set(tag, new Set());
   listeners.get(tag)!.add(ref);
+  if (!isShared) {
+    // An extra root follows the host's main handle: its refresh() (instance inputs changed) re-resolves this one too.
+    const dependents = (state().dependents ??= new WeakMap());
+    let set = dependents.get(host);
+    if (!set) dependents.set(host, (set = new Set()));
+    set.add(ref);
+  }
   handle.refresh();
   return handle;
 }
