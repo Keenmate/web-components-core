@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createLayer } from './layer.js';
 import { createCustomStyles } from '../dom/custom-styles.js';
 import { registerComponent } from '../global/register-component.js';
@@ -116,6 +116,27 @@ describe('createLayer', () => {
     expect(custom()).toEqual([]);
     expect([...hostRoot.querySelectorAll('style[class^="x-custom"]')].map((s) => s.textContent)).toEqual(['.page-3 {}', '.inst-3 {}']);
     main.destroy();
+  });
+
+  it('customStylesOptions with lintCssVars: the layer reusing the options never repeats the main handle’s warning', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const tag = 'layer-lint-test';
+    registerComponent(tag, class extends HTMLElement {}, { config: { name: 'x', version: '0.0.0' } });
+    const host = document.createElement(tag);
+    document.body.append(host);
+    const sameOptions = {
+      getContext: () => ({}),
+      getInstanceStyles: () => ({ css: ':host { --ll-day-background: red; }' }),
+      lintCssVars: { prefix: '--ll-', componentCss: '.d { background: var(--ll-day-bg); }' },
+    };
+    const main = createCustomStyles(host, host.attachShadow({ mode: 'open' }), sameOptions);
+    const layer = createLayer(host, { customStylesOptions: sameOptions });
+    layer.syncTheme();
+    main.refresh();
+    expect(warn.mock.calls.map((c) => c.join(' ')).filter((m) => m.includes('"--ll-day-background"'))).toHaveLength(1);
+    layer.destroy();
+    main.destroy();
+    warn.mockRestore();
   });
 
   it('customStylesOptions: the layer handle is unshared — a managed child of the host still reads the MAIN handle', () => {

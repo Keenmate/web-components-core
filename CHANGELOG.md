@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`createCustomStyles(…, { lintCssVars: { prefix, componentCss } })`** (audit G26): the dev-only custom-CSS
+  variable lint moves into core. After each refresh the applied page + instance CSS is checked for `<prefix>*`
+  variables the component's own CSS never reads (consumed set parsed lazily once per CSS string); each warns once per
+  element through its `UI` logger (THEME) with "Did you mean …". An extra-root handle / `createLayer` overlay reusing
+  the options never repeats a warning. Pass it only in dev
+  (`lintCssVars: import.meta.env.DEV ? { prefix: '--ms-', componentCss: styles } : undefined`) so production strips
+  it. Replaces the private `#checkCustomStyleVars` + `consumed*Vars()` copies in web-multiselect and web-daterangepicker.
 - **`getCollator(locale?, options?, source?)`** (audit G33, `/locale`): a cached `Intl.Collator` for the resolved
   locale (instance → `window.components.locale` → browser, like `formatNumber`), one instance per locale + options;
   never throws (invalid tag / options warn and fall back). Components sort text with

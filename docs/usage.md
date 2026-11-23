@@ -1209,8 +1209,22 @@ protected override update(partial) {
 protected override destroyCallback() { this.#customStyles?.destroy(); this.#customStyles = null; }
 ```
 
+A misspelled variable in custom CSS (`--ms-badge-text-background` where the component reads
+`--ms-badge-text-bg`) fails silently. Core lints it in dev: add `lintCssVars` to the same options and
+pass it only under the bundler's dev flag, so the production build drops it:
+
+```ts
+import styles from './css/main.css?inline';
+// … inside createCustomStyles(this, this.shadowRoot!, { …,
+  lintCssVars: import.meta.env.DEV ? { prefix: '--wtv-', componentCss: styles } : undefined,
+// })
+```
+
+Core warns once per variable per element (instance logger, `UI`) with "Did you mean …"; a `createLayer`
+overlay reusing the options doesn't repeat it. `componentCss` may be an array of sheets.
+
 No other custom-CSS code in the component: no `createStyleElement`, no own `<style>` / `<link>`
-handling. A component that doesn't apply the page layer gets a core warning when a page sets it.
+handling, no own variable lint. A component that doesn't apply the page layer gets a core warning when a page sets it.
 
 An `@import` in either layer is also linked once in the document `<head>`, because Chromium ignores
 `@font-face` inside a shadow root (an icon font would draw boxes). The link is shared by every

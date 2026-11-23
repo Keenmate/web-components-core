@@ -499,4 +499,75 @@ describe('createCustomStyles', () => {
       expect(hoisted()).toEqual([]);
     });
   });
+
+  describe('lintCssVars (dev-only variable lint)', () => {
+    const componentCss = '.a { color: var(--zz-day-text-bg); } .b { padding: var(--zz-day-padding, 2px); } /* var(--zz-commented) */';
+    const lintWarnings = (warn: ReturnType<typeof vi.spyOn>): string[] =>
+      warn.mock.calls.map((c) => c.join(' ')).filter((m) => m.includes('no <cs-test-'));
+
+    it('warns once per unread variable, with "Did you mean", for the instance and the page layer', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const tag = registeredTag({ customStyles: ':host { --zz-page-typo: 1; --zz-day-text-bg: red; }' });
+      const { el, root } = host(tag);
+      let css = ':host { --zz-day-text-background: red; --zz-day-text-bg: blue; --zz-commented: 1; }';
+      const handle = createCustomStyles(el, root, {
+        getContext: () => ({}),
+        getInstanceStyles: () => ({ css }),
+        lintCssVars: { prefix: '--zz-', componentCss },
+      });
+      let msgs = lintWarnings(warn);
+      expect(msgs).toHaveLength(3);
+      expect(msgs.find((m) => m.includes('"--zz-page-typo"'))).toContain(`window.components['${tag}'].customStyles`);
+      const typo = msgs.find((m) => m.includes('"--zz-day-text-background"'))!;
+      expect(typo).toContain('custom-styles / getCustomStylesCallback');
+      expect(typo).toContain('Did you mean "--zz-day-text-bg"');
+      expect(msgs.some((m) => m.includes('"--zz-commented"'))).toBe(true); // read only inside a comment = not read
+
+      // re-applied: deduped per host; a NEW unread name still warns
+      handle.refresh();
+      css += ' :host { --zz-other: 1; }';
+      handle.refresh();
+      msgs = lintWarnings(warn);
+      expect(msgs).toHaveLength(4);
+      expect(msgs[3]).toContain('"--zz-other"');
+      expect(msgs[3]).not.toContain('Did you mean');
+      handle.destroy();
+      warn.mockRestore();
+    });
+
+    it('componentCss as several sheets (union); no lint without the option or without ground truth', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const tag = registeredTag();
+      const css = ':host { --zz-day-text-bg: 1; --zz-extra: 2; --zz-nope: 3; }';
+      const a = host(tag);
+      createCustomStyles(a.el, a.root, {
+        getContext: () => ({}),
+        getInstanceStyles: () => ({ css }),
+        lintCssVars: { prefix: '--zz-', componentCss: [componentCss, '.x { margin: var(--zz-extra); }'] },
+      });
+      expect(lintWarnings(warn).map((m) => m.match(/"(--zz-[\w-]+)"/)![1])).toEqual(['--zz-nope']);
+
+      const b = host(tag);
+      createCustomStyles(b.el, b.root, { getContext: () => ({}), getInstanceStyles: () => ({ css }) });
+      const c = host(tag);
+      createCustomStyles(c.el, c.root, { getContext: () => ({}), getInstanceStyles: () => ({ css }), lintCssVars: { prefix: '--zz-', componentCss: '' } });
+      expect(lintWarnings(warn)).toHaveLength(1);
+      warn.mockRestore();
+    });
+
+    it('an extra-root handle of the same host (shouldShareLayers: false) never repeats the warning', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const tag = registeredTag();
+      const { el, root } = host(tag);
+      const options = { getContext: () => ({}), getInstanceStyles: () => ({ css: ':host { --zz-typo: 1; }' }), lintCssVars: { prefix: '--zz-', componentCss } };
+      const main = createCustomStyles(el, root, options);
+      const extraRoot = document.createElement('div').attachShadow({ mode: 'open' });
+      const extra = createCustomStyles(el, extraRoot, { ...options, shouldShareLayers: false });
+      main.refresh(); // refreshes the extra one too
+      expect(lintWarnings(warn)).toHaveLength(1);
+      extra.destroy();
+      main.destroy();
+      warn.mockRestore();
+    });
+  });
 });

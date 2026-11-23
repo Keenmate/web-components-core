@@ -1350,7 +1350,7 @@ free functions taking a root + CSS strings, NOT `BlissElement` methods.
   the mechanism; the `getCustomStylesCallback` input row stays in each component's
   table (a `toFunction()` returning a CSS string).
 - **`createCustomStyles(host, root, { getContext, getInstanceStyles, cssClass?,
-  position?, appliedCallback?, shouldHoistImports?, getOwner? })`** → `{ refresh, destroy }` — the whole custom-CSS story on
+  position?, appliedCallback?, shouldHoistImports?, getOwner?, shouldShareLayers?, lintCssVars? })`** → `{ refresh, destroy }` — the whole custom-CSS story on
   top of two style slots: the **page layer** for the host's tag
   (`window.components[tag].getCustomStylesCallback(ctx)`, else
   `window.components[tag].customStyles`) and, after it, the **instance layer**
@@ -1397,6 +1397,16 @@ free functions taking a root + CSS strings, NOT `BlissElement` methods.
   dropped the children's owner layers). It FOLLOWS the main handle instead (audit G2, 2026-11-23): every main
   `refresh()` — the component's instance inputs changed — re-resolves it too, so the component refreshes only its
   main handle. A `createLayer` overlay takes it from `createLayer(host, { customStylesOptions })` (§12.29).
+  **Variable lint (`lintCssVars`, audit G26, 2026-11-23 — was a private copy in web-multiselect and
+  web-daterangepicker):** `lintCssVars: { prefix: '--ms-', componentCss: styles | [sheets] }` — after each refresh
+  core checks the applied page and instance CSS (not the owner layers — the owner's handle checks those) for every
+  `<prefix>*` custom property it DECLARES that the component's own CSS never READS (`var(<prefix>…)`, comments
+  ignored; `extractConsumedCssVars` per `componentCss` string, cached lazily, union of the sheets) and warns through
+  `coreLog(host, 'UI', 'THEME')` with "Did you mean …" (`suggestCssVars`). Once per variable per HOST (page state),
+  so an extra-root handle of the same host — a `createLayer` overlay reusing the options — never repeats it. An
+  empty consumed set (the CSS wasn't inlined, e.g. vitest) checks nothing. Core does no dev gating (bundler-agnostic):
+  the component passes the option only in dev — `lintCssVars: import.meta.env.DEV ? { … } : undefined` — so a
+  production build drops the lint's input (and with it the component-side cost); shipped consumers never see it.
 
   **Managed children (`getOwner`, decided 2026-11-10, Q24):** an element a component mounts
   and owns (web-dropzone's bulk-mode satellites — picker / summary / queue bound to one store)

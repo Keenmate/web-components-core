@@ -31,6 +31,7 @@ import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { createStyleElement, type StyleElement } from './adopt-styles.js';
 import { publishPageSetting } from '../global/page-setting.js';
 import { watchRemoval } from '../element/removal-watch.js';
+import { extractConsumedCssVars, lintCssVars } from './css-var-lint.js';
 
 /** Returns the CSS for one layer; `null` / `undefined` / `''` = none. */
 export type CustomStylesCallback<Ctx = any> = (ctx: Ctx) => string | null | undefined;
@@ -81,6 +82,40 @@ export interface CustomStylesOptions<Ctx = any> {
    * write for the tag does. `createLayer(host, { customStylesOptions })` makes one for its root. Default `true`.
    */
   shouldShareLayers?: boolean;
+  /**
+   * Dev-only variable lint: after each refresh, warn (THEME, through the host's `UI` logger) about every
+   * `<prefix>*` custom property the applied custom CSS (page + instance layer) DECLARES that the component's own CSS
+   * never READS (`var(<prefix>…)`) — a typo or a renamed variable otherwise fails silently — with "Did you mean …"
+   * suggestions. Once per variable per host (an extra-root handle of the same host, e.g. a `createLayer` overlay
+   * reusing these options, never repeats it). `prefix` is the full one (`'--ms-'`); `componentCss` is the
+   * component's own stylesheet(s) — the ground truth, parsed lazily once per string. An empty consumed set (the
+   * CSS wasn't inlined, e.g. under vitest) checks nothing. Pass it ONLY in dev, so the production build strips it:
+   * `lintCssVars: import.meta.env.DEV ? { prefix: '--ms-', componentCss: styles } : undefined`.
+   */
+  lintCssVars?: { prefix: string; componentCss: string | readonly string[] };
+}
+
+/** Per prefix: component CSS string → the `<prefix>*` variables it reads (the lint's ground truth, parsed once). */
+const consumedCache = new Map<string, Map<string, Set<string>>>();
+
+/** The `prefix` variables `componentCss` reads, union of every string, each parsed once. */
+function consumedVars(prefix: string, componentCss: string | readonly string[]): Set<string> {
+  let byCss = consumedCache.get(prefix);
+  if (!byCss) consumedCache.set(prefix, (byCss = new Map()));
+  const sheets = typeof componentCss === 'string' ? [componentCss] : componentCss;
+  if (sheets.length === 1) {
+    const css = sheets[0]!;
+    let set = byCss.get(css);
+    if (!set) byCss.set(css, (set = extractConsumedCssVars(css, prefix)));
+    return set;
+  }
+  const union = new Set<string>();
+  for (const css of sheets) {
+    let set = byCss.get(css);
+    if (!set) byCss.set(css, (set = extractConsumedCssVars(css, prefix)));
+    for (const name of set) union.add(name);
+  }
+  return union;
 }
 
 /** The handle a component keeps (see {@link createCustomStyles}). */
@@ -110,6 +145,8 @@ interface PageStylesState {
   layers?: WeakMap<Element, OwnerLayers>;
   /** Per owner host: its managed children's handles (registered even before the owner has a handle). */
   dependents?: WeakMap<Element, Set<WeakRef<CustomStylesHandle>>>;
+  /** Per host: the custom-CSS variables `lintCssVars` already warned about (shared by its main + extra-root handles). */
+  warnedVars?: WeakMap<Element, Set<string>>;
 }
 
 /** An owner's resolved layers, as its own handle wrote them. */
@@ -460,6 +497,29 @@ export function createCustomStyles<Ctx = any>(
     return { page: layers.page, instance: layers.instance };
   };
 
+  /** `lintCssVars`: warn about each applied layer's unread `<prefix>*` variables, once per host. */
+  const lint = (css: string, layer: 'page' | 'instance'): void => {
+    const cfg = opts.lintCssVars;
+    if (!cfg) return;
+    const consumed = consumedVars(cfg.prefix, cfg.componentCss);
+    if (consumed.size === 0) return; // no ground truth (component CSS not inlined)
+    const findings = lintCssVars(css, { prefix: cfg.prefix, consumed });
+    if (!findings.length) return;
+    const warned = (state().warnedVars ??= new WeakMap());
+    let seen = warned.get(host);
+    if (!seen) warned.set(host, (seen = new Set()));
+    const where = layer === 'page' ? `window.components['${tag}'].customStyles / getCustomStylesCallback` : 'custom-styles / getCustomStylesCallback';
+    for (const { name, suggestions } of findings) {
+      if (seen.has(name)) continue;
+      seen.add(name);
+      coreLog(host, 'UI', 'THEME').warn(
+        `custom CSS (${where}) sets "${name}", which no <${tag}> style reads — it has no effect.` +
+          (suggestions.length ? ` Did you mean ${suggestions.map((n) => `"${n}"`).join(', ')}?` : '') +
+          ` (If it's for your own custom-rendered content, ignore this.)`,
+      );
+    }
+  };
+
   const handle: CustomStylesHandle = {
     refresh() {
       if (!page || !instance || isRefreshing) return;
@@ -479,6 +539,8 @@ export function createCustomStyles<Ctx = any>(
         exposed.isRemoved = isRemoved;
         if (pageCss) opts.appliedCallback?.(pageCss, 'page');
         if (instanceCss) opts.appliedCallback?.(instanceCss, 'instance');
+        if (pageCss) lint(pageCss, 'page');
+        if (instanceCss) lint(instanceCss, 'instance');
         if (isShared) notifyDependents(host); // inside the guard: a child that (wrongly) owns its owner can't loop
       } finally {
         isRefreshing = false;

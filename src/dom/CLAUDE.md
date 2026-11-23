@@ -34,6 +34,11 @@ resolved layers; `dependents`: owner host → child handles, WeakRefs, registere
 owner has a handle). Owner `refresh()` / page write for either tag → child refreshes; owner
 destroyed / really removed / `getOwner` null or throwing / self → no owner layers. Refresh is
 re-entry-guarded (an owner ↔ child cycle can't loop). `appliedCallback` gets only the child's own layers.
+`lintCssVars?: { prefix, componentCss }` (G26): after each refresh, applied page + instance CSS → `lintCssVars`
+(`css-var-lint.ts`) against `extractConsumedCssVars(componentCss)` (module cache per prefix → CSS string), warns
+`coreLog(host, 'UI', 'THEME')` with "Did you mean"; dedupe per HOST in shared state `warnedVars` (so a
+`shouldShareLayers: false` / `createLayer` handle with the same options never repeats it). No dev gate in core —
+the component passes the option only under `import.meta.env.DEV`.
 
 ## Stacking tiers (`src/dom/z-index.ts`, SPEC §12.18 — implemented)
 
