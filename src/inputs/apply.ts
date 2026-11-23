@@ -38,6 +38,23 @@ export function resolveFromAttribute(
   return { configKey: def.configKey, field: def.field, value, on: def.on ?? 'update' };
 }
 
+/** A reader standing in for "no attribute present" while probing `fromAttribute(null)`. */
+const ABSENT_READER: AttrReader = { getAttribute: () => null, hasAttribute: () => false };
+
+/**
+ * `null` as "unset" is admitted only when the input has NO default (SPEC §6.1). A converter
+ * (with a `validate`) that admits `null` but leaves the absent value to the row (`fromAttribute(null)` →
+ * `undefined`, e.g. `toObject()`) can't see the row's `default`; when that row default is a
+ * real value, the `null` is refused here — `el.x = undefined` resets to the default instead.
+ *
+ * @internal BlissElement plumbing — exported, but not part of the stable API.
+ */
+export function isNullRefusedByRowDefault(def: InputDef): boolean {
+  const conv = def.converter;
+  if (def.default === undefined || def.default === null || !conv?.validate || !conv.fromAttribute) return false;
+  return conv.fromAttribute(null, ABSENT_READER, def.attribute ?? def.configKey) === undefined;
+}
+
 /**
  * Property path: `converter.normalize(value)` (when the converter has one) →
  * `converter.validate(…)` → resolved value, or `null` when the value is rejected. A
@@ -60,7 +77,7 @@ export function resolveFromProperty(def: InputDef, assigned: unknown): Resolved 
   if (conv?.validate) {
     let isValid: boolean;
     try {
-      isValid = conv.validate(value);
+      isValid = conv.validate(value) && !(value === null && isNullRefusedByRowDefault(def));
     } catch {
       isValid = false;
     }

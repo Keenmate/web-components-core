@@ -115,6 +115,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (the opener too) is `inert`, Tab stays inside (between the shown level and the close button; it no longer closes a
   sheet), Escape goes up one drilled-in level else closes, scroll lock / Back / backdrop click as before. Focus goes
   back to `returnFocusTo`, else to what had it when the sheet opened. The floating menu is unchanged.
+- **`toObject()` admits `null` as "unset" when the input has no default** (audit Q-A) — the rule of nullable
+  `toText` / `toInt` / `toEnum` and `toFunction`. `el.labels = null` now clears the labels (stored `null`, forwarded
+  by `getEngineConfig()`; `isClearableConverter(toObject())` is `true`) instead of warning + keeping the old map +
+  `input-rejected`. With a default map — `toObject({ default })` or a row `default` (the converter leaves the absent
+  value to the row; core refuses the `null` there) — `null` stays refused; `el.x = undefined` resets. `toObjectArray`
+  is unchanged (its unset value is `[]`, not `null`).
 
 ### Removed
 - `resolveEnumAttribute(raw, values, fallback)` — unused (no component or core caller); use `toEnum`.

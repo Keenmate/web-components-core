@@ -12,11 +12,13 @@ class RejectingElement extends BlissElement {
     { configKey: 'limit', attribute: 'limit', converter: toInt({ min: 1, default: 50 }) },
     { configKey: 'size', attribute: 'size', converter: toEnum(['sm', 'lg'], { default: 'sm' }), shouldReflect: true },
     { configKey: 'labels', attribute: 'labels', converter: toObject() },
+    { configKey: 'icons', converter: toObject({ default: { a: 'default' } }) },
+    { configKey: 'theme', converter: toObject(), default: { a: 'default' } },
   ];
 }
 define('rejecting-element', RejectingElement as unknown as CustomElementConstructor);
 
-type El = RejectingElement & { limit: number; size: string; labels: Record<string, string> | undefined; onInputRejected: ((d: InputRejection) => void) | null };
+type El = RejectingElement & { limit: number; size: string; labels: Record<string, string> | null | undefined; icons: Record<string, string> | undefined; theme: Record<string, string> | undefined; onInputRejected: ((d: InputRejection) => void) | null };
 
 function make(): El {
   const el = document.createElement('rejecting-element') as unknown as El;
@@ -46,21 +48,39 @@ describe('input-rejected', () => {
     ]);
   });
 
-  // WORK-PLAN item 12 (tv finding): `el.labels = null` keeps the previous labels. By the documented rule, not a bug —
-  // `toObject()` does not admit null (not clearable, SPEC §6.1); the reset is `el.labels = undefined` (or removing the
-  // attribute), and the refused null is reported like any invalid write.
-  it('a toObject input: null is refused (kept + reported); undefined resets to the default', async () => {
+  // WORK-PLAN item 12 (tv finding) → decision Q-A: `toObject()` with no default admits null as "unset" (the rule of
+  // nullable toText / toInt / toEnum and toFunction) — `el.labels = null` clears the labels without a warning. With a
+  // default map (converter `default` or row `default`) null stays refused: kept + reported; undefined resets.
+  it('a toObject input with no default: null clears it (no warning, no input-rejected)', async () => {
     const el = make();
     const seen: unknown[] = [];
     el.addEventListener(INPUT_REJECTED_EVENT, (e) => seen.push(data((e as CustomEvent).detail)));
     el.labels = { 'buttons.ok': 'Dobře' };
-    el.labels = null as unknown as undefined;
+    el.labels = null;
     await el.whenSettled();
-    expect(el.labels).toEqual({ 'buttons.ok': 'Dobře' });
-    expect(seen).toEqual([{ configKey: 'labels', value: null, kept: { 'buttons.ok': 'Dobře' }, source: 'property' }]);
-    el.labels = undefined;
-    await el.whenSettled();
-    expect(el.labels).toBeUndefined();
+    expect(el.labels).toBeNull();
+    expect(seen).toEqual([]);
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  it('a toObject input with a default map: null is refused (kept + reported); undefined resets to the default', async () => {
+    const el = make();
+    const seen: unknown[] = [];
+    el.addEventListener(INPUT_REJECTED_EVENT, (e) => seen.push(data((e as CustomEvent).detail)));
+    for (const key of ['icons', 'theme'] as const) {
+      el[key] = { a: 'x' };
+      el[key] = null as unknown as undefined;
+      await el.whenSettled();
+      expect(el[key]).toEqual({ a: 'x' });
+      el[key] = undefined;
+      await el.whenSettled();
+      expect(el[key]).toEqual({ a: 'default' });
+    }
+    expect(seen).toEqual([
+      { configKey: 'icons', value: null, kept: { a: 'x' }, source: 'property' },
+      { configKey: 'theme', value: null, kept: { a: 'x' }, source: 'property' },
+    ]);
+    expect(console.warn).toHaveBeenCalled();
   });
 
   it('an invalid property fires it before the assignment returns; the twin gets the same detail', () => {

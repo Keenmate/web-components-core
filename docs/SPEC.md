@@ -182,7 +182,7 @@ toCustom(parseFn)                              // wrap any bespoke parser  (mont
 toFunction()                                   // callback: property-only, validates typeof === 'function'
 toValue({ validate?, default? })               // rich value; property = validate, attribute = JSON, reflects JSON
 toObjectArray({ validateItem?, default? })     // array of rich items (e.g. `options`); property = array, attribute = JSON; default []
-toObject({ validate?, default? })              // plain (non-array) object; property = object, attribute = JSON
+toObject({ validate?, default? })              // plain (non-array) object; property = object, attribute = JSON; with NO default (converter or row) el.x = null clears it, with one null is refused
 ```
 
 **Numbers vs CSS lengths.** An input the component does arithmetic with (a row
@@ -426,8 +426,12 @@ The `partial` handed to `update()`, and the config an engine receives, carry
 
 A value is only ever `null` in `config` when the input's descriptor admits
 `null` (nullable `toText`, tristate `toBool`, `toFunction`, a
-`isNullable` enum, or a `default: null` row — see
-`clearableConfigKeys`). So **null is always intentional; never drop it.**
+`isNullable` enum, a `toObject()` with no default, or a `default: null` row — see
+`clearableConfigKeys`). The rule for `null` as "unset" is the same everywhere: admitted
+only when the input has NO default. A converter that leaves its absent value to the row
+(`fromAttribute(null)` → `undefined`, e.g. `toObject()`) can't see the row's `default`,
+so core refuses the `null` for a row with a real `default` (`isNullRefusedByRowDefault`,
+`resolveFromProperty`) and that row is not clearable; `el.x = undefined` resets it. So **null is always intentional; never drop it.**
 
 **Component side.** Assemble the engine config with
 `this.getEngineConfig(excludeKeys)` (→ `collectEngineConfig`): a shallow copy of

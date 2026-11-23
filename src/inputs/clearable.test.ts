@@ -53,10 +53,16 @@ describe('isClearableConverter', () => {
     expect(isClearableConverter(toList({ default: [] }))).toBe(false);
   });
 
-  it('object converters whose unset is undefined are not clearable', () => {
-    // fromAttribute(null) returns undefined (not null), validate(null) is false.
-    expect(isClearableConverter(toObject())).toBe(false);
+  it('toObject is clearable only without a default; toObjectArray never', () => {
+    // Q-A: toObject() admits null as "unset"; a default map refuses it. toObjectArray's unset is [].
+    expect(isClearableConverter(toObject())).toBe(true);
+    expect(isClearableConverter(toObject({ default: { a: 1 } }))).toBe(false);
     expect(isClearableConverter(toObjectArray())).toBe(false);
+  });
+
+  it('a toObject() row with a real row default is not clearable (null refused there)', () => {
+    expect(isClearableInput({ configKey: 'labels', converter: toObject() })).toBe(true);
+    expect(isClearableInput({ configKey: 'labels', converter: toObject(), default: {} })).toBe(false);
   });
 
   // Review I-14: with no `validate`, the property path accepts `null`, so it can be in #config.

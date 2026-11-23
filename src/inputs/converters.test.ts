@@ -293,9 +293,15 @@ describe('toObject', () => {
   it('requires a non-null, non-array object', () => {
     const c = toObject();
     expect(c.validate!({ a: 1 })).toBe(true);
-    expect(c.validate!(null)).toBe(false);
     expect(c.validate!([1, 2])).toBe(false); // arrays rejected
     expect(c.validate!('x')).toBe(false);
+  });
+
+  // Q-A: null = "unset" only without a default (nullable toText / toInt / toEnum, toFunction).
+  it('admits null on the property path only when it has no default', () => {
+    expect(toObject().validate!(null)).toBe(true);
+    expect(toObject({ default: { theme: 'light' } }).validate!(null)).toBe(false);
+    expect(toObject().fromAttribute!('null', reader(), 'x')).toBeUndefined(); // the attribute JSON null is still no object
   });
 
   it('attribute path parses JSON objects, else default (undefined by default)', () => {

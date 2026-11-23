@@ -505,17 +505,27 @@ export function toObjectArray<E = unknown>(
  * `undefined` — objects rarely have a natural empty sentinel; pass `{}` if you
  * want one). Reflects as JSON. A `default` object is shared by every instance
  * — treat `config` values as read-only, never mutate them in place.
+ *
+ * `null` on the property path is "unset" when there is NO default — the rule of
+ * nullable {@link toText} / {@link toInt} / {@link toEnum} and {@link toFunction}:
+ * `el.labels = null` clears the map (stored as `null`, forwarded to the engine,
+ * SPEC §6.1). With a default map — this `default`, or the input row's `default`
+ * (core refuses the `null` there, see `resolveFromProperty`) — `null` stays
+ * refused (warn + keep + `input-rejected`); `el.x = undefined` resets to it.
  */
 export function toObject<V extends object = Record<string, unknown>>(
   opts: { validate?: (value: unknown) => value is V; default?: V } = {},
 ): Converter<V> {
-  const isValid = (value: unknown): value is V =>
+  const isObject = (value: unknown): value is V =>
     typeof value === 'object' && value !== null && !Array.isArray(value) && (!opts.validate || opts.validate(value));
+  const isNullUnset = opts.default === undefined;
   return {
     fromAttribute(raw, _el, _attr, reportInvalid) {
-      return parseJson(raw, isValid, () => opts.default as V, reportInvalid, 'a JSON object');
+      return parseJson(raw, isObject, () => opts.default as V, reportInvalid, 'a JSON object');
     },
-    validate: isValid,
+    validate(value): value is V {
+      return value === null ? isNullUnset : isObject(value);
+    },
     toAttribute(value) {
       return value == null ? null : JSON.stringify(value);
     },

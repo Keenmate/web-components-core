@@ -28,6 +28,7 @@
  * dropping a stray `null` is correct.
  */
 import type { AttrReader, Converter, InputDef } from './types.js';
+import { isNullRefusedByRowDefault } from './apply.js';
 
 /** A reader standing in for "no attribute present" while probing `fromAttribute(null)`. */
 const ABSENT_READER: AttrReader = {
@@ -58,6 +59,12 @@ export function isClearableInput(def: InputDef): boolean {
   // An explicit `default: null` on the row is also an author declaring null the
   // unset sentinel (e.g. a property-only callback with no converter-level signal).
   if (def.default === null) return true;
+  // A converter that admits null only while unset defers to the row: a real row default refuses it.
+  try {
+    if (isNullRefusedByRowDefault(def)) return false;
+  } catch {
+    return false;
+  }
   return isClearableConverter(def.converter, def.attribute);
 }
 
