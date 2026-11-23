@@ -31,7 +31,7 @@
 import { createFrameScheduler } from '../dom/frame-scheduler.js';
 import { once } from '../dom/once.js';
 import { createThrottle } from '../dom/throttle.js';
-import { callSafely, notifyEach } from '../logging/safe-call.js';
+import { runSafely, notifyListeners } from '../logging/safe-call.js';
 import { sharedState } from '../global/shared-state.js';
 
 /** The accuracy of the primary pointing device (the CSS `pointer` media feature): `coarse` = touch/stylus, `fine` = mouse/trackpad. */
@@ -409,7 +409,7 @@ function recompute(): void {
 function notifyAll(channel: Set<EnvironmentListener>, snapshot: EnvironmentSnapshot): void {
   // A listener that calls configureBreakpoints() runs a nested recompute, which notifies the
   // newer snapshot itself: stop here so no one is handed the stale one after it (review V-19 #1).
-  notifyEach(channel, snapshot, LISTENER_LOG, () => current !== snapshot);
+  notifyListeners(channel, snapshot, LISTENER_LOG, () => current !== snapshot);
 }
 
 const LISTENER_LOG = { message: 'environment listener threw' } as const;
@@ -538,7 +538,7 @@ function subscribe(channel: Set<EnvironmentListener>, listener: EnvironmentListe
   });
   // A throwing first call is logged like any later one; the subscription stands and
   // the caller still gets its unsubscribe (a rethrow here would leak the listener).
-  if (opts.shouldFireImmediately !== false) callSafely(() => listener(getEnvironment()), LISTENER_LOG);
+  if (opts.shouldFireImmediately !== false) runSafely(() => listener(getEnvironment()), LISTENER_LOG);
   return unsubscribe;
 }
 

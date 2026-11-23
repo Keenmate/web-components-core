@@ -3,7 +3,7 @@
 `openDialog(opts)` → `{ result, close(value?), panel, body }`; `confirmDialog` / `promptDialog` are thin wrappers.
 Mounts `div.km-dialog-layer` (open shadow root: `DIALOG_CSS` + `SHEET_CHROME_CSS`, motion via
 `adoptMotionStyles(panel)`) on `container` (default `<body>`), then `startModalSession(panel, { backdrop: true })`.
-`finish(value, shouldAsk)`: `beforeCloseCallback` (via `callSafely`; `false` keeps it open) → `session.end()` →
+`finish(value, shouldAsk)`: `beforeCloseCallback` (via `runSafely`; `false` keeps it open) → `session.end()` →
 layer removed → `result` resolves. `close()` from code skips the callback. `message` = textContent (escaped);
 `content` = a node, raw. Role `alertdialog` when an action `isDanger`. Initial focus: `[autofocus]` in the body →
 primary → first button (a danger confirm has no primary, so Cancel). Keyboard inset stays OFF (it would size

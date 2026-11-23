@@ -13,11 +13,11 @@ import { deepActiveElement } from '../dom/active-element.js';
 import { adoptStyles } from '../dom/adopt-styles.js';
 import { ICON_CSS, renderIcon } from '../dom/render-icon.js';
 import { animateOut } from '../dom/animate-out.js';
-import { composedParent } from '../dom/composed-tree.js';
+import { deepParent } from '../dom/composed-tree.js';
 import { isRtl as isRtlElement } from '../dom/direction.js';
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { coreLog } from '../logging/element-logger.js';
-import { callSafely } from '../logging/safe-call.js';
+import { runSafely } from '../logging/safe-call.js';
 import { classifyDevice, getEnvironment, observeEnvironment, type DeviceClass } from '../environment/environment.js';
 import { adoptMotionStyles } from '../environment/motion.js';
 import { registerOverlay, type OverlayHandle } from '../overlay/active-overlay.js';
@@ -118,7 +118,7 @@ function elementAtPoint(point: MenuPoint, hostEl: Element): Element | null {
     if (!inner || inner === el) break;
     el = inner;
   }
-  for (let n: Element | null = el; n; n = composedParent(n)) if (n === hostEl) return el;
+  for (let n: Element | null = el; n; n = deepParent(n)) if (n === hostEl) return el;
   return null;
 }
 
@@ -733,7 +733,7 @@ export function openMenu<Ctx, A extends string = string>(
     }
     // A throwing onClose must not escape close() (or the document listener that called it).
     const { onClose } = opts;
-    if (onClose) callSafely(() => onClose(reason), { source: host, coreCategory: 'MENU', message: 'menu onClose threw' });
+    if (onClose) runSafely(() => onClose(reason), { source: host, coreCategory: 'MENU', message: 'menu onClose threw' });
   }
 
   // ── Open ───────────────────────────────────────────────────────────────

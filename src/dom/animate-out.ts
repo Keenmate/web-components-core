@@ -7,7 +7,7 @@
  * `data-motion` and zeroed by OS reduced motion), so `readAnimationMs()` reads back what CSS
  * resolved: `0` means no animation and `animateOut()` finishes at once, with no waiting.
  */
-import { callSafely } from '../logging/safe-call.js';
+import { runSafely } from '../logging/safe-call.js';
 
 /** The CSS variable {@link AnimateOutOptions.shouldSetHeightVar} writes: the element's height in px. */
 export const EXIT_HEIGHT_VAR = '--km-exit-height';
@@ -134,7 +134,7 @@ export function animateOut(elements: Element | readonly Element[], opts: Animate
     for (const el of targets) el.removeEventListener('animationend', onEnd);
     if (isDone) {
       const { onDone } = opts;
-      if (onDone) callSafely(onDone, { source: targets[0] ?? null, message: 'animateOut onDone threw' });
+      if (onDone) runSafely(onDone, { source: targets[0] ?? null, message: 'animateOut onDone threw' });
     } else {
       for (const el of targets) el.classList.remove(classes.get(el)!);
     }

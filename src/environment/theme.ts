@@ -30,7 +30,7 @@
  */
 
 import { sharedState } from '../global/shared-state.js';
-import { composedParent } from '../dom/composed-tree.js';
+import { deepParent } from '../dom/composed-tree.js';
 import { coreLog } from '../logging/element-logger.js';
 import { once } from '../dom/once.js';
 
@@ -250,7 +250,7 @@ export function resolveThemeSource(host: Element, source: ThemeSource | undefine
   if (typeof source !== 'string') {
     found = source;
   } else if (source === 'closest') {
-    for (let el = composedParent(host); el; el = composedParent(el)) {
+    for (let el = deepParent(host); el; el = deepParent(el)) {
       if (readThemeSignal(el)) {
         found = el;
         break;
@@ -258,7 +258,7 @@ export function resolveThemeSource(host: Element, source: ThemeSource | undefine
     }
   } else {
     try {
-      for (let el = composedParent(host); el && !found; el = composedParent(el)) {
+      for (let el = deepParent(host); el && !found; el = deepParent(el)) {
         if (el.matches(source)) found = el;
       }
       found ??= document.querySelector(source);
@@ -280,7 +280,7 @@ function closestState(): ClosestState {
 /** The host's composed ancestors below the page (the page watch covers <html> / <body>). */
 function ancestorChain(host: Element): Element[] {
   const chain: Element[] = [];
-  for (let el = composedParent(host); el && !isPageElement(el); el = composedParent(el)) chain.push(el);
+  for (let el = deepParent(host); el && !isPageElement(el); el = deepParent(el)) chain.push(el);
   return chain;
 }
 

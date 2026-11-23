@@ -6,12 +6,12 @@
  * on the composed tree, so a trigger in a component's shadow root inside the dialog
  * counts too. Resolved when the panel opens (the dialog may open after the panel was set up).
  */
-import { composedParent } from '../dom/composed-tree.js';
+import { deepParent } from '../dom/composed-tree.js';
 
 /** The nearest open modal `<dialog>` / `:popover-open` element around `trigger`, else `document.body`. */
 export function findOverlayContainer(trigger: Element | null | undefined): HTMLElement {
   const doc = trigger?.ownerDocument ?? document;
-  for (let node: Node | null = trigger ?? null; node; node = composedParent(node)) {
+  for (let node: Node | null = trigger ?? null; node; node = deepParent(node)) {
     if (node instanceof Element && isOpenTopLayer(node)) return node as HTMLElement;
   }
   return doc.body;

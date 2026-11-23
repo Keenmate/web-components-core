@@ -20,7 +20,7 @@
 
 import { getScrollTopForBox, scrollContainerToBox } from './scroll-container.js';
 import { observeElementSize } from '../environment/element-size.js';
-import { callSafely } from '../logging/safe-call.js';
+import { runSafely } from '../logging/safe-call.js';
 
 export interface VirtualRange {
   /** First rendered index. */
@@ -154,7 +154,7 @@ export function createVirtualWindow(scroller: HTMLElement, options: VirtualWindo
   const pinnedFor = (r: VirtualRange): number[] => {
     if (!options.getPinned) return [];
     const n = count();
-    const list = callSafely(() => options.getPinned!(), { source: logSource, message: 'virtual window getPinned threw' });
+    const list = runSafely(() => options.getPinned!(), { source: logSource, message: 'virtual window getPinned threw' });
     const raw = list.isOk && Array.isArray(list.value) ? list.value : [];
     return [...new Set(raw.map((i) => Math.floor(i)))].filter((i) => i >= 0 && i < n && (i < r.start || i >= r.end)).sort((a, b) => a - b);
   };
@@ -170,7 +170,7 @@ export function createVirtualWindow(scroller: HTMLElement, options: VirtualWindo
       spacer.style.blockSize = `${totalHeight}px`;
       windowEl.style.transform = `translateY(${offsetTop}px)`;
     }
-    callSafely(() => render({ ...next, offsetTop, totalHeight, window: windowEl, pinned }), { source: logSource, message: 'virtual window render threw' });
+    runSafely(() => render({ ...next, offsetTop, totalHeight, window: windowEl, pinned }), { source: logSource, message: 'virtual window render threw' });
   };
 
   const update = (isForced: boolean): void => {

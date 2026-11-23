@@ -10,7 +10,7 @@
 import { adoptStyles } from '../dom/adopt-styles.js';
 import { SHEET_CHROME_CSS, createSheetHeader } from '../overlay/sheet-chrome.js';
 import { startModalSession, type ModalDismissReason } from '../overlay/modal-session.js';
-import { callSafely } from '../logging/safe-call.js';
+import { runSafely } from '../logging/safe-call.js';
 import { adoptMotionStyles } from '../environment/motion.js';
 import { createId } from '../dom/create-id.js';
 import { DIALOG_CSS } from './styles.js';
@@ -98,7 +98,7 @@ export function openDialog(opts: OpenDialogOptions = {}): DialogHandle {
   const finish = (value: string | null, shouldAsk: boolean): void => {
     if (isClosed) return;
     if (shouldAsk && opts.beforeCloseCallback) {
-      const answer = callSafely(() => opts.beforeCloseCallback!(value), {
+      const answer = runSafely(() => opts.beforeCloseCallback!(value), {
         source: opts.trigger ?? null,
         coreCategory: 'ELEMENT',
         message: 'dialog beforeCloseCallback threw',

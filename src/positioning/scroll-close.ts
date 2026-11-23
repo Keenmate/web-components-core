@@ -15,7 +15,7 @@
  * root between it and the reference.
  */
 import { deepActiveElement } from '../dom/active-element.js';
-import { composedParent } from '../dom/composed-tree.js';
+import { deepParent } from '../dom/composed-tree.js';
 
 type Rectish = { getBoundingClientRect(): DOMRect | { top: number; left: number } };
 
@@ -55,7 +55,7 @@ function isFullyVisible(el: Element): boolean {
   const inside = (top: number, left: number, bottom: number, right: number): boolean =>
     rect.top >= top && rect.left >= left && rect.bottom <= bottom && rect.right <= right;
   if (!inside(0, 0, window.innerHeight, window.innerWidth)) return false;
-  for (let n = composedParent(el); n && n !== document.documentElement && n !== document.body; n = composedParent(n)) {
+  for (let n = deepParent(el); n && n !== document.documentElement && n !== document.body; n = deepParent(n)) {
     const style = getComputedStyle(n);
     if (style.overflowX === 'visible' && style.overflowY === 'visible') continue;
     const clip = n.getBoundingClientRect();
@@ -112,7 +112,7 @@ export function watchScrollClose(opts: ScrollCloseOptions): () => void {
   const isAroundReference = (target: EventTarget | null): boolean => {
     if (!(target instanceof Element)) return true;
     if (!element) return false; // a virtual reference: only the page moves it
-    for (let n: Element | null = element; n; n = composedParent(n)) if (n === target) return true;
+    for (let n: Element | null = element; n; n = deepParent(n)) if (n === target) return true;
     return false;
   };
   const onScroll = (event: Event): void => {

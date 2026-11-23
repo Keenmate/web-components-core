@@ -20,7 +20,7 @@
 import { escapeHtml } from './escape-html.js';
 import { sharedState } from '../global/shared-state.js';
 import { publishPageSetting } from '../global/page-setting.js';
-import { callSafely, notifyEach } from '../logging/safe-call.js';
+import { runSafely, notifyListeners } from '../logging/safe-call.js';
 
 export interface RenderIconOptions {
   /** The component's BEM block: adds `<prefix>__icon` (+ `<prefix>__icon--<name>` on a built-in) to the icon. */
@@ -110,7 +110,7 @@ function state(): LiveIconHookState {
       if (next === s.callback) return;
       s.callback = next;
       s.revision = (s.revision ?? 0) + 1;
-      notifyEach(s.listeners as Set<() => void>, undefined, { message: 'renderIconCallback listener threw' });
+      notifyListeners(s.listeners as Set<() => void>, undefined, { message: 'renderIconCallback listener threw' });
     };
   }
   return s as LiveIconHookState;
@@ -181,7 +181,7 @@ export function renderIcon(icon: string | null | undefined, options: RenderIconO
   for (const [hook, name] of hooks) {
     if (typeof hook !== 'function') continue;
     const ctx: IconRenderContext = { ...options.context, component: options.component ?? host?.localName ?? '', element: host, prefix };
-    const result = callSafely(() => (hook as RenderIconCallback)(value, ctx), {
+    const result = runSafely(() => (hook as RenderIconCallback)(value, ctx), {
       source: host,
       message: `${name} threw for "${value}" — the next rule decides`,
     });

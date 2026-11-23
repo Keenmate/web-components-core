@@ -12,7 +12,7 @@
 import { createId } from '../dom/create-id.js';
 import { findScrollContainer, scrollIntoContainer } from '../dom/scroll-container.js';
 import { coreLog } from '../logging/element-logger.js';
-import { callSafely } from '../logging/safe-call.js';
+import { runSafely } from '../logging/safe-call.js';
 
 export interface ActiveDescendantOptions {
   /** The items in order, read on every key (re-render freely). */
@@ -91,7 +91,7 @@ export function createActiveDescendant(input: HTMLElement, listbox: HTMLElement,
       activeId = '';
       input.removeAttribute('aria-activedescendant');
     }
-    if (onActiveChange) callSafely(() => onActiveChange(next, next ? list.indexOf(next) : -1), { source: input, message: 'onActiveChange threw' });
+    if (onActiveChange) runSafely(() => onActiveChange(next, next ? list.indexOf(next) : -1), { source: input, message: 'onActiveChange threw' });
   };
 
   /** The next not-skipped index from `from` in `step` direction (`-1` = none). */
@@ -154,7 +154,7 @@ export function createActiveDescendant(input: HTMLElement, listbox: HTMLElement,
       case 'Enter': {
         if (!active || !list.includes(active) || !onActivate) return;
         const item = active;
-        callSafely(() => onActivate(item, list.indexOf(item), event), { source: input, message: 'onActivate threw' });
+        runSafely(() => onActivate(item, list.indexOf(item), event), { source: input, message: 'onActivate threw' });
         break;
       }
       default:

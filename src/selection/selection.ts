@@ -14,7 +14,7 @@
  * cell ranges and groups stay the component's.
  */
 
-import { callSafely } from '../logging/safe-call.js';
+import { runSafely } from '../logging/safe-call.js';
 
 export type SelectionMode = 'single' | 'multi';
 
@@ -80,7 +80,7 @@ export function createSelection<K>(options: SelectionOptions<K>): Selection<K> {
     const removed = [...selected].filter((k) => !next.has(k));
     selected = next;
     if ((!added.length && !removed.length) || opts.isSilent || !onChange) return;
-    callSafely(() => onChange({ added, removed, values: [...selected] }), { source: options.logSource ?? null, message: 'selection onChange threw' });
+    runSafely(() => onChange({ added, removed, values: [...selected] }), { source: options.logSource ?? null, message: 'selection onChange threw' });
   };
 
   /** The selectable keys between `a` and `b` (inclusive) in display order; `[b]` when `a` isn't shown. */

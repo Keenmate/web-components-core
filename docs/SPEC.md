@@ -2513,7 +2513,7 @@ dropdown, web-editor pipelines), each with a different subset. Decided 2026-11-1
   loader on — after `loaderDelayMs` when set (web-editor's 200 ms `PendingGate`), at once otherwise
   (web-multiselect) — and a run replacing a loading one keeps it on (no flicker). Loader off before `onResult`.
 - `AbortError` (by `name`) is never an error; other failures → `onError`, else the logger. Throwing callbacks
-  are logged (`callSafely`), the runner keeps working. `cancel()` on close / `disconnect()`.
+  are logged (`runSafely`), the runner keeps working. `cancel()` on close / `disconnect()`.
 - Not in core: web-editor's "pause while a dialog is open", web-multiselect's term check (the generation covers
   it).
 

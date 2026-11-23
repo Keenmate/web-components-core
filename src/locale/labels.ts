@@ -21,7 +21,7 @@
  */
 
 import { escapeHtml } from '../dom/escape-html.js';
-import { callSafely } from '../logging/safe-call.js';
+import { runSafely } from '../logging/safe-call.js';
 import { getPageLocale, getPageSecurity, type TranslateCallback } from './page-locale.js';
 import { resolveLocale } from './settings.js';
 import { formatNumber } from './numbers.js';
@@ -219,7 +219,7 @@ export function createLabels<L extends object>(
     ];
     for (const [callback, name] of callbacks) {
       if (typeof callback !== 'function') continue;
-      const result = callSafely(
+      const result = runSafely(
         () => (callback as TranslateCallback)({ component: tag, key: `${tag}.${key}`, template: found.template, params: values ?? {}, locale: resolveLocale(options.getLocale?.(), host ?? undefined) }),
         { source: host, message: `${name} threw for "${tag}.${key}" — the next rule decides` },
       );

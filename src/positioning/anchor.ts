@@ -23,7 +23,7 @@ import {
 import { readDropdownOffset } from './dropdown-offset.js';
 import { inheritTheme } from './inherit-theme.js';
 import { coreLog } from '../logging/element-logger.js';
-import { callSafely } from '../logging/safe-call.js';
+import { runSafely } from '../logging/safe-call.js';
 import { detectFixedDrift, getFixedPositionOffsetParent } from './containing-block.js';
 import type { AnchorHandle, AnchorOptions, Placement } from './types.js';
 
@@ -205,7 +205,7 @@ export function anchor(
     if (widthVar && referenceElement) {
       widthVar.element.style.setProperty(widthVar.name, `${referenceElement.getBoundingClientRect().width}px`);
     }
-    if (opts.beforeComputeCallback) callSafely(opts.beforeComputeCallback, { source: floating, message: 'anchor beforeComputeCallback threw' });
+    if (opts.beforeComputeCallback) runSafely(opts.beforeComputeCallback, { source: floating, message: 'anchor beforeComputeCallback threw' });
     void computePosition(reference, floating, {
       placement,
       strategy,
@@ -225,8 +225,8 @@ export function anchor(
       }
       // Each callback is isolated: one that throws is logged and the others still run.
       const { onPlaced, onComputed, onDrift } = opts;
-      if (onPlaced) callSafely(() => onPlaced(resolved), { source: floating, message: 'anchor onPlaced threw' });
-      if (onComputed) callSafely(() => onComputed({ x, y, placement: resolved }), { source: floating, message: 'anchor onComputed threw' });
+      if (onPlaced) runSafely(() => onPlaced(resolved), { source: floating, message: 'anchor onPlaced threw' });
+      if (onComputed) runSafely(() => onComputed({ x, y, placement: resolved }), { source: floating, message: 'anchor onComputed threw' });
       // Drift is a `position: fixed` diagnosis — an absolute panel is MEANT to sit in its offset parent.
       if (onDrift && reference instanceof Element && strategy === 'fixed') {
         // Measure against the frame x / y were computed in: the effective platform's offset
@@ -238,7 +238,7 @@ export function anchor(
           if (isDestroyed) return;
           const frame = offsetParent instanceof Element ? offsetParent : window;
           const drift = detectFixedDrift({ panel: floating, reference, expectedX: x, expectedY: y, offsetParent: frame });
-          if (drift) callSafely(() => onDrift(drift), { source: floating, message: 'anchor onDrift threw' });
+          if (drift) runSafely(() => onDrift(drift), { source: floating, message: 'anchor onDrift threw' });
         };
         const frameSource = effectivePlatform ?? floatingUiPlatform;
         const offsetParent: unknown = frameSource.getOffsetParent ? frameSource.getOffsetParent(floating) : window;

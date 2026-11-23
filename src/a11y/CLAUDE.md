@@ -7,5 +7,5 @@ scroll); `refresh()` re-finds by element, then id, else clears (forced). Sets `a
 `roving-focus.ts`: keydown + focusin on the container; `focus({ preventScroll })` + `scrollIntoContainer` (gate `shouldScroll`); `seek()` walks inside a bound (a grid row for Left /
 Right), only ±1 steps wrap; RTL via `isRtl(container)` per key. `typeahead.ts`: buffer + timestamp, repeated
 letter cycles from the next item. Both helpers ignore `defaultPrevented` events (component keys first) and
-call component callbacks through `callSafely`. jsdom has no layout: the unit test skips scrolling; the e2e
+call component callbacks through `runSafely`. jsdom has no layout: the unit test skips scrolling; the e2e
 (`a11y.spec.ts`) checks real Tab order, shadow-root active descendant and list scrolling.

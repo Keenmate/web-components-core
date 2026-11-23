@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Composed-tree + safe-call helpers exported** from the main index (they were internal): `deepClosest(el, selector)`
+  (`closest` across shadow roots), `isDeepInside(el, container)` (containment across shadow roots),
+  `runSafely(fn, log)` (a throw is logged and returned, not propagated), `notifyListeners(listeners, value, log)`
+  (a throwing listener is logged and skipped) + types `SafeCallLog`, `SafeCallResult`. Components drop their copies.
+
+### Changed — BREAKING (renames, no aliases)
+- Internal → exported names: `composedClosest` → `deepClosest`, `isAtOrBelow` → `isDeepInside`,
+  `callSafely` → `runSafely`, `notifyEach` → `notifyListeners` (internal `composedParent` → `deepParent`).
+
 ### Fixed
 - **Escape and a tooltip shown by keyboard focus** (`/positioning` `createTooltip`, SPEC §12.2, WCAG 1.4.13): the
   first Escape now only hides a tooltip that keyboard focus showed. The tooltip listens on `window` capture (before

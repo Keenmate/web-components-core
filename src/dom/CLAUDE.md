@@ -52,7 +52,7 @@ visible). Release returns focus only when it was inside the panel or on `<body>`
 ## Direction + ids (`src/dom/direction.ts`, `src/dom/create-id.ts`, SPEC §12.20 — implemented)
 
 `isRtl(el)`: computed `direction` when connected with a view; jsdom answers `''` → falls back to
-`composedClosest(el, '[dir]')`. `BlissElement.isRtl` + `/menu` use it. `createId(prefix)`: module counter (base 36)
+`deepClosest(el, '[dir]')`. `BlissElement.isRtl` + `/menu` use it. `createId(prefix)`: module counter (base 36)
 + `crypto.getRandomValues` (Math.random fallback); `/dialog` uses it.
 
 ## Form inputs, async runner, announce (SPEC §12.21–§12.23 — implemented)
@@ -69,7 +69,7 @@ Ghost click lives in `src/overlay/ghost-click.ts` (`startModalSession({ isOpened
 `createVirtualWindow`: spacer (`block-size`) + window (`translateY`) appended to the scroller; the list top is the
 spacer's rect minus the scroller's (+ `scrollTop`), so content above it counts (`hasStructure: false` → `listTop` option, default 0). `compute()` caches the last
 non-zero `clientHeight` (a hidden scroller keeps the last known size; never seen → `2 × overscan + 1` rows).
-`render` via `callSafely`; `getPinned` (via `callSafely`) → `pinned` outside the range, a change of the joined list
+`render` via `runSafely`; `getPinned` (via `runSafely`) → `pinned` outside the range, a change of the joined list
 repaints; `computeVirtualRange` is the pure math `compute()` uses. Scroll listener passive; `observeElementSize` with `shouldFireImmediately: false`.
 jsdom: the unit test fakes `clientHeight` / `scrollTop` / rects; `e2e/virtual-window.spec.ts` is the real check.
 
@@ -81,7 +81,7 @@ timeout) are ignored until a `dragenter`, a pulse pause, `drop` / `dragend` or t
 on the container → window capture listeners for move / up / cancel / keydown; touch adds a non-passive
 `touchmove` + `contextmenu` blocker and the long-press timer; `longPressMs <= 0` arms touch at pointerdown (no timer); `longPressMs` / `threshold` re-read per press
 (`readOption`); `autoScroll.isEnabled(ctx)` asked per frame (false → skip this frame, keep the loop). `start()` sets pointer capture and finds the
-auto-scroll container; `call()` unwraps `callSafely` (an `onStart` returning `false` refuses). jsdom has no
+auto-scroll container; `call()` unwraps `runSafely` (an `onStart` returning `false` refuses). jsdom has no
 PointerEvent / DragEvent / `elementFromPoint`: the unit test dispatches plain events with the fields;
 `e2e/drag.spec.ts` covers mouse, CDP touch (long press vs swipe), auto-scroll, shadow hit test, file drag.
 
@@ -113,11 +113,11 @@ before a child's disconnect — the test resets the fake offsets in the host's `
 `renderIcon`: `<` → raw; a `BUILT_IN_ICON_NAMES` name → `.km-icon` span with an inline `--_km-icon: var(--base-icon-<name>,
 linear-gradient(transparent 0 0))` (the transparent fallback keeps an unset token from masking nothing = a solid
 square); the element's hook (option, else `host.renderIconCallback`; `ctx.component` = the `component` option, else `host.localName` — a Svelte tree's host is a `<div>`) then the page hook `window.components.renderIconCallback` (`publishIconHook`, shared state like the loader hook,
-`callSafely`; a string wins); `CLASS_LIST` → `<i class="<prefix>__icon …">` (no marker class of its own; the component's `__icon` rule styles it); else `escapeHtml`. Keep
+`runSafely`; a string wins); `CLASS_LIST` → `<i class="<prefix>__icon …">` (no marker class of its own; the component's `__icon` rule styles it); else `escapeHtml`. Keep
 `BUILT_IN_ICON_NAMES` in sync with base-css-variables' `--base-icon-*` (minus `check-size`). `ICON_CSS` is NOT part of the manifest test (its only variables are private / dynamic).
 `/menu` adopts it next to `MENU_CSS`.
 Live page hook: the shared state also carries `revision` + `listeners` + the notifying `get` / `set` (added in place
-when an rc24-or-older copy created the state); the setter bumps + `notifyEach` only on a real change. `publishIconHook`
+when an rc24-or-older copy created the state); the setter bumps + `notifyListeners` only on a real change. `publishIconHook`
 deletes an accessor whose `set` isn't `state.set` (an older copy's, which never notifies) before `publishPageSetting`.
 `observeIconHook` / `getIconHookRevision` feed BlissElement's opt-in `iconsChanged()` (same gate + reconnect catch-up
 as `localeChanged()`).
@@ -139,7 +139,7 @@ into the WHOLE state and the save callback gets all of it; cache per key, the ke
 
 `animateOut(elements, { className, onDone, shouldSetInert = true, shouldSetHeightVar = false })` →
 `{ cancel(), finished }`: closing class (+ `inert`) → wait for each element's OWN `animationend` (timer
-fallback duration + 50ms) → `onDone` (via `callSafely`). Duration read back from CSS by `readAnimationMs`
+fallback duration + 50ms) → `onDone` (via `runSafely`). Duration read back from CSS by `readAnimationMs`
 (longest delay + duration; `0` → synchronous `onDone`), so motion level / reduced motion need no code.
 `shouldSetHeightVar` → `--km-exit-height` (measure all, then write). Cancel restores class, inert, var;
 done keeps the class. `/menu`'s sheet close uses it; rulebook C-CA-18 bans own `animationend` waits.
@@ -162,7 +162,7 @@ plain property assigned earlier. No CSS here — the component owns `.<prefix>__
 `findScrollContainer(el, { stopAt?, axis? })` / `scrollIntoContainer(el, { block, inline,
 behavior, container?, shouldRevealContainer?, stopAt?, axis? })` — scroll the ONE container around
 `el`, never the page. Flat-tree walk (`assignedSlot` → parent → shadow host; local
-`flatParent`; containing-block has its own; `composedParent` itself is unchanged — theme relies on it).
+`flatParent`; containing-block has its own; `deepParent` itself is unchanged — theme relies on it).
 Never returns html/body/scrollingElement. Honours container `scroll-padding` + element
 `scroll-margin`; logical `inline` (RTL swaps start/end); no `scrollTo()` when < 1px on both axes.
 No container → the page scrolls (window `scrollTo`, same alignment rules, the root's

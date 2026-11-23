@@ -134,7 +134,7 @@ describe('V-19 #1 — an immediate-fire throw (V-01)', () => {
 
 describe('V-19 #1 — configureBreakpoints() inside a listener (re-entrant recompute)', () => {
   // FIXED (V-19 #1): recompute() is not re-entrant. A listener calling configureBreakpoints() runs a nested
-  // recompute that notifies everyone with the new snapshot, then the OUTER notifyEach loop keeps going and
+  // recompute that notifies everyone with the new snapshot, then the OUTER notifyListeners loop keeps going and
   // hands the remaining listeners the stale outer snapshot ('desktop') as their last notification, while
   // getEnvironment() says 'mobile'.
   it('every subscriber ends on the final breakpoint, not the stale outer snapshot', () => {

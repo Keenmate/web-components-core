@@ -22,7 +22,7 @@
  */
 
 import { once } from '../dom/once.js';
-import { callSafely } from '../logging/safe-call.js';
+import { runSafely } from '../logging/safe-call.js';
 import { createThrottle, type Throttle } from '../dom/throttle.js';
 
 /**
@@ -110,7 +110,7 @@ function fire(sub: Subscription): void {
   if (!size) return;
   sub.lastFired = size;
   // A throwing listener is logged; the other subscriptions (and entries) still get their fire.
-  callSafely(() => sub.listener(size, sub.el), SIZE_LOG);
+  runSafely(() => sub.listener(size, sub.el), SIZE_LOG);
 }
 
 const SIZE_LOG = { message: 'element size listener threw' } as const;
@@ -157,7 +157,7 @@ export function observeElementSize(
     const size = measure(el);
     sub.lastFired = size;
     sub.throttle.markRun();
-    callSafely(() => listener(size, el), SIZE_LOG);
+    runSafely(() => listener(size, el), SIZE_LOG);
   }
 
   const observer = ensureObserver();

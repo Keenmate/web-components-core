@@ -48,7 +48,7 @@
  */
 
 import { deepActiveElement } from '../dom/active-element.js';
-import { composedParent } from '../dom/composed-tree.js';
+import { deepParent } from '../dom/composed-tree.js';
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { coreLog } from '../logging/element-logger.js';
 
@@ -420,7 +420,7 @@ function onActivated(e: Event): void {
 
 /** Does `container` contain `node`, crossing shadow roots (a trigger inside a component's shadow DOM)? */
 function containsComposed(container: Element, node: Node): boolean {
-  for (let n: Node | null = node; n; n = composedParent(n)) {
+  for (let n: Node | null = node; n; n = deepParent(n)) {
     if (n === container) return true;
   }
   return false;

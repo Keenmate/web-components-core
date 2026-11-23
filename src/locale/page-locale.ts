@@ -27,7 +27,7 @@
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { publishPageSetting } from '../global/page-setting.js';
 import { coreLog } from '../logging/element-logger.js';
-import { notifyEach } from '../logging/safe-call.js';
+import { notifyListeners } from '../logging/safe-call.js';
 import type { ParseNumberCallback } from './numbers.js';
 
 /** `translateCallback` context: look the full `key` up (i18next) or format `template` (ICU / FormatJS). */
@@ -147,7 +147,7 @@ function freezeLocale(value: Record<string, unknown>): Readonly<PageLocale> {
 function changed(): void {
   const s = state();
   s.revision++;
-  notifyEach(s.listeners, undefined, { message: 'locale listener threw' });
+  notifyListeners(s.listeners, undefined, { message: 'locale listener threw' });
 }
 
 function setter(key: 'locale' | 'security', freeze: (v: Record<string, unknown>) => object) {

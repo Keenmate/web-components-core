@@ -91,6 +91,8 @@ export { renderLoader, publishLoaderHook } from './dom/render-loader.js';
 export type { LoaderRenderContext, RenderLoaderCallback, RenderLoaderOptions } from './dom/render-loader.js';
 // Container scroll (SPEC §12.15): scroll the one container around an element, never the page.
 export { deepActiveElement } from './dom/active-element.js';
+// The composed tree (across shadow roots): closest ancestor / containment past shadow boundaries.
+export { deepClosest, isDeepInside } from './dom/composed-tree.js';
 export { escapeHtml } from './dom/escape-html.js';
 export { findScrollContainer, getScrollTopForBox, scrollContainerToBox, scrollIntoContainer } from './dom/scroll-container.js';
 // One contract for every render*Callback: string = HTML, node, null = default, false = hidden, memo (SPEC §12.35).
@@ -218,6 +220,9 @@ export { getGlobalLogging } from './logging/global-logging.js';
 export type { GlobalLoggingControls } from './logging/global-logging.js';
 export { coreLogging, CORE_LOG_CATEGORIES, getCoreLogging } from './logging/element-logger.js';
 export type { CoreLogCategory } from './logging/element-logger.js';
+// Call code core doesn't own (a hook, a listener) without letting it throw through: logged + reported.
+export { runSafely, notifyListeners } from './logging/safe-call.js';
+export type { SafeCallLog, SafeCallResult } from './logging/safe-call.js';
 export { setLogPersistKeyPrefix, getLogPersistKeyPrefix, isLogLevel, toLogLevelNumber, LOG_LEVELS } from './logging/log-core.js';
 export type { LogLevelName } from './logging/log-core.js';
 export { createPerfLogger } from './logging/perf-logger.js';

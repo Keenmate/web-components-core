@@ -7,7 +7,7 @@
 import { getLocaleSettings } from './settings.js';
 import { getPageLocale } from './page-locale.js';
 import type { LocaleSettings } from './page-locale.js';
-import { callSafely } from '../logging/safe-call.js';
+import { runSafely } from '../logging/safe-call.js';
 
 export interface NumberFormatOptions extends LocaleSettings {
   minimumFractionDigits?: number;
@@ -86,7 +86,7 @@ export function parseNumber(text: string, options: ParseNumberOptions = {}, sour
       thousandsSeparator: resolved.thousandsSeparator,
       parseDefault,
     };
-    const result = callSafely(() => (callback as ParseNumberCallback)(ctx), {
+    const result = runSafely(() => (callback as ParseNumberCallback)(ctx), {
       source,
       message: `${name} threw for "${text}" — the next rule decides`,
     });

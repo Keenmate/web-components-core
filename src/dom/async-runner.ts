@@ -11,7 +11,7 @@
  * - An `AbortError` is never an error (the task gave up on our signal, or its own timeout signal);
  *   any other rejection goes to `onError`, or the logger when there is none.
  */
-import { callSafely } from '../logging/safe-call.js';
+import { runSafely } from '../logging/safe-call.js';
 
 export interface AsyncRunnerOptions {
   /** Wait this long after the last `run()` before starting the task (`0` = start at once). A function is read per run. */
@@ -55,7 +55,7 @@ export function createAsyncRunner(opts: AsyncRunnerOptions = {}): AsyncRunner {
   const setLoading = (value: boolean): void => {
     if (value === isLoading) return;
     isLoading = value;
-    if (opts.onLoadingChange) callSafely(() => opts.onLoadingChange!(value), { source, message: 'async runner onLoadingChange threw' });
+    if (opts.onLoadingChange) runSafely(() => opts.onLoadingChange!(value), { source, message: 'async runner onLoadingChange threw' });
   };
 
   const stop = (): void => {
@@ -77,8 +77,8 @@ export function createAsyncRunner(opts: AsyncRunnerOptions = {}): AsyncRunner {
   const fail = (error: unknown): void => {
     settle();
     if (isAbortError(error)) return;
-    if (opts.onError) callSafely(() => opts.onError!(error), { source, message: 'async runner onError threw' });
-    else callSafely(() => { throw error; }, { source, message: 'async task failed' });
+    if (opts.onError) runSafely(() => opts.onError!(error), { source, message: 'async runner onError threw' });
+    else runSafely(() => { throw error; }, { source, message: 'async task failed' });
   };
 
   const start = <T>(gen: number, task: (signal: AbortSignal) => T | PromiseLike<T>, onResult: (result: T) => void): void => {
@@ -87,7 +87,7 @@ export function createAsyncRunner(opts: AsyncRunnerOptions = {}): AsyncRunner {
     controller = ctrl;
     const deliver = (value: T): void => {
       settle();
-      callSafely(() => onResult(value), { source, message: 'async runner onResult threw' });
+      runSafely(() => onResult(value), { source, message: 'async runner onResult threw' });
     };
     let result: T | PromiseLike<T>;
     try {

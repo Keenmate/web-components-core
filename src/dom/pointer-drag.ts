@@ -13,7 +13,7 @@
 
 import { findScrollContainer } from './scroll-container.js';
 import { guardGhostClick } from '../overlay/ghost-click.js';
-import { callSafely } from '../logging/safe-call.js';
+import { runSafely } from '../logging/safe-call.js';
 
 export interface PointerDragContext {
   /** The element the drag started on (`getSource`'s answer). */
@@ -100,7 +100,7 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
   });
   const call = (fn: ((ctx: PointerDragContext) => unknown) | undefined, event: PointerDragContext['event'], name: string): unknown => {
     if (!fn) return undefined;
-    const result = callSafely(() => fn(context(event)), { source: container, message: `pointer drag ${name} threw` });
+    const result = runSafely(() => fn(context(event)), { source: container, message: `pointer drag ${name} threw` });
     return result.isOk ? result.value : undefined;
   };
 
@@ -113,7 +113,7 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
     if (!isDragging || !scroller || options.autoScroll === false) return;
     const { edge = 40, maxSpeed = 16, isEnabled } = options.autoScroll ?? {};
     if (isEnabled) {
-      const allowed = callSafely(() => isEnabled(context(null)), { source: container, message: 'autoScroll.isEnabled threw' });
+      const allowed = runSafely(() => isEnabled(context(null)), { source: container, message: 'autoScroll.isEnabled threw' });
       if (allowed.isOk && allowed.value === false) {
         scrollFrame = view.requestAnimationFrame(autoScroll); // ask again next frame
         return;
