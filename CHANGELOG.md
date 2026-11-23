@@ -9,10 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Icon maps — `el.icons` + `window.components.icons` + `renderIcon(…, { defaults })`** (audit Q12): icons work like
-  labels. `renderIcon` order: markup → built-in name → the element's `icons` map → the element's `renderIconCallback` →
-  the page-wide `renderIconCallback` → the page-wide flat `window.components.icons` (`'<tag>.<name>'` before `'<name>'`,
-  non-enumerable, assigning replaces it) → the component's `defaults` (new option) → class names → text. A map value is
-  an icon string resolved by the same rules (loops skipped). New export `isIconMap` for the component's `icons` row
+  labels. `renderIcon` order, MAPS FIRST: markup → the element's `icons` map → the page-wide flat
+  `window.components.icons` (`'<tag>.<name>'` before `'<name>'`, non-enumerable, assigning replaces it) → built-in name →
+  the element's `renderIconCallback` → the page-wide `renderIconCallback` → the component's `defaults` (new option) →
+  class names → text. The maps can replace a built-in (`{ close: 'fa-solid fa-xmark' }`); a name not in a map falls
+  through; a component may name its icons with built-in names (`add`, `delete`). A map value is an icon string
+  resolved by the same rules (a built-in name draws the built-in; loops skipped). New export `isIconMap` for the component's `icons` row
   (`toObject({ validate: isIconMap })`, `on: 'update'`). `iconsChanged()` now also fires on a `window.components.icons`
   assignment and after `update()` for an `icons` change. Example: DH05b in `examples-dom.html`.
 - **Labels per-call default: `labels.text(key, params?, { fallback })` / `html(key, params?, { fallback })`** (also on

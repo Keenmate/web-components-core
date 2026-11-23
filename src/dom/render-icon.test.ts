@@ -231,24 +231,43 @@ describe('icon maps: el.icons, window.components.icons, defaults (Q12)', () => {
     setPageIcons(undefined);
   });
 
-  it('the full order: markup → built-in → el.icons → own hook → page hook → page map → defaults → class list → text', () => {
+  it('the full order: markup → el.icons → page map → built-in → own hook → page hook → defaults → class list → text', () => {
     const host = Object.assign(document.createElement('web-gx'), {
       icons: { a: '<i>instance-a</i>' } as Record<string, string>,
-      renderIconCallback: (name: string) => (name === 'a' || name === 'b' ? `<i>own-${name}</i>` : null),
+      renderIconCallback: (name: string) => (['a', 'b', 'c', 'close'].includes(name) ? `<i>own-${name}</i>` : null),
     });
-    setHook((name) => (['a', 'b', 'c'].includes(name) ? `<i>page-${name}</i>` : null));
-    setPageIcons({ a: '<i>map-a</i>', b: '<i>map-b</i>', c: '<i>map-c</i>', d: '<i>map-d</i>' });
+    setHook((name) => (['a', 'b', 'c', 'd', 'close'].includes(name) ? `<i>page-${name}</i>` : null));
+    setPageIcons({ a: '<i>map-a</i>', b: '<i>map-b</i>' });
     const defaults = { a: '<i>def-a</i>', d: '<i>def-d</i>', e: '<i>def-e</i>', close: '<i>def-close</i>' };
     const r = (name: string): string => renderIcon(name, { host, defaults });
     expect(r('<svg></svg>')).toBe('<svg></svg>'); // markup
-    expect(r('close')).toContain('km-icon'); // built-in, reserved: maps never see it
     expect(r('a')).toBe('<i>instance-a</i>'); // el.icons
-    expect(r('b')).toBe('<i>own-b</i>'); // el.renderIconCallback
-    expect(r('c')).toBe('<i>page-c</i>'); // window.components.renderIconCallback
-    expect(r('d')).toBe('<i>map-d</i>'); // window.components.icons
+    expect(r('b')).toBe('<i>map-b</i>'); // window.components.icons (before the built-ins and the hooks)
+    expect(r('close')).toContain('km-icon'); // built-in: the hooks and the defaults never see it
+    expect(r('c')).toBe('<i>own-c</i>'); // el.renderIconCallback
+    expect(r('d')).toBe('<i>page-d</i>'); // window.components.renderIconCallback
     expect(r('e')).toBe('<i>def-e</i>'); // defaults
     expect(r('fa-solid fa-x')).toBe('<i class="fa-solid fa-x" aria-hidden="true"></i>'); // class list
     expect(r('🚀')).toBe('🚀'); // text
+  });
+
+  it('the maps replace a built-in name (close / delete); a name not in a map falls through to the built-in', () => {
+    const host = Object.assign(document.createElement('web-gx'), { icons: { close: 'fa-solid fa-xmark' } });
+    setPageIcons({ 'web-gx.delete': '<svg class="trash"></svg>', add: 'fa-solid fa-plus' });
+    expect(renderIcon('close', { host, prefix: 'gx' })).toBe('<i class="gx__icon fa-solid fa-xmark" aria-hidden="true"></i>');
+    expect(renderIcon('delete', { host })).toBe('<svg class="trash"></svg>');
+    expect(renderIcon('delete', { host: document.createElement('web-other') })).toContain('--base-icon-delete'); // tag-scoped
+    expect(renderIcon('add', { host })).toBe('<i class="fa-solid fa-plus" aria-hidden="true"></i>');
+    expect(renderIcon('check', { host, prefix: 'gx' })).toContain('gx__icon--check'); // not in a map → built-in
+    // A component's own name equal to a built-in name: the built-in draws it (defaults come after), a map still wins.
+    expect(renderIcon('delete', { host: document.createElement('web-other'), defaults: { delete: '<i>def</i>' } })).toContain('km-icon');
+  });
+
+  it('a map value that names itself or a built-in draws the built-in ({ close: "close" } is no loop)', () => {
+    const host = Object.assign(document.createElement('web-gx'), { icons: { close: 'close', x: 'delete', remove: 'x' } });
+    expect(renderIcon('close', { host, prefix: 'gx' })).toContain('gx__icon--close');
+    expect(renderIcon('x', { host, prefix: 'gx' })).toContain('gx__icon--delete');
+    expect(renderIcon('remove', { host, prefix: 'gx' })).toContain('gx__icon--delete'); // remove → x → delete
   });
 
   it('a map value is an icon string resolved by the same rules (markup / built-in / hooks / class list / text)', () => {

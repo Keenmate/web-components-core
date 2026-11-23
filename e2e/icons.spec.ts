@@ -53,4 +53,11 @@ test('icon maps: component defaults, el.icons and window.components.icons overri
   await page.locator('#iconed').evaluate((el) => el.setAttribute('icons', '{"rowDelete":"close"}'));
   await expect(del.locator('.km-icon')).toHaveClass(/fx__icon--close/);
   await expect(add.locator('i')).toHaveClass('fx__icon fa-solid fa-plus');
+  // Maps come before the built-ins: a built-in name (close) is drawn by the built-in until a map replaces it.
+  const close = page.locator('#iconed [data-icon="close"]');
+  await expect(close.locator('.km-icon')).toHaveClass(/fx__icon--close/);
+  await page.evaluate(() => {
+    (window.components as Record<string, unknown>).icons = { 'fx-iconed.close': 'fa-solid fa-xmark' };
+  });
+  await expect(close.locator('i')).toHaveClass('fx__icon fa-solid fa-xmark');
 });

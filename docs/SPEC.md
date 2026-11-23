@@ -2862,8 +2862,9 @@ web-multiselect each their own. Decided 2026-11-17 — **`renderIcon(icon, { pre
 - a built-in name (`BUILT_IN_ICON_NAMES` = the base-css-variables `--base-icon-*` glyphs: `close`, `chevron`, `check`,
   …) → `<span class="km-icon <prefix>__icon <prefix>__icon--<name>"
   style="--_km-icon: var(--base-icon-<name>, linear-gradient(transparent 0 0))" aria-hidden="true">` — a 1em glyph
-  in `currentColor` masked from the token; an unset token draws nothing (not a square). Reserved: the hook below
-  never sees a built-in (a theme restyles it through the token; another set's close is `'fa-solid fa-xmark'`);
+  in `currentColor` masked from the token; an unset token draws nothing (not a square). The hooks below
+  never see a built-in (a theme restyles it through the token); the icon maps, asked BEFORE the built-ins since
+  2026-11-23, may replace one (`{ close: 'fa-solid fa-xmark' }`);
 - the element's own `renderIconCallback` (option `renderIconCallback`, else `host.renderIconCallback` — every
   component's input row), then the page-wide `window.components.renderIconCallback(name, { component, element,
   prefix, …extras })` (`component` = the `component` option — for a framework component whose host is a plain
@@ -2893,14 +2894,17 @@ notifying accessor) is `sharedState`; an accessor installed by core rc24 or olde
 callback) is replaced by the first newer copy that publishes — the shared callback is kept.
 
 **Icon maps (decided 2026-11-23, audit Q12):** icons work like labels — a page replaces a component's own icons
-without a callback. Order (first match wins): markup → built-in name → the element's `icons` map → the element's
-`renderIconCallback` → the page-wide `renderIconCallback` → the page-wide flat `window.components.icons`
-(`'<tag>.<name>'` before `'<name>'`; non-enumerable accessor in the shared icon state; assigning replaces it with a
-frozen copy, non-string values dropped with a warning, a non-object ignored) → the component's `defaults` (new
+without a callback. Order (first match wins; MAPS FIRST, revised 2026-11-23): markup → the element's `icons`
+map → the page-wide flat `window.components.icons` (`'<tag>.<name>'` before `'<name>'`; non-enumerable accessor in the
+shared icon state; assigning replaces it with a frozen copy, non-string values dropped with a warning, a non-object
+ignored) → built-in name → the element's `renderIconCallback` → the page-wide `renderIconCallback` → the component's
+`defaults` (new
 `renderIcon` option: its icon names → icons) → class names → text. A map value is itself an icon string resolved by
-the same rules (`{ rowDelete: 'delete' }` → the built-in glyph); a value leading back to a name already met on the
-way is skipped (the next rule decides) — no recursion loop. `''` = no icon. Instance map: option `icons`, else
-`host.icons`. Every icon-rendering component names its icons (not built-in names — built-ins are reserved), keeps its
+the same rules (`{ rowDelete: 'delete' }` → the built-in glyph); a name not in a map falls through; a value leading
+back to a name already met on the way is skipped (the next rule decides; `{ close: 'close' }` draws the built-in) —
+no recursion loop. `''` = no icon. Instance map: option `icons`, else
+`host.icons`. Every icon-rendering component names its icons (a built-in name is fine — grid's `add` / `delete`: the
+built-in draws it unless a map replaces it), keeps its
 look as `defaults`, declares `{ configKey: 'icons', attribute: 'icons', converter: toObject({ validate: isIconMap }),
 on: 'update' }` (property object or JSON attribute; `isIconMap` exported) and documents its icon names in the row's
 description. A `window.components.icons` assignment bumps the same revision as the page hook → `iconsChanged()`;

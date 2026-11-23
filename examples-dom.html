@@ -204,11 +204,12 @@ cell.innerHTML = renderIcon(item.icon, { prefix: 'grid', host: this });</code></
             <p>
                 A component names its icons (<code>rowAdd</code>, <code>rowDelete</code>, <code>rowEdit</code>) and
                 renders them with <code>renderIcon(name, { defaults })</code>. The page replaces any of them without a
-                callback: the element's <code>icons</code> map is asked right after the built-in names, the page-wide flat
-                <code>window.components.icons</code> (<code>'&lt;tag&gt;.&lt;name&gt;'</code> before
-                <code>'&lt;name&gt;'</code>) after both <code>renderIconCallback</code>s, the component's defaults last.
-                A map value is an icon string itself: <code>'star'</code> below goes through DH05's page hook. Changing a
-                map repaints through <code>iconsChanged()</code>.
+                callback. The maps come first (right after markup): the element's <code>icons</code> map, then the
+                page-wide flat <code>window.components.icons</code> (<code>'&lt;tag&gt;.&lt;name&gt;'</code> before
+                <code>'&lt;name&gt;'</code>), then the built-in names, both <code>renderIconCallback</code>s, the
+                component's defaults last. So a map can also replace a built-in (<code>{ close: 'fa-solid fa-xmark' }</code>),
+                and a name not in a map falls through. A map value is an icon string itself: <code>'star'</code> below
+                goes through DH05's page hook. Changing a map repaints through <code>iconsChanged()</code>.
             </p>
             <div class="controls">
                 <label><input type="checkbox" id="dh05b-own"> <code>el.icons = { rowDelete: '🗑️' }</code></label>

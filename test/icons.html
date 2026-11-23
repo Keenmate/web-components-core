@@ -47,7 +47,7 @@
             iconsChanged() { this.#paint(); }
             #paint() {
                 const defaults = { rowDelete: 'delete', rowAdd: '<svg class="default-add"></svg>' };
-                this.innerHTML = ['rowDelete', 'rowAdd'].map((name) =>
+                this.innerHTML = ['rowDelete', 'rowAdd', 'close'].map((name) =>
                     `<span data-icon="${name}">${renderIcon(name, { prefix: 'fx', host: this, defaults })}</span>`).join('');
             }
         }

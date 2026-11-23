@@ -604,18 +604,19 @@ protected override createController(): TreeController {
 Icons on items / options / nodes are data — read them with one rule ([SPEC §12.33](SPEC.md)), first match wins:
 
 1. markup (`'<svg …>'`) → raw;
-2. a built-in name (`'close'`, `'chevron'`, `'check'`, … — `BUILT_IN_ICON_NAMES`, the base-css-variables glyphs) →
-   masked from `--base-icon-<name>` in `currentColor`; reserved, the page hook never sees it;
-3. the element's own `icons` map (`el.icons[name]`);
-4. the element's own `renderIconCallback`, then the page-wide `window.components.renderIconCallback(name, { component,
+2. the element's own `icons` map (`el.icons[name]`);
+3. the page-wide flat `window.components.icons` map — `'<tag>.<name>'` before `'<name>'`;
+4. a built-in name (`'close'`, `'chevron'`, `'check'`, … — `BUILT_IN_ICON_NAMES`, the base-css-variables glyphs) →
+   masked from `--base-icon-<name>` in `currentColor`; the hooks never see it (the maps above can replace it);
+5. the element's own `renderIconCallback`, then the page-wide `window.components.renderIconCallback(name, { component,
    element, prefix })` → markup, `null` = not mine (the next one decides);
-5. the page-wide flat `window.components.icons` map — `'<tag>.<name>'` before `'<name>'`;
 6. the component's own `defaults` (the `renderIcon` option: its icon names → icons);
 7. other class names (`'fa-solid fa-folder'`, `'bi-gear'`) → `<i class="<prefix>__icon fa-solid fa-folder" aria-hidden="true">`;
 8. anything else (`'🚀'`) → escaped text.
 
-A map value (3, 5, 6) is an icon string itself, read by the same rules (`{ rowDelete: 'delete' }` → the built-in
-glyph, `{ rowEdit: 'star' }` → the hooks); a loop (`{ a: 'b', b: 'a' }`) is skipped, `''` = no icon.
+A name not in a map falls through. A map value (2, 3, 6) is an icon string itself, read by the same rules
+(`{ rowDelete: 'delete' }` → the built-in glyph, `{ rowEdit: 'star' }` → the hooks, `{ close: 'close' }` → the
+built-in); a loop (`{ a: 'b', b: 'a' }`) is skipped, `''` = no icon.
 
 ```ts
 import { renderIcon, ICON_CSS, adoptStyles } from '@keenmate/web-components-core';
@@ -663,8 +664,9 @@ window.components.icons = { 'web-grid.rowDelete': '❌', rowAdd: 'star' }; // ev
 ```
 
 `window.components.icons` is ONE flat dictionary (non-enumerable; assigning replaces it; non-string values are dropped
-with a warning). Use a name that isn't a built-in (`rowDelete`, not `delete`) — built-ins are reserved and never
-reach a map. `iconsChanged()` fires when either map changes (`el.icons` after `update()`).
+with a warning). The maps come before the built-ins, so a component may name its icons with built-in names (`add`,
+`delete` — drawn by the built-in unless a map replaces them) and a page may restyle a built-in for one element
+(`el.icons = { close: 'fa-solid fa-xmark' }`). `iconsChanged()` fires when either map changes (`el.icons` after `update()`).
 
 ## Clipboard
 

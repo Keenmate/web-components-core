@@ -5,20 +5,21 @@
  * first match wins:
  *
  * 1. starts with `<` (an `<svg>`, an `<img>`, an `<i class="fa …">`) → inserted raw — the page vouches for it;
- * 2. a built-in name ({@link BUILT_IN_ICON_NAMES}: `close`, `chevron`, `check`, …) → `<span class="km-icon
+ * 2. the element's own `icons` map (`el.icons[name]`);
+ * 3. the page-wide flat `window.components.icons` map (`'<tag>.<name>'` before `'<name>'`);
+ * 4. a built-in name ({@link BUILT_IN_ICON_NAMES}: `close`, `chevron`, `check`, …) → `<span class="km-icon
  *    <prefix>__icon <prefix>__icon--close">`, a glyph masked from the `--base-icon-<name>` token in `currentColor`.
- *    Reserved: the page-wide hook never sees them (a theme restyles them through the token);
- * 3. the element's own `icons` map (`el.icons[name]`);
- * 4. the element's own `renderIconCallback(name, ctx)`, then the page-wide `window.components.renderIconCallback` →
+ *    The hooks never see them (a theme restyles them through the token; the maps above can replace them);
+ * 5. the element's own `renderIconCallback(name, ctx)`, then the page-wide `window.components.renderIconCallback` →
  *    markup, or `null` / `undefined` = not mine (the next one decides) — one multiselect needs no page setup;
- * 5. the page-wide flat `window.components.icons` map (`'<tag>.<name>'` before `'<name>'`);
  * 6. the component's own defaults (the `defaults` option: its name → icon map);
  * 7. ASCII class names (`fa-solid fa-folder`, `bi-gear`, `material-symbols-outlined`) → `<i class="<prefix>__icon
  *    fa-solid fa-folder" aria-hidden="true">` — an icon font (keen-pure-admin's `<i class={name}>`);
  * 8. anything else (an emoji, a letter in another script) → escaped text.
  *
- * A map value (3, 5, 6) is itself an icon string, resolved by the same rules (a name already met on the way is
- * skipped — `{ a: 'b', b: 'a' }` can't loop).
+ * A name not in a map falls through to the next rule. A map value (2, 3, 6) is itself an icon string, resolved by
+ * the same rules (a built-in name draws the built-in; a name already met on the way is skipped — `{ a: 'b', b: 'a' }`
+ * can't loop, `{ close: 'close' }` draws the built-in).
  *
  * `ICON_CSS` (the `.km-icon` rule) goes into the root the icon renders in (`adoptStyles`).
  */
@@ -56,7 +57,7 @@ export interface RenderIconOptions {
   icons?: Readonly<Record<string, string>> | null;
   /**
    * The component's own icons (its name → icon string: markup, a built-in name, class names) — asked last, after
-   * every page setting, before the icon-font / text rules. Lets a component name its icons (`'rowDelete'`) so the
+   * the maps, built-ins and hooks, before the icon-font / text rules. Lets a component name its icons (`'rowDelete'`) so the
    * page can replace them through `el.icons` / `window.components.icons` / the hooks.
    */
   defaults?: Readonly<Record<string, string>> | null;
@@ -88,8 +89,9 @@ export interface IconRenderContext {
 export type RenderIconCallback = (name: string, ctx: IconRenderContext) => string | null | undefined;
 
 /**
- * The reserved built-in names — the base-css-variables `--base-icon-*` glyphs. Always masked from their token;
- * no hook sees them. Name another set's icon differently (`'fa-solid fa-xmark'`, not `'close'`).
+ * The built-in names — the base-css-variables `--base-icon-*` glyphs, masked from their token. No hook sees them,
+ * but the icon maps come first: `el.icons` / `window.components.icons` may replace one (`{ close: 'fa-solid fa-xmark' }`).
+ * A component may name its own icons with these names (`add`, `delete`).
  */
 export const BUILT_IN_ICON_NAMES: readonly string[] = Object.freeze([
   'add', 'bell', 'caret-down', 'caret-up', 'check', 'chevron', 'clear', 'close', 'collapse', 'copy', 'danger',
@@ -252,10 +254,6 @@ function resolveIcon(value: string, options: RenderIconOptions, seen: Set<string
   if (!value) return '';
   if (value.startsWith('<')) return value;
   const prefix = options.prefix ?? '';
-  if (BUILT_IN.has(value)) {
-    const own = prefix ? ` ${prefix}__icon ${prefix}__icon--${value}` : '';
-    return `<span class="km-icon${own}" style="--_km-icon: var(--base-icon-${value}, linear-gradient(transparent 0 0))" aria-hidden="true"></span>`;
-  }
   seen.add(value);
   const host = options.host ?? null;
   const component = options.component ?? host?.localName ?? '';
@@ -270,6 +268,13 @@ function resolveIcon(value: string, options: RenderIconOptions, seen: Set<string
   const instanceIcons = 'icons' in options ? options.icons : (host as { icons?: unknown } | null)?.icons;
   const fromInstance = follow(lookup(isPlainObject(instanceIcons) ? instanceIcons : null, value));
   if (fromInstance !== undefined) return fromInstance;
+  const page = pageIcons();
+  const fromPage = follow((component ? lookup(page, `${component}.${value}`) : undefined) ?? lookup(page, value));
+  if (fromPage !== undefined) return fromPage;
+  if (BUILT_IN.has(value)) {
+    const own = prefix ? ` ${prefix}__icon ${prefix}__icon--${value}` : '';
+    return `<span class="km-icon${own}" style="--_km-icon: var(--base-icon-${value}, linear-gradient(transparent 0 0))" aria-hidden="true"></span>`;
+  }
   const ownHook = 'renderIconCallback' in options ? options.renderIconCallback : (host as { renderIconCallback?: unknown } | null)?.renderIconCallback;
   const hooks: Array<[unknown, string]> = [
     [ownHook, 'renderIconCallback'],
@@ -284,9 +289,6 @@ function resolveIcon(value: string, options: RenderIconOptions, seen: Set<string
     });
     if (result.isOk && typeof result.value === 'string') return result.value;
   }
-  const page = pageIcons();
-  const fromPage = follow((component ? lookup(page, `${component}.${value}`) : undefined) ?? lookup(page, value));
-  if (fromPage !== undefined) return fromPage;
   const fromDefaults = follow(lookup(options.defaults, value));
   if (fromDefaults !== undefined) return fromDefaults;
   if (CLASS_LIST.test(value)) {

@@ -112,7 +112,7 @@ before a child's disconnect — the test resets the fake offsets in the host's `
 
 ## Icons (`src/dom/render-icon.ts`, SPEC §12.33 — implemented)
 
-`renderIcon`: `<` → raw; a `BUILT_IN_ICON_NAMES` name → `.km-icon` span with an inline `--_km-icon: var(--base-icon-<name>,
+`renderIcon`: `<` → raw; the two icon maps (below); a `BUILT_IN_ICON_NAMES` name → `.km-icon` span with an inline `--_km-icon: var(--base-icon-<name>,
 linear-gradient(transparent 0 0))` (the transparent fallback keeps an unset token from masking nothing = a solid
 square); the element's hook (option, else `host.renderIconCallback`; `ctx.component` = the `component` option, else `host.localName` — a Svelte tree's host is a `<div>`) then the page hook `window.components.renderIconCallback` (`publishIconHook`, shared state like the loader hook,
 `runSafely`; a string wins); `CLASS_LIST` → `<i class="<prefix>__icon …">` (no marker class of its own; the component's `__icon` rule styles it); else `escapeHtml`. Keep
@@ -123,10 +123,12 @@ when an rc24-or-older copy created the state); the setter bumps + `notifyListene
 deletes an accessor whose `set` isn't `state.set` (an older copy's, which never notifies) before `publishPageSetting`.
 `observeIconHook` / `getIconHookRevision` feed BlissElement's opt-in `iconsChanged()` (same gate + reconnect catch-up
 as `localeChanged()`).
-Icon maps (Q12, 2026-11-23): `resolveIcon(value, options, seen)` — after the built-in step: `el.icons` (option
-`icons`, else `host.icons`; own string keys only) → the two hooks → page `window.components.icons` (`'<component>.<name>'`
-then `'<name>'`) → option `defaults` → class list → text. A map hit recurses through the full chain; a value already in
-`seen` skips that entry (next rule decides), `MAX_ICON_DEPTH` caps chains. `window.components.icons` lives in the same
+Icon maps (Q12, 2026-11-23): `resolveIcon(value, options, seen)` — MAPS FIRST (revised 11-23): after markup,
+`el.icons` (option `icons`, else `host.icons`; own string keys only) → page `window.components.icons` (`'<component>.<name>'`
+then `'<name>'`) → built-in → the two hooks → option `defaults` → class list → text. A name not in a map falls through.
+A map hit recurses through the full chain (a built-in name draws the built-in); a value already in `seen` skips that
+entry (next rule decides — `{ close: 'close' }` draws the built-in), `MAX_ICON_DEPTH` caps chains. Component icon names
+may equal built-in names (grid `add` / `delete`). `window.components.icons` lives in the same
 shared icon state (`icons` + `getIcons` / `setIcons`, added in place on older state): every assignment stores a frozen
 flat copy (`freezeIcons`: non-object → warn + none; non-string values → warn + dropped) and bumps the same revision /
 listeners, so `iconsChanged()` hears it. BlissElement calls `iconsChanged()` itself after a non-reinit flush whose
