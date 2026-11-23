@@ -87,7 +87,7 @@ export type { LoadStateCallback, SaveStateCallback, StateStore, StateStoreOption
 export type { CustomStylesCallback, CustomStylesHandle, CustomStylesOptions, CustomStylesSource } from './dom/custom-styles.js';
 // Shared loader (SPEC §12.14): instance renderLoadingCallback > window.components.renderLoadingCallback > <prefix>__loader span.
 export { renderLoader, publishLoaderHook } from './dom/render-loader.js';
-export type { LoaderRenderContext, RenderLoaderCallback, RenderLoaderOptions } from './dom/render-loader.js';
+export type { LoaderRenderContext, RenderLoadingCallback, RenderLoaderOptions } from './dom/render-loader.js';
 // Container scroll (SPEC §12.15): scroll the one container around an element, never the page.
 export { deepActiveElement } from './dom/active-element.js';
 // The composed tree (across shadow roots): closest ancestor / containment past shadow boundaries.
@@ -116,7 +116,7 @@ export { createPointerDrag, deepElementFromPoint } from './dom/pointer-drag.js';
 export type { PointerDrag, PointerDragContext, PointerDragOptions } from './dom/pointer-drag.js';
 // Selection model: click / Ctrl / Shift rules, anchor, ranges in display order (SPEC §12.27).
 export { createSelection } from './selection/selection.js';
-export type { Selection, SelectionChange, SelectionMode, SelectionOptions } from './selection/selection.js';
+export type { SelectionModel, SelectionChange, SelectionModelMode, SelectionOptions } from './selection/selection.js';
 // Virtual window over fixed-height rows: range math, spacer + window, index jump, hit test (SPEC §12.26).
 export { computeVirtualRange, createVirtualWindow } from './dom/virtual-window.js';
 export type { VirtualRange, VirtualRangeInput, VirtualRenderContext, VirtualWindow, VirtualWindowOptions } from './dom/virtual-window.js';

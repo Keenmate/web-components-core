@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { publishLoaderHook, renderLoader, type RenderLoaderCallback } from './render-loader.js';
+import { publishLoaderHook, renderLoader, type RenderLoadingCallback } from './render-loader.js';
 
 let host: HTMLElement;
 let box: HTMLElement;
@@ -72,7 +72,7 @@ describe('renderLoader — precedence', () => {
     window.components = window.components ?? {};
     publishLoaderHook();
     window.components.renderLoadingCallback = page;
-    const inst = vi.fn<RenderLoaderCallback>(({ containerElement }) => {
+    const inst = vi.fn<RenderLoadingCallback>(({ containerElement }) => {
       containerElement.append('inst');
     });
     renderLoader(host, box, 'search', { prefix: 'x', label: 'Searching', renderLoadingCallback: inst });

@@ -16,7 +16,7 @@ import {
   BlissElement, define, toBool, toEnum, toInt, escapeHtml,
   observeTextInput, isImeEnter, createVirtualWindow, createSelection, keepScrollAcrossMove,
 } from './src/index.js';
-import type { InputDef, VirtualWindow, Selection } from './src/index.js';
+import type { InputDef, VirtualWindow, SelectionModel } from './src/index.js';
 import { createActiveDescendant, createRovingFocus } from './src/a11y/index.js';
 import type { ActiveDescendant, RovingFocus } from './src/a11y/index.js';
 
@@ -165,14 +165,14 @@ const ROW_HEIGHT = 28;
 export class CoreDemoBiglist extends BlissElement {
   protected static override inputs: readonly InputDef[] = [
     { configKey: 'count', attribute: 'count', converter: toInt({ min: 0 }), default: 20, on: 'reinit' },
-    { configKey: 'selectionMode', attribute: 'selection-mode', converter: toEnum(['multi', 'single'] as const, { default: 'multi' }), on: 'update' },
+    { configKey: 'selectionMode', attribute: 'selection-mode', converter: toEnum(['multiple', 'single'] as const, { default: 'multiple' }), on: 'update' },
     { configKey: 'hasKeepScroll', attribute: 'has-keep-scroll', converter: toBool('default-false'), default: false, on: 'reinit' },
   ];
   protected static override events = ['selection-change', 'range'];
 
   #scroller: HTMLElement | null = null;
   #virtual: VirtualWindow | null = null;
-  #selection: Selection<number> | null = null;
+  #selection: SelectionModel<number> | null = null;
   #keys: number[] = [];
   #cursor = 0;
   #stopKeep: (() => void) | null = null;
@@ -197,7 +197,7 @@ export class CoreDemoBiglist extends BlissElement {
 
     this.#virtual?.destroy();
     this.#selection = createSelection<number>({
-      mode: () => this.config.selectionMode as 'multi' | 'single',
+      mode: () => this.config.selectionMode as 'multiple' | 'single',
       getOrderedKeys: () => this.#keys,
       isSelectable: (i) => i % 10 !== 7, // every row ending in 7 is disabled
       onChange: ({ added, removed, values }) => {
@@ -220,14 +220,14 @@ export class CoreDemoBiglist extends BlissElement {
         this.emit('range', { start, end, rendered: end - start, total: this.#keys.length });
       },
     });
-    scroller.setAttribute('aria-multiselectable', String(this.config.selectionMode === 'multi'));
+    scroller.setAttribute('aria-multiselectable', String(this.config.selectionMode === 'multiple'));
 
     this.#stopKeep?.();
     this.#stopKeep = this.config.hasKeepScroll ? keepScrollAcrossMove(this, () => (this.#scroller ? [this.#scroller] : [])) : null;
   }
 
   protected override update(): void {
-    this.#scroller?.setAttribute('aria-multiselectable', String(this.config.selectionMode === 'multi'));
+    this.#scroller?.setAttribute('aria-multiselectable', String(this.config.selectionMode === 'multiple'));
     this.#selection?.clear();
   }
 

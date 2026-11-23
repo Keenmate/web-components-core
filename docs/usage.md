@@ -709,7 +709,7 @@ manager:
 import { createSelection } from '@keenmate/web-components-core';
 
 #selection = createSelection<string>({
-  mode: () => this.config.selectionMode,                    // 'multi' | 'single'
+  mode: () => this.config.selectionMode,                    // 'multiple' | 'single'
   getOrderedKeys: () => this.#visibleRows.map((r) => r.id), // display order: a range is what the user sees
   isSelectable: (id) => !this.#rowsById.get(id)!.isDisabled,
   onChange: ({ added, removed, values }) => this.emit('selection-change', { added, removed, values }),

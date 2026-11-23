@@ -21,7 +21,7 @@ import {
   toFunction,
   toText,
 } from '../src/index.js';
-import type { InputDef, RenderLoaderCallback, StyleElement } from '../src/index.js';
+import type { InputDef, RenderLoadingCallback, StyleElement } from '../src/index.js';
 
 export const fxLogging = createLoggers('FXPG');
 
@@ -32,7 +32,7 @@ export class FxPg extends BlissElement {
   protected static override inputs: readonly InputDef[] = [
     { configKey: 'label', attribute: 'label', converter: toText({ default: 'pg' }), on: 'reinit' },
     { configKey: 'tone', attribute: 'tone', converter: toEnum(TONES, { default: 'neutral' }), shouldReflect: true },
-    { configKey: 'renderLoadingCallback', converter: toFunction<RenderLoaderCallback>(), default: null, on: 'none' },
+    { configKey: 'renderLoadingCallback', converter: toFunction<RenderLoadingCallback>(), default: null, on: 'none' },
     { configKey: 'customStylesCallback', converter: toFunction<() => string | null>(), default: null },
   ];
 

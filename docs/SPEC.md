@@ -2147,7 +2147,7 @@ renderLoadingCallback? }) → remove()`. Precedence, highest first:
 3. the **default** `<span class="<prefix>__loader" aria-hidden="true">`, drawn by
    the component's CSS.
 
-Both hooks are `RenderLoaderCallback = (ctx: LoaderRenderContext) => void | (() => void)`
+Both hooks are `RenderLoadingCallback = (ctx: LoaderRenderContext) => void | (() => void)`
 with `ctx = { component (tag name), context, containerElement, element (host), label }`.
 `context` names the loading state per component (`'overlay' | 'row' | 'search' |
 'upload' | 'summary' | …`). The hook fills `containerElement`; an optional returned

@@ -33,7 +33,7 @@ import {
   toFunction,
   toText,
 } from './src/index.js';
-import type { CustomStylesCallback, CustomStylesHandle, InputDef, RenderLoaderCallback } from './src/index.js';
+import type { CustomStylesCallback, CustomStylesHandle, InputDef, RenderLoadingCallback } from './src/index.js';
 
 /** The demo tag's logger bundle (also reachable as `window.components['core-demo-pg'].logging`). */
 export const pgLogging = createLoggers('PGDEMO');
@@ -87,7 +87,7 @@ export class CoreDemoPg extends BlissElement {
     { configKey: 'label', attribute: 'label', converter: toText({ default: 'Demo' }), on: 'reinit' },
     { configKey: 'tone', attribute: 'tone', converter: toEnum(TONES, { default: 'neutral' }), shouldReflect: true },
     // Same name in every component (SPEC §12.14); read by renderLoader() from the host property.
-    { configKey: 'renderLoadingCallback', converter: toFunction<RenderLoaderCallback>(), default: null, on: 'none' },
+    { configKey: 'renderLoadingCallback', converter: toFunction<RenderLoadingCallback>(), default: null, on: 'none' },
     // Custom CSS (SPEC §12.8): the callback wins over the attribute; both go through createCustomStyles().
     { configKey: 'customStyles', attribute: 'custom-styles', converter: toText({ isNullable: true }) },
     { configKey: 'getCustomStylesCallback', converter: toFunction<CustomStylesCallback<PgContext>>(), default: null },

@@ -16,7 +16,7 @@
 
 import { runSafely } from '../logging/safe-call.js';
 
-export type SelectionMode = 'single' | 'multi';
+export type SelectionModelMode = 'single' | 'multiple';
 
 export interface SelectionChange<K> {
   added: K[];
@@ -26,8 +26,8 @@ export interface SelectionChange<K> {
 }
 
 export interface SelectionOptions<K> {
-  /** `'multi'` (default) or `'single'` — a function when it's a live input. */
-  mode?: SelectionMode | (() => SelectionMode);
+  /** `'multiple'` (default) or `'single'` — a function when it's a live input. */
+  mode?: SelectionModelMode | (() => SelectionModelMode);
   /** Every key in display order — ranges and `selectAll` use it. */
   getOrderedKeys: () => readonly K[];
   /** A key that can't be selected (a disabled row, a group header); default: all can. */
@@ -43,14 +43,14 @@ export interface WriteOptions {
   isSilent?: boolean;
 }
 
-export interface Selection<K> {
+export interface SelectionModel<K> {
   /** Apply a click with its modifier keys (`metaKey` counts as Ctrl). */
   click(key: K, modifiers?: { shiftKey?: boolean; ctrlKey?: boolean; metaKey?: boolean }): void;
-  /** Flip one key (Space in a multi list, a checkbox); the anchor moves to it. */
+  /** Flip one key (Space in a multiple list, a checkbox); the anchor moves to it. */
   toggle(key: K, options?: WriteOptions): void;
   /** Shift + Arrow: the range anchor … key; `isAdditive` keeps the rest (Ctrl + Shift). The anchor stays. */
   extendTo(key: K, options?: { isAdditive?: boolean } & WriteOptions): void;
-  /** Every selectable key (multi only). */
+  /** Every selectable key (`multiple` only). */
   selectAll(options?: WriteOptions): void;
   clear(options?: WriteOptions): void;
   /** Replace the selection (a `value` input); unselectable / unknown keys are kept — the component decides. */
@@ -64,12 +64,12 @@ export interface Selection<K> {
   setAnchor(key: K | null): void;
 }
 
-export function createSelection<K>(options: SelectionOptions<K>): Selection<K> {
+export function createSelection<K>(options: SelectionOptions<K>): SelectionModel<K> {
   const { getOrderedKeys, onChange } = options;
   const isSelectable = options.isSelectable ?? ((): boolean => true);
-  const mode = (): SelectionMode => {
+  const mode = (): SelectionModelMode => {
     const m = typeof options.mode === 'function' ? options.mode() : options.mode;
-    return m === 'single' ? 'single' : 'multi';
+    return m === 'single' ? 'single' : 'multiple';
   };
   let selected = new Set<K>();
   let anchor: K | null = null;

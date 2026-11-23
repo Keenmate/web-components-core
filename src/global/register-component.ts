@@ -18,7 +18,7 @@ import { coreLog } from '../logging/element-logger.js';
 import type { LoggerBundle, LogLevelDesc } from '../logging/create-loggers.js';
 import { attachLoggerBundle } from '../logging/logger-registry.js';
 import { publishPageLogging, type PageLoggingControls } from '../logging/global-logging.js';
-import { publishLoaderHook, type RenderLoaderCallback } from '../dom/render-loader.js';
+import { publishLoaderHook, type RenderLoadingCallback } from '../dom/render-loader.js';
 import { publishIconHook, type RenderIconCallback } from '../dom/render-icon.js';
 import { publishMotionHook, type Motion } from '../environment/motion.js';
 import { publishLocaleHooks, type PageLocale, type PageSecurity } from '../locale/page-locale.js';
@@ -117,7 +117,7 @@ export type ComponentsRegistry = Record<string, RegisteredComponent | undefined>
   /** Page-wide responsive callback (SPEC §6.7) — runs after the page-wide map. Non-enumerable. */
   responsiveCallback?: ResponsiveCallback;
   /** Page-wide loader look: draws every component's loading states unless an instance `renderLoadingCallback` is set. */
-  renderLoadingCallback?: RenderLoaderCallback;
+  renderLoadingCallback?: RenderLoadingCallback;
   /**
    * Page-wide icon hook (SPEC §12.33): maps an icon name that isn't a built-in to markup for every component;
    * `null` = not mine (icon-font classes / text follow). Non-enumerable.

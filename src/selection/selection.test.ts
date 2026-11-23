@@ -10,7 +10,7 @@ const setup = (opts: Record<string, unknown> = {}) => {
   return { sel, onChange, setKeys: (k: string[]) => (keys = k) };
 };
 
-describe('createSelection — multi', () => {
+describe('createSelection — multiple', () => {
   it('click selects one; Ctrl toggles; Shift selects the range from the anchor; Ctrl+Shift adds it', () => {
     const { sel, onChange } = setup();
     sel.click('b');
@@ -82,7 +82,7 @@ describe('createSelection — multi', () => {
 
 describe('createSelection — single', () => {
   it('one key at a time; Ctrl+click on the selected one clears; Shift ignored; selectAll no-op', () => {
-    let mode: 'single' | 'multi' = 'single';
+    let mode: 'single' | 'multiple' = 'single';
     const { sel } = setup({ mode: () => mode });
     sel.click('a');
     sel.click('c', { shiftKey: true });
@@ -96,7 +96,7 @@ describe('createSelection — single', () => {
     expect(sel.values()).toEqual(['d']);
     sel.set(['a', 'b']);
     expect(sel.values()).toEqual(['a']);
-    mode = 'multi'; // a live input
+    mode = 'multiple'; // a live input
     sel.click('c', { ctrlKey: true });
     expect(sel.values()).toEqual(['a', 'c']);
   });

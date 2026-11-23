@@ -38,7 +38,7 @@ export interface LoaderRenderContext {
  * (stop timers / animations). Nodes the hook appended before returning are removed for you;
  * nodes it appends later (asynchronously) are its cleanup's job.
  */
-export type RenderLoaderCallback = (ctx: LoaderRenderContext) => void | (() => void);
+export type RenderLoadingCallback = (ctx: LoaderRenderContext) => void | (() => void);
 
 export interface RenderLoaderOptions {
   /** Accessible label for the container (`aria-label`); empty → no `aria-label`. */
@@ -50,7 +50,7 @@ export interface RenderLoaderOptions {
    * generated BlissElement property); pass it explicitly when the component
    * keeps it elsewhere (a config object). `null` / `undefined` → no instance hook.
    */
-  renderLoadingCallback?: RenderLoaderCallback | null;
+  renderLoadingCallback?: RenderLoadingCallback | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -58,7 +58,7 @@ export interface RenderLoaderOptions {
 // ---------------------------------------------------------------------------
 
 interface LoaderHookState {
-  callback: RenderLoaderCallback | undefined;
+  callback: RenderLoadingCallback | undefined;
 }
 
 /** On globalThis because each component bundles its own core copy (like logging). */
@@ -80,12 +80,12 @@ export function publishLoaderHook(): void {
   publishPageSetting(HOOK_KEY, {
     get: () => s.callback,
     set: (value: unknown) => {
-      s.callback = typeof value === 'function' ? (value as RenderLoaderCallback) : undefined;
+      s.callback = typeof value === 'function' ? (value as RenderLoadingCallback) : undefined;
     },
   });
 }
 
-function pageHook(): RenderLoaderCallback | undefined {
+function pageHook(): RenderLoadingCallback | undefined {
   publishLoaderHook();
   const cb = typeof window !== 'undefined' ? window.components?.renderLoadingCallback : state().callback;
   return typeof cb === 'function' ? cb : undefined;
@@ -143,7 +143,7 @@ export function renderLoader(
   let cleanup: (() => void) | undefined;
   let isDrawn = false;
   const hooks = [
-    { cb: typeof instanceHook === 'function' ? (instanceHook as RenderLoaderCallback) : undefined, name: 'renderLoadingCallback' },
+    { cb: typeof instanceHook === 'function' ? (instanceHook as RenderLoadingCallback) : undefined, name: 'renderLoadingCallback' },
     { cb: pageHook(), name: 'window.components.renderLoadingCallback' },
   ];
   for (const { cb, name } of hooks) {

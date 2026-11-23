@@ -77,7 +77,7 @@ this.#roving = createRovingFocus(this.#grid, {
                 <code>single</code> mode keeps at most one.
             </p>
             <div class="controls">
-                <label><input type="radio" name="li03-mode" value="multi" checked> <code>multi</code></label>
+                <label><input type="radio" name="li03-mode" value="multiple" checked> <code>multiple</code></label>
                 <label><input type="radio" name="li03-mode" value="single"> <code>single</code></label>
             </div>
             <div class="demo-area">
@@ -87,7 +87,7 @@ this.#roving = createRovingFocus(this.#grid, {
             <div class="code-block" data-language="js"><pre><code>import { createSelection } from '@keenmate/web-components-core';
 
 this.#selection = createSelection({
-  mode: () =&gt; this.config.selectionMode,                    // 'multi' | 'single'
+  mode: () =&gt; this.config.selectionMode,                    // 'multiple' | 'single'
   getOrderedKeys: () =&gt; this.#visibleRows.map((r) =&gt; r.id), // display order
   isSelectable: (id) =&gt; !this.#rowsById.get(id).isDisabled,
   onChange: ({ added, removed, values }) =&gt; this.emit('selection-change', { added, removed, values }),

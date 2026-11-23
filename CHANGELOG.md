@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `createMenuPresentationInputs()`, `menuPresentationOptions(config)` → `getMenuPresentationOptions(config)` (`/menu`);
   `getGlobalLogging` → `getPageLogging` (type `GlobalLoggingControls` → `PageLoggingControls`); `createStyleSlot` →
   `createStyleElement` (types `StyleSlot` / `StyleSlotOptions` → `StyleElement` / `StyleElementOptions`).
+- Types: `Selection` → `SelectionModel` and `SelectionMode` → `SelectionModelMode` (they shadowed the lib.dom
+  `Selection` / `SelectionMode` globals); `createSelection`'s mode values are now `'single' | 'multiple'` (was
+  `'multi'`; matches `selection-mode` + HTML `multiple` — any value other than `'single'` still means multiple).
+  `RenderLoaderCallback` → `RenderLoadingCallback` (it types the `renderLoadingCallback` input).
 
 ### Removed
 - `resolveEnumAttribute(raw, values, fallback)` — unused (no component or core caller); use `toEnum`.
