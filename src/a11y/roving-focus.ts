@@ -38,6 +38,14 @@ export interface RovingFocusOptions {
    * `preventScroll`). A function is asked per move — the component's `beforeScrollCallback` gate. Default `true`.
    */
   shouldScroll?: boolean | ((item: HTMLElement) => boolean);
+  /**
+   * An arrow key found no target — the edge of the list / grid row / column was reached, or every
+   * candidate on the way was skipped (`isSkipped`). Called with the key as pressed (`event.key`, not
+   * RTL-normalised), the current item and the event; the component handles the edge (a calendar moves
+   * to the next month). Return `true` = handled; either way the arrow is consumed (`preventDefault()`)
+   * and focus stays — today's behaviour. Not called when `isWrapping` found a target.
+   */
+  boundaryCallback?: (key: string, item: HTMLElement, event: KeyboardEvent) => boolean | void;
 }
 
 export interface RovingFocus {
@@ -110,14 +118,17 @@ export function createRovingFocus(container: HTMLElement, options: RovingFocusOp
     const rowStart = isGrid ? from - (from % n) : 0;
     const row: [number, number] | undefined = isGrid ? [rowStart, Math.min(rowStart + n - 1, list.length - 1)] : undefined;
     let next = -1;
+    let isArrow = false;
     const key = event.key;
     if (event.ctrlKey) {
       if (key === 'Home') next = firstFrom(list, 0, list.length - 1, 1);
       else if (key === 'End') next = firstFrom(list, 0, list.length - 1, -1);
       else return;
     } else if ((key === forward || key === backward) && orientation !== 'vertical') {
+      isArrow = true;
       next = seek(list, from, key === forward ? 1 : -1, isWrapping, row);
     } else if ((key === 'ArrowDown' || key === 'ArrowUp') && orientation !== 'horizontal') {
+      isArrow = true;
       next = seek(list, from, (key === 'ArrowDown' ? 1 : -1) * n, isWrapping && !isGrid);
     } else if (key === 'Home' || key === 'End') {
       const [lo, hi] = row ?? [0, list.length - 1];
@@ -128,6 +139,12 @@ export function createRovingFocus(container: HTMLElement, options: RovingFocusOp
       next = index;
     } else return;
     event.preventDefault();
+    if (next === -1 && isArrow && options.boundaryCallback) {
+      const boundary = options.boundaryCallback;
+      const item = list[from]!;
+      runSafely(() => boundary(key, item, event), { source: container, message: 'boundaryCallback threw' });
+      return;
+    }
     if (next !== -1 && next !== from) focusItem(next);
   };
 

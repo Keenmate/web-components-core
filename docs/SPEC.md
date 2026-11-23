@@ -2719,10 +2719,14 @@ Decided 2026-11-17 — two patterns, roles stay per component:
   by element or id, else clears. Composing / modified keys pass through. Input + listbox in the same root (warns
   otherwise — an id reference doesn't cross a shadow boundary).
 - **`createRovingFocus(container, { getItems, orientation, columns, isWrapping, hasTypeahead, getItemText,
-  isSkipped, focusItemCallback })`** → `{ current, currentIndex, focusItem, refresh, destroy }`. One tab stop
+  isSkipped, focusItemCallback, shouldScroll, boundaryCallback })`** → `{ current, currentIndex, focusItem, refresh, destroy }`. One tab stop
   (`tabindex` 0 / -1); `vertical` / `horizontal` / `grid` (`columns`, number or function); Left / Right follow
   `isRtl(container)`; Home / End (row in a grid), Ctrl+Home / End; grid columns never wrap; a click / focus on an
   item makes it the stop. Disabled items stay focusable unless `isSkipped` says otherwise (APG).
+  `boundaryCallback(key, item, event)`: an arrow found no target (list end, grid row end for Left / Right, grid
+  column end for Up / Down, or every candidate skipped; never when `isWrapping` found one) — the component handles
+  the edge (a calendar's next month) without predicting core's step rule; `true` = handled; the arrow is consumed
+  either way and focus stays.
 - **`createTypeahead(timeoutMs = 500)`**: printable keys within the timeout form one prefix; a repeated letter
   cycles; used by roving focus, exported for list widgets that keep their own focus model.
 - Not in core: roles, `aria-selected` / `aria-checked`, the highlight class, tree expand / collapse keys

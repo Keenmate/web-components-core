@@ -152,6 +152,69 @@ describe('createRovingFocus', () => {
     expect(rf.currentIndex).toBe(0);
   });
 
+  it('boundaryCallback: list edge, grid row / column edge, all-skipped; true vs not; wrapping finds a target', () => {
+    const boundaryCallback = vi.fn((key: string) => key === 'ArrowDown');
+    const { items, rf } = setup('<button>a</button><button>b</button>', { boundaryCallback });
+    rf.focusItem(1);
+    const down = key(items()[1]!, 'ArrowDown');
+    expect(boundaryCallback).toHaveBeenLastCalledWith('ArrowDown', items()[1], down);
+    expect(down.defaultPrevented).toBe(true); // true = handled
+    expect(rf.currentIndex).toBe(1);
+    rf.focusItem(0);
+    const up = key(items()[0]!, 'ArrowUp');
+    expect(boundaryCallback).toHaveBeenLastCalledWith('ArrowUp', items()[0], up);
+    expect(up.defaultPrevented).toBe(true); // not handled: today's behaviour (consumed, focus stays)
+    expect(rf.currentIndex).toBe(0);
+    boundaryCallback.mockClear();
+    key(items()[0]!, 'ArrowDown'); // moves — no boundary
+    key(items()[1]!, 'Home'); // not an arrow
+    expect(boundaryCallback).not.toHaveBeenCalled();
+
+    // grid 3 columns, 7 cells; cell 4 skipped
+    const grid = vi.fn();
+    const cells = Array.from({ length: 7 }, (_, i) => `<button${i === 4 ? ' disabled' : ''}>${i}</button>`).join('');
+    const g = setup(cells, { orientation: 'grid', columns: 3, boundaryCallback: grid, isSkipped: (i: HTMLElement) => i.hasAttribute('disabled') });
+    g.rf.focusItem(5);
+    key(g.items()[5]!, 'ArrowRight'); // row end
+    expect(grid).toHaveBeenLastCalledWith('ArrowRight', g.items()[5], expect.any(KeyboardEvent));
+    key(g.items()[5]!, 'ArrowLeft'); // 4 skipped → 3, same row
+    expect(g.rf.currentIndex).toBe(3);
+    expect(grid).toHaveBeenCalledTimes(1);
+    g.rf.focusItem(1);
+    key(g.items()[1]!, 'ArrowDown'); // 4 skipped, 7 doesn't exist → column edge
+    expect(grid).toHaveBeenLastCalledWith('ArrowDown', g.items()[1], expect.any(KeyboardEvent));
+    expect(g.rf.currentIndex).toBe(1);
+    g.rf.focusItem(3);
+    key(g.items()[3]!, 'ArrowUp'); // 0 ✓
+    expect(g.rf.currentIndex).toBe(0);
+    key(g.items()[0]!, 'ArrowUp'); // top
+    expect(grid).toHaveBeenCalledTimes(3);
+    document.getElementById('c')!.setAttribute('dir', 'rtl');
+    g.rf.focusItem(5);
+    key(g.items()[5]!, 'ArrowLeft'); // RTL: Left = forward → row end; key passed as pressed
+    expect(grid).toHaveBeenLastCalledWith('ArrowLeft', g.items()[5], expect.any(KeyboardEvent));
+
+    // every candidate skipped (not the edge itself); wrapping that finds a target never asks
+    const skipped = vi.fn();
+    const s = setup('<button>a</button><button disabled>b</button><button disabled>c</button>', {
+      boundaryCallback: skipped, isSkipped: (i: HTMLElement) => i.hasAttribute('disabled'),
+    });
+    key(s.items()[0]!, 'ArrowDown');
+    expect(skipped).toHaveBeenLastCalledWith('ArrowDown', s.items()[0], expect.any(KeyboardEvent));
+    expect(s.rf.currentIndex).toBe(0);
+    const w = vi.fn();
+    const ws = setup('<button>a</button><button>b</button>', { orientation: 'horizontal', isWrapping: true, boundaryCallback: w });
+    ws.rf.focusItem(1);
+    key(ws.items()[1]!, 'ArrowRight');
+    expect(ws.rf.currentIndex).toBe(0);
+    expect(w).not.toHaveBeenCalled();
+  });
+
+  it('boundaryCallback: a throwing hook is logged, the key still consumed', () => {
+    const { items } = setup('<button>a</button>', { boundaryCallback: () => { throw new Error('boom'); } });
+    expect(key(items()[0]!, 'ArrowDown').defaultPrevented).toBe(true);
+  });
+
   it('typeahead: prefix search, repeated letter cycles', () => {
     vi.useFakeTimers();
     const { items, rf } = setup('<button>Copy</button><button>Cut</button><button>Paste</button><button>Clear</button>', { hasTypeahead: true });

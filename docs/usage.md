@@ -879,6 +879,8 @@ this.#nav.refresh();                                          // after re-render
   orientation: 'grid', columns: 7,                            // Left / Right follow the writing direction
   hasTypeahead: false,
   focusItemCallback: (cell) => this.#announceDay(cell),
+  // An arrow found no day in this month (row / column end, or every day on the way disabled): you take over.
+  boundaryCallback: (key, cell, event) => this.#crossMonthEdge(key, cell, event),
 });
 ```
 

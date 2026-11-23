@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`createRovingFocus({ boundaryCallback })`** (audit G11, `/a11y`): `(key, item, event) => boolean | void`, called when
+  an arrow key finds no target — the list end, a grid row end (Left / Right) or column end (Up / Down), or every
+  candidate skipped by `isSkipped` (not when `isWrapping` found one). The key is passed as pressed (not
+  RTL-normalised), `item` is the current item; `true` = handled; the arrow is consumed either way and focus stays.
+  Replaces web-daterangepicker's keydown pre-listener + `canGridMoveWithinMonth` (a private copy of core's grid step
+  rule kept only to predict whether core would move).
 - **`getInputDefaults(inputs, keys?)`** (audit G16c, main index): each input row's absent-attribute value
   (what the element seeds and what removing the attribute resets to), `configKey` → value, `undefined` rows left out,
   `keys` limiting the rows. The one source for a public engine's defaults (C-CA-37):
