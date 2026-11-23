@@ -2874,7 +2874,11 @@ web-multiselect each their own. Decided 2026-11-17 — **`renderIcon(icon, { pre
   `undefined` = not mine (the next one decides); a throw → logged (the host's logger) and the next rule decides.
   One element needs no page setup;
 - ASCII class names (`[A-Za-z][A-Za-z0-9_-]*`, space-separated) → `<i class="<prefix>__icon <names>"
-  aria-hidden="true">` — an icon font (`fa-solid fa-folder`, `bi-gear`);
+  aria-hidden="true">` — an icon font (`fa-solid fa-folder`, `bi-gear`). Inside a shadow root the page's icon-font
+  stylesheet doesn't apply, so the `<i>` is empty until the PAGE brings it in through the component's custom CSS
+  (§12.8): `customStyles = "@import url('…/all.min.css');"` per element or `window.components[tag].customStyles` per
+  tag (core hoists the `@import` into the head for `@font-face`). A documented page requirement, no core
+  mechanism (decided 2026-11-23);
 - anything else (an emoji, a non-Latin letter) → escaped text.
 
 Revised 2026-11-19 to keen-pure-admin's model (reserved affordances → providers → `<i class={name}>`), plus the

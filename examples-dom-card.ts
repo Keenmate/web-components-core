@@ -8,14 +8,21 @@
  * `<core-demo-drop>` — lights up while files are dragged anywhere over the page (`observePageDrag` +
  * `setDropActiveState` → `drop-active` attribute + `:state(drop-active)`), and lists what's dropped on it.
  * `<core-demo-counter>` — its `controller` is a `createControllerFacade` over a private engine.
+ * `<core-demo-icon-toolbar>` (+ the `-alt` tag) — a shadow-DOM toolbar naming its icons (§12.33): `icons` map,
+ * component defaults, an `Actions ▾` `/menu` with `iconDefaults`, custom CSS through `createCustomStyles` (§12.8).
  *
  * Their CSS is the element's own (shadow) CSS, like any component's; page tokens (--kmwc-*) inherit in, so
  * they follow light / dark. Demo-only — not part of the published package.
  */
-import { BlissElement, define, escapeHtml, observePageDrag, setDropActiveState, createPointerDrag, createControllerFacade, renderIcon, toObject, isIconMap } from './src/index.js';
-import type { InputDef, PointerDrag } from './src/index.js';
+import {
+  BlissElement, define, escapeHtml, observePageDrag, setDropActiveState, createPointerDrag, createControllerFacade, renderIcon,
+  toObject, isIconMap, toList, toText, toFunction, adoptStyles, ICON_CSS, createCustomStyles, registerComponent,
+} from './src/index.js';
+import type { InputDef, PointerDrag, CustomStylesCallback, CustomStylesHandle } from './src/index.js';
 import { createLayer } from './src/positioning/index.js';
 import type { Layer } from './src/positioning/index.js';
+import { openMenu } from './src/menu/index.js';
+import type { MenuHandle } from './src/menu/index.js';
 
 const BOX_CSS = `
   :host { display: block; }
@@ -231,7 +238,121 @@ export class CoreDemoIconBar extends BlissElement {
   }
 }
 
+/** The toolbar's own icons (its documented icon names). `add` / `delete` are built-in names: drawn from their token. */
+const TOOLBAR_ICONS: Readonly<Record<string, string>> = {
+  rowEdit: '<svg viewBox="0 0 10 10" width="1em" height="1em"><path d="M2 8l1-3 4-4 2 2-4 4z" fill="currentColor"/></svg>',
+  share: '<svg viewBox="0 0 10 10" width="1em" height="1em"><circle cx="2.5" cy="5" r="1.5" fill="currentColor"/><circle cx="7.5" cy="2" r="1.5" fill="currentColor"/><circle cx="7.5" cy="8" r="1.5" fill="currentColor"/><path d="M2.5 5l5-3M2.5 5l5 3" stroke="currentColor"/></svg>',
+  archive: '<svg viewBox="0 0 10 10" width="1em" height="1em"><path d="M1 2h8v2H1zM2 4.5h6V9H2z" fill="currentColor"/></svg>',
+};
+
+/** The menu's icon names → icons: `openMenu`'s `iconDefaults` (entries carry the NAME, never markup). */
+const TOOLBAR_MENU_ICONS: Readonly<Record<string, string>> = {
+  menuCopy: '<svg viewBox="0 0 10 10" width="1em" height="1em"><path d="M3.5 3.5h5v5h-5zM1.5 6.5v-5h5" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>',
+  menuMove: '<svg viewBox="0 0 10 10" width="1em" height="1em"><path d="M1 5h6M5 2.5 7.5 5 5 7.5" stroke="currentColor" stroke-width="1.4" fill="none"/></svg>',
+};
+
+const TOOLBAR_CSS = `@layer component {
+  :host { display: inline-block; }
+  .tb { display: inline-flex; flex-wrap: wrap; gap: .35rem; align-items: center; padding: .35rem;
+        border: 1px solid var(--kmwc-border-color); border-radius: var(--kmwc-radius-md, 8px); }
+  .tb__btn { display: inline-flex; gap: .35rem; align-items: center; }
+  .tb__btn--danger { color: var(--kmwc-danger-color, #dc2626); }
+  .tb__slot { display: inline-flex; min-width: 1em; min-height: 1em; align-items: center; justify-content: center; }
+}`;
+
+/**
+ * An icon-rendering component in a shadow root (SPEC §12.33): shows its `items` (icon names) as buttons through
+ * `renderIcon(name, { defaults })`, an optional `menu` (`Actions ▾`, `openMenu({ iconDefaults })`), takes custom
+ * CSS through `createCustomStyles` (page layer `window.components['core-demo-icon-toolbar'].customStyles` + its
+ * own `custom-styles`), repaints in `iconsChanged()`. `delete` is drawn in the danger colour.
+ */
+export class CoreDemoIconToolbar extends BlissElement {
+  protected static override inputs: readonly InputDef[] = [
+    { configKey: 'items', attribute: 'items', converter: toList({ default: ['add', 'delete', 'rowEdit'] }), on: 'update' },
+    { configKey: 'menu', attribute: 'menu', converter: toList(), on: 'update' },
+    { configKey: 'icons', attribute: 'icons', converter: toObject({ validate: isIconMap }), on: 'update' },
+    { configKey: 'customStyles', attribute: 'custom-styles', converter: toText({ isNullable: true }), on: 'update' },
+    { configKey: 'getCustomStylesCallback', converter: toFunction<CustomStylesCallback>(), default: null, on: 'update' },
+  ];
+
+  #customStyles: CustomStylesHandle | null = null;
+  #menu: MenuHandle | null = null;
+
+  protected override reinit(): void {
+    const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
+    adoptStyles(root, ICON_CSS, TOOLBAR_CSS);
+    root.innerHTML = '<div class="tb" part="toolbar"></div>';
+    root.querySelector('.tb')!.addEventListener('click', (e) => {
+      const button = (e.target as Element).closest<HTMLElement>('.tb__menu');
+      if (button) this.#openMenu(button);
+    });
+    this.#paint();
+    if (this.#customStyles) this.#customStyles.refresh();
+    else {
+      this.#customStyles = createCustomStyles(this, root, {
+        cssClass: 'tb-custom-styles',
+        getContext: () => this.withContext({}),
+        getInstanceStyles: () => ({
+          css: this.config.customStyles as string | null,
+          callback: this.config.getCustomStylesCallback as CustomStylesCallback | null,
+        }),
+      });
+    }
+  }
+
+  protected override update(partial: Record<string, unknown>): void {
+    if ('items' in partial || 'menu' in partial) this.#paint(); // `icons` → iconsChanged()
+    if ('customStyles' in partial || 'getCustomStylesCallback' in partial) this.#customStyles?.refresh();
+  }
+
+  protected override iconsChanged(): void {
+    this.#paint();
+  }
+
+  protected override disconnect(): void {
+    this.#menu?.close();
+  }
+
+  protected override destroyCallback(): void {
+    this.#customStyles?.destroy();
+    this.#customStyles = null;
+  }
+
+  #paint(): void {
+    const bar = this.shadowRoot?.querySelector('.tb');
+    if (!bar) return;
+    const button = (name: string): string =>
+      `<button type="button" class="tb__btn${name === 'delete' ? ' tb__btn--danger' : ''}" data-icon-name="${escapeHtml(name)}">`
+      + `<span class="tb__slot">${renderIcon(name, { prefix: 'tb', host: this, defaults: TOOLBAR_ICONS })}</span>${escapeHtml(name)}</button>`;
+    const menu = (this.config.menu as string[]).length ? '<button type="button" class="tb__menu" aria-haspopup="menu">Actions ▾</button>' : '';
+    bar.innerHTML = (this.config.items as string[]).map(button).join('') + menu;
+  }
+
+  #openMenu(button: HTMLElement): void {
+    this.#menu?.close();
+    const entries = (this.config.menu as string[]).map((name) => ({ id: name, text: name, icon: name, isDanger: name === 'delete' }));
+    this.#menu = openMenu(entries, this.withContext({}), {
+      at: button,
+      host: this.shadowRoot!,
+      returnFocusTo: button,
+      inheritThemeFrom: this,
+      iconDefaults: TOOLBAR_MENU_ICONS, // the entries name their icons; the page can still replace them
+      closeCallback: () => { this.#menu = null; },
+    });
+  }
+}
+
+/** The same toolbar under a second tag — shows `window.components.icons`' `'<tag>.<name>'` keys. */
+export class CoreDemoIconToolbarAlt extends CoreDemoIconToolbar {}
+
 define('core-demo-sortable', CoreDemoSortable);
 define('core-demo-drop', CoreDemoDrop);
 define('core-demo-counter', CoreDemoCounter);
 define('core-demo-icon-bar', CoreDemoIconBar);
+// registered, not just defined: registerComponent() installs window.components[tag].customStyles (the page layer)
+registerComponent('core-demo-icon-toolbar', CoreDemoIconToolbar as unknown as CustomElementConstructor, {
+  config: { name: 'core-demo-icon-toolbar', version: '0.0.0-demo', author: 'examples-dom-card.ts' },
+});
+registerComponent('core-demo-icon-toolbar-alt', CoreDemoIconToolbarAlt as unknown as CustomElementConstructor, {
+  config: { name: 'core-demo-icon-toolbar-alt', version: '0.0.0-demo', author: 'examples-dom-card.ts' },
+});

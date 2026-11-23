@@ -5,6 +5,9 @@
     /* DH05 · built-in icon tokens — what @keenmate/base-css-variables defines on :root (any mask image works). */
     :root {
         --base-icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'/%3E%3C/svg%3E");
+        /* DH05c–DH05h · the toolbar's built-in names (a plus, a bin) */
+        --base-icon-add: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z'/%3E%3C/svg%3E");
+        --base-icon-delete: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 3h6l1 2h4v2H4V5h4zM6 8h12l-1 13H7z'/%3E%3C/svg%3E");
     }
     /* DH05 · a stand-in for an icon font (Font Awesome, Bootstrap Icons, …): a class that draws a glyph. */
     .demo-font-heart::before { content: '\2665'; }
@@ -154,10 +157,11 @@ cell.addEventListener('paste', (e) =&gt; {
             </p>
             <ol>
                 <li>markup (it starts with <code>&lt;</code>) goes in raw;</li>
+                <li>the icon maps — <code>el.icons</code>, then <code>window.components.icons</code> (DH05b–DH05d);</li>
                 <li>a built-in name (<code>close</code>, <code>chevron</code>, <code>check</code>, …
                     <code>BUILT_IN_ICON_NAMES</code>) is a <code>.km-icon</code> glyph masked from its
                     <code>--base-icon-&lt;name&gt;</code> token in <code>currentColor</code> — reserved, the hook never sees it
-                    (this page defines only <code>check</code>, so <code>close</code> draws nothing here);</li>
+                    (this page defines only <code>check</code>, <code>add</code> and <code>delete</code>, so <code>close</code> draws nothing here);</li>
                 <li>the element's own <code>renderIconCallback(name, ctx)</code> (here <code>moon</code> → an SVG), then the
                     page-wide <code>window.components.renderIconCallback</code> (here <code>star</code>) — each answers
                     <code>null</code> for a name that isn't its own; one element needs no page setup;</li>
@@ -177,7 +181,7 @@ cell.addEventListener('paste', (e) =&gt; {
                 <button data-icon='&lt;svg viewBox="0 0 10 10" width="1em" height="1em"&gt;&lt;circle cx="5" cy="5" r="4" fill="currentColor"/&gt;&lt;/svg&gt;'>&lt;svg&gt;</button>
                 <button data-icon="&lt;b&gt;">a stray <code>&lt;b&gt;</code> (raw)</button>
                 <label><input type="checkbox" id="dh05-own-hook" checked> element hook set</label>
-                <label><input type="checkbox" id="dh05-hook" checked> page hook set</label>
+                <label><input type="checkbox" id="dh05-hook" checked> page hook draws <code>star</code></label>
             </div>
             <div class="output">
                 <span class="output-label">rendered</span> <strong id="dh05-out"></strong>
@@ -228,6 +232,171 @@ window.components.icons = { 'web-grid.rowEdit': 'star', rowDelete: '❌' };
 { configKey: 'icons', attribute: 'icons', converter: toObject({ validate: isIconMap }), on: 'update' }
 cell.innerHTML = renderIcon('rowDelete', { prefix: 'grid', host: this, defaults: { rowDelete: '&lt;svg …&gt;' } });
 protected override iconsChanged(): void { this.#renderIcons(); }</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- DH05c · el.icons on one element                               -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DH05c · One element's icons: <code>el.icons</code></h2>
+            <p>
+                <code>&lt;core-demo-icon-toolbar&gt;</code> (cards DH05c–DH05h) is a shadow-DOM component that names its
+                icons: <code>add</code> and <code>delete</code> are built-in names (drawn from <code>--base-icon-*</code>),
+                <code>rowEdit</code> is its own default SVG. The first toolbar's <code>icons</code> map replaces both
+                kinds — a built-in name is no exception, the maps are asked before the built-ins. The second toolbar has
+                no map and keeps the component's look.
+            </p>
+            <div class="controls">
+                <label><input type="checkbox" id="dh05c-own" checked> first toolbar: <code>el.icons = { delete: '🗑️', rowEdit: '✏️' }</code></label>
+            </div>
+            <div class="output">
+                <core-demo-icon-toolbar id="dh05c-a"></core-demo-icon-toolbar>
+                <core-demo-icon-toolbar id="dh05c-b"></core-demo-icon-toolbar>
+            </div>
+            <div class="code-block" data-language="js"><pre><code>toolbar.icons = { delete: '🗑️', rowEdit: '✏️' };   // or icons='{"delete":"🗑️"}' — this element only
+toolbar.icons = undefined;                         // back to the built-in + the component's default</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- DH05d · window.components.icons                               -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DH05d · Page-wide icons: <code>'&lt;tag&gt;.&lt;name&gt;'</code> before <code>'&lt;name&gt;'</code></h2>
+            <p>
+                <code>window.components.icons</code> is one flat dictionary for every component on the page. A key
+                with the tag (<code>'core-demo-icon-toolbar.share'</code>) is asked first and reaches only that
+                component; a bare name (<code>share</code>, <code>archive</code>) reaches every component that uses the
+                name. Below: the same toolbar under two tags. <code>share</code> differs, <code>archive</code> is shared.
+                The page has one map: this checkbox and DH05b's write into the same object.
+            </p>
+            <div class="controls">
+                <label><input type="checkbox" id="dh05d-page"> <code>window.components.icons = { 'core-demo-icon-toolbar.share': '🔗', share: '📤', archive: '📦' }</code></label>
+            </div>
+            <div class="output">
+                <span class="output-label">core-demo-icon-toolbar</span>
+                <core-demo-icon-toolbar id="dh05d-a" items="share,archive"></core-demo-icon-toolbar>
+                <span class="output-label">core-demo-icon-toolbar-alt</span>
+                <core-demo-icon-toolbar-alt id="dh05d-b" items="share,archive"></core-demo-icon-toolbar-alt>
+            </div>
+            <div class="code-block" data-language="js"><pre><code>window.components.icons = {
+    'core-demo-icon-toolbar.share': '🔗',   // this tag only — wins over the bare name
+    share: '📤',                            // every other component naming an icon 'share'
+    archive: '📦',
+};</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- DH05e · Lucide through the page hook                          -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DH05e · Lucide through <code>window.components.renderIconCallback</code></h2>
+            <p>
+                One page hook brings an icon set to every component. It answers only names starting with
+                <code>lucide-</code> and returns <code>null</code> for the rest, so built-ins, maps and the other cards
+                are untouched. Each icon is a span masked with the
+                <a href="https://lucide.dev" target="_blank" rel="noopener">lucide-static</a> SVG, painted in
+                <code>currentColor</code>: the rocket is plain in a normal button, the mapped bin red in the danger one.
+                <code>lucide-heart</code> comes from an SVG string bundled with the page (a base64
+                <code>data:</code> URL via <code>btoa</code>, no network); the others from the CDN. The first toolbar maps
+                <code>{ delete: 'lucide-trash-2' }</code>: a map value is an icon string, so it goes on into the hook.
+                The second toolbar keeps the built-in <code>delete</code>.
+            </p>
+            <div class="output">
+                <core-demo-icon-toolbar id="dh05e-a" items="lucide-rocket,lucide-heart,delete"></core-demo-icon-toolbar>
+                <core-demo-icon-toolbar id="dh05e-b" items="lucide-rocket,lucide-heart,delete"></core-demo-icon-toolbar>
+                <pre id="dh05e-html"></pre>
+            </div>
+            <div class="code-block" data-language="js"><pre><code>const BUNDLED = { 'lucide-heart': '&lt;svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" …&gt;…&lt;/svg&gt;' };
+const mask = (url) =&gt; `&lt;span aria-hidden="true" style="display:inline-block;width:1em;height:1em;`
+    + `background:currentColor;-webkit-mask:url('${url}') center/contain no-repeat;mask:url('${url}') center/contain no-repeat"&gt;&lt;/span&gt;`;
+
+window.components.renderIconCallback = (name) =&gt; {
+    if (!/^lucide-[a-z0-9-]+$/.test(name)) return null;          // not mine — the next rule decides
+    const svg = BUNDLED[name];
+    return mask(svg
+        ? `data:image/svg+xml;base64,${btoa(svg)}`                // bundled: no request
+        : `https://unpkg.com/lucide-static@latest/icons/${name.slice(7)}.svg`);
+};
+
+toolbar.icons = { delete: 'lucide-trash-2' };   // a map value goes through the hook too</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- DH05f · /menu iconDefaults                                    -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DH05f · Menu icons: <code>openMenu(…, { iconDefaults })</code></h2>
+            <p>
+                A component's menu entries carry icon NAMES (<code>icon: 'menuMove'</code>), never ready markup, and
+                <code>openMenu</code> gets the component's name → icon map as <code>iconDefaults</code>. Every item icon
+                then goes through <code>renderIcon</code> with the component as host, so the page can replace a menu
+                icon exactly like a toolbar icon. Open both menus: the second toolbar maps
+                <code>{ menuMove: 'lucide-folder-input' }</code> (DH05e's hook draws it); <code>delete</code> stays the
+                built-in in both.
+            </p>
+            <div class="output">
+                <core-demo-icon-toolbar id="dh05f-a" items="rowEdit" menu="menuCopy,menuMove,delete"></core-demo-icon-toolbar>
+                <core-demo-icon-toolbar id="dh05f-b" items="rowEdit" menu="menuCopy,menuMove,delete"></core-demo-icon-toolbar>
+            </div>
+            <div class="code-block" data-language="js"><pre><code>// in the component
+const MENU_ICONS = { menuCopy: '&lt;svg …&gt;', menuMove: '&lt;svg …&gt;' };
+openMenu([
+    { id: 'copy', text: 'Copy', icon: 'menuCopy' },
+    { id: 'move', text: 'Move', icon: 'menuMove' },
+    { id: 'delete', text: 'Delete', icon: 'delete', isDanger: true },   // a built-in name
+], ctx, { at: button, host: this.shadowRoot, iconDefaults: MENU_ICONS, runAction });
+
+// on the page
+toolbar.icons = { menuMove: 'lucide-folder-input' };</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- DH05g · Font Awesome through customStyles                     -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DH05g · Font Awesome: icon-font classes need <code>customStyles</code></h2>
+            <p>
+                A class list (<code>'fa-solid fa-trash-can'</code>) renders <code>&lt;i class="tb__icon fa-solid
+                fa-trash-can"&gt;</code>. Inside a shadow root the page's Font Awesome stylesheet doesn't apply, so the
+                <code>&lt;i&gt;</code> is empty (first toolbar). The page has to bring the stylesheet into the component
+                through its custom CSS (SPEC §12.8): <code>@import</code> it in <code>customStyles</code>, for one
+                element (second toolbar) or for every element of the tag
+                (<code>window.components[tag].customStyles</code>). Core also links each <code>@import</code> in the page
+                <code>&lt;head&gt;</code> because Chromium ignores <code>@font-face</code> inside a shadow root. Side
+                effect: the stylesheet then reaches the page too (DH05's <code>fa-solid fa-folder</code> draws).
+            </p>
+            <div class="output">
+                <span class="output-label">no customStyles</span>
+                <core-demo-icon-toolbar id="dh05g-a" items="add,delete"></core-demo-icon-toolbar>
+                <span class="output-label">customStyles @import</span>
+                <core-demo-icon-toolbar id="dh05g-b" items="add,delete"></core-demo-icon-toolbar>
+            </div>
+            <div class="code-block" data-language="js"><pre><code>const FA = "@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css');";
+
+toolbar.icons = { add: 'fa-solid fa-plus', delete: 'fa-solid fa-trash-can' };
+toolbar.customStyles = FA;                                   // this element (attribute custom-styles)
+window.components['core-demo-icon-toolbar'].customStyles = FA;   // or every element of the tag</code></pre></div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- DH05h · built-in glyph token                                  -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>DH05h · Built-in glyphs: <code>--base-icon-&lt;name&gt;</code></h2>
+            <p>
+                A built-in name is a mask over its token, painted in <code>currentColor</code>. The token is an ordinary
+                inherited CSS variable: the page sets it on <code>:root</code> (base-css-variables does), and an element
+                or a section may set its own. The first toolbar gets a different bin; the second keeps the page's.
+            </p>
+            <div class="controls">
+                <label><input type="checkbox" id="dh05h-own" checked> <code>#dh05h-a { --base-icon-delete: url(…) }</code></label>
+            </div>
+            <div class="output">
+                <core-demo-icon-toolbar id="dh05h-a" items="delete,add"></core-demo-icon-toolbar>
+                <core-demo-icon-toolbar id="dh05h-b" items="delete,add"></core-demo-icon-toolbar>
+            </div>
+            <div class="code-block" data-language="css"><pre><code>:root     { --base-icon-delete: url("data:image/svg+xml,…"); }   /* every component */
+#dh05h-a  { --base-icon-delete: url("data:image/svg+xml,…"); }   /* this element only */</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -313,7 +482,7 @@ protected override createController() {
                     <tr><td><code>.km-drawer</code> · <code>--start</code> / <code>--end</code> / <code>--top</code> / <code>--bottom</code> / <code>--closing</code> (<code>SHEET_CHROME_CSS</code>)</td><td>An edge drawer; <code>--km-sheet-drawer-size</code> / <code>-max-height</code> / <code>-bg</code> / <code>-color</code> / <code>-shadow</code> / <code>-border-radius</code> / <code>-duration</code>.</td></tr>
                     <tr><td><code>.km-sheet</code> · <code>.km-sheet-body</code> · <code>--closing</code> (<code>SHEET_CHROME_CSS</code>)</td><td>The phone full-screen sheet frame (fixed, 100dvw × 100dvh, safe areas, modal tier, header + scrolling body); <code>--km-sheet-bg</code> / <code>-color</code> / <code>-z-index</code> / <code>-duration</code> / <code>-enter-offset</code>.</td></tr>
                     <tr><td><code>copyText(text)</code> · <code>readPasteText(event, { type, shouldNormalizeNewlines })</code></td><td>Copy with the Clipboard API or the <code>execCommand</code> fallback (→ <code>Promise&lt;boolean&gt;</code>); a paste's text, CRLF → LF.</td></tr>
-                    <tr><td><code>renderIcon(icon, { prefix, defaults })</code> · <code>ICON_CSS</code></td><td>Markup raw → a built-in name masked from <code>--base-icon-&lt;name&gt;</code> → <code>el.icons</code> → the element's, then the page-wide <code>renderIconCallback</code> → <code>window.components.icons</code> → the component's <code>defaults</code> → class names as an icon font → escaped text.</td></tr>
+                    <tr><td><code>renderIcon(icon, { prefix, defaults })</code> · <code>ICON_CSS</code></td><td>Markup raw → <code>el.icons</code> → <code>window.components.icons</code> (<code>'&lt;tag&gt;.&lt;name&gt;'</code>, then <code>'&lt;name&gt;'</code>) → a built-in name masked from <code>--base-icon-&lt;name&gt;</code> → the element's, then the page-wide <code>renderIconCallback</code> → the component's <code>defaults</code> (a menu: <code>openMenu</code>'s <code>iconDefaults</code>) → class names as an icon font (inside a shadow root its stylesheet comes through <code>customStyles</code>) → escaped text.</td></tr>
                     <tr><td><code>renderSlot(container, result | () =&gt; result, { renderDefault, memoKey })</code></td><td>String = HTML, node = mounted, <code>null</code> = default, <code>false</code> = hidden; a same <code>memoKey</code> skips the hook. Returns <code>'custom' | 'default' | 'hidden'</code>.</td></tr>
                     <tr><td><code>createControllerFacade(target | () =&gt; target, methods | { methods, state, writable, emptyResults })</code></td><td>A frozen public controller over a lazily-read engine.</td></tr>
                 </tbody>
@@ -325,7 +494,7 @@ protected override createController() {
     <script type="module">
         import { copyText, readPasteText, renderIcon, renderSlot, ICON_CSS, SHEET_CHROME_CSS, createSheetHeader, adoptStyles, escapeHtml, startModalSession, startPanelSession, animateOut } from '/src/index.ts';
         import { createLayer } from '/src/positioning/index.ts';
-        await Promise.all(['core-demo-sortable', 'core-demo-drop', 'core-demo-counter'].map((t) => customElements.whenDefined(t)));
+        await Promise.all(['core-demo-sortable', 'core-demo-drop', 'core-demo-counter', 'core-demo-icon-toolbar', 'core-demo-icon-toolbar-alt'].map((t) => customElements.whenDefined(t)));
         const $ = (id) => document.getElementById(id);
         /** One log line; `tone` is a kit log-line tone (ok / info / warn / err / muted / action). */
         const log = (panel, text, tone = '') => {
@@ -435,8 +604,22 @@ protected override createController() {
         // DH05
         adoptStyles(document, ICON_CSS);
         const STAR = '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>';
-        const iconHook = (name) => (name === 'star' ? STAR : null);
-        const setIconHook = () => { (window.components ??= {}).renderIconCallback = $('dh05-hook').checked ? iconHook : undefined; };
+        // DH05e · Lucide: names 'lucide-*' → a span masked with the SVG (currentColor); null for every other name.
+        const LUCIDE_BUNDLED = {
+            'lucide-heart': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>',
+        };
+        const mask = (url) => `<span aria-hidden="true" style="display:inline-block;width:1em;height:1em;`
+            + `background:currentColor;-webkit-mask:url('${url}') center/contain no-repeat;mask:url('${url}') center/contain no-repeat"></span>`;
+        const lucideHook = (name) => {
+            if (!/^lucide-[a-z0-9-]+$/.test(name)) return null;
+            const svg = LUCIDE_BUNDLED[name];
+            return mask(svg ? `data:image/svg+xml;base64,${btoa(svg)}` : `https://unpkg.com/lucide-static@latest/icons/${name.slice(7)}.svg`);
+        };
+        // One page, one hook: DH05's star (switchable) + DH05e's Lucide names.
+        const setIconHook = () => {
+            const isStarOn = $('dh05-hook').checked;
+            (window.components ??= {}).renderIconCallback = (name) => (isStarOn && name === 'star' ? STAR : null) ?? lucideHook(name);
+        };
         setIconHook();
         const MOON = '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
         const iconHost = document.createElement('demo-icon-host'); // stands in for a component (its renderIconCallback input)
@@ -458,11 +641,44 @@ protected override createController() {
         // DH05b
         const iconBar = $('dh05b-bar');
         $('dh05b-own').addEventListener('change', (e) => { iconBar.icons = e.target.checked ? { rowDelete: '🗑️' } : undefined; });
-        $('dh05b-page').addEventListener('change', (e) => {
-            window.components.icons = e.target.checked
-                ? { 'core-demo-icon-bar.rowEdit': 'star', rowAdd: 'demo-font-heart', rowDelete: '❌' }
-                : undefined;
-        });
+        // DH05b + DH05d share the page's ONE map: each checkbox adds its keys.
+        const setPageIcons = () => {
+            const icons = {
+                ...($('dh05b-page').checked ? { 'core-demo-icon-bar.rowEdit': 'star', rowAdd: 'demo-font-heart', rowDelete: '❌' } : {}),
+                ...($('dh05d-page').checked ? { 'core-demo-icon-toolbar.share': '🔗', share: '📤', archive: '📦' } : {}),
+            };
+            window.components.icons = Object.keys(icons).length ? icons : undefined;
+        };
+        $('dh05b-page').addEventListener('change', setPageIcons);
+        $('dh05d-page').addEventListener('change', setPageIcons);
+
+        // DH05c
+        const setOwnIcons = () => { $('dh05c-a').icons = $('dh05c-own').checked ? { delete: '🗑️', rowEdit: '✏️' } : undefined; };
+        $('dh05c-own').addEventListener('change', setOwnIcons);
+        setOwnIcons();
+
+        // DH05e (the hook is set with DH05's above)
+        $('dh05e-a').icons = { delete: 'lucide-trash-2' };
+        $('dh05e-html').textContent = `lucide-rocket → ${lucideHook('lucide-rocket')}
+lucide-heart → ${lucideHook('lucide-heart').slice(0, 150)}…
+delete → ${lucideHook('delete')} (not mine)`;
+
+        // DH05f
+        $('dh05f-b').icons = { menuMove: 'lucide-folder-input' };
+
+        // DH05g
+        const FA = "@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css');";
+        for (const id of ['dh05g-a', 'dh05g-b']) $(id).icons = { add: 'fa-solid fa-plus', delete: 'fa-solid fa-trash-can' };
+        $('dh05g-b').customStyles = FA;
+
+        // DH05h
+        const OTHER_BIN = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 6h14M10 3h4M7 6l1 15h8l1-15' fill='none' stroke='black' stroke-width='2'/%3E%3Cpath d='M10 10v7M14 10v7' stroke='black' stroke-width='2'/%3E%3C/svg%3E")`;
+        const setOwnToken = () => {
+            if ($('dh05h-own').checked) $('dh05h-a').style.setProperty('--base-icon-delete', OTHER_BIN);
+            else $('dh05h-a').style.removeProperty('--base-icon-delete');
+        };
+        $('dh05h-own').addEventListener('change', setOwnToken);
+        setOwnToken();
 
         // DH06
         let calls = 0;

@@ -612,6 +612,9 @@ Icons on items / options / nodes are data — read them with one rule ([SPEC §1
    element, prefix })` → markup, `null` = not mine (the next one decides);
 6. the component's own `defaults` (the `renderIcon` option: its icon names → icons);
 7. other class names (`'fa-solid fa-folder'`, `'bi-gear'`) → `<i class="<prefix>__icon fa-solid fa-folder" aria-hidden="true">`;
+   inside a shadow root the page's Font Awesome CSS doesn't reach it (an empty `<i>`) — the page imports it into the
+   component through custom CSS (`el.customStyles = "@import url('…/fontawesome/…/all.min.css');"`, or
+   `window.components['web-grid'].customStyles` for the tag; core links the `@import` in the head for the font);
 8. anything else (`'🚀'`) → escaped text.
 
 A name not in a map falls through. A map value (2, 3, 6) is an icon string itself, read by the same rules
