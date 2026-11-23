@@ -2585,8 +2585,9 @@ every element. Decided 2026-10-26 / 10-27 / 10-28 (rulebook D-NC-24), built 2026
   BlissElement's opt-in `localeChanged()` hook (override = subscribed while connected) re-renders texts. Not
   called on the first connect (`reinit()` read the locale); a change while detached fires on reconnect (a
   revision counter).
-- Not in core: a component's `locale` input (only the components that format dates / numbers declare one),
-  language packs (`/locales/cs` later, if ever), a byte formatter (web-dropzone's stays until a second copy).
+- Not core-declared: a component's `locale` input — every component declares its own row (rulebook C-CA-38;
+  exempt: a satellite bound to a main element, e.g. the web-dropzone satellites, takes the main element's locale).
+- Not in core: language packs (`/locales/cs` later, if ever), a byte formatter (web-dropzone's stays until a second copy).
 
 ### 12.25 Keyboard navigation — IMPLEMENTED (`src/a11y/`, subpath `/a11y`)
 
