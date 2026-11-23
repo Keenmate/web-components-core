@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as ts from 'typescript';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { blissInputsPlugin } from './plugin.js';
 import { withCoreDeclared } from './core-declared.js';
 import { extractBlissClasses } from './extract.js';
@@ -81,6 +83,25 @@ describe('core-declared API', () => {
     const { CORE_DECLARED_API } = await import('./core-declared.js');
     const own = new Set(Object.getOwnPropertyNames(BlissElement.prototype));
     for (const api of CORE_DECLARED_API) expect(own.has(api.name), api.name).toBe(true);
+  });
+
+  // Audit 2026-11-23 D4: `controller`, `on()`, `isLoggingEnabled` were public but missing.
+  it('lists every public BlissElement member (minus lifecycle callbacks and core-declared inputs)', async () => {
+    const { CORE_DECLARED_API, CORE_DECLARED_INPUTS } = await import('./core-declared.js');
+    const file = resolve(process.cwd(), 'src/element/bliss-element.ts');
+    const sf = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
+    const cls = sf.statements.find((n): n is ts.ClassDeclaration => ts.isClassDeclaration(n) && n.name?.text === 'BlissElement')!;
+    const skip = new Set(['constructor', 'connectedCallback', 'disconnectedCallback', 'attributeChangedCallback', 'formDisabledCallback']);
+    for (const input of CORE_DECLARED_INPUTS) skip.add(input.member.name);
+    const isPublic = (m: ts.ClassElement) =>
+      !(ts.canHaveModifiers(m) ? ts.getModifiers(m) ?? [] : []).some((x) =>
+        x.kind === ts.SyntaxKind.ProtectedKeyword || x.kind === ts.SyntaxKind.PrivateKeyword || x.kind === ts.SyntaxKind.StaticKeyword);
+    const pub = new Set<string>();
+    for (const m of cls.members) {
+      if (!m.name || !ts.isIdentifier(m.name) || !isPublic(m) || skip.has(m.name.text)) continue;
+      pub.add(m.name.text);
+    }
+    expect([...pub].sort()).toEqual(CORE_DECLARED_API.map((a) => a.name).sort());
   });
 
   it('the plugin lists them on a component class; the component’s own member wins', () => {

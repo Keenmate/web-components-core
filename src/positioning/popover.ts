@@ -9,10 +9,10 @@
  * the overlay tree (Escape / outside click / group exclusivity), close on scroll / resize.
  * Every {@link AnchorOptions} field goes to `anchor()`.
  *
- * Used today by multiselect's fullscreen label reveal, treeview's full-label panel and
- * web-editor's selection toolbar. The big panels (multiselect dropdown, daterangepicker
- * calendar, dropzone popover) still call `anchor()` themselves: see
- * `docs/review/2026-11-06-createpopover-fit.md`.
+ * Fits small reveals and big panels alike (dropdowns, calendars, pickers): `shouldKeepMounted`,
+ * `setAnchored()` and the {@link AnchorOptions} pass-through cover the gaps found in
+ * `docs/review/2026-11-06-createpopover-fit.md`. Call `anchor()` directly only for a follower
+ * that needs no open state / overlay tree (a hint, a tooltip-like label).
  */
 import { findOverlayContainer } from './overlay-container.js';
 import { anchor } from './anchor.js';

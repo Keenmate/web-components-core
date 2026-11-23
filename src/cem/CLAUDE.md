@@ -23,7 +23,8 @@ Core-declared inputs (not table rows) are added by the plugin via
 `theme-source`/`themeSource`, `motion`, the `ready` event on every table-driven class;
 `responsive` + `responsiveCallback` only with a `static inputs` table
 (`ExtractedClass.hasInputTable`), plus `BlissElement`'s own public API (`CORE_DECLARED_API`:
-`release`, `destroy`, `whenReady`, …; a test fails if a name disappears from the class).
+`release`, `destroy`, `whenReady`, `controller`, `on`, …; a test fails if a name disappears from the class, or if a
+public `BlissElement` member is missing from the list).
 Own declarations of the same name win. Keep
 `CORE_DECLARED_INPUTS` in sync when core adds a global attribute/property.
 **Source-of-truth split (SPEC §8 amendment):** the table +

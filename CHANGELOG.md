@@ -126,6 +126,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `coreLogging` (a lazy proxy over the same bundle) — use `getCoreLogging()`.
 
 ### Fixed
+- **CEM: `controller`, `on()` and `isLoggingEnabled` are in every manifest** (`/cem` `CORE_DECLARED_API`): public
+  `BlissElement` members a component manifest did not list unless the component re-declared them. A unit test now
+  compares the list with every public member of the class.
 - **Escape and a tooltip shown by keyboard focus** (`/positioning` `createTooltip`, SPEC §12.2, WCAG 1.4.13): the
   first Escape now only hides a tooltip that keyboard focus showed. The tooltip listens on `window` capture (before
   the overlay router and component handlers) and `preventDefault()`s that press, so an open routed dropdown /
