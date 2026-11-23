@@ -240,8 +240,8 @@ searchCallback = ({ term, signal, entries }) => {
   findHighlightRanges,                    // (label, term, { behavior, match }) → { text, ranges }
   wrapRanges,                             // (text, ranges, { open?, close?, escape? }) → string; escape defaults to escapeHtml
   highlightHtml,                          // (trustedHtml, term, { behavior, match, open?, close? }) → string
-  escapeHtml,                             // (text) → text with &amp; &lt; &gt; " ' escaped
 } from '@keenmate/web-components-core/search';
+import { escapeHtml } from '@keenmate/web-components-core'; // (text) → text with &amp; &lt; &gt; " ' escaped
 
 // types: SearchBehavior, SearchMatch, SearchTermContext, PreparedSearchTerm,
 //        SearchEntry, SearchCallbackContext, ActiveSearchTerm, SearchRange, HighlightResult,
@@ -250,9 +250,10 @@ searchCallback = ({ term, signal, entries }) => {
 
     <script type="module">
         import {
-            createRegexCompiler, escapeHtml, findHighlightRanges, highlightHtml, matchesSearchTerm,
+            createRegexCompiler, findHighlightRanges, highlightHtml, matchesSearchTerm,
             normalizeSearchText, prepareSearchTerm, wrapRanges,
         } from '/src/search/index.ts';
+        import { escapeHtml } from '/src/index.ts';
 
         const $ = (id) => document.getElementById(id);
         const describe = (t) => t.kind === 'none' ? 'none'

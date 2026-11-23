@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { NO_SEARCH_TERM, createRegexCompiler, escapeHtml, findHighlightRanges, highlightHtml, prepareSearchTerm, wrapRanges } from './index.js';
+import { NO_SEARCH_TERM, createRegexCompiler, findHighlightRanges, highlightHtml, prepareSearchTerm, wrapRanges } from './index.js';
+import { escapeHtml } from '../dom/escape-html.js';
 import type { SearchBehavior, SearchMatch } from './index.js';
 
 /** Prepare `term` the default way and return the wrapped label. */

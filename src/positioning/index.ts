@@ -4,7 +4,9 @@
  * {@link anchor} primitive plus the {@link createTooltip} / {@link createPopover}
  * presets that cover the tooltip and dropdown/popover shapes the five components
  * re-wrapped ~15 ways. A separate subpath so `@floating-ui/dom` stays opt-in and
- * out of the base import graph.
+ * out of the base import graph. Overlays that don't float (modal / panel / sheet
+ * sessions, presentation, scroll lock, back entry, overlay coordination) are in the
+ * main index, section 7 "Overlays".
  */
 export { anchor } from './anchor.js';
 export { createTooltip, TOOLTIP_CLASS, TOOLTIP_CSS, TOOLTIP_HIDING_CLASS } from './tooltip.js';

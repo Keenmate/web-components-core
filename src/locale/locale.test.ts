@@ -15,12 +15,11 @@ import {
   getWeekStartDay,
   observePageLocale,
   parseNumber,
-  publishLocaleHooks,
   resolveLocale,
 } from './index.js';
 import { BlissElement } from '../element/bliss-element.js';
 import { define } from '../element/define.js';
-import { getLocaleRevision } from './page-locale.js';
+import { getLocaleRevision, publishLocaleHooks } from './page-locale.js';
 
 const page = (): Record<string, unknown> => window.components as unknown as Record<string, unknown>;
 

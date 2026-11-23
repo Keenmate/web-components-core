@@ -132,8 +132,8 @@ const CSS = `.my-sheet { z-index: ${Z_INDEX.modal}; }
                     <tr><td><code>promptDialog(opts)</code></td><td><code>/dialog</code></td><td>One field → <code>Promise&lt;string | null&gt;</code>. <code>value</code>, <code>label</code>, <code>inputType</code>, <code>validate</code>; Enter = OK.</td></tr>
                     <tr><td><code>openDialog(opts)</code></td><td><code>/dialog</code></td><td><code>{ result, close(value), panel, body }</code>. <code>title</code>, <code>message</code> (text), <code>content</code> (node), <code>actions</code>, <code>isDismissible</code>, <code>beforeCloseCallback</code>, <code>labels</code>, <code>container</code>.</td></tr>
                     <tr><td><code>startModalSession(panel, opts)</code></td><td>main index</td><td>Inert page, Tab trap, focus in / back, <code>role="dialog"</code> + <code>aria-modal</code>, backdrop, Escape (overlay tree), Back, scroll lock → <code>{ end, backdrop, rearmBack }</code>.</td></tr>
-                    <tr><td><code>createFocusTrap(panel, opts)</code></td><td>main index</td><td>The trap alone: inert background + Tab cycling + focus in / back → <code>{ release }</code>.</td></tr>
-                    <tr><td><code>getTabbables(container)</code></td><td>main index</td><td>Tabbable elements in flat-tree order (shadow roots and slots included).</td></tr>
+                    <tr><td><code>createFocusTrap(panel, opts)</code></td><td><code>/a11y</code></td><td>The trap alone: inert background + Tab cycling + focus in / back → <code>{ release }</code>.</td></tr>
+                    <tr><td><code>getTabbables(container)</code></td><td><code>/a11y</code></td><td>Tabbable elements in flat-tree order (shadow roots and slots included).</td></tr>
                     <tr><td><code>Z_INDEX</code></td><td>main index</td><td>The tiers as <code>var(--base-z-*, N)</code> strings.</td></tr>
                 </tbody>
             </table>

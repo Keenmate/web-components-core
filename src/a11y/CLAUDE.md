@@ -1,5 +1,8 @@
 ## Keyboard navigation (`src/a11y/`, subpath `/a11y`, SPEC §12.25 — implemented)
 
+The subpath also exports the focus trap (`createFocusTrap` / `getTabbables`, code in `src/dom/focus-trap.ts`, notes in
+`src/dom/CLAUDE.md`) — it stays in `dom/` because the main index's `startModalSession` imports it.
+
 `active-descendant.ts`: keydown on the input; `apply(next, list, isForced)` sets `aria-activedescendant`,
 ids via `createId` (`shouldHandleKeys: false` = no keydown listener, ARIA + scroll only), scrolls via `scrollIntoContainer` into the listbox / its nearest scroller only (no page
 scroll); `refresh()` re-finds by element, then id, else clears (forced). Sets `aria-controls` and

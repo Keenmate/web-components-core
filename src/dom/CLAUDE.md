@@ -40,7 +40,7 @@ re-entry-guarded (an owner ↔ child cycle can't loop). `appliedCallback` gets o
 (6000 / 7000 / 7500 / 7600 / 8000 / 9000, the base-css-variables values). Dialogs + phone sheets + drawers =
 `modal` (decided 2026-11-16); sub-layers `calc(<tier> + 1)`. `/menu` keeps `calc(tooltip + 1)`.
 
-## Focus trap (`src/dom/focus-trap.ts`, SPEC §12.19 — implemented)
+## Focus trap (`src/dom/focus-trap.ts`, exported from `/a11y`, SPEC §12.19 — implemented)
 
 `createFocusTrap(panel, { initialFocus, returnFocusTo, shouldMakeBackgroundInert, keepInteractive })` → `{ release({
 shouldReturnFocus }), isReleased }`. Inert = `setAttribute('inert')` on each sibling along the path panel → `<body>`
@@ -154,7 +154,7 @@ jsdom: no animations and no `inert` — tests fake `getComputedStyle`.
 throws → logged + default drawn. Container always `role="status"` (+ `aria-label` when
 `label` non-empty); `remove()` drops only nodes the render added and restores the
 previous `role` / `aria-label`. The page hook is a non-enumerable accessor published by
-`publishLoaderHook()` (from `registerComponent()` + every `renderLoader()`); it adopts a
+`publishLoaderHook()` (internal, not exported; from `registerComponent()` + every `renderLoader()`); it adopts a
 plain property assigned earlier. No CSS here — the component owns `.<prefix>__loader`.
 
 ## Container scroll (`src/dom/scroll-container.ts`, SPEC §12.15 — implemented)

@@ -39,7 +39,7 @@
     </div>
 
     <script type="module">
-        import { getConnectedTags, getInstances, coreLogging, LOG_LEVELS } from '/src/index.ts';
+        import { getConnectedTags, getInstances, getCoreLogging, LOG_LEVELS } from '/src/index.ts';
         import { captureConsole } from '/test/capture-console.ts';
         import { fxLogging } from '/test/page-wide-fixtures.ts';
 
@@ -55,7 +55,7 @@
         const levelName = (n) => Object.keys(LOG_LEVELS).find((k) => LOG_LEVELS[k] === n)?.toLowerCase() ?? String(n);
         const levels = () => ({
             FXPG: Object.fromEntries(fxLogging.LOGGING_CATEGORIES.map((c) => [c, levelName(fxLogging.loggers[c].getLevel())])),
-            CORE: Object.fromEntries(coreLogging.LOGGING_CATEGORIES.map((c) => [c, levelName(coreLogging.loggers[c].getLevel())])),
+            CORE: Object.fromEntries(getCoreLogging().LOGGING_CATEGORIES.map((c) => [c, levelName(getCoreLogging().loggers[c].getLevel())])),
         });
 
         const loaderHooks = {

@@ -930,6 +930,17 @@ consumer-facing attribute/event changes.
 Candidates already duplicated across components, in rough priority order.
 Each becomes its own core module once we agree the shape.
 
+**Entry points (naming review 2026-11-23 §1).** Every symbol has exactly ONE entry point. The main index
+(`src/index.ts`) is in 13 commented sections — 1 inputs & converters, 2 element / events / registration,
+3 logging, 4 environment, 5 theme / motion / CSS timing, 6 styles & rendering, 7 overlays (non-floating),
+8 shadow-DOM tree & screen reader, 9 keyboard & text / clipboard, 10 forms / async / persistence,
+11 scrolling / virtual lists / selection, 12 pointer & page drag, 13 scheduling & ids — each value followed by
+its types. Subpaths: `/positioning` (the only `@floating-ui/dom` importer — nothing that imports `anchor` /
+`createPopover` / `createTooltip` may be exported from the main index), `/menu`, `/dialog`, `/actions`,
+`/search`, `/locale`, `/a11y`, `/testing`, `/cem`. No subpath imports the main index (leaf modules only).
+Plumbing that `BlissElement` / `registerComponent()` call internally (event-def normalisation, the
+`window.components.*` hook installers, the log-level parser, the scroll-lock state type) is not exported.
+
 ### 12.1 Logger — IMPLEMENTED (`src/logging/`)
 
 **Status:** built. Amended from the original decision: core depends on
@@ -1672,7 +1683,7 @@ release.
 **Cross-bundle state.** Every component bundles its own copy of core, so page-wide
 overlay state can't live in module variables:
 - the lock's count and snapshot live on `globalThis[Symbol.for('km-scroll-lock')]`
-  (`ScrollLockState`: `{ count, saved: { scrollX, scrollY, style, body?, rootStyle? } | null }`) — a
+  (internal type `ScrollLockState`, not exported: `{ count, saved: { scrollX, scrollY, style, body?, rootStyle? } | null }`) — a
   documented shape, so non-core code (pure-css) can join the same lock;
 - `ALL_OVERLAY_GROUPS` (the `dismissAllOverlays()` wildcard of `km-overlay-activate`) is
   `Symbol.for('km-overlay-all-groups')`, so a dismiss from one component's copy
@@ -1936,7 +1947,7 @@ ASCII code point skips the Unicode work), so normalizing 100k grid values costs 
 **API** (`@keenmate/web-components-core/search`, not re-exported from the root):
 `normalizeSearchText`, `findTextMatches`, `matchesText`, `findRegexMatches`,
 `createStatelessRegex`, `NO_SEARCH_TERM`, `createRegexCompiler`, `prepareSearchTerm`,
-`matchesSearchTerm`, `findHighlightRanges`, `wrapRanges`, `highlightHtml`, `escapeHtml` (the same function is also on the root index); types `SearchBehavior`,
+`matchesSearchTerm`, `findHighlightRanges`, `wrapRanges`, `highlightHtml` (`escapeHtml` is on the root index only); types `SearchBehavior`,
 `SearchMatch`, `SearchTermContext`, `PreparedSearchTerm`, `SearchEntry`,
 `SearchCallbackContext`, `ActiveSearchTerm`, `SearchRange`, `HighlightResult`,
 `RegexCompiler`, `PrepareSearchTermOptions`, `WrapRangesOptions`. No dependencies.
@@ -2453,7 +2464,8 @@ Tab or a screen reader out of the page behind.
    (`div.km-dialog-layer` + shadow root, `DIALOG_CSS` + `SHEET_CHROME_CSS` + motion) on `<body>`; `message` is
    text, `content` a node; a bottom sheet under 480px.
 
-**`createFocusTrap(panel, { initialFocus, returnFocusTo, shouldMakeBackgroundInert, keepInteractive })`**: like
+**`createFocusTrap(panel, { initialFocus, returnFocusTo, shouldMakeBackgroundInert, keepInteractive })`** (subpath `/a11y`, with
+`getTabbables(container)`): like
 `showModal()` without the top layer — every sibling along the panel's path up to `<body>` (across shadow roots)
 gets `inert` (only what it set is removed again; overlays mounted later stay live), Tab / Shift+Tab wrap at
 the edges (tabbables on the flat tree), focus goes in and comes back when it was still inside (or lost to
@@ -2535,7 +2547,7 @@ every element. Decided 2026-10-26 / 10-27 / 10-28 (rulebook D-NC-24), built 2026
 
 - **Page-wide** `window.components.locale = { locale, dateFormat, timeFormat, weekStartDay, decimalSeparator,
   thousandsSeparator, labels: { '<component>.<elementType>.<name>': '…' }, translateCallback }` and `window.components.security =
-  { shouldEscapeLabels }` — non-enumerable accessors (`publishLocaleHooks()`, from `registerComponent()` and
+  { shouldEscapeLabels }` — non-enumerable accessors (installed by the internal `publishLocaleHooks()`, from `registerComponent()` and
   every read), state in `sharedState('locale')`. Assigning REPLACES the object; it is stored as a frozen copy
   (nested mutation throws instead of being silently missed). A non-object warns and is ignored.
 - **Settings** (`resolveLocaleSettings(instance)`): per key instance → page → derived from `Intl` for the resolved
@@ -2623,6 +2635,8 @@ Decided 2026-11-17 — two patterns, roles stay per component:
   (ArrowRight / Left on a parent), the date grid's PageUp / Down month jumps — the component handles those
   keys before (the helpers skip a `defaultPrevented` event). `/menu` keeps its level-based model (all items
   `-1`, submenus / drill-in back rows).
+- The subpath also exports the focus trap `createFocusTrap` / `getTabbables` (§12.19; code in `src/dom/`, since the
+  main index's `startModalSession` uses it). Entry-point layout: see the §12 intro.
 
 ### 12.26 Virtual window — IMPLEMENTED (`src/dom/virtual-window.ts`, main index)
 
@@ -2792,7 +2806,7 @@ web-multiselect each their own. Decided 2026-11-17 — **`renderIcon(icon, { pre
 - the element's own `renderIconCallback` (option `renderIconCallback`, else `host.renderIconCallback` — every
   component's input row), then the page-wide `window.components.renderIconCallback(name, { component, element,
   prefix, …extras })` (`component` = the `component` option — for a framework component whose host is a plain
-  `<div>` — else the host's tag) (non-enumerable, `publishIconHook()`) → a string is used as is (`''` = no icon); `null` /
+  `<div>` — else the host's tag) (non-enumerable, installed internally by `registerComponent()` / `renderIcon()`) → a string is used as is (`''` = no icon); `null` /
   `undefined` = not mine (the next one decides); a throw → logged (the host's logger) and the next rule decides.
   One element needs no page setup;
 - ASCII class names (`[A-Za-z][A-Za-z0-9_-]*`, space-separated) → `<i class="<prefix>__icon <names>"

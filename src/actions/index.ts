@@ -25,7 +25,6 @@ export {
   runAction,
 } from './resolve.js';
 export type { ResolvedMenuEntry, RunActionOptions } from './resolve.js';
-export type { ComponentContext } from '../element/context.js';
 export {
   bindShortcuts,
   formatShortcut,

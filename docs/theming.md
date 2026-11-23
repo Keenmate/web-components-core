@@ -16,7 +16,7 @@ component's `docs/theming.md`). What core contributes to theming is:
 - **The default loader element** — `renderLoader()` draws `<span class="<prefix>__loader">`
   but does **not** style it: the component's CSS draws the class. A page can replace the
   loader everywhere with the `renderLoadingCallback` hook (see
-  [usage.md → API index](usage.md#api-index), `publishLoaderHook()`).
+  [usage.md → API index](usage.md#api-index)).
 - **Overlay theme inheritance** — `anchor()` / `createPopover()` take `inheritThemeFrom`,
   which copies `data-theme` onto a layer portaled to `<body>` so it keeps its component's
   scheme (C-CS-10).

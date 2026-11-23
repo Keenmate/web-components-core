@@ -60,9 +60,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `changeCallback`.
   - Unchanged: action items keep `onClick` (D-NC-27); positional parameters (`claimBackEntry(onBack)`,
     `registerOverlay(onDismiss, …)`, `runner.run(task, onResult)`) are not option names.
+- **Export structure: one entry point per symbol** (naming review §1). The main index is reorganized into 13
+  commented sections (inputs, element, logging, environment, theme / motion, styles & rendering, overlays,
+  shadow-DOM tree, keyboard & text, forms / async, scrolling / lists / selection, drag, scheduling) — no
+  export changes from the reordering itself. Entry-point changes:
+  - `escapeHtml` is no longer exported from `/search` — import it from the main index.
+  - type `ComponentContext` is no longer exported from `/actions` — import it from the main index.
+  - `createFocusTrap`, `getTabbables` and types `FocusTrap` / `FocusTrapOptions` moved from the main index to
+    **`/a11y`** (next to the other keyboard / focus helpers; `startModalSession` stays in the main index).
 
 ### Removed
 - `resolveEnumAttribute(raw, values, fallback)` — unused (no component or core caller); use `toEnum`.
+- Internal plumbing no longer exported (naming review §7; no component imports them): `defaultEventProperty`,
+  `normalizeEventDefs` (BlissElement event-table plumbing), `publishLoaderHook`, `publishIconHook`,
+  `publishLocaleHooks` (`/locale`) — the `window.components.*` accessors are installed by `registerComponent()` /
+  `renderLoader()` / `renderIcon()` / the locale getters as before, `parseLogLevel` (use `isLogLevel` /
+  `LOG_LEVELS`), type `ScrollLockState` (the shared state shape stays documented in SPEC §12.9).
+- `coreLogging` (a lazy proxy over the same bundle) — use `getCoreLogging()`.
 
 ### Fixed
 - **Escape and a tooltip shown by keyboard focus** (`/positioning` `createTooltip`, SPEC §12.2, WCAG 1.4.13): the

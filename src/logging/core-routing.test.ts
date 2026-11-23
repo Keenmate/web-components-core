@@ -21,7 +21,7 @@ import { registerComponent } from '../global/register-component.js';
 import { toInt } from '../inputs/converters.js';
 import type { InputDef } from '../inputs/types.js';
 import { createLoggers, DEFAULT_LOG_LEVEL, type LoggerBundle } from './create-loggers.js';
-import { coreLogging } from './element-logger.js';
+import { getCoreLogging } from './element-logger.js';
 import { __resetPageLogging } from './global-logging.js';
 import { LOG_LEVELS, getLogger } from './log-core.js';
 import { consoleLine, consoleLines } from './console-line.test-util.js';
@@ -36,7 +36,7 @@ afterEach(() => {
   document.body.replaceChildren();
   // Forget any page-wide level so the next test's bundles start at their default.
   __resetPageLogging();
-  coreLogging.resetLogging();
+  getCoreLogging().resetLogging();
 });
 
 /** A component with one validated int input that can shout through `this.log`. */
@@ -152,7 +152,7 @@ describe('default level warn', () => {
     const ns = freshNs();
     const { bundle, make } = defineComponent({ namespace: ns });
     expect(bundle!.loggers.INIT.getLevel()).toBe(LOG_LEVELS.WARN);
-    expect(coreLogging.loggers.ELEMENT.getLevel()).toBe(LOG_LEVELS.WARN);
+    expect(getCoreLogging().loggers.ELEMENT.getLevel()).toBe(LOG_LEVELS.WARN);
     const el = make('a');
     el.say('DATA', 'debug', 'quiet');
     el.say('DATA', 'warn', 'loud');
@@ -211,9 +211,9 @@ describe('window.components.logging (page-wide switch)', () => {
     const b = defineComponent({ namespace: freshNs() }).bundle!;
     const g = window.components!.logging!;
     g.disableLogging();
-    for (const l of [a.loggers.INIT, b.loggers.UI, coreLogging.loggers.MENU]) expect(l.getLevel()).toBe(LOG_LEVELS.SILENT);
+    for (const l of [a.loggers.INIT, b.loggers.UI, getCoreLogging().loggers.MENU]) expect(l.getLevel()).toBe(LOG_LEVELS.SILENT);
     g.enableLogging('debug');
-    for (const l of [a.loggers.DATA, b.loggers.INIT, coreLogging.loggers.THEME]) expect(l.getLevel()).toBe(LOG_LEVELS.DEBUG);
+    for (const l of [a.loggers.DATA, b.loggers.INIT, getCoreLogging().loggers.THEME]) expect(l.getLevel()).toBe(LOG_LEVELS.DEBUG);
     g.setLogLevel('error');
     expect(a.loggers.UI.getLevel()).toBe(LOG_LEVELS.ERROR);
     g.enableLogging(); // default debug
