@@ -1378,6 +1378,7 @@ const menu = openMenu(entries, ctx, {
   returnFocusTo: this.bodyEl,
   shouldFocusFirst: isOpenedFromKeyboard,
   title: row.name,                      // the phone sheet's header + the menu's aria-label
+  iconDefaults: DEFAULT_ICONS,          // your icon NAMES → icons (renderIcon's `defaults`); entries say icon: 'rowDelete'
 });
 menu.close();
 ```

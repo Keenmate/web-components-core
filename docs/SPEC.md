@@ -2122,7 +2122,9 @@ through `MOTION_CSS` (`adoptMotionStyles(sheet)` on open), no own media query. T
   again): the entry is pushed while the body is pinned (window scroll 0), so the browser's own
   restore would jump the page to the top; the scroll lock restores the position itself.
 
-**Decisions.** Icons are inserted as HTML (developer-supplied, like action buttons);
+**Decisions.** Item icons go through `renderIcon` (§12.33: markup raw, maps, built-ins, hooks, then the
+component's `iconDefaults` option — its name → icon map); the floating menu, submenus and the phone sheet / drawer
+render items the same way;
 label and shortcut are text. Items are `div[role=menuitem][tabindex=-1]` (not buttons —
 no native Space/Enter click to double-fire). The keyboard is a capture `keydown` on the
 document while open, so the menu is keyboard-modal whether focus is in it or still on
@@ -2880,7 +2882,9 @@ markup and text steps string data needs. The trade-off: a page-invented token (`
 longer masked — it renders `<i class="star">`; map it in the hook instead.
 
 `ICON_CSS` (`.km-icon`, `@layer component`, forced-colors aware) is adopted where named icons render; `/menu`
-adopts it and renders item icons through `renderIcon` (a name used to come out as its text).
+adopts it and renders item icons through `renderIcon` (a name used to come out as its text), with the component element as
+`host` (its `icons` map / `renderIconCallback` apply) and `openMenu`'s `iconDefaults` option as `defaults` — so a
+component's menu entries carry icon NAMES (`icon: 'rowDelete'`), never pre-resolved markup (decided 2026-11-23).
 
 **Live (decided 2026-11-21):** the page may set `window.components.renderIconCallback` AFTER components rendered (load
 order can't be ensured), so they repaint. `observeIconHook(listener)` → unsubscribe hears every change of the page

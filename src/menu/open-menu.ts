@@ -267,8 +267,9 @@ export function openMenu<Ctx, A extends string = string>(
           const icon = document.createElement('span');
           icon.className = `${BLOCK}__icon`;
           icon.setAttribute('aria-hidden', 'true');
-          // Icons are data (SPEC §12.33): markup raw, built-in names masked, the component's then the page hook (ctx.item = the entry), icon-font classes, else text.
-          if (resolved.icon) icon.innerHTML = renderIcon(resolved.icon, { host: componentElement, context: { item } });
+          // Icons are data (SPEC §12.33): markup raw, the maps (el.icons, page), built-in names masked, the component's then the
+          // page hook (ctx.item = the entry), the component's `iconDefaults`, icon-font classes, else text.
+          if (resolved.icon) icon.innerHTML = renderIcon(resolved.icon, { host: componentElement, context: { item }, defaults: opts.iconDefaults });
           itemEl.appendChild(icon);
         }
         const label = document.createElement('span');

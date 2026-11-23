@@ -33,7 +33,7 @@ when focus goes back). `initialFocus: false` (the menu focuses itself); Tab in a
 the close button (never closes); a sheet registers no overlay of its own (the session's); a sheet's Escape the
 router already `preventDefault`ed is skipped in `onKeydown`. Tests: `sheet.test.ts` (mocks `getEnvironment`), e2e `menu-sheet.spec.ts`.
 
-Item icons: `renderIcon(icon, { host: findComponentElement(host), context: { item } })` — the closest custom element (or shadow host), so the component's own `renderIconCallback` applies.
+Item icons: `renderIcon(icon, { host: findComponentElement(host), context: { item }, defaults: opts.iconDefaults })` — the closest custom element (or shadow host), so the component's own `icons` map / `renderIconCallback` apply; `iconDefaults` = the component's name → icon map (entries carry names, never pre-resolved markup). One call site — floating, submenu and sheet / drawer levels all render through it. Not part of `getMenuPresentationOptions` (that reads config; icon defaults are a component constant).
 
 Consumers: web-treeview, web-editor, web-grid (cell + header menus; built-in submenus via
 `prepareItemCallback`). All three map their `--<prefix>-context-menu-*` onto `--_km-menu-*`.

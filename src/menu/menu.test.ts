@@ -127,6 +127,33 @@ describe('rendering', () => {
     expect(hook).toHaveBeenCalledWith('moon', expect.objectContaining({ component: 'demo-comp', element: comp, item }));
   });
 
+  it('iconDefaults resolves an entry icon NAME; el.icons overrides it; a built-in name still wins over iconDefaults', () => {
+    const comp = document.createElement('demo-comp');
+    const compShadow = comp.attachShadow({ mode: 'open' });
+    const layer = document.createElement('div');
+    compShadow.append(layer);
+    document.body.append(comp);
+    const iconDefaults = { rowDelete: '<svg data-default-delete></svg>', delete: '<svg data-default-builtin></svg>' };
+    const entries = [
+      { id: 'x', text: 'X', icon: 'rowDelete' },
+      { id: 'y', text: 'Y', icon: 'delete' },
+    ];
+    const at = { x: 0, y: 0 };
+    const icon = (id: string) => layer.querySelector(`.km-menu__item[data-id="${id}"] .km-menu__icon`)!;
+
+    let handle = openMenu<Ctx>(entries, ctx, { at, host: layer, runAction: vi.fn(), iconDefaults });
+    expect(icon('x').querySelector('svg[data-default-delete]')).not.toBeNull();
+    expect(icon('y').querySelector('svg[data-default-builtin]')).toBeNull(); // the built-in glyph, not the default
+    expect(icon('y').querySelector('.km-icon')).not.toBeNull();
+    handle.close();
+
+    (comp as unknown as { icons: unknown }).icons = { rowDelete: '<svg data-el-icon></svg>' };
+    handle = openMenu<Ctx>(entries, ctx, { at, host: layer, runAction: vi.fn(), iconDefaults });
+    expect(icon('x').querySelector('svg[data-el-icon]')).not.toBeNull();
+    expect(icon('x').querySelector('svg[data-default-delete]')).toBeNull();
+    handle.close();
+  });
+
   it('renderItemCallback fills an item; left empty, the default content renders', () => {
     const renderItemCallback = vi.fn((item: MenuEntry<Ctx>, el: HTMLElement, c: Ctx) => {
       if ((item as { id?: string }).id === 'a') el.textContent = `custom ${c.name}`;
