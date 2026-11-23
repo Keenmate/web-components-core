@@ -286,7 +286,10 @@ this.#modal?.end();
 While open: the page behind is `inert` (clicks, focus and screen readers stay in the panel; overlays mounted
 later — a dropdown portaled to `<body>` from inside — still work), Tab cycles inside, focus moves in
 (`[autofocus]` → first tabbable → the panel), `role="dialog"` + `aria-modal="true"`, page scroll locked,
-Escape through the overlay tree (a dropdown opened inside closes first), the phone Back gesture.
+Escape through the overlay tree (a dropdown opened inside closes first), the phone Back gesture. Opening it
+closes the page's open dropdowns / popovers / menus (the default overlay group) — never the one the `trigger`
+sits in, nor named groups; `shouldDismissPageOverlays: false` keeps them. Don't call `dismissAllOverlays()`
+before opening a modal.
 `createFocusTrap(panel, opts)` → `{ release() }` (from `/a11y`) is the trap alone (inert + Tab cycling + focus in / back);
 `getTabbables(container)` lists the tabbable elements in flat-tree order (shadow roots and slots included).
 

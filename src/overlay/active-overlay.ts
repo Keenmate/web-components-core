@@ -124,6 +124,12 @@ export interface ActivateOverlayOptions {
    * (a focus-triggered picker would reopen on it).
    */
   returnFocusTo?: HTMLElement | null;
+  /**
+   * More groups this activation dismisses, besides the overlay's own — with the same exclusions (this
+   * overlay and its ancestors). `startModalSession` passes the default group: a modal opening closes the
+   * page's dropdowns / popovers / menus, but not the chain it was opened from.
+   */
+  dismissGroups?: readonly unknown[];
 }
 
 /** Handle returned by {@link registerOverlay}. */
@@ -527,6 +533,9 @@ export function registerOverlay(
       // Route through the event so external listeners see KM activations too; the shared
       // listener dismisses every *other* same-group participant that isn't an ancestor.
       broadcast(participant.id, participant.group, ancestors);
+      for (const group of activateOpts?.dismissGroups ?? []) {
+        if (group !== participant.group) broadcast(participant.id, group, ancestors);
+      }
     },
     deactivate,
     claimCurrentClick(): void {

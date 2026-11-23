@@ -8,6 +8,8 @@
  *   the panel, an element = your own; a click on it dismisses;
  * - Escape through the overlay tree (the deepest overlay closes first: a dropdown opened inside closes before
  *   the dialog), the phone Back gesture, page scroll lock and the keyboard inset (`startSheetSession`);
+ * - the page's open overlays (default group: dropdowns, popovers, menus) are dismissed at open — never the chain
+ *   the modal was opened from (`shouldDismissPageOverlays: false` keeps them);
  * - opened by a press (`isOpenedByPointer`): the tap's trailing "ghost" click on the panel / backdrop is swallowed.
  *
  * Core never closes the panel itself: `dismissCallback(reason)` tells the component, which closes and calls `end()`.
@@ -49,6 +51,13 @@ export interface ModalSessionOptions
   shouldFitToVisibleViewport?: boolean;
   /** Overlay-tree group (default: a modal-only group, so other overlays opening don't dismiss it). */
   group?: unknown;
+  /**
+   * At open, dismiss the page's overlays — the default (ungrouped) group of the overlay router: open
+   * dropdowns, popovers, menus. Never the chain the modal was opened from (the overlay its `trigger` sits in
+   * and that one's ancestors), nor anything opened after the session started (a dropdown inside the panel).
+   * Overlays in a named group are left alone. Default `true`.
+   */
+  shouldDismissPageOverlays?: boolean;
   /**
    * The modal opened on a PRESS (`pointerdown` / `mousedown` of a tap): swallow that tap's trailing click if it
    * lands on the panel or backdrop (it would pick an option / dismiss at once) — {@link guardGhostClick}.
@@ -149,7 +158,12 @@ export function startModalSession(panel: HTMLElement, opts: ModalSessionOptions)
     shouldMakeBackgroundInert: opts.shouldMakeBackgroundInert,
     keepInteractive: [backdrop],
   });
-  overlay.activate({ trigger: opts.trigger ?? null, returnFocusTo: null });
+  // Opening dismisses the page's (default-group) overlays, except the chain the trigger is in.
+  overlay.activate({
+    trigger: opts.trigger ?? null,
+    returnFocusTo: null,
+    ...((opts.shouldDismissPageOverlays ?? true) ? { dismissGroups: [undefined] } : {}),
+  });
 
   return {
     end(endOpts) {

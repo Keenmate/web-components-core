@@ -230,7 +230,8 @@ The shared context / dropdown menu lives in `src/menu/` (subpath `/menu`, SPEC
 
 Modals go through `startModalSession(panel, { backdrop, dismissCallback })` (`src/overlay/modal-session.ts`,
 main index, SPEC §12.19: inert page + Tab trap via `createFocusTrap`, Escape / Back / backdrop → `dismissCallback`,
-the component closes + `end()`); a NON-modal panel (page stays usable) is `startPanelSession(panel, { dismissCallback })`
+the component closes + `end()`; opening dismisses the page's default-group overlays except the trigger's chain,
+`shouldDismissPageOverlays: false` opts out); a NON-modal panel (page stays usable) is `startPanelSession(panel, { dismissCallback })`
 (`panel-session.ts`: Escape / outside click / Back, no inert / trap / backdrop); ready-made `openDialog` / `confirmDialog` / `promptDialog` in `src/dialog/`
 (subpath `/dialog`) — never `window.prompt` / `confirm` or a hand-written trap; a modal opened on a press
 passes `isOpenedByPointer` (ghost-click guard). Stacking via `Z_INDEX`

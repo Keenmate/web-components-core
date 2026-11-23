@@ -1742,7 +1742,8 @@ it first; the routing key is versioned, see below) routes
 (a boolean or a function asked at each key / press), `getInsideElements` (more elements a press
 on doesn't count as outside), `beforeEscapeCallback()` (return `false` = the overlay handled Escape itself —
 stepped back a level — and stays open; the press is consumed); `activate({ returnFocusTo })` overrides the
-trigger as the focus target (`null` = none); `deactivate({ shouldReturnFocus: true })` returns focus the same
+trigger as the focus target (`null` = none); `activate({ dismissGroups })` also dismisses those groups (same
+exclusions: itself + its ancestors — `startModalSession` passes the default group, §12.19); `deactivate({ shouldReturnFocus: true })` returns focus the same
 way on the component's own close paths (✕, a pick), when it was inside the panel. A sub-panel that is not a
 popover (an inline year selector) joins the tree the same way to get outside-click / Escape — no own
 document click manager. `createPopover({ shouldCloseOnEscape, shouldCloseOnOutsideClick,
@@ -2091,7 +2092,9 @@ through `MOTION_CSS` (`adoptMotionStyles(sheet)` on open), no own media query. T
   the header's close button, never closes the menu (a `renderMenuCallback` sheet: the focus trap cycles its
   fields) — scroll lock and the Back entry come from the same session. Escape, whichever capture listener sees
   it first (the menu's keydown or the overlay router via `beforeEscapeCallback`), goes up one drilled-in level,
-  else closes. The session joins `overlayGroup` when given, else the modal-only group.
+  else closes. The session joins `overlayGroup` when given, else the modal-only group. Opening it dismisses
+  the page's default-group overlays except its opener chain (§12.19) — a sheet opened from a row in a dropdown
+  keeps that dropdown.
 - **Focus.** On open focus moves into the sheet (the root level, or its first item with
   `shouldFocusFirst`); on close the session returns it to `returnFocusTo`, else to what had it at
   open — also for a backdrop tap (the backdrop's `mousedown` is prevented so focus never leaves);
@@ -2478,6 +2481,14 @@ Tab or a screen reader out of the page behind.
    `startSheetSession` (scroll lock, Back; keyboard inset OFF by default — it sizes the panel to the visual
    viewport, right only for a full-screen sheet), `registerOverlay` in a modal-only group (a page dropdown
    opening never dismisses a modal; a dropdown opened inside is its child and closes first on Escape).
+   **Page overlays close at open (decided 2026-11-23, audit Q3):** the session's activation also dismisses the
+   default (ungrouped) group — the page's open dropdowns / popovers / menus — through `activate({ dismissGroups:
+   [undefined] })`, with the same exclusions as any activation: the modal's ancestor chain (the overlay its
+   `trigger` sits in — a menu sheet opened from a dropdown row keeps that dropdown; a dialog opened from a modal
+   sheet keeps the sheet and the sheet's dropdown it came from) and anything opened after the session started
+   (a dropdown inside the panel is the modal's child). Named groups are untouched (`dismissAllOverlays()` still
+   crosses them); `shouldDismissPageOverlays: false` opts out. Replaces web-commandpalette's own
+   `dismissAllOverlays()` call before opening.
    Its non-modal sibling **`startPanelSession(panel, { dismissCallback, shouldCloseOnEscape, shouldCloseOnOutsideClick,
    shouldCloseOnBack, trigger, returnFocusTo, initialFocus, isOpenedByPointer })`** (decided 2026-11-17, from
    web-dropzone's upload drawer) is a panel the page stays usable around: Escape (overlay tree), a click outside

@@ -24,6 +24,8 @@
     <button id="open-prompt">prompt</button>
     <button id="open-confirm">confirm (danger)</button>
     <output id="result"></output>
+    <p><button id="open-page-popover">open page popover</button> <label><input type="checkbox" id="keep-page">
+        shouldDismissPageOverlays: false</label></p>
     <p><button id="press-open">open on press</button> <label><input type="checkbox" id="guard" checked> ghost-click guard</label></p>
     <div id="press-panel" hidden><button id="press-option">option under the finger</button> <button id="press-close">close</button></div>
     <fx-modal-host id="host"></fx-modal-host>
@@ -61,7 +63,10 @@
                     this.dropdown?.close();
                     session.end();
                 };
-                const session = startModalSession(panel, { backdrop: true, dismissCallback: close, trigger });
+                const session = startModalSession(panel, {
+                    backdrop: true, dismissCallback: close, trigger,
+                    shouldDismissPageOverlays: !document.getElementById('keep-page').checked,
+                });
                 this.session = session;
                 this.shadowRoot.getElementById('announce').onclick = () => announce('Saved from the modal');
                 this.shadowRoot.getElementById('open-dropdown').onclick = (e) => this.openDropdown(e.currentTarget);
@@ -86,6 +91,18 @@
 
         document.getElementById('open-own').onclick = (e) => document.getElementById('host').open(e.currentTarget);
         document.getElementById('page-button').onclick = () => log.push('page-button');
+
+        // A page popover (default overlay group): a modal opening dismisses it unless opted out.
+        document.getElementById('open-page-popover').onclick = (e) => {
+            const el = document.createElement('div');
+            el.className = 'dropdown';
+            el.id = 'page-popover';
+            el.style.cssText = 'left: auto; right: 40px; top: 120px';
+            el.textContent = 'page popover';
+            document.body.append(el);
+            const overlay = registerOverlay((r) => { log.push(`page-popover:${r}`); overlay.destroy(); el.remove(); });
+            overlay.activate({ trigger: e.currentTarget });
+        };
 
         // A full-screen sheet opened on the PRESS (like web-daterangepicker / web-multiselect on a phone).
         const pressPanel = document.getElementById('press-panel');

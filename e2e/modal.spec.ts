@@ -67,6 +67,28 @@ test.describe('startModalSession (a component panel in a shadow root)', () => {
     await page.waitForTimeout(100);
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
   });
+
+  test('opening dismisses an open page popover; shouldDismissPageOverlays: false keeps it', async ({ page }) => {
+    await page.click('#open-page-popover');
+    await expect(page.locator('#page-popover')).toBeVisible();
+    await page.click('#open-own');
+    await expect(page.locator('#page-popover')).toHaveCount(0);
+    expect(await log(page)).toEqual(['page-popover:overlay']);
+    await page.keyboard.press('Escape');
+
+    await page.check('#keep-page');
+    await page.click('#open-page-popover');
+    await page.click('#open-own');
+    await expect(page.locator('#page-popover')).toBeVisible();
+    expect(await log(page)).toEqual(['page-popover:overlay', 'dismiss:escape']);
+  });
+
+  test('a /dialog opening dismisses an open page popover', async ({ page }) => {
+    await page.click('#open-page-popover');
+    await page.click('#open-confirm');
+    await expect(page.locator('#page-popover')).toHaveCount(0);
+    expect(await log(page)).toEqual(['page-popover:overlay']);
+  });
 });
 
 test.describe('/dialog', () => {

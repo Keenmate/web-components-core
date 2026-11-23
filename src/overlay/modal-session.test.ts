@@ -121,6 +121,56 @@ describe('startModalSession', () => {
     expect(reasons).toEqual([]);
   });
 
+  it('opening dismisses the page (default-group) overlays; opt-out keeps them', () => {
+    const { panel } = setup();
+    const dismissed: string[] = [];
+    registerOverlay(() => dismissed.push('page')).activate();
+    registerOverlay(() => dismissed.push('named'), 'toolbar').activate();
+    const s = startModalSession(panel, { dismissCallback: () => {} });
+    expect(dismissed).toEqual(['page']);
+    s.end();
+
+    const kept: string[] = [];
+    registerOverlay(() => kept.push('page2')).activate();
+    const s2 = startModalSession(panel, { dismissCallback: () => {}, shouldDismissPageOverlays: false });
+    expect(kept).toEqual([]);
+    s2.end();
+  });
+
+  it('keeps the chain it was opened from and overlays opened inside the panel afterwards', () => {
+    const { panel } = setup();
+    const dropdownPanel = document.createElement('div');
+    const item = document.createElement('button');
+    dropdownPanel.append(item);
+    document.body.append(dropdownPanel);
+    const dismissed: string[] = [];
+    registerOverlay(() => dismissed.push('opener-dropdown'), undefined, { getElement: () => dropdownPanel }).activate();
+    startModalSession(panel, { dismissCallback: () => {}, trigger: item });
+    expect(dismissed).toEqual([]); // the dropdown the modal was opened from stays
+
+    const inside = document.createElement('button');
+    panel.append(inside);
+    registerOverlay(() => dismissed.push('inside')).activate({ trigger: inside });
+    expect(dismissed).toEqual([]); // opened after the session, inside the panel: the modal's child
+  });
+
+  it('a nested modal keeps its parent modal and the overlay inside it that it was opened from', () => {
+    const { panel } = setup();
+    const reasons: string[] = [];
+    startModalSession(panel, { dismissCallback: (r) => reasons.push(`sheet:${r}`) });
+    const dropdownPanel = document.createElement('div');
+    const item = document.createElement('button');
+    dropdownPanel.append(item);
+    panel.append(dropdownPanel);
+    const trigger = panel.querySelector('button')!;
+    registerOverlay(() => reasons.push('dropdown'), undefined, { getElement: () => dropdownPanel }).activate({ trigger });
+    const dialog = document.createElement('div');
+    dialog.innerHTML = '<button>x</button>';
+    document.body.append(dialog);
+    startModalSession(dialog, { dismissCallback: (r) => reasons.push(`dialog:${r}`), trigger: item });
+    expect(reasons).toEqual([]);
+  });
+
   it('beforeEscapeCallback false keeps it open; shouldCloseOnEscape false ignores Escape', () => {
     const { panel } = setup();
     const reasons: string[] = [];

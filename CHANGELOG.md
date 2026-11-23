@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `-enter-offset` (→ `--base-elevated-bg` / `--base-main-bg`, `--base-text-color-1`, `--base-z-modal`,
   `--base-duration-medium`). Replaces the six component copies (multiselect ×2, daterangepicker, dropzone, grid ×2).
   Example: DH03 in `examples-dom.html`.
+- **`startModalSession()` dismisses the page's overlays at open** (audit Q3): open dropdowns / popovers / menus in
+  the default overlay group close when a modal (own panel, `/dialog`, the `/menu` phone sheet) opens — never the
+  chain its `trigger` sits in (a sheet opened from a dropdown row keeps the dropdown) nor overlays opened inside
+  it afterwards; named groups untouched. Opt out with `shouldDismissPageOverlays: false`. Underneath: new
+  `activate({ dismissGroups })` on the `registerOverlay()` handle. Components drop their own
+  `dismissAllOverlays()` call before opening a modal.
 
 ### Changed — BREAKING (renames, no aliases)
 - **`createStateStore()` takes ONE `getConfig()`** instead of `getKey()` / `getLoadCallback()` / `getSaveCallback()`:
