@@ -27,7 +27,7 @@ export {
   toValue,
 } from './inputs/converters.js';
 export type { BoolMode, EnumConverter } from './inputs/converters.js';
-export { resolveFromAttribute, resolveFromProperty } from './inputs/apply.js';
+export { getInputDefaults, resolveFromAttribute, resolveFromProperty } from './inputs/apply.js';
 export type { Resolved } from './inputs/apply.js';
 // The free functions under BlissElement#getEngineConfig() / #clearableConfigKeys (null-clear contract).
 export { collectEngineConfig } from './inputs/engine-config.js';

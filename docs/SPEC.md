@@ -461,6 +461,15 @@ protected override update(partial = {}) {
   receive `null` where it used to receive nothing — that is a latent bug the old
   drop-the-null behavior hid; fix the merge, don't re-drop the null.
 
+**Engine defaults (`getInputDefaults`).** A public engine takes the element's settings with the
+element's defaults (rulebook C-CA-37) — read from the input table, never a hand-kept copy:
+`getInputDefaults(inputs, keys?)` (main index) answers each row's absent-attribute value (the
+converter's answer for a missing attribute, else the row `default` — what the element seeds and
+what removing the attribute resets to; a converter that throws falls back to `default`), `configKey`
+→ value, rows answering `undefined` left out, `keys` limiting the rows. It reads the table only
+(`getLiveValue` plays no part). `const ENGINE_DEFAULTS = Object.freeze(getInputDefaults(INPUTS, ENGINE_KEYS))`;
+the engine fills each missing / `undefined` option from it.
+
 ### 6.2 Batch values — one input that also sets others (`getBatchValuesCallback`)
 
 Some inputs are presets: `<web-grid mode="excel">` also sets `editTrigger`,

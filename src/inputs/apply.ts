@@ -85,3 +85,31 @@ export function resolveFromProperty(def: InputDef, assigned: unknown): Resolved 
   }
   return { configKey: def.configKey, field: def.field, value, on: def.on ?? 'update' };
 }
+
+/**
+ * Every row's "absent attribute" value — what the element holds for the input when nothing is set
+ * (the same resolution the element seeds with and that removing the attribute resets to: the
+ * converter's answer for a missing attribute, else the row `default`). `configKey` → value; a row
+ * whose absent value is `undefined` is left out. `keys` limits the result to those `configKey`s
+ * (unknown keys are skipped). A converter that throws for a missing attribute falls back to the
+ * row `default`, as the element does. `getLiveValue` plays no part — this reads the table, not an
+ * element.
+ *
+ * The one source for a public engine's defaults (rule C-CA-37: the engine's defaults = the
+ * element's): `const ENGINE_DEFAULTS = Object.freeze(getInputDefaults(INPUTS, ENGINE_KEYS))`.
+ */
+export function getInputDefaults(inputs: readonly InputDef[], keys?: readonly string[]): Record<string, unknown> {
+  const wanted = keys ? new Set(keys) : null;
+  const out: Record<string, unknown> = {};
+  for (const def of inputs) {
+    if (wanted && !wanted.has(def.configKey)) continue;
+    let value: unknown;
+    try {
+      value = resolveFromAttribute(def, null, ABSENT_READER).value;
+    } catch {
+      value = def.default;
+    }
+    if (value !== undefined) out[def.configKey] = value;
+  }
+  return out;
+}

@@ -583,6 +583,19 @@ const { html } = renderSlotHtml(() => this.config.renderOptionCallback?.(ctx), (
 rowsHtml += `<div class="ms__option" role="option">${html}</div>`;   // false → '' (hidden)
 ```
 
+## Public engine defaults (`getInputDefaults`)
+
+A public `<Component>Engine` takes the element's settings with the element's defaults (C-CA-37) — read them from
+the input table, never a hand-kept copy ([SPEC §6.1](SPEC.md)):
+
+```ts
+import { getInputDefaults } from '@keenmate/web-components-core';
+
+const ENGINE_KEYS = ['isReadonly', 'labels', 'locale', 'translateCallback'] as const;
+// configKey → the value a bare element holds (rows answering `undefined` are left out)
+export const ENGINE_DEFAULTS = Object.freeze(getInputDefaults(INPUTS, ENGINE_KEYS));
+```
+
 ## The controller (`createControllerFacade`)
 
 `el.controller` / `detail.controller` is your public API, not your engine ([SPEC §12.34](SPEC.md)):
@@ -1571,7 +1584,7 @@ The main index is in 13 sections (the comments in `src/index.ts`), one row each:
 
 | # Section | Exports |
 |---|---|
-| 1 Inputs & converters | `toBool`, `toBytes`, `toCssLength`, `toCustom`, `toEnum`, `toFloat`, `toFunction`, `toInt`, `toList`, `toObject`, `toObjectArray`, `toText`, `toValue`; engine / test code: `resolveFromAttribute` / `resolveFromProperty` (run one value through a row's converter), `collectEngineConfig` (config for an engine, keeping meaningful `null`s), `deriveClearableKeys` / `isClearableInput` / `isClearableConverter` (which inputs a `null` clears) |
+| 1 Inputs & converters | `toBool`, `toBytes`, `toCssLength`, `toCustom`, `toEnum`, `toFloat`, `toFunction`, `toInt`, `toList`, `toObject`, `toObjectArray`, `toText`, `toValue`; engine / test code: `resolveFromAttribute` / `resolveFromProperty` (run one value through a row's converter), `collectEngineConfig` (config for an engine, keeping meaningful `null`s), `getInputDefaults(inputs, keys?)` (each row's absent-attribute value — a public engine's defaults, C-CA-37), `deriveClearableKeys` / `isClearableInput` / `isClearableConverter` (which inputs a `null` clears) |
 | 2 Element, events, registration | `BlissElement`, `INPUT_REJECTED_EVENT` (`'input-rejected'`, a refused write), `define(tag, Class)` (define once), `dispatch(target, name, detail)` (the free event helper under `emit()`), `withComponentContext(detail, controller, element, extras?)` / `COMPONENT_CONTEXT_KEYS` (the non-enumerable `controller` / `element`), `runBeforeCallback` (async; `false` cancels, a value replaces), `runBeforeCallbackSync`, `runBeforeCallbackEager` (stays synchronous for a sync hook), `createControllerFacade(target, spec)` (the frozen public controller over a lazy engine), `runSafely(fn, log)` / `notifyListeners(listeners, value, log)` (call code core doesn't own: a throw is logged, not propagated), `registerComponent(tag, Class, opts)` (`window.components[tag]`), `getInstances(tag)`, `getConnectedTags()` — page-wide, across copies of core |
 | 3 Logging | `createLoggers(namespace, categories?)`, `getPageLogging()` (= `window.components.logging`), `getCoreLogging()` / `CORE_LOG_CATEGORIES` (core's own messages), `setLogPersistKeyPrefix` / `getLogPersistKeyPrefix`, `isLogLevel`, `LOG_LEVELS`, `DEFAULT_LOG_CATEGORIES`, `DEFAULT_LOG_LEVEL`, `DEFAULT_ENABLED_LOG_LEVEL`, `createPerfLogger(namespace, { thresholdMs, maxSpans })` (spans + item counts + metadata, `measureAsync`, `count`, `summarize`) |
 | 4 Environment | `getEnvironment`, `observeEnvironment`, `observeViewport`, `configureBreakpoints` / `BREAKPOINTS_CHANGE_EVENT`, `classifyDevice` / `TABLET_MIN_SHORT_SIDE`, `observeElementSize`, `createElementSizeObserver(listener)` (`observe` / `unobserve` / `disconnect` — one listener for a changing set of elements, shared observer), `CONTAINER_SIZES` / `CONTAINER_SIZE_TOKENS` / `DEFAULT_CONTAINER_LINES` / `readContainerLines` / `resolveContainerSize` (narrow / medium / wide), `isRtl(el)` (effective writing direction, across shadow roots) |

@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`getInputDefaults(inputs, keys?)`** (audit G16c, main index): each input row's absent-attribute value
+  (what the element seeds and what removing the attribute resets to), `configKey` → value, `undefined` rows left out,
+  `keys` limiting the rows. The one source for a public engine's defaults (C-CA-37):
+  `Object.freeze(getInputDefaults(INPUTS, ENGINE_KEYS))`. Replaces the `NO_ATTRIBUTES` stub + `@internal`
+  `resolveFromAttribute` copies in web-treeview and web-editor.
 - **`createCustomStyles(…, { lintCssVars: { prefix, componentCss } })`** (audit G26): the dev-only custom-CSS
   variable lint moves into core. After each refresh the applied page + instance CSS is checked for `<prefix>*`
   variables the component's own CSS never reads (consumed set parsed lazily once per CSS string); each warns once per
