@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`bindShortcuts` binding gate gets the event: `isEnabled?(event: KeyboardEvent)`**, asked only for the binding
+  that matched the key (it was asked with no arguments for every binding on every key). `false` skips the binding
+  without consuming the key (no `preventDefault()`), so it falls through to an outer `bindShortcuts` on an ancestor.
+  E.g. `isEnabled: (e) => !isTypingTarget(e)` = no shortcuts while a field has focus (web-grid's toolbar). Row / lock
+  / permission gates stay on the action item (`getIsDisabledCallback(ctx)` / `beforeActionCallback`).
 - **Composed-tree + safe-call helpers exported** from the main index (they were internal): `deepClosest(el, selector)`
   (`closest` across shadow roots), `isDeepInside(el, container)` (containment across shadow roots),
   `runSafely(fn, log)` (a throw is logged and returned, not propagated), `notifyListeners(listeners, value, log)`

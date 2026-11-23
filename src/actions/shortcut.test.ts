@@ -114,6 +114,81 @@ describe('bindShortcuts', () => {
     }
   });
 
+  it('isEnabled receives the event and is asked only for the binding that matched the key', () => {
+    const sGate = vi.fn((_e: KeyboardEvent) => true);
+    const dGate = vi.fn((_e: KeyboardEvent) => true);
+    const save = vi.fn();
+    const unbind = bindShortcuts(document, [
+      { shortcut: 'Ctrl+S', run: save, isEnabled: sGate },
+      { shortcut: 'Ctrl+D', run: vi.fn(), isEnabled: dGate },
+    ]);
+    const e = key('s', { ctrlKey: true });
+    document.body.dispatchEvent(e);
+    expect(sGate).toHaveBeenCalledOnce();
+    expect(sGate).toHaveBeenCalledWith(e);
+    expect(dGate).not.toHaveBeenCalled();
+    expect(save).toHaveBeenCalledOnce();
+    document.body.dispatchEvent(key('x', { ctrlKey: true }));
+    expect(sGate).toHaveBeenCalledOnce();
+    expect(dGate).not.toHaveBeenCalled();
+    unbind();
+  });
+
+  it('isEnabled(event) false: the key is not consumed and an outer binding on an ancestor still runs', () => {
+    const outer = document.createElement('div');
+    const inner = document.createElement('div');
+    const input = document.createElement('input');
+    inner.append(input);
+    outer.append(inner);
+    document.body.append(outer);
+    const innerRun = vi.fn();
+    const outerRun = vi.fn();
+    const unbindInner = bindShortcuts(inner, [{ shortcut: 'Ctrl+D', run: innerRun, isEnabled: (e) => !isTypingTarget(e) }]);
+    const unbindOuter = bindShortcuts(outer, [{ shortcut: 'Ctrl+D', run: outerRun }]);
+    const typed = key('d', { ctrlKey: true });
+    input.dispatchEvent(typed);
+    expect(innerRun).not.toHaveBeenCalled();
+    expect(outerRun).toHaveBeenCalledOnce();
+    expect(typed.defaultPrevented).toBe(true); // prevented by the OUTER binding
+    unbindOuter();
+    const alone = key('d', { ctrlKey: true });
+    input.dispatchEvent(alone);
+    expect(innerRun).not.toHaveBeenCalled();
+    expect(alone.defaultPrevented).toBe(false);
+    unbindInner();
+  });
+
+  it('nested layering: an inner binding that handled the key makes the outer one skip it', () => {
+    const outer = document.createElement('div');
+    const inner = document.createElement('div');
+    outer.append(inner);
+    document.body.append(outer);
+    const innerRun = vi.fn();
+    const outerRun = vi.fn();
+    const outerGate = vi.fn(() => true);
+    const unbindInner = bindShortcuts(inner, [{ shortcut: 'Ctrl+D', run: innerRun }]);
+    const unbindOuter = bindShortcuts(outer, [{ shortcut: 'Ctrl+D', run: outerRun, isEnabled: outerGate }]);
+    const e = key('d', { ctrlKey: true });
+    inner.dispatchEvent(e);
+    expect(innerRun).toHaveBeenCalledOnce();
+    expect(outerRun).not.toHaveBeenCalled();
+    expect(outerGate).not.toHaveBeenCalled();
+    expect(e.defaultPrevented).toBe(true);
+    unbindInner();
+    unbindOuter();
+  });
+
+  it('a disabled sequence does not start (its first key is not consumed)', () => {
+    const run = vi.fn();
+    const unbind = bindShortcuts(document, [{ shortcut: 'g f', run, isEnabled: () => false }]);
+    const g = key('g');
+    document.body.dispatchEvent(g);
+    expect(g.defaultPrevented).toBe(false);
+    document.body.dispatchEvent(key('f'));
+    expect(run).not.toHaveBeenCalled();
+    unbind();
+  });
+
   it('plain keys do not fire while typing; chords with Ctrl do; run() returning false keeps the default', () => {
     const plain = vi.fn();
     const chord = vi.fn(() => false as const);

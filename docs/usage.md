@@ -1310,6 +1310,19 @@ formatShortcut('Mod+Shift+Z');   // 'Ctrl+Shift+Z' — Apple '⇧⌘Z'
 getShortcutKeycaps('Ctrl+K');       // [['Ctrl', 'K']] — one <kbd> per cap
 ```
 
+`isEnabled(event)` is a key-press gate, asked only for the binding that matched the key. `false` leaves the
+key unconsumed (no `preventDefault()`), so an outer `bindShortcuts` on an ancestor still gets it; a key an inner
+binding handled is skipped by the outer one. No shortcuts at all while a field has focus (web-grid, Excel):
+
+```ts
+bindShortcuts(document, () =>
+  this.toolbarItems.map((item) => ({ shortcut: item.shortcut, run: () => this.runItem(item), isEnabled: (e) => !isTypingTarget(e) })),
+);
+```
+
+Row / lock / permission gates do not go here — put them on the action item (`getIsDisabledCallback(ctx)` /
+`beforeActionCallback`), so the toolbar button, the menu entry and the shortcut agree.
+
 `matchesShortcut(event, 'Ctrl+D')` / `parseShortcut(text)` / `isTypingTarget(event)` are there for a
 component's own keydown handler. Modifiers match exactly; a bare single character ignores Shift (`'?'`).
 No component parses key combos itself.

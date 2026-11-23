@@ -2020,7 +2020,13 @@ ProseMirror `Mod-Shift-z` read too; free text with other characters is not a sho
 digits also match by `event.code` for macOS Option) / `formatShortcut` (`Ctrl+Shift+Z`, Apple `⇧⌘Z`) /
 `getShortcutKeycaps` / `isTypingTarget` / `bindShortcuts(target, bindings | () => bindings, { sequenceTimeoutMs })`
 (sequences, plain keys skipped while typing unless `shouldFireWhileTyping`, `run()` returning `false` keeps the
-default). `/menu` formats item shortcuts and matches them with it.
+default). A binding's `isEnabled?(event)` is the key-press gate, asked only for the binding that matched the key
+(incl. a sequence's first key): `false` skips it WITHOUT consuming the key (no `preventDefault()`), so the event
+falls through to the next matching binding or an outer `bindShortcuts` on an ancestor (every listener skips a
+`defaultPrevented` event, so an inner handled key never reaches the outer one). web-grid's Excel rule "no
+shortcuts while a cell editor has focus" = `isEnabled: (e) => !isTypingTarget(e)`. Row / lock / permission gates
+are NOT this hook's job — they stay on the action item (`getIsDisabledCallback(ctx)` / `beforeActionCallback`).
+`/menu` formats item shortcuts and matches them with it.
 ### 12.13 Menu (context / dropdown menus) — IMPLEMENTED (`src/menu/`, subpath `/menu`)
 
 **The gap.** web-treeview, web-grid and web-editor each rendered their own context
