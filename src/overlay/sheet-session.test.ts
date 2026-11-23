@@ -26,7 +26,7 @@ describe('startSheetSession', () => {
   it('locks scroll, observes the keyboard, claims Back; end() undoes all once, in reverse', () => {
     const panel = document.createElement('div');
     document.body.append(panel);
-    const session = startSheetSession(panel, { onBack: () => {} });
+    const session = startSheetSession(panel, { backCallback: () => {} });
     expect(calls).toEqual(['lock', 'inset', 'claim']);
     session.end();
     session.end();
@@ -34,17 +34,17 @@ describe('startSheetSession', () => {
     expect(session.isEnded).toBe(true);
   });
 
-  it('no onBack → no Back entry; options switch the pieces off', () => {
+  it('no backCallback → no Back entry; options switch the pieces off', () => {
     const panel = document.createElement('div');
     startSheetSession(panel, { shouldLockScroll: false, shouldFitToVisibleViewport: false }).end();
     expect(calls).toEqual([]);
   });
 
-  it('rearmBack() from inside onBack claims the entry again (one level up)', () => {
+  it('rearmBack() from inside backCallback claims the entry again (one level up)', () => {
     const panel = document.createElement('div');
     let level = 1;
     const session = startSheetSession(panel, {
-      onBack: () => {
+      backCallback: () => {
         if (level-- > 0) session.rearmBack();
       },
     });
@@ -72,7 +72,7 @@ describe('startSheetSession', () => {
 describe('createSheetHeader content', () => {
   it('puts your controls between the title and the close button', () => {
     const search = document.createElement('input');
-    const { header, close } = createSheetHeader({ title: null, closeLabel: 'Close', onClose: () => {}, content: search });
+    const { header, close } = createSheetHeader({ title: null, closeLabel: 'Close', closeCallback: () => {}, content: search });
     expect([...header.children]).toEqual([search, close]);
   });
 });

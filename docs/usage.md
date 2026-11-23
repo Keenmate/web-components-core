@@ -249,8 +249,8 @@ import { startSheetSession } from '@keenmate/web-components-core';
 
 // on open (fullscreen / modal tier), once the panel is mounted
 this.#sheet = startSheetSession(panel, {
-  onBack: () => this.close('back'),          // phone Back closes it
-  // one level up instead: call this.#sheet.rearmBack() from inside onBack
+  backCallback: () => this.close('back'),          // phone Back closes it
+  // one level up instead: call this.#sheet.rearmBack() from inside backCallback
 });
 
 // on EVERY close (✕, Escape, a pick, Back, disconnect — ending twice is a no-op)
@@ -274,7 +274,7 @@ import { startModalSession, Z_INDEX } from '@keenmate/web-components-core';
 // on open, once the panel is mounted (its z-index: Z_INDEX.modal)
 this.#modal = startModalSession(panel, {
   backdrop: true,                         // core adds a dimmed <div> before the panel; or your own element; omit = none
-  onDismiss: (reason) => this.close(reason),  // 'escape' | 'back' | 'backdrop' | 'overlay' | 'parent'
+  dismissCallback: (reason) => this.close(reason),  // 'escape' | 'back' | 'backdrop' | 'overlay' | 'parent'
   trigger: this.#input,                   // focus returns here on end()
   // shouldFitToVisibleViewport: true,    // a FULL-SCREEN sheet: size to the visual viewport
 });
@@ -338,7 +338,7 @@ adoptStyles(this.shadowRoot!, SHEET_CHROME_CSS);          // once, into the root
 const { header, title, close } = createSheetHeader({
   title: this.labels.sheetTitle,                         // null = no title (a search field instead)
   closeLabel: this.labels.close,                         // from the component's labels
-  onClose: () => this.close('close-button'),
+  closeCallback: () => this.close('close-button'),
 });
 header.classList.add('xx__sheet-header');                // your own hooks
 // a search field instead of a title: createSheetHeader({ title: null, content: searchField, … })
@@ -409,8 +409,8 @@ import { createAsyncRunner } from '@keenmate/web-components-core';
 #search = createAsyncRunner({
   debounceMs: () => this.config.searchDebounce,   // 0 = start at once
   loaderDelayMs: 0,                                // > 0: a fast answer never flashes the loader
-  onLoadingChange: (isLoading) => this.#renderLoading(isLoading),
-  onError: (error) => this.log.DATA.error('searchCallback failed', error),   // never an AbortError
+  loadingChangeCallback: (isLoading) => this.#renderLoading(isLoading),
+  errorCallback: (error) => this.log.DATA.error('searchCallback failed', error),   // never an AbortError
   logSource: this,
 });
 
@@ -663,8 +663,8 @@ session when the page must stay usable, below):
 ```ts
 adoptStyles(this.shadowRoot!, SHEET_CHROME_CSS);
 panel.classList.add('km-drawer', 'km-drawer--end');      // --start / --end follow the writing direction; --top / --bottom
-const session = startModalSession(panel, { backdrop: true, onDismiss: () => close() });
-const close = () => { session.end(); animateOut([panel], { className: 'km-drawer--closing', onDone: () => panel.remove() }); };
+const session = startModalSession(panel, { backdrop: true, dismissCallback: () => close() });
+const close = () => { session.end(); animateOut([panel], { className: 'km-drawer--closing', doneCallback: () => panel.remove() }); };
 ```
 
 A **non-modal** drawer (the page stays usable — an upload monitor, an inspector) swaps the session; the rest is
@@ -673,8 +673,8 @@ the same:
 ```ts
 import { startPanelSession } from '@keenmate/web-components-core';
 
-const session = startPanelSession(panel, { onDismiss: () => close(), trigger: button });
-// Escape (a dropdown inside closes first), a click outside, Back → onDismiss; no backdrop / inert / trap
+const session = startPanelSession(panel, { dismissCallback: () => close(), trigger: button });
+// Escape (a dropdown inside closes first), a click outside, Back → dismissCallback; no backdrop / inert / trap
 ```
 
 ## Drag (`createPointerDrag`, `observePageDrag`)
@@ -688,14 +688,14 @@ import { createPointerDrag, observePageDrag, setDropActiveState } from '@keenmat
 #drag = createPointerDrag(this.#body, {
   getSource: (target) => target.closest('.row'),          // null = not draggable here
   longPressMs: 300,                                       // touch: hold, then drag (moving earlier scrolls)
-  onStart: ({ source }) => this.#canDrag(source),         // false refuses
-  onMove: ({ target, x, y }) => this.#showDropIndicator(target, x, y),
-  onDrop: ({ source, target }) => this.#move(source, target),
-  onCancel: () => this.#hideDropIndicator(),              // Escape
+  beforeStartCallback: ({ source }) => this.#canDrag(source),         // false refuses
+  moveCallback: ({ target, x, y }) => this.#showDropIndicator(target, x, y),
+  dropCallback: ({ source, target }) => this.#move(source, target),
+  cancelCallback: () => this.#hideDropIndicator(),              // Escape
 });
 
 // connect() / disconnect()
-this.#stopDropActive = observePageDrag({ types: ['Files'], onChange: (isDropActive) => setDropActiveState(this, this.internals, isDropActive) });
+this.#stopDropActive = observePageDrag({ types: ['Files'], changeCallback: (isDropActive) => setDropActiveState(this, this.internals, isDropActive) });
 ```
 
 Give your drag image `pointer-events: none` so the hit test sees what's under it.
@@ -712,7 +712,7 @@ import { createSelection } from '@keenmate/web-components-core';
   mode: () => this.config.selectionMode,                    // 'multiple' | 'single'
   getOrderedKeys: () => this.#visibleRows.map((r) => r.id), // display order: a range is what the user sees
   isSelectable: (id) => !this.#rowsById.get(id)!.isDisabled,
-  onChange: ({ added, removed, values }) => this.emit('selection-change', { added, removed, values }),
+  changeCallback: ({ added, removed, values }) => this.emit('selection-change', { added, removed, values }),
 });
 
 row.addEventListener('click', (e) => this.#selection.click(id, e));   // click / Ctrl / Shift / Ctrl+Shift
@@ -760,8 +760,8 @@ import { createActiveDescendant, createRovingFocus } from '@keenmate/web-compone
 // A combobox / search field: focus stays in the input, the arrows move a highlighted option.
 #nav = createActiveDescendant(this.#input, this.#listbox, {
   getItems: () => [...this.#listbox.querySelectorAll('[role="option"]')],
-  onActiveChange: (item) => this.#paintHighlight(item),       // your class; aria-activedescendant is core's
-  onActivate: (item) => this.#select(item.dataset.value),     // Enter
+  activeChangeCallback: (item) => this.#paintHighlight(item),       // your class; aria-activedescendant is core's
+  activateCallback: (item) => this.#select(item.dataset.value),     // Enter
 });
 this.#nav.refresh();                                          // after re-rendering the options
 
@@ -770,7 +770,7 @@ this.#nav.refresh();                                          // after re-render
   getItems: () => [...this.#grid.querySelectorAll('[role="gridcell"]')],
   orientation: 'grid', columns: 7,                            // Left / Right follow the writing direction
   hasTypeahead: false,
-  onFocusItem: (cell) => this.#announceDay(cell),
+  focusItemCallback: (cell) => this.#announceDay(cell),
 });
 ```
 
@@ -914,15 +914,15 @@ import { animateOut } from '@keenmate/web-components-core';
 const out = animateOut(rows, {
   className: 'xx__row--closing',
   shouldSetHeightVar: true,          // --km-exit-height = each row's height: shrink in the flow
-  onDone: () => this.#collapse(node), // remove / collapse — never runs after cancel()
+  doneCallback: () => this.#collapse(node), // remove / collapse — never runs after cancel()
 });
 out.cancel();          // re-expanded mid-close: class + inert come off
-await out.finished;    // true after onDone, false when cancelled
+await out.finished;    // true after doneCallback, false when cancelled
 
-// Two elements, each its own BEM modifier: onDone waits for the longer animation.
+// Two elements, each its own BEM modifier: doneCallback waits for the longer animation.
 animateOut([panel, backdrop], {
   className: (el) => (el === backdrop ? 'xx__backdrop--closing' : 'xx__panel--closing'),
-  onDone: () => { panel.remove(); backdrop.remove(); },
+  doneCallback: () => { panel.remove(); backdrop.remove(); },
 });
 ```
 
@@ -1290,7 +1290,7 @@ const menu = openMenu(entries, ctx, {
   at: { x: e.clientX, y: e.clientY },  // or an element
   host: this.shadowRoot,                // where it renders (styles adopted there)
   runAction: (item, { triggerElement, sourceEvent }) => this.activate(item, triggerElement, sourceEvent),
-  onClose: (reason) => { /* sync your state */ },
+  closeCallback: (reason) => { /* sync your state */ },
   returnFocusTo: this.bodyEl,
   shouldFocusFirst: isOpenedFromKeyboard,
   title: row.name,                      // the phone sheet's header + the menu's aria-label
@@ -1307,7 +1307,7 @@ button), rows at least `--base-touch-target-min` (44px) tall; a submenu drills i
 the list, a Back row on top goes up); page scroll is locked (`lockBodyScroll`). It closes the
 same ways as the floating menu plus three:
 
-| Close | `onClose` reason | Focus |
+| Close | `closeCallback` reason | Focus |
 |---|---|---|
 | a tap on the backdrop (closes on `click`, no click-through) | `'outside-click'` | back to `returnFocusTo` |
 | the header's close button | `'close-button'` | back to `returnFocusTo` |
@@ -1451,7 +1451,7 @@ explain the main ones; [SPEC](SPEC.md) has the design notes.
 | Environment | `getEnvironment`, `observeEnvironment`, `observeViewport`, `observeElementSize`, `createElementSizeObserver(listener)` (`observe` / `unobserve` / `disconnect` — one listener for a changing set of elements, shared observer), `configureBreakpoints` / `BREAKPOINTS_CHANGE_EVENT`, `classifyDevice` / `TABLET_MIN_SHORT_SIDE` |
 | Theme | `getThemeContext`, `observeThemeContext`, `setThemeMode` / `getThemeMode` (force dark / light page-wide), `readThemeSignal(el)`, `resolveThemeSource(host, source)`, `THEME_CONTEXT_ATTRIBUTE`, `THEME_SOURCE_ATTRIBUTE` |
 | Motion | `getPageMotion`, `observePageMotion`, `adoptMotionStyles(node)`, `MOTION_CSS`, `MOTION_PRESETS`, `MOTION_VALUES`, `MOTION_ATTRIBUTE`, `MOTION_DATA_ATTRIBUTE` |
-| Overlays | `resolvePresentation` / `DEFAULT_PRESENTATION_MAP` / `createPresentationContext` (floating panel vs fullscreen sheet), `lockBodyScroll()` (shared ref-counted lock), `fitToVisibleViewport(panel)`, `startSheetSession(panel, { onBack })` (scroll lock + keyboard inset + Back + containing-block check, one `end()`), `claimBackEntry(onBack)` (phone Back closes the sheet), `SHEET_CHROME_CSS` / `createSheetHeader()` (the sheet header + close button), `registerOverlay` / `notifyOverlayActivated` / `observeOverlayActivation` / `dismissAllOverlays` / `OVERLAY_ACTIVATE_EVENT` / `ALL_OVERLAY_GROUPS` (one overlay open at a time, nesting, Escape routing) |
+| Overlays | `resolvePresentation` / `DEFAULT_PRESENTATION_MAP` / `createPresentationContext` (floating panel vs fullscreen sheet), `lockBodyScroll()` (shared ref-counted lock), `fitToVisibleViewport(panel)`, `startSheetSession(panel, { backCallback })` (scroll lock + keyboard inset + Back + containing-block check, one `end()`), `claimBackEntry(onBack)` (phone Back closes the sheet), `SHEET_CHROME_CSS` / `createSheetHeader()` (the sheet header + close button), `registerOverlay` / `notifyOverlayActivated` / `observeOverlayActivation` / `dismissAllOverlays` / `OVERLAY_ACTIVATE_EVENT` / `ALL_OVERLAY_GROUPS` (one overlay open at a time, nesting, Escape routing) |
 | Logging | `createLoggers(namespace, categories?)`, `createPerfLogger(namespace, { thresholdMs, maxSpans })` (spans + item counts + metadata, `measureAsync`, `count`, `summarize`), `getPageLogging()` (= `window.components.logging`), `getCoreLogging()` / `coreLogging` / `CORE_LOG_CATEGORIES` (core's own messages), `setLogPersistKeyPrefix` / `getLogPersistKeyPrefix`, `isLogLevel`, `parseLogLevel`, `LOG_LEVELS`, `DEFAULT_LOG_CATEGORIES`, `DEFAULT_LOG_LEVEL`, `DEFAULT_ENABLED_LOG_LEVEL`, `runSafely(fn, log)` / `notifyListeners(listeners, value, log)` (call code core doesn't own: a throw is logged, not propagated) |
 
 ### Subpaths

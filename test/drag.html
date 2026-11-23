@@ -39,13 +39,13 @@
         createPointerDrag(list, {
             getSource: (t) => t.closest('li'),
             longPressMs: 300,
-            onStart: ({ source, pointerType }) => { log.push(`start:${source.dataset.key}:${pointerType}`); },
-            onMove: ({ target }) => {
+            beforeStartCallback: ({ source, pointerType }) => { log.push(`start:${source.dataset.key}:${pointerType}`); },
+            moveCallback: ({ target }) => {
                 const li = target?.closest?.('#list li') ?? null;
                 if (li !== over) { over?.classList.remove('is-over'); li?.classList.add('is-over'); over = li; }
                 if (target?.id === 'inner') log.push('over:shadow-inner');
             },
-            onDrop: ({ source, target }) => {
+            dropCallback: ({ source, target }) => {
                 const li = target?.closest?.('#list li');
                 over?.classList.remove('is-over'); over = null;
                 if (!li || li === source) return log.push('drop:none');
@@ -55,12 +55,12 @@
                 render();
                 log.push(`drop:${source.dataset.key}->${to}`);
             },
-            onCancel: () => { over?.classList.remove('is-over'); over = null; log.push('cancel'); },
+            cancelCallback: () => { over?.classList.remove('is-over'); over = null; log.push('cancel'); },
         });
         list.addEventListener('click', (e) => log.push(`click:${e.target.dataset?.key ?? ''}`));
 
         const zone = document.getElementById('zone');
-        observePageDrag({ onChange: (isDropActive) => setDropActiveState(zone, null, isDropActive) });
+        observePageDrag({ changeCallback: (isDropActive) => setDropActiveState(zone, null, isDropActive) });
     </script>
 </body>
 </html>

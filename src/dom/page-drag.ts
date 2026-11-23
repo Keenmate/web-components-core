@@ -17,7 +17,7 @@ export interface ObservePageDragOptions {
   /** `dataTransfer.types` that count (any of them); default `['Files']`. */
   types?: readonly string[];
   /** `true` when a matching drag starts over the page, `false` when it ends. Not called on subscribe. */
-  onChange: (isDropActive: boolean) => void;
+  changeCallback: (isDropActive: boolean) => void;
 }
 
 const HEARTBEAT_TIMEOUT_MS = 350;
@@ -26,7 +26,7 @@ const CAPTURE: AddEventListenerOptions = { capture: true };
 
 interface Watcher {
   types: readonly string[];
-  onChange: (isDropActive: boolean) => void;
+  changeCallback: (isDropActive: boolean) => void;
   isDropActive: boolean;
 }
 
@@ -50,7 +50,7 @@ function set(watcher: Watcher, isDropActive: boolean): void {
   if (watcher.isDropActive === isDropActive) return;
   watcher.isDropActive = isDropActive;
   try {
-    watcher.onChange(isDropActive);
+    watcher.changeCallback(isDropActive);
   } catch {
     // a watcher's own failure must not stop the others
   }
@@ -139,7 +139,7 @@ function listen(isOn: boolean): void {
 /** Watch page-wide drags of `types`; returns the (idempotent) unsubscribe. SSR-safe. */
 export function observePageDrag(options: ObservePageDragOptions): () => void {
   if (typeof window === 'undefined') return () => {};
-  const watcher: Watcher = { types: options.types?.length ? [...options.types] : ['Files'], onChange: options.onChange, isDropActive: false };
+  const watcher: Watcher = { types: options.types?.length ? [...options.types] : ['Files'], changeCallback: options.changeCallback, isDropActive: false };
   if (watchers.size === 0) listen(true);
   watchers.add(watcher);
   return () => {

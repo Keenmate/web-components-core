@@ -21,7 +21,7 @@ import * as fui from '@floating-ui/dom';
 import { anchor, createPopover } from './index.js';
 import { __resetOverlays } from '../overlay/active-overlay.js';
 
-/** Let the mocked computePosition resolve (onPlaced runs in its `.then`). */
+/** Let the mocked computePosition resolve (placedCallback runs in its `.then`). */
 const settle = () => new Promise((r) => setTimeout(r, 0));
 /** Past watchScrollClose's opening frames (jsdom: no rAF → its 50 ms fallback). */
 /** Past the opening window: two animation frames (scroll-close's settle) — a fixed timeout raced
@@ -97,14 +97,14 @@ describe('createPopover — fit additions', () => {
   it('visibleClass on open; hidden (visibility) until the first placement; both gone on close', async () => {
     const { reference, panel } = setup();
     panel.style.visibility = 'collapse'; // the author's own inline value comes back
-    const onPlaced = vi.fn();
-    const pop = createPopover({ reference, panel, visibleClass: 'is-open', onPlaced });
+    const placedCallback = vi.fn();
+    const pop = createPopover({ reference, panel, visibleClass: 'is-open', placedCallback });
     pop.open();
     expect(panel.classList.contains('is-open')).toBe(true); // measurable (a display:none panel shows)
     expect(panel.style.visibility).toBe('hidden'); // but not seen at 0,0
     await settle();
     expect(panel.style.visibility).toBe('collapse');
-    expect(onPlaced).toHaveBeenCalledWith('bottom-start'); // the caller's own onPlaced still runs
+    expect(placedCallback).toHaveBeenCalledWith('bottom-start'); // the caller's own placedCallback still runs
     pop.close();
     expect(panel.classList.contains('is-open')).toBe(false);
   });
@@ -215,24 +215,24 @@ describe('createPopover — fit additions', () => {
     document.body.removeAttribute('data-theme');
   });
 
-  it("onClose fires for close() and destroy() with 'api'", () => {
+  it("closeCallback fires for close() and destroy() with 'api'", () => {
     const { reference, panel } = setup();
-    const onClose = vi.fn();
-    const pop = createPopover({ reference, panel, onClose });
+    const closeCallback = vi.fn();
+    const pop = createPopover({ reference, panel, closeCallback });
     pop.open();
     pop.close();
-    expect(onClose).toHaveBeenLastCalledWith('api');
+    expect(closeCallback).toHaveBeenLastCalledWith('api');
     pop.open();
     pop.destroy();
-    expect(onClose).toHaveBeenCalledTimes(2);
+    expect(closeCallback).toHaveBeenCalledTimes(2);
     pop.destroy(); // idempotent, no third call
-    expect(onClose).toHaveBeenCalledTimes(2);
+    expect(closeCallback).toHaveBeenCalledTimes(2);
   });
 
-  it('a throwing onClose is logged and the popover is still closed', () => {
+  it('a throwing closeCallback is logged and the popover is still closed', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { reference, panel } = setup();
-    const pop = createPopover({ reference, panel, onClose: () => { throw new Error('boom'); } });
+    const pop = createPopover({ reference, panel, closeCallback: () => { throw new Error('boom'); } });
     pop.open();
     pop.close();
     expect(pop.isOpen).toBe(false);
@@ -249,8 +249,8 @@ describe('createPopover — fit additions', () => {
 
     it('a page scroll closes it; a scroll inside the panel does not', async () => {
       const { reference, panel } = setup();
-      const onClose = vi.fn();
-      const pop = createPopover({ reference, panel, shouldCloseOnScroll: true, onClose });
+      const closeCallback = vi.fn();
+      const pop = createPopover({ reference, panel, shouldCloseOnScroll: true, closeCallback });
       pop.open();
       const list = document.createElement('div');
       panel.append(list);
@@ -259,7 +259,7 @@ describe('createPopover — fit additions', () => {
       expect(pop.isOpen).toBe(true);
       document.dispatchEvent(new Event('scroll'));
       expect(pop.isOpen).toBe(false);
-      expect(onClose).toHaveBeenCalledWith('scroll');
+      expect(closeCallback).toHaveBeenCalledWith('scroll');
     });
 
     it('an unrelated scroller elsewhere does not close it; one around the reference does', async () => {
@@ -409,14 +409,14 @@ describe('createPopover — fit additions', () => {
       const hint = document.createElement('div');
       const elsewhere = document.createElement('div');
       document.body.append(hint, elsewhere);
-      const onClose = vi.fn();
-      const pop = createPopover({ reference, panel, shouldCloseOnOutsideClick: true, getInsideElements: () => [hint, null], onClose });
+      const closeCallback = vi.fn();
+      const pop = createPopover({ reference, panel, shouldCloseOnOutsideClick: true, getInsideElements: () => [hint, null], closeCallback });
       pop.open();
       press(hint);
       expect(pop.isOpen).toBe(true);
       press(elsewhere);
       expect(pop.isOpen).toBe(false);
-      expect(onClose).toHaveBeenCalledWith('outside-click');
+      expect(closeCallback).toHaveBeenCalledWith('outside-click');
     });
 
     it('shouldCloseOnOutsideClick as a function is asked at each press', () => {
@@ -521,7 +521,7 @@ describe('createPopover — reference removed while open (sweep OV-5)', () => {
   it('closes with "reference-removed" at the next position update, and the panel goes', () => {
     const { reference, panel } = setup();
     const reasons: string[] = [];
-    const popover = createPopover({ reference, panel, onClose: (r) => reasons.push(r) });
+    const popover = createPopover({ reference, panel, closeCallback: (r) => reasons.push(r) });
     popover.open();
     expect(panel.isConnected).toBe(true);
     reference.remove(); // a virtualised row re-rendered

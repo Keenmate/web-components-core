@@ -369,12 +369,12 @@ export class RsPickerCard extends BlissElement {
       sheet.className = 'pk-sheet';
       sheet.setAttribute('role', 'dialog');
       sheet.setAttribute('aria-modal', 'true');
-      const { header } = createSheetHeader({ title: 'Pick a date', closeLabel: 'Close', onClose: () => this.close() });
+      const { header } = createSheetHeader({ title: 'Pick a date', closeLabel: 'Close', closeCallback: () => this.close() });
       this.#calendar.classList.add('is-open');
       sheet.append(header, this.#calendar);
       this.#root.append(sheet);
       // scroll lock + keyboard inset + the phone Back gesture, undone by one end()
-      const session = startSheetSession(sheet, { onBack: () => this.close() });
+      const session = startSheetSession(sheet, { backCallback: () => this.close() });
       this.#sheet = { el: sheet, session };
       (header.querySelector('.km-sheet-close') as HTMLElement | null)?.focus();
     } else {

@@ -475,8 +475,8 @@ export class FxFiles extends BlissElement<{ action: FilesDetail }> {
       presentation: (this.dataset.presentation as 'auto' | 'floating' | 'sheet' | 'drawer' | undefined) ?? 'auto',
       side: (this.dataset.side as 'start' | 'end' | undefined) ?? 'start',
       runAction: (item, inv) => this.#run(item, inv, ctx, source),
-      onClose: (reason) => {
-        step('onClose', reason);
+      closeCallback: (reason) => {
+        step('closeCallback', reason);
         if (this.menu === handle) this.menu = null;
       },
     });

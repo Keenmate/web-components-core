@@ -17,21 +17,21 @@ describe('createActiveDescendant', () => {
     const input = document.getElementById('in')!;
     const listbox = document.getElementById('lb')!;
     const items = () => [...listbox.querySelectorAll('li')];
-    const onActivate = vi.fn();
-    const onActiveChange = vi.fn();
-    const ad = createActiveDescendant(input, listbox, { getItems: items, onActivate, onActiveChange, ...opts });
-    return { input, listbox, items, ad, onActivate, onActiveChange };
+    const activateCallback = vi.fn();
+    const activeChangeCallback = vi.fn();
+    const ad = createActiveDescendant(input, listbox, { getItems: items, activateCallback, activeChangeCallback, ...opts });
+    return { input, listbox, items, ad, activateCallback, activeChangeCallback };
   };
 
   it('arrows move aria-activedescendant over the not-disabled items; ids and aria-controls are set', () => {
-    const { input, items, ad, onActiveChange } = setup();
+    const { input, items, ad, activeChangeCallback } = setup();
     expect(input.getAttribute('aria-controls')).toBe('lb');
     expect(key(input, 'ArrowDown').defaultPrevented).toBe(true);
     expect(input.getAttribute('aria-activedescendant')).toBe(items()[0]!.id);
     expect(items()[0]!.id).toMatch(/^km-option/);
     key(input, 'ArrowDown');
     expect(ad.active).toBe(items()[2]); // Banana skipped
-    expect(onActiveChange).toHaveBeenLastCalledWith(items()[2], 2);
+    expect(activeChangeCallback).toHaveBeenLastCalledWith(items()[2], 2);
     key(input, 'ArrowDown'); // no wrap
     expect(ad.activeIndex).toBe(2);
     key(input, 'ArrowUp');
@@ -39,7 +39,7 @@ describe('createActiveDescendant', () => {
   });
 
   it('wraps when asked; Home / End only with hasHomeEnd; Enter activates', () => {
-    const { input, items, ad, onActivate } = setup({ isWrapping: true });
+    const { input, items, ad, activateCallback } = setup({ isWrapping: true });
     key(input, 'ArrowUp'); // nothing active: Up starts at the last
     expect(ad.activeIndex).toBe(2);
     key(input, 'ArrowDown');
@@ -47,7 +47,7 @@ describe('createActiveDescendant', () => {
     expect(key(input, 'End').defaultPrevented).toBe(false); // the caret's
     const enter = key(input, 'Enter');
     expect(enter.defaultPrevented).toBe(true);
-    expect(onActivate).toHaveBeenCalledWith(items()[0], 0, enter);
+    expect(activateCallback).toHaveBeenCalledWith(items()[0], 0, enter);
   });
 
   it('refresh keeps the active item by id across a re-render, else clears; destroy detaches', () => {
@@ -65,13 +65,13 @@ describe('createActiveDescendant', () => {
   });
 
   it('shouldHandleKeys: false = ARIA only — keys are the component’s, move() / setActive() still write the attribute', () => {
-    const { input, items, ad, onActivate } = setup({ shouldHandleKeys: false });
+    const { input, items, ad, activateCallback } = setup({ shouldHandleKeys: false });
     expect(key(input, 'ArrowDown').defaultPrevented).toBe(false);
     expect(input.hasAttribute('aria-activedescendant')).toBe(false);
     ad.move(1);
     expect(input.getAttribute('aria-activedescendant')).toBe(items()[0]!.id);
     key(input, 'Enter');
-    expect(onActivate).not.toHaveBeenCalled();
+    expect(activateCallback).not.toHaveBeenCalled();
   });
 
   it('one element as input and listbox (a tree body): no self aria-controls, its tab stop untouched', () => {
@@ -85,8 +85,8 @@ describe('createActiveDescendant', () => {
     ad.destroy();
   });
 
-  it('ignores composing / modified keys and a throwing onActiveChange', () => {
-    const { input, ad } = setup({ onActiveChange: () => { throw new Error('paint'); } });
+  it('ignores composing / modified keys and a throwing activeChangeCallback', () => {
+    const { input, ad } = setup({ activeChangeCallback: () => { throw new Error('paint'); } });
     expect(key(input, 'ArrowDown', { isComposing: true }).defaultPrevented).toBe(false);
     expect(key(input, 'ArrowDown', { altKey: true }).defaultPrevented).toBe(false);
     key(input, 'ArrowDown');
@@ -99,20 +99,20 @@ describe('createRovingFocus', () => {
     document.body.innerHTML = `<div id="c">${html}</div>`;
     const container = document.getElementById('c')!;
     const items = () => [...container.querySelectorAll<HTMLElement>('button')];
-    const onFocusItem = vi.fn();
-    const rf = createRovingFocus(container, { getItems: items, onFocusItem, ...opts });
-    return { container, items, rf, onFocusItem };
+    const focusItemCallback = vi.fn();
+    const rf = createRovingFocus(container, { getItems: items, focusItemCallback, ...opts });
+    return { container, items, rf, focusItemCallback };
   };
   const tabIndexes = (items: HTMLElement[]) => items.map((i) => i.tabIndex);
 
   it('one tab stop; Up / Down move real focus; Home / End', () => {
-    const { items, rf, onFocusItem } = setup('<button>a</button><button>b</button><button>c</button>');
+    const { items, rf, focusItemCallback } = setup('<button>a</button><button>b</button><button>c</button>');
     expect(tabIndexes(items())).toEqual([0, -1, -1]);
     items()[0]!.focus();
     key(items()[0]!, 'ArrowDown');
     expect(document.activeElement).toBe(items()[1]);
     expect(tabIndexes(items())).toEqual([-1, 0, -1]);
-    expect(onFocusItem).toHaveBeenLastCalledWith(items()[1], 1);
+    expect(focusItemCallback).toHaveBeenLastCalledWith(items()[1], 1);
     key(items()[1]!, 'End');
     expect(rf.currentIndex).toBe(2);
     key(items()[2]!, 'ArrowDown'); // no wrap

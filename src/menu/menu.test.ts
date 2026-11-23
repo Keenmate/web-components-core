@@ -52,9 +52,9 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 
 function open(entries: readonly (MenuEntry<Ctx> | string)[], extra: Partial<OpenMenuOptions<Ctx>> = {}) {
   const runAction = vi.fn();
-  const onClose = vi.fn<(reason: MenuCloseReason) => void>();
-  const handle = openMenu<Ctx>(entries, ctx, { at: { x: 10, y: 20 }, host: shadow, runAction, onClose, returnFocusTo: opener, ...extra });
-  return { handle, runAction, onClose };
+  const closeCallback = vi.fn<(reason: MenuCloseReason) => void>();
+  const handle = openMenu<Ctx>(entries, ctx, { at: { x: 10, y: 20 }, host: shadow, runAction, closeCallback, returnFocusTo: opener, ...extra });
+  return { handle, runAction, closeCallback };
 }
 
 const basic: MenuEntry<Ctx>[] = [
@@ -146,13 +146,13 @@ describe('rendering', () => {
     expect(levels()[1]!.classList.contains('km-menu--submenu')).toBe(true);
   });
 
-  it('no visible item → nothing rendered, handle closed, onClose not called', () => {
-    const { handle, onClose } = open([{ id: 'h', isVisible: false }, createMenuDivider()]);
+  it('no visible item → nothing rendered, handle closed, closeCallback not called', () => {
+    const { handle, closeCallback } = open([{ id: 'h', isVisible: false }, createMenuDivider()]);
     expect(handle.isOpen).toBe(false);
     expect(handle.element).toBeNull();
     expect(levels()).toHaveLength(0);
     handle.close();
-    expect(onClose).not.toHaveBeenCalled();
+    expect(closeCallback).not.toHaveBeenCalled();
   });
 
   it('defaults + prepareItemCallback apply at every level', () => {
@@ -167,7 +167,7 @@ describe('rendering', () => {
   });
 
   it('renderMenuCallback takes over the root; core still positions and dismisses it', () => {
-    const { handle, onClose } = open(basic, {
+    const { handle, closeCallback } = open(basic, {
       renderMenuCallback: (el, close) => {
         el.innerHTML = '<button class="mine">x</button>';
         el.querySelector('button')!.addEventListener('click', close);
@@ -180,23 +180,23 @@ describe('rendering', () => {
     expect(anchors).toHaveLength(1);
     root.querySelector<HTMLButtonElement>('.mine')!.click();
     expect(handle.isOpen).toBe(false);
-    expect(onClose).toHaveBeenCalledWith('api');
+    expect(closeCallback).toHaveBeenCalledWith('api');
   });
 });
 
 describe('activation', () => {
   it('a click closes first, then runs the item with the invocation', () => {
     const order: string[] = [];
-    const { runAction, onClose } = open(basic, {
+    const { runAction, closeCallback } = open(basic, {
       runAction: vi.fn(() => void order.push('run')),
-      onClose: vi.fn(() => void order.push('close')),
+      closeCallback: vi.fn(() => void order.push('close')),
     });
     const a = byId('a');
     a.click();
     expect(order).toEqual(['close', 'run']);
     expect(levels()).toHaveLength(0);
     void runAction;
-    void onClose;
+    void closeCallback;
   });
 
   it('hands the item, trigger and event to runAction; a disabled item does nothing', () => {
@@ -342,11 +342,11 @@ describe('keyboard', () => {
   });
 
   it('Enter / Space run a leaf; focus returns to returnFocusTo', () => {
-    const { runAction, onClose } = open(basic, { shouldFocusFirst: true });
+    const { runAction, closeCallback } = open(basic, { shouldFocusFirst: true });
     key(' ');
     expect(runAction).toHaveBeenCalledOnce();
     expect(runAction.mock.calls[0]![1].sourceEvent.type).toBe('keydown');
-    expect(onClose).toHaveBeenCalledWith('action');
+    expect(closeCallback).toHaveBeenCalledWith('action');
     expect(active()).toBe(opener);
   });
 
@@ -377,11 +377,11 @@ describe('keyboard', () => {
   it('Esc on the root closes and returns focus; Tab closes without preventing default', () => {
     const first = open(basic, { shouldFocusFirst: true });
     key('Escape');
-    expect(first.onClose).toHaveBeenCalledWith('escape');
+    expect(first.closeCallback).toHaveBeenCalledWith('escape');
     expect(active()).toBe(opener);
     const second = open(basic, { shouldFocusFirst: true });
     const e = key('Tab');
-    expect(second.onClose).toHaveBeenCalledWith('tab');
+    expect(second.closeCallback).toHaveBeenCalledWith('tab');
     expect(e.defaultPrevented).toBe(false);
     expect(active()).toBe(opener);
   });
@@ -412,12 +412,12 @@ describe('keyboard', () => {
 
 describe('dismiss + cleanup', () => {
   it('an outside pointerdown closes; inside does not; focus is not pulled back', () => {
-    const { handle, onClose } = open(basic, { shouldFocusFirst: true });
+    const { handle, closeCallback } = open(basic, { shouldFocusFirst: true });
     byId('a').dispatchEvent(new Event('pointerdown', { bubbles: true, composed: true }));
     expect(handle.isOpen).toBe(true);
     document.body.dispatchEvent(new Event('pointerdown', { bubbles: true, composed: true }));
     expect(handle.isOpen).toBe(false);
-    expect(onClose).toHaveBeenCalledWith('outside-click');
+    expect(closeCallback).toHaveBeenCalledWith('outside-click');
     expect(active()).not.toBe(opener);
   });
 
@@ -436,13 +436,13 @@ describe('dismiss + cleanup', () => {
     window.dispatchEvent(new WheelEvent('wheel')); // a bare wheel moves nothing
     expect(a.handle.isOpen).toBe(true);
     document.dispatchEvent(new Event('scroll')); // the page scrolled and the host moved
-    expect(a.onClose).toHaveBeenCalledWith('scroll');
+    expect(a.closeCallback).toHaveBeenCalledWith('scroll');
 
     const b = open(basic);
     document.dispatchEvent(new Event('scroll')); // a late scroll event: nothing moved since open
     expect(b.handle.isOpen).toBe(true);
     window.dispatchEvent(new Event('blur'));
-    expect(b.onClose).toHaveBeenCalledWith('blur');
+    expect(b.closeCallback).toHaveBeenCalledWith('blur');
   });
 
   it('a scroll inside the host shadow root (not composed) is heard when it moves the anchor', async () => {
@@ -452,10 +452,10 @@ describe('dismiss + cleanup', () => {
     scroller.append(inner);
     let top = 100;
     inner.getBoundingClientRect = () => ({ top, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: top, toJSON() {} }) as DOMRect;
-    const { onClose } = open(basic, { at: inner });
+    const { closeCallback } = open(basic, { at: inner });
     top = 40;
     scroller.dispatchEvent(new Event('scroll'));
-    expect(onClose).toHaveBeenCalledWith('scroll');
+    expect(closeCallback).toHaveBeenCalledWith('scroll');
   });
 
   it('a point menu belongs to the element under the point: a scroller inside the component that moves it closes the menu', () => {
@@ -469,10 +469,10 @@ describe('dismiss + cleanup', () => {
     document.elementFromPoint = () => host;
     shadow.elementFromPoint = () => cell;
     try {
-      const { onClose } = open(basic);
+      const { closeCallback } = open(basic);
       top = 60;
       body.dispatchEvent(new Event('scroll'));
-      expect(onClose).toHaveBeenCalledWith('scroll');
+      expect(closeCallback).toHaveBeenCalledWith('scroll');
     } finally {
       delete (document as { elementFromPoint?: unknown }).elementFromPoint;
       delete (shadow as { elementFromPoint?: unknown }).elementFromPoint;
@@ -485,10 +485,10 @@ describe('dismiss + cleanup', () => {
       return host;
     };
     try {
-      const { handle, onClose } = open(basic, { at: { x: NaN, y: NaN } });
+      const { handle, closeCallback } = open(basic, { at: { x: NaN, y: NaN } });
       expect(handle.isOpen).toBe(true);
       key('Escape');
-      expect(onClose).toHaveBeenCalledWith('escape');
+      expect(closeCallback).toHaveBeenCalledWith('escape');
     } finally {
       delete (document as { elementFromPoint?: unknown }).elementFromPoint;
     }
@@ -501,35 +501,35 @@ describe('dismiss + cleanup', () => {
     let top = 100;
     host.getBoundingClientRect = () => ({ top, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: top, toJSON() {} }) as DOMRect;
     try {
-      const { onClose } = open(basic);
+      const { closeCallback } = open(basic);
       top = 50;
       document.dispatchEvent(new Event('scroll'));
-      expect(onClose).toHaveBeenCalledWith('scroll');
+      expect(closeCallback).toHaveBeenCalledWith('scroll');
     } finally {
       delete (document as { elementFromPoint?: unknown }).elementFromPoint;
     }
   });
 
   it('another KM overlay opening closes it', () => {
-    const { onClose } = open(basic);
+    const { closeCallback } = open(basic);
     registerOverlay(() => {}).activate();
-    expect(onClose).toHaveBeenCalledWith('overlay');
+    expect(closeCallback).toHaveBeenCalledWith('overlay');
   });
 
   it('shouldCloseOnOutsideInteraction:false ignores outside presses but Escape still closes', () => {
-    const { handle, onClose } = open(basic, { shouldCloseOnOutsideInteraction: false });
+    const { handle, closeCallback } = open(basic, { shouldCloseOnOutsideInteraction: false });
     document.body.dispatchEvent(new Event('pointerdown', { bubbles: true, composed: true }));
     window.dispatchEvent(new Event('blur'));
     expect(handle.isOpen).toBe(true);
     key('Escape');
-    expect(onClose).toHaveBeenCalledWith('escape');
+    expect(closeCallback).toHaveBeenCalledWith('escape');
   });
 
   // Review A-16.
-  it('a throwing onClose is logged and does not escape close()', () => {
+  it('a throwing closeCallback is logged and does not escape close()', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { handle } = open(basic, {
-      onClose: () => {
+      closeCallback: () => {
         throw new Error('close boom');
       },
     });
@@ -554,15 +554,15 @@ describe('dismiss + cleanup', () => {
     const docRemove = vi.spyOn(document, 'removeEventListener');
     const winAdd = vi.spyOn(window, 'addEventListener');
     const winRemove = vi.spyOn(window, 'removeEventListener');
-    const { handle, onClose } = open([{ id: 'p', text: 'P', children: [{ id: 'p1', text: 'P1' }] }]);
+    const { handle, closeCallback } = open([{ id: 'p', text: 'P', children: [{ id: 'p1', text: 'P1' }] }]);
     byId('p').click();
     expect(levels()).toHaveLength(2);
     handle.close();
     handle.close();
     expect(levels()).toHaveLength(0);
     expect(anchors.every((a) => a.destroy.mock.calls.length === 1)).toBe(true);
-    expect(onClose).toHaveBeenCalledOnce();
-    expect(onClose).toHaveBeenCalledWith('api');
+    expect(closeCallback).toHaveBeenCalledOnce();
+    expect(closeCallback).toHaveBeenCalledWith('api');
     expect(docRemove.mock.calls.length).toBe(docAdd.mock.calls.length);
     expect(winRemove.mock.calls.length).toBe(winAdd.mock.calls.length);
     const e = key('ArrowDown');
@@ -657,11 +657,11 @@ describe('menu — review fixes', () => {
   it('a keep-open refresh that hides every item closes the menu (reason "empty")', async () => {
     let isVisible = true;
     const entries: MenuEntry<Ctx>[] = [{ id: 'once', shouldCloseOnClick: false, getIsVisibleCallback: () => isVisible }];
-    const { handle, onClose } = open(entries, { runAction: () => void (isVisible = false) });
+    const { handle, closeCallback } = open(entries, { runAction: () => void (isVisible = false) });
     byId('once').click();
     await flush();
     expect(handle.isOpen).toBe(false);
-    expect(onClose).toHaveBeenCalledWith('empty');
+    expect(closeCallback).toHaveBeenCalledWith('empty');
   });
 
   it('two open menus: one Escape closes only the topmost', () => {

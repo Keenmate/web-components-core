@@ -130,7 +130,7 @@ export const SHEET_CHROME_CSS = `
 
 /* ── Drawer preset (SPEC §12.9, B14): a non-anchored panel on one edge of the viewport ──────────────
    The component adds .km-drawer + a side (--start / --end follow the writing direction, --top / --bottom)
-   to its panel and runs it through startModalSession(panel, { backdrop: true, onDismiss }). Closing:
+   to its panel and runs it through startModalSession(panel, { backdrop: true, dismissCallback }). Closing:
    animateOut(panel, { className: 'km-drawer--closing' }). The modal tier, safe areas, motion tokens. */
 .km-drawer {
   position: fixed;
@@ -243,7 +243,7 @@ export interface SheetHeaderOptions {
   /** The close button's accessible name (from the component's `labels`). */
   closeLabel: string;
   /** Runs on a close-button click. */
-  onClose: () => void;
+  closeCallback: () => void;
 }
 
 export interface SheetHeader {
@@ -272,7 +272,7 @@ export function createSheetHeader(opts: SheetHeaderOptions): SheetHeader {
   close.type = 'button';
   close.className = 'km-sheet-close';
   close.setAttribute('aria-label', opts.closeLabel);
-  close.addEventListener('click', () => opts.onClose());
+  close.addEventListener('click', () => opts.closeCallback());
   header.append(close);
   return { header, title, close };
 }

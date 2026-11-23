@@ -157,7 +157,7 @@ el.motion = 'snappy';</code></pre></div>
                 a different animation.
             </p>
             <ul>
-                <li><strong>Remove</strong> → the last item animates out, then leaves the page (<code>onDone</code>).</li>
+                <li><strong>Remove</strong> → the last item animates out, then leaves the page (<code>doneCallback</code>).</li>
                 <li><strong>Add</strong> while an item is still closing → <code>cancel()</code>: it comes back instead.</li>
                 <li><code>data-motion="none"</code> on the area → everything is instant, no waiting.</li>
                 <li>The checkbox → only the items are instant; the knob still slides.</li>
@@ -188,9 +188,9 @@ el.motion = 'snappy';</code></pre></div>
 const out = animateOut(row, {
   className: 'xx__row--closing',
   shouldSetHeightVar: true,            // --km-exit-height: shrink in the flow
-  onDone: () =&gt; row.remove(),          // at once when the duration is 0s
+  doneCallback: () =&gt; row.remove(),          // at once when the duration is 0s
 });
-out.cancel();                          // re-added mid-close: the class comes off, onDone never runs</code></pre></div>
+out.cancel();                          // re-added mid-close: the class comes off, doneCallback never runs</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -210,7 +210,7 @@ out.cancel();                          // re-added mid-close: the class comes of
                     <tr><td><code>MOTION_CSS</code></td><td>The <code>[data-motion]</code> rules that set those tokens, plus the <code>prefers-reduced-motion: reduce</code> rule that zeroes them.</td></tr>
                     <tr><td><code>adoptMotionStyles(node)</code></td><td>Adopts <code>MOTION_CSS</code> into the root <code>node</code> lives in and into its document. Core does this for every element; idempotent.</td></tr>
                     <tr><td><code>MOTION_ATTRIBUTE</code> · <code>MOTION_DATA_ATTRIBUTE</code></td><td><code>'motion'</code> (the input) · <code>'data-motion'</code> (what core writes).</td></tr>
-                    <tr><td><code>animateOut(elements, { className, onDone, shouldSetInert, shouldSetHeightVar })</code></td><td>Adds the closing class (a string, or <code>(el) =&gt; string</code> per element) and <code>inert</code>, waits for each element's own <code>animationend</code> (gives up after the duration + 50ms), then runs <code>onDone</code> — at once when the duration is <code>0s</code>. Returns <code>{ cancel(), finished }</code>; <code>finished</code> resolves <code>true</code> after <code>onDone</code>, <code>false</code> when cancelled.</td></tr>
+                    <tr><td><code>animateOut(elements, { className, doneCallback, shouldSetInert, shouldSetHeightVar })</code></td><td>Adds the closing class (a string, or <code>(el) =&gt; string</code> per element) and <code>inert</code>, waits for each element's own <code>animationend</code> (gives up after the duration + 50ms), then runs <code>doneCallback</code> — at once when the duration is <code>0s</code>. Returns <code>{ cancel(), finished }</code>; <code>finished</code> resolves <code>true</code> after <code>doneCallback</code>, <code>false</code> when cancelled.</td></tr>
                     <tr><td><code>readAnimationMs(el)</code></td><td>The longest <code>delay + duration</code> of the element's current CSS animations, in ms; <code>0</code> for none.</td></tr>
                     <tr><td><code>EXIT_HEIGHT_VAR</code></td><td><code>'--km-exit-height'</code>: what <code>shouldSetHeightVar</code> writes (each element's height in px).</td></tr>
                     <tr><td>Types</td><td><code>Motion</code>, <code>AnimateOutOptions</code>, <code>AnimateOutHandle</code>.</td></tr>
@@ -389,12 +389,12 @@ out.cancel();                          // re-added mid-close: the class comes of
             const out = animateOut(item, {
                 className: 'mo-item--closing',
                 shouldSetHeightVar: true,
-                onDone: () => {
+                doneCallback: () => {
                     closing.delete(item);
                     item.remove();
                     const took = Math.round(performance.now() - started);
                     log('mo03-log', took ? 'ok' : 'muted', item.textContent,
-                        took ? `removed after ${took} ms (onDone)` : 'removed at once — duration 0s, no waiting');
+                        took ? `removed after ${took} ms (doneCallback)` : 'removed at once — duration 0s, no waiting');
                 },
             });
             if (item.isConnected) {
@@ -407,7 +407,7 @@ out.cancel();                          // re-added mid-close: the class comes of
             if (last) {
                 closing.get(last).cancel();
                 closing.delete(last);
-                log('mo03-log', 'warn', last.textContent, 'cancel() — back before it left; onDone never runs');
+                log('mo03-log', 'warn', last.textContent, 'cancel() — back before it left; doneCallback never runs');
             } else {
                 const item = addItem();
                 log('mo03-log', 'info', item.textContent, 'added — the enter keyframe plays on insert (no JS)');

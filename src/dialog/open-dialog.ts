@@ -114,7 +114,7 @@ export function openDialog(opts: OpenDialogOptions = {}): DialogHandle {
   const { header, title } = createSheetHeader({
     title: opts.title ?? null,
     closeLabel: labels.close,
-    onClose: () => finish(null, true),
+    closeCallback: () => finish(null, true),
   });
   if (title) {
     title.id = `${id}-title`;
@@ -164,7 +164,7 @@ export function openDialog(opts: OpenDialogOptions = {}): DialogHandle {
     shouldCloseOnBackdropClick: isDismissible,
     shouldCloseOnEscape: isDismissible,
     shouldCloseOnBack: isDismissible,
-    onDismiss: (_reason: ModalDismissReason) => finish(null, true),
+    dismissCallback: (_reason: ModalDismissReason) => finish(null, true),
     trigger: opts.trigger ?? null,
     initialFocus: opts.initialFocus ?? (() => (body.querySelector('[autofocus]') as HTMLElement | null) ?? primary ?? firstButton),
   });

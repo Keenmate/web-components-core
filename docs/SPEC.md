@@ -1127,7 +1127,7 @@ anchor(floating: HTMLElement, reference: HTMLElement | VirtualElement, opts: {
   lockPlacement?: 'initial' | 'freeze' | false;  // PlacementLock; default false
   shouldAutoUpdate?: boolean;         // default true
   inheritThemeFrom?: HTMLElement;     // copy data-theme / data-bs-theme / data-context-theme / data-motion onto `floating`
-  onPlaced?(placement: Placement): void;
+  placedCallback?(placement: Placement): void;
 }): { update(): void; destroy(): void };
 
 createTooltip(opts: { trigger; selector?; container; content; placement?; offset?; delay?; cssClass?; visibleClass?;
@@ -1153,11 +1153,11 @@ createTooltip(opts: { trigger; selector?; container; content; placement?; offset
 createPopover(opts: { reference: Reference | (() => Reference); panel; shouldKeepMounted?; isAnchored?;
   container?: HTMLElement | ShadowRoot; inheritThemeFrom?: HTMLElement | false;
   visibleClass?; shouldCloseOnEscape?; shouldCloseOnOutsideClick?; getInsideElements?; returnFocusTo?;
-  shouldCloseOnScroll?; shouldCloseOnResize?; overlayGroup?; onClose?(reason: PopoverCloseReason);
+  shouldCloseOnScroll?; shouldCloseOnResize?; overlayGroup?; closeCallback?(reason: PopoverCloseReason);
   ...AnchorOptions }): PopoverHandle;   // shouldCloseOn*: boolean | (() => boolean), asked each time
 // PopoverHandle: { isOpen, isAnchored, open(), close(), update(), reanchor(), setAnchored(bool), destroy() }
 // open (state + overlay tree + visibleClass), mounted (shouldKeepMounted) and anchored (setAnchored) are separate.
-// onClose fires for every close; reason adds 'scroll' | 'resize' | 'reference-removed' | 'api' to OverlayDismissReason.
+// closeCallback fires for every close; reason adds 'scroll' | 'resize' | 'reference-removed' | 'api' to OverlayDismissReason.
 // Scroll close (shared watchScrollClose, also /menu): the first two frames after open only re-baseline
 // (WebKit scrolls a focused input into view AFTER the focus that opened the layer) — rc21.
 // 'reference-removed' (rc20): the reference was in the page when anchored and left it while open
@@ -1335,7 +1335,7 @@ free functions taking a root + CSS strings, NOT `BlissElement` methods.
   the mechanism; the `getCustomStylesCallback` input row stays in each component's
   table (a `toFunction()` returning a CSS string).
 - **`createCustomStyles(host, root, { getContext, getInstanceStyles, cssClass?,
-  position?, onApply?, shouldHoistImports?, getOwner? })`** → `{ refresh, destroy }` — the whole custom-CSS story on
+  position?, appliedCallback?, shouldHoistImports?, getOwner? })`** → `{ refresh, destroy }` — the whole custom-CSS story on
   top of two style slots: the **page layer** for the host's tag
   (`window.components[tag].getCustomStylesCallback(ctx)`, else
   `window.components[tag].customStyles`) and, after it, the **instance layer**
@@ -1395,8 +1395,8 @@ free functions taking a root + CSS strings, NOT `BlissElement` methods.
   re-bind calls the child's `refresh()`); `null`, a throw (logged, THEME), the host itself, an
   owner without a live handle (none yet / `destroy()`ed) or an owner really removed from the
   page (the removal watch above) = no owner layers, i.e. today's behaviour. `@import` hoisting
-  counts the owner layers like the child's own (under the child's hoisting setting). `onApply`
-  sees only the child's own layers (the owner's `onApply` saw its CSS). Only the direct owner's
+  counts the owner layers like the child's own (under the child's hoisting setting). `appliedCallback`
+  sees only the child's own layers (the owner's `appliedCallback` saw its CSS). Only the direct owner's
   own two layers — not the owner's owner.
 
 The `?inline` import (Vite build concern) and the `@layer variables, component,
@@ -1735,7 +1735,7 @@ trigger as the focus target (`null` = none); `deactivate({ shouldReturnFocus: tr
 way on the component's own close paths (✕, a pick), when it was inside the panel. A sub-panel that is not a
 popover (an inline year selector) joins the tree the same way to get outside-click / Escape — no own
 document click manager. `createPopover({ shouldCloseOnEscape, shouldCloseOnOutsideClick,
-getInsideElements, returnFocusTo, overlayGroup, onClose })` joins the tree with them. `/menu` keeps its own keyboard and
+getInsideElements, returnFocusTo, overlayGroup, closeCallback })` joins the tree with them. `/menu` keeps its own keyboard and
 dismiss handling (its submenus are levels of ONE overlay) but is a node of the tree;
 components move their own dropdown dismissal onto the stack when they next touch it.
 `lockBodyScroll()` pads `<body>` by the width of the vertical scrollbar that pinning actually removes
@@ -1757,10 +1757,10 @@ the page to the top after the lock put it back. Replaces the private copies in w
 (`pushOverlayHistory`), web-daterangepicker (same) and web-grid (`claimHistoryEntry`); `/menu`'s
 sheet uses it too (`src/overlay/back-entry.ts`).
 
-`startSheetSession(panel, { onBack, shouldLockScroll, shouldFitToVisibleViewport, shouldCheckContainingBlock,
+`startSheetSession(panel, { backCallback, shouldLockScroll, shouldFitToVisibleViewport, shouldCheckContainingBlock,
 logSource })` (`src/overlay/sheet-session.ts`) composes `lockBodyScroll` + `fitToVisibleViewport` + `claimBackEntry`
 (+ a one-time containing-block warning via `getFixedPositionOffsetParent`) behind one idempotent `end()`;
-`rearmBack()` re-claims from inside `onBack`. Components start their full-screen sheet with it.
+`rearmBack()` re-claims from inside `backCallback`. Components start their full-screen sheet with it.
 
 **Sheet chrome (`SHEET_CHROME_CSS` + `createSheetHeader()`, decided 2026-11-13).** Every phone
 sheet / full-screen panel has ONE header bar: `.km-sheet-header` > `.km-sheet-title` (optional) +
@@ -1768,7 +1768,7 @@ sheet / full-screen panel has ONE header bar: `.km-sheet-header` > `.km-sheet-ti
 `--base-icon-close` mask in `currentColor` (no text glyph), slid toward the trailing edge, and an
 invisible `::after` that stretches the tap target into the sheet's top-trailing corner without
 covering the first row; bg / border / radius turn it into a bordered button. A component adds the
-classes to its own elements (or builds them with `createSheetHeader({ title, closeLabel, onClose })`,
+classes to its own elements (or builds them with `createSheetHeader({ title, closeLabel, closeCallback })`,
 then adds its BEM classes and any fields), adopts `SHEET_CHROME_CSS` into that root, and maps its
 own variables onto the private `--_km-sheet-*` on its host with no fallback (the `/menu` three-layer
 rule, §12.13); the page themes every sheet with `--km-sheet-*`. Sizes from base-css-variables
@@ -1892,7 +1892,7 @@ have to re-implement the same rules to agree with it. The rules move here once, 
 
 - `getSearchTermCallback({ term, target, behavior, match })` → `PreparedSearchTerm`. For
   built-in search (`target: 'internal'`) a string is used as-is (not normalized again) and a
-  RegExp is matched raw (made stateless); an object is unusable there (`onObjectTerm`, the
+  RegExp is matched raw (made stateless); an object is unusable there (`objectTermCallback`, the
   component warns). For `target: 'callback'` anything goes.
 - `searchCallback(ctx)` — the consumer's engine (FlexSearch, a server).
   `SearchCallbackContext<T, TTerm>` = `{ term, signal, entries }`: the term to search
@@ -2003,7 +2003,7 @@ root / element the levels are appended to; the stylesheet is adopted into its ro
 `runAction(item, { triggerElement, sourceEvent })` (the component's wrapper over core
 `runAction()` — a leaf closes the menu first, then runs; a `shouldCloseOnClick: false`
 item runs and its level re-renders when the returned promise settles),
-`onClose(reason)` (`'action' | 'escape' | 'tab' | 'outside-click' | 'scroll' | 'blur' |
+`closeCallback(reason)` (`'action' | 'escape' | 'tab' | 'outside-click' | 'scroll' | 'blur' |
 'overlay' | 'api' | 'empty' | 'back' | 'close-button' | 'presentation'` — `'back'` / `'close-button'` from the phone sheet, `'presentation'` an `'auto'` menu's device-class flip to / from floating; `'scroll'` by the popover's rule — one shared `watchScrollClose()`: the page or a
 scroller around the `at` element / host, once it moved; never inside the menu, no bare wheel —
 rc20), `renderItemCallback(item, el, ctx, resolved)` (fill-or-fall-through),
@@ -2012,7 +2012,7 @@ rc20), `renderItemCallback(item, el, ctx, resolved)` (fill-or-fall-through),
 `offset`, `cssClass`, `shouldFocusFirst`, `returnFocusTo`,
 `shouldCloseOnOutsideInteraction` (default `true`), `overlayGroup`, `labels` (`{ loading }`),
 `inheritThemeFrom`, `presentation` (`'auto' | 'floating' | 'sheet' | 'drawer'`, default `'auto'`),
-`presentationMap`, `side` (`'start' | 'end'`, the drawer's edge), `title`, `labels.back` / `labels.close`. No visible item → nothing rendered, a closed handle, no `onClose`.
+`presentationMap`, `side` (`'start' | 'end'`, the drawer's edge), `title`, `labels.back` / `labels.close`. No visible item → nothing rendered, a closed handle, no `closeCallback`.
 
 **Phone: the bottom sheet (decided 2026-11-11).** Every component's context / column menu
 gets the phone presentation from core, so the phone rule is ONE rule: `presentation: 'auto'`
@@ -2339,16 +2339,16 @@ literal opts that animation out on purpose. JS-driven animations need nothing ex
 **Enter / exit animations (`animateOut`, `src/dom/animate-out.ts`, main index, decided 2026-11-14).**
 An element that appears animates with a CSS `@keyframes` that plays on insertion — no JS. One that
 disappears gets a closing class whose `forwards` keyframe uses the `-in` easing, and the caller
-removes / collapses it only after: `animateOut(elements, { className /* string, or (el) => string per element */, onDone, shouldSetInert = true,
+removes / collapses it only after: `animateOut(elements, { className /* string, or (el) => string per element */, doneCallback, shouldSetInert = true,
 shouldSetHeightVar = false })` → `{ cancel(), finished: Promise<boolean> }`. It reads the duration back
 from CSS (`readAnimationMs(el)`: the longest `delay + duration` over the animation list, `0` for none
 or `0s`), so the motion level, the component's own knob and reduced motion need no code: at `0` it
-calls `onDone` synchronously. Otherwise it waits for each animating element's OWN `animationend` (a
+calls `doneCallback` synchronously. Otherwise it waits for each animating element's OWN `animationend` (a
 child's bubbling one doesn't count), with a duration + 50ms timer for a tab that never fires it.
 `shouldSetHeightVar` writes each element's height to `--km-exit-height` first (all measured, then
 all written), because a keyframe can't shrink from `height: auto` — so rows shrink in the flow and
-what follows slides up. `cancel()` takes the class, `inert` and the variable off and skips `onDone`;
-after `onDone` the class stays (the caller removes or resets the element), `inert` and the variable
+what follows slides up. `cancel()` takes the class, `inert` and the variable off and skips `doneCallback`;
+after `doneCallback` the class stays (the caller removes or resets the element), `inert` and the variable
 are put back. Used by `/menu`'s sheet close; components (row expand / collapse) use it instead of
 their own waits — rulebook C-CA-18. CSS transitions remain right for an element that STAYS in the
 DOM (a dropdown, a tooltip toggling a class).
@@ -2435,15 +2435,15 @@ Tab or a screen reader out of the page behind.
 1. **`startModalSession(panel, opts)`** (main index) — for a component's OWN modal markup. `backdrop:
    boolean | HTMLElement` (`true` = core inserts `.km-modal-backdrop` before the panel at `Z_INDEX.modalBackdrop`,
    removed on end; an element = the component's, only its click is wired; omitted = none). Core never closes
-   anything: `onDismiss(reason)` (`'escape' | 'back' | 'backdrop' | 'overlay' | 'parent'`) → the component
+   anything: `dismissCallback(reason)` (`'escape' | 'back' | 'backdrop' | 'overlay' | 'parent'`) → the component
    closes and calls `end()`. Pieces: `createFocusTrap` (below), `role="dialog"` unless set + `aria-modal`,
    `startSheetSession` (scroll lock, Back; keyboard inset OFF by default — it sizes the panel to the visual
    viewport, right only for a full-screen sheet), `registerOverlay` in a modal-only group (a page dropdown
    opening never dismisses a modal; a dropdown opened inside is its child and closes first on Escape).
-   Its non-modal sibling **`startPanelSession(panel, { onDismiss, shouldCloseOnEscape, shouldCloseOnOutsideClick,
+   Its non-modal sibling **`startPanelSession(panel, { dismissCallback, shouldCloseOnEscape, shouldCloseOnOutsideClick,
    shouldCloseOnBack, trigger, returnFocusTo, initialFocus, isOpenedByPointer })`** (decided 2026-11-17, from
    web-dropzone's upload drawer) is a panel the page stays usable around: Escape (overlay tree), a click outside
-   and Back → `onDismiss('escape' | 'outside-click' | 'back' | 'overlay' | 'parent')`; `role="dialog"` without
+   and Back → `dismissCallback('escape' | 'outside-click' | 'back' | 'overlay' | 'parent')`; `role="dialog"` without
    `aria-modal`; no backdrop, no inert, no trap, no scroll lock; focus stays unless `initialFocus`; `end()` returns
    focus only with `shouldReturnFocus: true`. Own overlay group (a page dropdown doesn't dismiss it; a second
    panel does, unless opened from inside it). A separate function, not a `startModalSession` flag.
@@ -2503,7 +2503,7 @@ The submission convention (light-DOM hidden inputs, never `setFormValue`) had th
 
 Five copies of "latest request wins" (web-multiselect search, web-commandpalette palette + usage, web-grid
 dropdown, web-editor pipelines), each with a different subset. Decided 2026-11-17:
-**`createAsyncRunner({ debounceMs, loaderDelayMs = 0, onLoadingChange, onError, logSource })`** →
+**`createAsyncRunner({ debounceMs, loaderDelayMs = 0, loadingChangeCallback, errorCallback, logSource })`** →
 `{ run(task, onResult), cancel(), isLoading, isPending }`.
 
 - `run(task: (signal) => T | PromiseLike<T>, onResult)` replaces the previous run: its debounce is dropped, its
@@ -2511,7 +2511,7 @@ dropdown, web-editor pipelines), each with a different subset. Decided 2026-11-1
 - A synchronous result is delivered at once (after the debounce) with no loader. An async one turns the
   loader on — after `loaderDelayMs` when set (web-editor's 200 ms `PendingGate`), at once otherwise
   (web-multiselect) — and a run replacing a loading one keeps it on (no flicker). Loader off before `onResult`.
-- `AbortError` (by `name`) is never an error; other failures → `onError`, else the logger. Throwing callbacks
+- `AbortError` (by `name`) is never an error; other failures → `errorCallback`, else the logger. Throwing callbacks
   are logged (`runSafely`), the runner keeps working. `cancel()` on close / `disconnect()`.
 - Not in core: web-editor's "pause while a dialog is open", web-multiselect's term check (the generation covers
   it).
@@ -2601,7 +2601,7 @@ web-multiselect moved a highlight with no `aria-activedescendant`, web-commandpa
 web-daterangepicker day grid and web-treeview moved real focus their own way, web-editor's toolbar had no arrows.
 Decided 2026-11-17 — two patterns, roles stay per component:
 
-- **`createActiveDescendant(input, listbox, { getItems, onActivate, onActiveChange, isWrapping, isSkipped,
+- **`createActiveDescendant(input, listbox, { getItems, activateCallback, activeChangeCallback, isWrapping, isSkipped,
   hasHomeEnd, pageSize, shouldScroll, shouldHandleKeys })`** → `{ active, activeIndex, setActive, move, refresh,
   destroy }`. `shouldHandleKeys: false` = ARIA only (a component with its own key handling and
   `before*Callback`s drives `move()` / `setActive()`; core installs no keydown listener). Focus
@@ -2609,11 +2609,11 @@ Decided 2026-11-17 — two patterns, roles stay per component:
   the caret's otherwise) move over the items, skipping `aria-disabled="true"`; nothing active + ArrowUp starts at
   the last. Core sets `aria-activedescendant`, ids (`createId`), `aria-controls`, `tabindex="-1"` on the listbox
   (Chromium makes a scroller a tab stop), and scrolls the item into the listbox (or its nearest scroller —
-  never the page). Enter → `onActivate(item, index, event)`. `refresh()` after a re-render keeps the active item
+  never the page). Enter → `activateCallback(item, index, event)`. `refresh()` after a re-render keeps the active item
   by element or id, else clears. Composing / modified keys pass through. Input + listbox in the same root (warns
   otherwise — an id reference doesn't cross a shadow boundary).
 - **`createRovingFocus(container, { getItems, orientation, columns, isWrapping, hasTypeahead, getItemText,
-  isSkipped, onFocusItem })`** → `{ current, currentIndex, focusItem, refresh, destroy }`. One tab stop
+  isSkipped, focusItemCallback })`** → `{ current, currentIndex, focusItem, refresh, destroy }`. One tab stop
   (`tabindex` 0 / -1); `vertical` / `horizontal` / `grid` (`columns`, number or function); Left / Right follow
   `isRtl(container)`; Home / End (row in a grid), Ctrl+Home / End; grid columns never wrap; a click / focus on an
   item makes it the stop. Disabled items stay focusable unless `isSkipped` says otherwise (APG).
@@ -2657,7 +2657,7 @@ positioned div per row), web-treeview (scroller → spacer → translated conten
 
 web-multiselect, web-treeview, web-grid and web-dropzone each kept a selected set, an anchor and their own
 Shift / Ctrl rules (one without Ctrl + Shift, one where Shift ignored filtering). Decided 2026-11-17 —
-**`createSelection<K>({ mode, getOrderedKeys, isSelectable, onChange })`** → `{ click(key, modifiers),
+**`createSelection<K>({ mode, getOrderedKeys, isSelectable, changeCallback })`** → `{ click(key, modifiers),
 toggle, extendTo(key, { isAdditive }), selectAll, clear, set(keys), has, values, size, anchor, setAnchor }`:
 
 - File-manager rules: click = only this key (anchor = key); Ctrl / Cmd = toggle (anchor = key); Shift = the
@@ -2667,11 +2667,11 @@ toggle, extendTo(key, { isAdditive }), selectAll, clear, set(keys), has, values,
   `selectAll` does nothing, `set()` keeps the first key. `mode` may be a function (a live input).
 - Ranges walk `getOrderedKeys()` — the DISPLAY order (sorted, filtered, collapsed rows out) — and skip
   `isSelectable(key) === false` keys; an anchor that isn't shown any more → the range is just the key.
-- `onChange({ added, removed, values })` only on a real change, never for `{ isSilent: true }` writes (a
-  `value` input the component reports itself); a throwing `onChange` is logged.
+- `changeCallback({ added, removed, values })` only on a real change, never for `{ isSilent: true }` writes (a
+  `value` input the component reports itself); a throwing `changeCallback` is logged.
 - `extendTo` = Shift + Arrow; `setAnchor` moves the anchor with keyboard focus without selecting.
 - Not in core: tree cascades (parent ↔ children), grid cell ranges, `maxSelections` limits, group headers —
-  the component checks / expands before calling, or post-processes in `onChange`.
+  the component checks / expands before calling, or post-processes in `changeCallback`.
 
 ### 12.28 Drag — IMPLEMENTED (`src/dom/page-drag.ts`, `src/dom/pointer-drag.ts`, main index)
 
@@ -2679,23 +2679,23 @@ Two gaps from the audit (B11 / B12): only web-dropzone knew when files were drag
 `page-file-drag.ts`), and in-page drags (web-treeview nodes, web-grid columns / rows) were HTML5 DnD or mouse
 events — nothing on a phone except web-treeview's own touch-event copy. Decided 2026-11-17:
 
-- **`observePageDrag({ types = ['Files'], onChange(isDropActive) })`** → unsubscribe: one window listener set (capture
+- **`observePageDrag({ types = ['Files'], changeCallback(isDropActive) })`** → unsubscribe: one window listener set (capture
   phase) shared by every watcher; per watcher only drags carrying one of its `dataTransfer.types` arm it. Start:
   a matching `dragenter` / `dragover`; end: `drop`, leaving the window (enter / leave depth), `dragend`, Escape,
   or 350 ms without a `dragover` pulse (Escape on an external drag never reaches JS). After Escape the same
   drag's `dragover`s don't re-arm (they keep pulsing while the pointer moves); a new `dragenter` or a pause in
   the pulses longer than the timeout does. `setDropActiveState(host,
   internals, isDropActive)` → `drop-active` attribute + `:state(drop-active)`. From web-dropzone.
-- **`createPointerDrag(container, { getSource, threshold = 5, longPressMs = 300, autoScroll, onStart, onMove,
-  onDrop, onCancel })`** → `{ isDragging, cancel(), destroy() }`. Pointer events for mouse, pen and touch. Mouse /
+- **`createPointerDrag(container, { getSource, threshold = 5, longPressMs = 300, autoScroll, beforeStartCallback, moveCallback,
+  dropCallback, cancelCallback })`** → `{ isDragging, cancel(), destroy() }`. Pointer events for mouse, pen and touch. Mouse /
   pen start after `threshold` px; touch must rest `longPressMs` (an earlier move = a scroll, the drag never
   starts; `longPressMs: 0` = armed at pointerdown, the page doesn't scroll, and the drag starts past `threshold`
   like a mouse — no timer race with the first move; `longPressMs` / `threshold` may be functions, read per press),
   then a non-passive `touchmove` is prevented (no page scroll) and the long-press context menu is
   suppressed. Callbacks get `{ source, x, y, target, pointerType, event }`; `target` = `deepElementFromPoint`
-  (through open shadow roots — the drag image needs `pointer-events: none`). `onStart` returning `false`
-  refuses. Auto-scroll near the edges of `findScrollContainer(source)` (or `autoScroll.container`; `autoScroll.isEnabled(ctx)` per frame — `false` holds still), `onMove`
-  re-run as content slides under the pointer. Escape / `pointercancel` → `onCancel`. The click that ends a drop
+  (through open shadow roots — the drag image needs `pointer-events: none`). `beforeStartCallback` returning `false`
+  refuses. Auto-scroll near the edges of `findScrollContainer(source)` (or `autoScroll.container`; `autoScroll.isEnabled(ctx)` per frame — `false` holds still), `moveCallback`
+  re-run as content slides under the pointer. Escape / `pointercancel` → `cancelCallback`. The click that ends a drop
   is swallowed (`guardGhostClick`). Pointer capture on the container.
 - Not in core: the drag image / drop indicator, drop rules, cross-window HTML5 DnD (a component may keep
   `draggable` for dragging OUT of the page; its drop targets still use `observePageDrag` to arm).
@@ -2725,8 +2725,8 @@ Decided 2026-11-17:
   one edge (start / end follow the panel's writing direction), the modal tier, safe-area padding, slide in / out on
   `--km-sheet-drawer-duration` (→ `--base-duration-medium`, so `data-motion` / reduced motion apply),
   `--km-sheet-drawer-size | -max-height | -bg | -color | -shadow | -border-radius`. A component's drawer =
-  its panel with those classes + `startModalSession(panel, { backdrop: true, onDismiss })` — or, for a drawer the
-  page stays usable around (an upload monitor), `startPanelSession(panel, { onDismiss })`; closing =
+  its panel with those classes + `startModalSession(panel, { backdrop: true, dismissCallback })` — or, for a drawer the
+  page stays usable around (an upload monitor), `startPanelSession(panel, { dismissCallback })`; closing =
   `session.end()` + `animateOut(panel, { className: 'km-drawer--closing' })`. `/menu`'s drawer presentation keeps
   its own `.km-menu-sheet--drawer` (same look, its own variables).
 

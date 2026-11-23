@@ -16,11 +16,11 @@ page / section / component host can override it; `4` when unset. Tooltips keep t
 shadow-scoped tooltip CSS/vars; delegated mode `selector` = ONE tooltip for every `closest(selector)` target under a root (element or shadow root), `content(target)` resolved per show, empty = none, `beforeShowCallback` → `false` cancels, `shouldToggleOnTap` ignores the emulated hover after a touch; Escape on `window` capture — a FOCUS-shown tooltip (`isFocusShown`) takes the first press alone (`preventDefault()`, the overlay router then skips it; WCAG 1.4.13), a hover-shown one hides and lets it through; exit fade = `km-tooltip--hiding` + stays mounted / anchored until
 its own `opacity` transitionend or a timeout of its computed transition, 0s → at once, a show mid-fade cancels it; `TOOLTIP_CSS`
 in `@layer component` + `:where()` adopted into the container root only where `CSS.supports` exists — jsdom's parser rejects
-`@layer` blocks; `data-placement` = the resolved placement via `onPlaced`; unit `tooltip-motion.test.ts`) and `createPopover()` are thin wrappers. `createPopover()`
+`@layer` blocks; `data-placement` = the resolved placement via `placedCallback`; unit `tooltip-motion.test.ts`) and `createPopover()` are thin wrappers. `createPopover()`
 keeps three things apart: OPEN (state, overlay tree, `visibleClass` + inline `visibility: hidden`
 until the first placement), MOUNTED (append / remove per open, or `shouldKeepMounted`) and
 ANCHORED (`setAnchored()` / `reanchor()`; un-anchoring restores the panel's own position / left /
-top); closes on scroll / resize optionally (the scroll rule is `watchScrollClose()` in `scroll-close.ts`, shared with `/menu`); `onClose(reason)` for every close. `anchor().destroy()` puts back the inline sizes it wrote (`createSizeWriter`), and `position` / `left` / `top` with `shouldRestorePlacement`. `maxWidth` / `maxHeight` `{ cap }` → `min(cap, available)`; `referenceWidthVar` publishes the reference width per frame. The big
+top); closes on scroll / resize optionally (the scroll rule is `watchScrollClose()` in `scroll-close.ts`, shared with `/menu`); `closeCallback(reason)` for every close. `anchor().destroy()` puts back the inline sizes it wrote (`createSizeWriter`), and `position` / `left` / `top` with `shouldRestorePlacement`. `maxWidth` / `maxHeight` `{ cap }` → `min(cap, available)`; `referenceWidthVar` publishes the reference width per frame. The big
 component panels don't use `createPopover()` yet: `docs/review/2026-11-06-createpopover-fit.md`. Decisions: follow-cursor is a
 tooltip option not a preset; the bespoke shadow-DOM platform was NOT ported (1.8
 handles it + the `platform` hatch — a component with a genuinely custom platform,

@@ -25,7 +25,7 @@ export interface ScrollCloseOptions {
   /** Is the scroll event inside the layer (its panels)? Those never close it. */
   isInside(event: Event): boolean;
   /** Called for a scroll that counts (it may be called again; make it idempotent). */
-  onScroll(event: Event): void;
+  scrollCallback(event: Event): void;
 }
 
 /** The document plus every shadow root between it and `node`. */
@@ -123,7 +123,7 @@ export function watchScrollClose(opts: ScrollCloseOptions): () => void {
       return;
     }
     if (!hasMoved()) return;
-    opts.onScroll(event);
+    opts.scrollCallback(event);
   };
   const roots = scrollRoots(element);
   for (const root of roots) root.addEventListener('scroll', onScroll, { capture: true, passive: true });

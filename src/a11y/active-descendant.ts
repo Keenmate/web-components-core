@@ -5,7 +5,7 @@
  *
  * Roles (`combobox` / `listbox` / `option`), `aria-selected` and the highlight class stay the
  * component's: core sets `aria-activedescendant` + `aria-controls`, ids on the items, and calls
- * `onActiveChange` to paint; the listbox gets `tabindex="-1"` (unless it has one). Input and
+ * `activeChangeCallback` to paint; the listbox gets `tabindex="-1"` (unless it has one). Input and
  * listbox must live in the SAME root (an id reference doesn't cross a shadow boundary).
  */
 
@@ -18,9 +18,9 @@ export interface ActiveDescendantOptions {
   /** The items in order, read on every key (re-render freely). */
   getItems: () => readonly HTMLElement[];
   /** Enter on the active item. */
-  onActivate?: (item: HTMLElement, index: number, event: KeyboardEvent) => void;
+  activateCallback?: (item: HTMLElement, index: number, event: KeyboardEvent) => void;
   /** Paint the highlight (`null` = none). Called after `aria-activedescendant` is set. */
-  onActiveChange?: (item: HTMLElement | null, index: number) => void;
+  activeChangeCallback?: (item: HTMLElement | null, index: number) => void;
   /** ArrowDown on the last item goes to the first (default `false`). */
   isWrapping?: boolean;
   /** An item the keys skip (default: `aria-disabled="true"`). */
@@ -55,7 +55,7 @@ export interface ActiveDescendant {
 const isAriaDisabled = (item: HTMLElement): boolean => item.getAttribute('aria-disabled') === 'true';
 
 export function createActiveDescendant(input: HTMLElement, listbox: HTMLElement, options: ActiveDescendantOptions): ActiveDescendant {
-  const { getItems, onActivate, onActiveChange, isWrapping = false, isSkipped = isAriaDisabled, hasHomeEnd = false, pageSize = 10, shouldScroll = true, shouldHandleKeys = true } = options;
+  const { getItems, activateCallback, activeChangeCallback, isWrapping = false, isSkipped = isAriaDisabled, hasHomeEnd = false, pageSize = 10, shouldScroll = true, shouldHandleKeys = true } = options;
   let active: HTMLElement | null = null;
   let activeId = '';
 
@@ -91,7 +91,7 @@ export function createActiveDescendant(input: HTMLElement, listbox: HTMLElement,
       activeId = '';
       input.removeAttribute('aria-activedescendant');
     }
-    if (onActiveChange) runSafely(() => onActiveChange(next, next ? list.indexOf(next) : -1), { source: input, message: 'onActiveChange threw' });
+    if (activeChangeCallback) runSafely(() => activeChangeCallback(next, next ? list.indexOf(next) : -1), { source: input, message: 'activeChangeCallback threw' });
   };
 
   /** The next not-skipped index from `from` in `step` direction (`-1` = none). */
@@ -152,9 +152,9 @@ export function createActiveDescendant(input: HTMLElement, listbox: HTMLElement,
         break;
       }
       case 'Enter': {
-        if (!active || !list.includes(active) || !onActivate) return;
+        if (!active || !list.includes(active) || !activateCallback) return;
         const item = active;
-        runSafely(() => onActivate(item, list.indexOf(item), event), { source: input, message: 'onActivate threw' });
+        runSafely(() => activateCallback(item, list.indexOf(item), event), { source: input, message: 'activateCallback threw' });
         break;
       }
       default:

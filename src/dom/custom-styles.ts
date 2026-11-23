@@ -52,7 +52,7 @@ export interface CustomStylesOptions<Ctx = any> {
   /** Where both slots sit in the root (page slot always before the instance slot). Default `'last'`. */
   position?: 'first' | 'last';
   /** Called with each non-empty CSS string applied (e.g. a dev-only variable-name lint). */
-  onApply?: (css: string, layer: 'page' | 'instance') => void;
+  appliedCallback?: (css: string, layer: 'page' | 'instance') => void;
   /**
    * Also link each `@import` URL in the document `<head>`, so an imported `@font-face` (an
    * icon font) registers — Chromium ignores it inside a shadow root. Shared and ref-counted
@@ -70,7 +70,7 @@ export interface CustomStylesOptions<Ctx = any> {
    * destroyed) or an owner removed from the page = no owner layers. A page write for the
    * owner's tag and the owner's `refresh()` refresh this handle too (also when the owner's
    * handle is created after this one). Call `refresh()` when the binding itself changes.
-   * `onApply` doesn't see the owner layers (the owner's own `onApply` did).
+   * `appliedCallback` doesn't see the owner layers (the owner's own `appliedCallback` did).
    */
   getOwner?: () => HTMLElement | null | undefined;
   /**
@@ -475,8 +475,8 @@ export function createCustomStyles<Ctx = any>(
         exposed.page = pageCss;
         exposed.instance = instanceCss;
         exposed.isRemoved = isRemoved;
-        if (pageCss) opts.onApply?.(pageCss, 'page');
-        if (instanceCss) opts.onApply?.(instanceCss, 'instance');
+        if (pageCss) opts.appliedCallback?.(pageCss, 'page');
+        if (instanceCss) opts.appliedCallback?.(instanceCss, 'instance');
         if (isShared) notifyDependents(host); // inside the guard: a child that (wrongly) owns its owner can't loop
       } finally {
         isRefreshing = false;

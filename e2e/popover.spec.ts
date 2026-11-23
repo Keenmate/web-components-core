@@ -76,7 +76,7 @@ test('shouldCloseOnScroll hears a scroller inside a shadow root; hidden until pl
       container: root,
       visibleClass: 'is-open',
       shouldCloseOnScroll: true,
-      onClose: (reason: string) => reasons.push(reason),
+      closeCallback: (reason: string) => reasons.push(reason),
     });
     p.open();
     const atOpen = { hasClass: panel.classList.contains('is-open'), visibility: panel.style.visibility };
@@ -129,7 +129,7 @@ test('a reference removed from the page while open takes the panel with it (a re
     const panel = document.createElement('div');
     panel.textContent = 'row panel';
     const reasons: string[] = [];
-    const pop = (window as any).createPopover({ reference: row, panel, onClose: (r: string) => reasons.push(r) });
+    const pop = (window as any).createPopover({ reference: row, panel, closeCallback: (r: string) => reasons.push(r) });
     pop.open();
     await new Promise((r) => requestAnimationFrame(() => r(null)));
     row.remove();

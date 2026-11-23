@@ -154,7 +154,7 @@
                 <code>target: 'internal'</code> and hands <code>prepareSearchTerm</code> a plain <code>(term) =&gt; …</code>.
                 Return a <code>RegExp</code> and it is matched against the raw value (made stateless, so a <code>g</code>
                 flag is harmless); return a string and it is used as-is, not normalized again; return an object and
-                built-in search can't use it (<code>onObjectTerm</code> — the component warns; objects are for
+                built-in search can't use it (<code>objectTermCallback</code> — the component warns; objects are for
                 <code>target: 'callback'</code>, the consumer's own <code>searchCallback</code>).
             </p>
             <div class="controls">
@@ -235,7 +235,7 @@ searchCallback = ({ term, signal, entries }) => {
   findTextMatches, matchesText,           // (text, term, match) → ranges / boolean (prepared strings)
   findRegexMatches, createStatelessRegex,       // regex helpers
   NO_SEARCH_TERM, createRegexCompiler,    // { compile(pattern) → RegExp | null (last valid), reset() }
-  prepareSearchTerm,                      // (term, { behavior, match, regex, getSearchTermCallback?, onObjectTerm? }) → ActiveSearchTerm
+  prepareSearchTerm,                      // (term, { behavior, match, regex, getSearchTermCallback?, objectTermCallback? }) → ActiveSearchTerm
   matchesSearchTerm,                      // (term, match, prepared | () => prepared, raw | () => raw) → boolean
   findHighlightRanges,                    // (label, term, { behavior, match }) → { text, ranges }
   wrapRanges,                             // (text, ranges, { open?, close?, escape? }) → string; escape defaults to escapeHtml

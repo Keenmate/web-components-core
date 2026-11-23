@@ -493,7 +493,7 @@ export class FilesDemo extends BlissElement<{ action: FilesDetail }> {
   /** Demo page only: `openMenu()`'s `title` (the sheet header, the menu's `aria-label`); `''` = none. */
   menuTitle = '';
 
-  /** Demo page only: every `onClose` reason, in order. */
+  /** Demo page only: every `closeCallback` reason, in order. */
   onMenuClose: ((reason: MenuCloseReason) => void) | null = null;
 
   /** The row (context) menu entries. */
@@ -623,8 +623,8 @@ export class FilesDemo extends BlissElement<{ action: FilesDetail }> {
       labels: { back: 'Back', close: 'Close' },
       ...(this.menuTitle ? { title: this.menuTitle } : {}),
       runAction: (item, inv) => this.#run(item, inv, ctx, source),
-      onClose: (reason) => {
-        trace(this, 'event', 'onClose', `reason "${reason}"`);
+      closeCallback: (reason) => {
+        trace(this, 'event', 'closeCallback', `reason "${reason}"`);
         if (this.menu === handle) this.menu = null;
         this.onMenuClose?.(reason);
       },

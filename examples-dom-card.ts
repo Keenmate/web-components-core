@@ -61,14 +61,14 @@ export class CoreDemoSortable extends BlissElement {
     this.#drag = createPointerDrag(list, {
       getSource: (t) => t.closest<HTMLElement>('li'),
       longPressMs: 300,
-      onStart: ({ source, pointerType, x, y }) => {
+      beforeStartCallback: ({ source, pointerType, x, y }) => {
         source.classList.add('is-source');
         this.#ghost = createLayer(this, { css: GHOST_CSS, className: 'ghost', isInteractive: false });
         this.#ghost.element.textContent = source.textContent;
         this.#placeGhost(x, y);
         this.emit('drag-log', { text: `start "${source.textContent}" (${pointerType})`, tone: 'info' });
       },
-      onMove: ({ target, x, y }) => {
+      moveCallback: ({ target, x, y }) => {
         this.#placeGhost(x, y);
         const li = target?.closest<HTMLElement>('li') ?? null;
         const over = li && list.contains(li) ? li : null;
@@ -78,7 +78,7 @@ export class CoreDemoSortable extends BlissElement {
           this.#over = over;
         }
       },
-      onDrop: ({ source }) => {
+      dropCallback: ({ source }) => {
         const to = this.#over ? Number(this.#over.dataset.i) : -1;
         const from = Number(source.dataset.i);
         this.#end(source);
@@ -87,7 +87,7 @@ export class CoreDemoSortable extends BlissElement {
         this.#render();
         this.emit('drag-log', { text: `drop "${this.#items[to]}" ${from} → ${to}`, tone: 'ok' });
       },
-      onCancel: ({ source }) => {
+      cancelCallback: ({ source }) => {
         this.#end(source);
         this.emit('drag-log', { text: 'cancelled (Escape)', tone: 'warn' });
       },
@@ -142,7 +142,7 @@ export class CoreDemoDrop extends BlissElement {
   protected override connect(): void {
     this.#stopWatch = observePageDrag({
       types: ['Files'],
-      onChange: (isDropActive) => {
+      changeCallback: (isDropActive) => {
         setDropActiveState(this, this.internals, isDropActive);
         this.emit('drop-active-change', { isDropActive });
       },

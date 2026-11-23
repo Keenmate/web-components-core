@@ -80,7 +80,7 @@ test.describe('phone (touch, 390 x 844)', () => {
     await item(page, 'Help').tap();
     await expect(sheet(page)).toHaveCount(0);
     await expect(backdrop(page)).toHaveCount(0);
-    expect(await details(page, 'onClose')).toEqual(['action']);
+    expect(await details(page, 'closeCallback')).toEqual(['action']);
     await expect.poll(() => details(page, 'action event')).toEqual(['help']);
     expect(await bodyPosition(page)).not.toBe('fixed');
     await expect.poll(() => sheetEntry(page)).toBeNull(); // the history entry is given back
@@ -120,7 +120,7 @@ test.describe('phone (touch, 390 x 844)', () => {
     expect(btn.y + btn.height).toBeLessThan((await sheet(page).boundingBox())!.y);
     await page.touchscreen.tap(btn.x + btn.width / 2, btn.y + btn.height / 2);
     await expect(sheet(page)).toHaveCount(0);
-    expect(await details(page, 'onClose')).toEqual(['outside-click']);
+    expect(await details(page, 'closeCallback')).toEqual(['outside-click']);
     expect((await steps(page)).filter((s) => s === 'openMenu()')).toHaveLength(1); // no click-through re-open
     await expect.poll(() => focusedText(page)).toBe('Actions');
   });
@@ -135,7 +135,7 @@ test.describe('phone (touch, 390 x 844)', () => {
     await expect(sheet(page)).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(sheet(page)).toHaveCount(0);
-    expect(await details(page, 'onClose')).toEqual(['close-button', 'escape']);
+    expect(await details(page, 'closeCallback')).toEqual(['close-button', 'escape']);
     await expect.poll(() => focusedText(page)).toBe('Actions');
   });
 
@@ -148,7 +148,7 @@ test.describe('phone (touch, 390 x 844)', () => {
     await expect(sheet(page)).toBeVisible();
     await page.evaluate(() => history.back());
     await expect(sheet(page)).toHaveCount(0);
-    expect(await details(page, 'onClose')).toEqual(['back']);
+    expect(await details(page, 'closeCallback')).toEqual(['back']);
     expect(page.url()).toContain('/test/menu-sheet.html'); // never left the page
   });
 
@@ -246,7 +246,7 @@ test.describe('desktop', () => {
     // closing plays out (inert meanwhile), then the sheet leaves the DOM
     await expect(sheet(page)).toHaveClass(/km-menu-sheet--closing/);
     await expect(sheet(page)).toHaveCount(0);
-    expect(await details(page, 'onClose')).toEqual(['close-button']);
+    expect(await details(page, 'closeCallback')).toEqual(['close-button']);
 
     await files(page).evaluate((el) => (el.dataset.side = 'end'));
     await actionsButton(page).click();

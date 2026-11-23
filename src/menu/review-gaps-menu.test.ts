@@ -55,9 +55,9 @@ const enter = (el: HTMLElement | null) => el!.dispatchEvent(new MouseEvent('mous
 
 function open(entries: readonly (MenuEntry<Ctx> | string)[], extra: Partial<OpenMenuOptions<Ctx>> = {}) {
   const runAction = vi.fn();
-  const onClose = vi.fn<(reason: MenuCloseReason) => void>();
-  const handle = openMenu<Ctx>(entries, ctx, { at: { x: 10, y: 20 }, host: shadow, runAction, onClose, returnFocusTo: opener, ...extra });
-  return { handle, runAction, onClose };
+  const closeCallback = vi.fn<(reason: MenuCloseReason) => void>();
+  const handle = openMenu<Ctx>(entries, ctx, { at: { x: 10, y: 20 }, host: shadow, runAction, closeCallback, returnFocusTo: opener, ...extra });
+  return { handle, runAction, closeCallback };
 }
 
 const basic: MenuEntry<Ctx>[] = [
@@ -188,14 +188,14 @@ describe('A-27 menu — submenus', () => {
   // A-27 #15.
   it('a scroll or wheel inside a (long) submenu does not close the menu', () => {
     const many: MenuEntry<Ctx>[] = Array.from({ length: 60 }, (_, i) => ({ id: `s${i}`, text: `S${i}` }));
-    const { handle, onClose } = open([{ id: 'p', text: 'P', children: many }]);
+    const { handle, closeCallback } = open([{ id: 'p', text: 'P', children: many }]);
     enter(byId('p'));
     const sub = levels()[1]!;
     sub.dispatchEvent(new Event('scroll'));
     sub.dispatchEvent(new WheelEvent('wheel', { bubbles: true, composed: true }));
     expect(handle.isOpen).toBe(true);
     expect(levels()).toHaveLength(2);
-    expect(onClose).not.toHaveBeenCalled();
+    expect(closeCallback).not.toHaveBeenCalled();
   });
 });
 
@@ -255,14 +255,14 @@ describe('A-27 menu — failures and the overlay group', () => {
   // A-27 #8 (A-15): a SYNCHRONOUSLY throwing runAction (the rejection is in menu.test.ts).
   it('a throwing runAction is logged; the menu still closes with reason "action"', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const { handle, onClose } = open(basic, {
+    const { handle, closeCallback } = open(basic, {
       runAction: () => {
         throw new Error('sync boom');
       },
     });
     byId('a')!.click();
     expect(handle.isOpen).toBe(false);
-    expect(onClose).toHaveBeenCalledWith('action');
+    expect(closeCallback).toHaveBeenCalledWith('action');
     expect(error.mock.calls.some((args) => args.some((x) => x instanceof Error && x.message === 'sync boom'))).toBe(true);
   });
 
@@ -298,7 +298,7 @@ describe('A-27 menu — failures and the overlay group', () => {
       host: shadow,
       returnFocusTo: opener,
       overlayGroup: 'menus',
-      onClose: (reason) => order.push(`first closed: ${reason}`),
+      closeCallback: (reason) => order.push(`first closed: ${reason}`),
     });
     const second = openMenu<Ctx>(basic, ctx, { at: { x: 2, y: 2 }, host: shadow, returnFocusTo: opener, overlayGroup: 'menus' });
     order.push('second returned');

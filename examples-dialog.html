@@ -76,7 +76,7 @@ const choice = await openDialog({
                 centered modal). One call does the rest: the page behind goes <code>inert</code> (try clicking or
                 tabbing to it), Tab cycles inside, focus moves in and comes back to the button, page scroll is locked.
                 The panel opens a <strong>dropdown</strong> of its own: Escape closes the dropdown first, the panel on
-                the second press. Core never closes anything itself — <code>onDismiss(reason)</code> tells the
+                the second press. Core never closes anything itself — <code>dismissCallback(reason)</code> tells the
                 component, which closes and calls <code>end()</code>.
             </p>
             <div class="controls">
@@ -90,7 +90,7 @@ open() {
   this.#panel.hidden = false;                    // z-index: Z_INDEX.modal
   this.#modal = startModalSession(this.#panel, {
     backdrop: true,                              // or your own element; omit = none
-    onDismiss: (reason) => this.close(reason),   // 'escape' | 'back' | 'backdrop' | …
+    dismissCallback: (reason) => this.close(reason),   // 'escape' | 'back' | 'backdrop' | …
     trigger: this.#button,                       // focus returns here
   });
 }
@@ -267,7 +267,7 @@ const CSS = `.my-sheet { z-index: ${Z_INDEX.modal}; }
                     reference: $('room'), panel: $('dropdown'), container: $('panel'),
                     shouldKeepMounted: true, visibleClass: 'is-open', placement: 'bottom-start',
                     shouldCloseOnEscape: true, shouldCloseOnOutsideClick: true,
-                    onClose: (reason) => log3(`dropdown closed (${reason})`),
+                    closeCallback: (reason) => log3(`dropdown closed (${reason})`),
                 });
                 $('room').onclick = () => (this.#popover.isOpen ? this.#popover.close() : this.#popover.open());
                 $('dropdown').onclick = (e) => {
@@ -284,7 +284,7 @@ const CSS = `.my-sheet { z-index: ${Z_INDEX.modal}; }
                 panel.hidden = false;
                 this.#session = startModalSession(panel, {
                     backdrop: document.getElementById('dl03-backdrop').checked,
-                    onDismiss: (reason) => this.close(`onDismiss('${reason}')`),
+                    dismissCallback: (reason) => this.close(`dismissCallback('${reason}')`),
                     trigger: root.getElementById('open'),
                 });
                 log3('opened — try Tab, Escape, clicking the page');

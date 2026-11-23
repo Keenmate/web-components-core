@@ -418,7 +418,7 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
         ...(opts.arrow ? { arrow: { element: opts.arrow } } : {}),
         ...(opts.shouldUseFixedContainingBlock ? { shouldUseFixedContainingBlock: true } : {}),
         // The final placement after flip / shift, for direction-aware component CSS (arrow, motion).
-        onPlaced: (resolved) => element.setAttribute('data-placement', resolved),
+        placedCallback: (resolved) => element.setAttribute('data-placement', resolved),
         // A target removed from the page while its tooltip shows (a re-rendered row) takes the
         // tooltip with it at once, instead of leaving it mounted with positioning running.
         beforeComputeCallback: () => {

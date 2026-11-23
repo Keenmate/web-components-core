@@ -95,9 +95,9 @@ const entries: MenuEntry<Ctx>[] = [
 
 function open(extra: Partial<OpenMenuOptions<Ctx>> = {}) {
   const runAction = vi.fn();
-  const onClose = vi.fn<(reason: MenuCloseReason) => void>();
-  handle = openMenu<Ctx>(entries, ctx, { at: { x: 10, y: 20 }, host: shadow, runAction, onClose, returnFocusTo: opener, title: 'File', ...extra });
-  return { handle, runAction, onClose };
+  const closeCallback = vi.fn<(reason: MenuCloseReason) => void>();
+  handle = openMenu<Ctx>(entries, ctx, { at: { x: 10, y: 20 }, host: shadow, runAction, closeCallback, returnFocusTo: opener, title: 'File', ...extra });
+  return { handle, runAction, closeCallback };
 }
 
 describe('presentation switch', () => {
@@ -174,16 +174,16 @@ describe('drawer + presentationMap', () => {
   });
 
   it('a device-class change while open: sheet ⇄ drawer in place; to floating closes ("presentation")', () => {
-    const { onClose } = open({ presentationMap: { tablet: 'drawer' } });
+    const { closeCallback } = open({ presentationMap: { tablet: 'drawer' } });
     const opened = sheet();
     changeDevice('tablet');
     expect(sheet()).toBe(opened);
     expect(opened!.classList.contains('km-menu-sheet--drawer')).toBe(true);
     changeDevice('phone');
     expect(opened!.classList.contains('km-menu-sheet--drawer')).toBe(false);
-    expect(onClose).not.toHaveBeenCalled();
+    expect(closeCallback).not.toHaveBeenCalled();
     changeDevice('desktop');
-    expect(onClose).toHaveBeenCalledWith('presentation');
+    expect(closeCallback).toHaveBeenCalledWith('presentation');
     expect(sheet()).toBeNull();
     expect(env.listeners.size).toBe(0); // unsubscribed
   });
@@ -196,7 +196,7 @@ describe('drawer + presentationMap', () => {
 
 describe('drill-in submenus', () => {
   it('a submenu replaces its parent (Back row on top, header names it); Back goes up and refocuses the item', () => {
-    const { runAction, onClose } = open();
+    const { runAction, closeCallback } = open();
     byId('share').click();
     const [root, sub] = levels();
     expect(root!.hidden).toBe(true);
@@ -224,16 +224,16 @@ describe('drill-in submenus', () => {
     expect(active()).toBe(byId('share'));
     expect(title()).toBe('File');
     expect(runAction).not.toHaveBeenCalled();
-    expect(onClose).not.toHaveBeenCalled();
+    expect(closeCallback).not.toHaveBeenCalled();
   });
 
   it('hover never opens a submenu in a sheet; a leaf in a submenu runs and closes ("action")', () => {
-    const { runAction, onClose } = open();
+    const { runAction, closeCallback } = open();
     byId('share').dispatchEvent(new MouseEvent('mouseenter'));
     expect(levels()).toHaveLength(1);
     byId('share').click();
     byId('copy').click();
-    expect(onClose).toHaveBeenCalledWith('action');
+    expect(closeCallback).toHaveBeenCalledWith('action');
     expect(runAction).toHaveBeenCalledTimes(1);
     expect(runAction.mock.calls[0]![0].id).toBe('copy');
     expect(sheet()).toBeNull();
@@ -269,7 +269,7 @@ describe('drill-in submenus', () => {
   });
 
   it('keyboard: Enter drills in to the first item, ↑ reaches the Back row, Escape goes up, then closes', () => {
-    const { onClose } = open({ shouldFocusFirst: true });
+    const { closeCallback } = open({ shouldFocusFirst: true });
     expect(active()).toBe(byId('open'));
     key('ArrowDown');
     expect(active()).toBe(byId('share'));
@@ -286,36 +286,36 @@ describe('drill-in submenus', () => {
     expect(levels()).toHaveLength(1);
     expect(handle!.isOpen).toBe(true);
     key('Escape');
-    expect(onClose).toHaveBeenCalledWith('escape');
+    expect(closeCallback).toHaveBeenCalledWith('escape');
     expect(active()).toBe(opener);
   });
 });
 
 describe('closing', () => {
   it('a tap on the backdrop closes on click (not on pointerdown) with "outside-click"; focus returns', () => {
-    const { onClose } = open();
+    const { closeCallback } = open();
     backdrop()!.dispatchEvent(new Event('pointerdown', { bubbles: true, composed: true }));
     expect(handle!.isOpen).toBe(true);
     backdrop()!.click();
-    expect(onClose).toHaveBeenCalledWith('outside-click');
+    expect(closeCallback).toHaveBeenCalledWith('outside-click');
     expect(active()).toBe(opener);
     expect(document.body.style.position).toBe('');
   });
 
   it('a press inside the sheet (header) does not close it; the close button closes with "close-button"', () => {
-    const { onClose } = open({ labels: { close: 'Zavřít' } });
+    const { closeCallback } = open({ labels: { close: 'Zavřít' } });
     const closeButton = shadow.querySelector<HTMLButtonElement>('.km-menu-sheet__close')!;
     expect(closeButton.getAttribute('aria-label')).toBe('Zavřít');
     closeButton.dispatchEvent(new Event('pointerdown', { bubbles: true, composed: true }));
     expect(handle!.isOpen).toBe(true);
     closeButton.focus();
     closeButton.click();
-    expect(onClose).toHaveBeenCalledWith('close-button');
+    expect(closeCallback).toHaveBeenCalledWith('close-button');
     expect(active()).toBe(opener);
   });
 
   it('Back (popstate) goes up one submenu level and re-arms the entry; at the root it closes with "back"', async () => {
-    const { onClose } = open();
+    const { closeCallback } = open();
     byId('share').click();
     window.dispatchEvent(new PopStateEvent('popstate'));
     expect(levels()).toHaveLength(1);
@@ -323,7 +323,7 @@ describe('closing', () => {
     expect(pushSpy).toHaveBeenCalledTimes(2); // re-armed
     expect(active()).toBe(byId('share'));
     window.dispatchEvent(new PopStateEvent('popstate'));
-    expect(onClose).toHaveBeenCalledWith('back');
+    expect(closeCallback).toHaveBeenCalledWith('back');
     expect(sheet()).toBeNull();
     expect(active()).toBe(opener);
     await flush();

@@ -35,7 +35,7 @@ function setup(): { opener: HTMLButtonElement; page: HTMLElement; panel: HTMLEle
 describe('startModalSession', () => {
   it('ARIA, inert page, focus in; end() restores everything and returns focus', () => {
     const { opener, page, panel } = setup();
-    const session = startModalSession(panel, { onDismiss: () => {} });
+    const session = startModalSession(panel, { dismissCallback: () => {} });
     expect(panel.getAttribute('role')).toBe('dialog');
     expect(panel.getAttribute('aria-modal')).toBe('true');
     expect(page.hasAttribute('inert')).toBe(true);
@@ -52,14 +52,14 @@ describe('startModalSession', () => {
   it('keeps a role the panel already has', () => {
     const { panel } = setup();
     panel.setAttribute('role', 'alertdialog');
-    startModalSession(panel, { onDismiss: () => {} }).end();
+    startModalSession(panel, { dismissCallback: () => {} }).end();
     expect(panel.getAttribute('role')).toBe('alertdialog');
   });
 
   it('backdrop: true creates one before the panel (interactive), a click dismisses, end() removes it', () => {
     const { panel } = setup();
     const reasons: ModalDismissReason[] = [];
-    const session = startModalSession(panel, { backdrop: true, onDismiss: (r) => reasons.push(r) });
+    const session = startModalSession(panel, { backdrop: true, dismissCallback: (r) => reasons.push(r) });
     const backdrop = session.backdrop!;
     expect(backdrop.className).toBe('km-modal-backdrop');
     expect(backdrop.nextElementSibling).toBe(panel);
@@ -76,13 +76,13 @@ describe('startModalSession', () => {
     const own = document.createElement('div');
     document.body.append(own);
     const reasons: ModalDismissReason[] = [];
-    const session = startModalSession(panel, { backdrop: own, onDismiss: (r) => reasons.push(r) });
+    const session = startModalSession(panel, { backdrop: own, dismissCallback: (r) => reasons.push(r) });
     own.click();
     session.end();
     expect(own.isConnected).toBe(true);
     expect(reasons).toEqual(['backdrop']);
 
-    const s2 = startModalSession(panel, { backdrop: own, shouldCloseOnBackdropClick: false, onDismiss: (r) => reasons.push(r) });
+    const s2 = startModalSession(panel, { backdrop: own, shouldCloseOnBackdropClick: false, dismissCallback: (r) => reasons.push(r) });
     own.click();
     s2.end();
     expect(reasons).toEqual(['backdrop']);
@@ -91,7 +91,7 @@ describe('startModalSession', () => {
   it('Escape and Back ask to dismiss; a dropdown opened inside closes first on Escape', () => {
     const { panel } = setup();
     const reasons: string[] = [];
-    const session = startModalSession(panel, { onDismiss: (r) => reasons.push(r) });
+    const session = startModalSession(panel, { dismissCallback: (r) => reasons.push(r) });
 
     const inner = panel.querySelector('button')!;
     const dropdown = document.createElement('div');
@@ -116,7 +116,7 @@ describe('startModalSession', () => {
   it('a page overlay opening elsewhere does not dismiss it (modal group)', () => {
     const { panel } = setup();
     const reasons: string[] = [];
-    startModalSession(panel, { onDismiss: (r) => reasons.push(r) });
+    startModalSession(panel, { dismissCallback: (r) => reasons.push(r) });
     registerOverlay(() => {}).activate();
     expect(reasons).toEqual([]);
   });
@@ -124,10 +124,10 @@ describe('startModalSession', () => {
   it('beforeEscapeCallback false keeps it open; shouldCloseOnEscape false ignores Escape', () => {
     const { panel } = setup();
     const reasons: string[] = [];
-    const s = startModalSession(panel, { onDismiss: (r) => reasons.push(r), beforeEscapeCallback: () => false });
+    const s = startModalSession(panel, { dismissCallback: (r) => reasons.push(r), beforeEscapeCallback: () => false });
     escape();
     s.end();
-    const s2 = startModalSession(panel, { onDismiss: (r) => reasons.push(r), shouldCloseOnEscape: false });
+    const s2 = startModalSession(panel, { dismissCallback: (r) => reasons.push(r), shouldCloseOnEscape: false });
     escape();
     s2.end();
     expect(reasons).toEqual([]);
@@ -135,7 +135,7 @@ describe('startModalSession', () => {
 
   it('shouldCloseOnBack: false claims no Back entry', () => {
     const { panel } = setup();
-    startModalSession(panel, { onDismiss: () => {}, shouldCloseOnBack: false });
+    startModalSession(panel, { dismissCallback: () => {}, shouldCloseOnBack: false });
     expect(backHandler).toBeUndefined();
   });
 });

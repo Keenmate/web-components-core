@@ -122,7 +122,7 @@ export interface PopoverOptions extends Omit<AnchorOptions, 'inheritThemeFrom'> 
    * The popover closed, for any reason (see {@link PopoverCloseReason}) — `close()` and
    * `destroy()` in code report `'api'`. Runs after the panel is unmounted.
    */
-  onClose?(reason: PopoverCloseReason): void;
+  closeCallback?(reason: PopoverCloseReason): void;
 }
 
 /** Handle returned by {@link createPopover}. */
@@ -131,7 +131,7 @@ export interface PopoverHandle {
   readonly isOpen: boolean;
   /** Mount + position the panel and keep it placed. */
   open(): void;
-  /** Unmount the panel and stop positioning (`onClose('api')`). */
+  /** Unmount the panel and stop positioning (`closeCallback('api')`). */
   close(): void;
   /** Recompute the position once (no-op when closed or not anchored). */
   update(): void;
@@ -186,7 +186,7 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
     shouldCloseOnScroll,
     shouldCloseOnResize,
     overlayGroup,
-    onClose,
+    closeCallback,
     ...anchorOptions
   } = opts;
   const isInOverlayTree = !!shouldCloseOnEscape || !!shouldCloseOnOutsideClick || 'overlayGroup' in opts;
@@ -232,7 +232,7 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
       const attempt = ++revealAttempt;
       setTimeout(() => attempt === revealAttempt && reveal(), REVEAL_FALLBACK_MS);
     }
-    const { onPlaced, beforeComputeCallback } = anchorOptions;
+    const { placedCallback, beforeComputeCallback } = anchorOptions;
     const theme = themeSource();
     /** Only a reference that was in the page at anchoring and left since counts as removed. */
     const wasConnected = !!referenceElement()?.isConnected;
@@ -250,9 +250,9 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
         }
         beforeComputeCallback?.();
       },
-      onPlaced(placement) {
+      placedCallback(placement) {
         if (isOpen) reveal();
-        onPlaced?.(placement);
+        placedCallback?.(placement);
       },
     });
   };
@@ -295,11 +295,11 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
     hide();
     overlay?.destroy(); // also closes overlays opened from inside the panel
     overlay = undefined;
-    if (!onClose) return;
+    if (!closeCallback) return;
     try {
-      onClose(reason);
+      closeCallback(reason);
     } catch (error) {
-      coreLog(panel, 'UI', 'ELEMENT').error('popover onClose threw', error);
+      coreLog(panel, 'UI', 'ELEMENT').error('popover closeCallback threw', error);
     }
   };
 
@@ -312,7 +312,7 @@ export function createPopover(opts: PopoverOptions): PopoverHandle {
         watchScrollClose({
           reference,
           isInside: (event) => event.composedPath().includes(panel), // its own list scrolling
-          onScroll: () => {
+          scrollCallback: () => {
             if (isOn(shouldCloseOnScroll, panel)) closeWith('scroll');
           },
         }),

@@ -3,8 +3,8 @@ import { createSheetHeader, SHEET_CHROME_CSS } from './sheet-chrome.js';
 
 describe('createSheetHeader (the shared sheet chrome)', () => {
   it('builds header > title + close; the close is a labelled type=button with no text (the ✕ is a mask)', () => {
-    const onClose = vi.fn();
-    const { header, title, close } = createSheetHeader({ title: 'Pick a date', closeLabel: 'Zavřít', onClose });
+    const closeCallback = vi.fn();
+    const { header, title, close } = createSheetHeader({ title: 'Pick a date', closeLabel: 'Zavřít', closeCallback });
     expect(header.className).toBe('km-sheet-header');
     expect(title?.className).toBe('km-sheet-title');
     expect(title?.textContent).toBe('Pick a date');
@@ -14,14 +14,14 @@ describe('createSheetHeader (the shared sheet chrome)', () => {
     expect(close.textContent).toBe('');
     expect([...header.children]).toEqual([title, close]);
     close.click();
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(closeCallback).toHaveBeenCalledTimes(1);
   });
 
   it('no title → no title element (a header holding a search field)', () => {
-    const { header, title, close } = createSheetHeader({ closeLabel: 'Close', onClose: () => {} });
+    const { header, title, close } = createSheetHeader({ closeLabel: 'Close', closeCallback: () => {} });
     expect(title).toBeNull();
     expect([...header.children]).toEqual([close]);
-    expect(createSheetHeader({ title: '', closeLabel: 'Close', onClose: () => {} }).title).not.toBeNull();
+    expect(createSheetHeader({ title: '', closeLabel: 'Close', closeCallback: () => {} }).title).not.toBeNull();
   });
 
   it('the stylesheet draws the close with --base-icon-close and stays in @layer component', () => {

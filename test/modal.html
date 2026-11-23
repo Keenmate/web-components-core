@@ -61,7 +61,7 @@
                     this.dropdown?.close();
                     session.end();
                 };
-                const session = startModalSession(panel, { backdrop: true, onDismiss: close, trigger });
+                const session = startModalSession(panel, { backdrop: true, dismissCallback: close, trigger });
                 this.session = session;
                 this.shadowRoot.getElementById('announce').onclick = () => announce('Saved from the modal');
                 this.shadowRoot.getElementById('open-dropdown').onclick = (e) => this.openDropdown(e.currentTarget);
@@ -97,7 +97,7 @@
             pressPanel.hidden = false;
             log.push('press-open');
             pressSession = startModalSession(pressPanel, {
-                onDismiss: (reason) => closePress(reason),
+                dismissCallback: (reason) => closePress(reason),
                 isOpenedByPointer: document.getElementById('guard').checked,
             });
         });

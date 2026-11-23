@@ -153,7 +153,7 @@ describe('createCustomStyles', () => {
     warn.mockRestore();
   });
 
-  it('onApply sees each non-empty layer; destroy() removes both and stops following the page', () => {
+  it('appliedCallback sees each non-empty layer; destroy() removes both and stops following the page', () => {
     const tag = registeredTag({ customStyles: '.page {}' });
     const { el, root } = host(tag);
     const applied: string[] = [];
@@ -161,7 +161,7 @@ describe('createCustomStyles', () => {
       cssClass: 'x',
       getContext: () => ({}),
       getInstanceStyles: () => ({ css: '.inst {}' }),
-      onApply: (css, layer) => applied.push(`${layer}: ${css}`),
+      appliedCallback: (css, layer) => applied.push(`${layer}: ${css}`),
     });
     expect(applied).toEqual(['page: .page {}', 'instance: .inst {}']);
 
@@ -335,12 +335,12 @@ describe('createCustomStyles', () => {
       ownerHandle.destroy();
     });
 
-    it('onApply sees only the child own layers', () => {
+    it('appliedCallback sees only the child own layers', () => {
       const owner = host(registeredTag({ customStyles: '.op {}' }));
       createCustomStyles(owner.el, owner.root, plain('.oi {}'));
       const child = host(registeredTag());
       const applied: string[] = [];
-      createCustomStyles(child.el, child.root, { ...plain('.ci {}'), getOwner: () => owner.el, onApply: (css, layer) => applied.push(`${layer}: ${css}`) });
+      createCustomStyles(child.el, child.root, { ...plain('.ci {}'), getOwner: () => owner.el, appliedCallback: (css, layer) => applied.push(`${layer}: ${css}`) });
       expect(applied).toEqual(['instance: .ci {}']);
     });
   });

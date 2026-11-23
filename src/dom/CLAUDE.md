@@ -13,7 +13,7 @@ own CSS MUST be in `@layer component`, or custom CSS (a `<style>`) loses to it (
 sheets cascade after every `<style>`).
 
 `createCustomStyles(host, root, { getContext, getInstanceStyles, cssClass?, position?, getOwner?,
-onApply? })` (`src/dom/custom-styles.ts`) → `{ refresh, destroy }`: two slots, page layer
+appliedCallback? })` (`src/dom/custom-styles.ts`) → `{ refresh, destroy }`: two slots, page layer
 (`window.components[tag].getCustomStylesCallback` > `.customStyles`, accessors installed by
 `registerComponent()`) before the instance layer (callback > CSS). Page writes refresh every
 live handle of the tag (WeakRef set in shared state). Components call `refresh()` where they
@@ -32,7 +32,7 @@ The owner's CSS = what the owner's own live handle last wrote (shared state `lay
 resolved layers; `dependents`: owner host → child handles, WeakRefs, registered even before the
 owner has a handle). Owner `refresh()` / page write for either tag → child refreshes; owner
 destroyed / really removed / `getOwner` null or throwing / self → no owner layers. Refresh is
-re-entry-guarded (an owner ↔ child cycle can't loop). `onApply` gets only the child's own layers.
+re-entry-guarded (an owner ↔ child cycle can't loop). `appliedCallback` gets only the child's own layers.
 
 ## Stacking tiers (`src/dom/z-index.ts`, SPEC §12.18 — implemented)
 
@@ -81,7 +81,7 @@ timeout) are ignored until a `dragenter`, a pulse pause, `drop` / `dragend` or t
 on the container → window capture listeners for move / up / cancel / keydown; touch adds a non-passive
 `touchmove` + `contextmenu` blocker and the long-press timer; `longPressMs <= 0` arms touch at pointerdown (no timer); `longPressMs` / `threshold` re-read per press
 (`readOption`); `autoScroll.isEnabled(ctx)` asked per frame (false → skip this frame, keep the loop). `start()` sets pointer capture and finds the
-auto-scroll container; `call()` unwraps `runSafely` (an `onStart` returning `false` refuses). jsdom has no
+auto-scroll container; `call()` unwraps `runSafely` (an `beforeStartCallback` returning `false` refuses). jsdom has no
 PointerEvent / DragEvent / `elementFromPoint`: the unit test dispatches plain events with the fields;
 `e2e/drag.spec.ts` covers mouse, CDP touch (long press vs swipe), auto-scroll, shadow hit test, file drag.
 
@@ -137,10 +137,10 @@ into the WHOLE state and the save callback gets all of it; cache per key, the ke
 
 ## Animating out (`src/dom/animate-out.ts`, SPEC §12.16 — implemented)
 
-`animateOut(elements, { className, onDone, shouldSetInert = true, shouldSetHeightVar = false })` →
+`animateOut(elements, { className, doneCallback, shouldSetInert = true, shouldSetHeightVar = false })` →
 `{ cancel(), finished }`: closing class (+ `inert`) → wait for each element's OWN `animationend` (timer
-fallback duration + 50ms) → `onDone` (via `runSafely`). Duration read back from CSS by `readAnimationMs`
-(longest delay + duration; `0` → synchronous `onDone`), so motion level / reduced motion need no code.
+fallback duration + 50ms) → `doneCallback` (via `runSafely`). Duration read back from CSS by `readAnimationMs`
+(longest delay + duration; `0` → synchronous `doneCallback`), so motion level / reduced motion need no code.
 `shouldSetHeightVar` → `--km-exit-height` (measure all, then write). Cancel restores class, inert, var;
 done keeps the class. `/menu`'s sheet close uses it; rulebook C-CA-18 bans own `animationend` waits.
 jsdom: no animations and no `inert` — tests fake `getComputedStyle`.

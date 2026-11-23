@@ -66,12 +66,12 @@ export class CoreDemoCombo extends BlissElement {
     const listbox = this.#listbox!;
     this.#nav = createActiveDescendant(input, listbox, {
       getItems: () => [...listbox.querySelectorAll<HTMLElement>('[role="option"]')],
-      onActiveChange: (item) => {
+      activeChangeCallback: (item) => {
         for (const o of listbox.querySelectorAll('.is-active')) o.classList.remove('is-active');
         item?.classList.add('is-active');
         this.emit('active', { value: item?.dataset.value ?? null, id: item?.id ?? null });
       },
-      onActivate: (item) => this.#pick(item),
+      activateCallback: (item) => this.#pick(item),
     });
     this.#stopText = observeTextInput(input, (term) => {
       this.emit('text', { term });
@@ -150,7 +150,7 @@ export class CoreDemoRoving extends BlissElement {
       columns: 7,
       hasTypeahead: !isGrid,
       isSkipped: (item) => item.getAttribute('aria-disabled') === 'true',
-      onFocusItem: (item, index) => this.emit('focus-item', { label: item.textContent, index }),
+      focusItemCallback: (item, index) => this.emit('focus-item', { label: item.textContent, index }),
     });
   }
 
@@ -200,7 +200,7 @@ export class CoreDemoBiglist extends BlissElement {
       mode: () => this.config.selectionMode as 'multiple' | 'single',
       getOrderedKeys: () => this.#keys,
       isSelectable: (i) => i % 10 !== 7, // every row ending in 7 is disabled
-      onChange: ({ added, removed, values }) => {
+      changeCallback: ({ added, removed, values }) => {
         this.#virtual?.refresh();
         this.emit('selection-change', { added: added.slice(0, 5), removed: removed.slice(0, 5), size: values.length });
       },

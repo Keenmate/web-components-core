@@ -34,12 +34,12 @@
         const openOuter = document.getElementById('open-outer');
         const outerPopover = createPopover({
             reference: openOuter, panel: outer, shouldCloseOnEscape: true, shouldCloseOnOutsideClick: true,
-            onClose: (reason) => log.push(`outer:${reason}`),
+            closeCallback: (reason) => log.push(`outer:${reason}`),
         });
         const innerPopover = createPopover({
             reference: outer.querySelector('#open-inner'), panel: inner, placement: 'right-start',
             shouldCloseOnEscape: true, shouldCloseOnOutsideClick: true,
-            onClose: (reason) => log.push(`inner:${reason}`),
+            closeCallback: (reason) => log.push(`inner:${reason}`),
         });
         const inner2 = document.createElement('div');
         inner2.className = 'panel';
@@ -48,7 +48,7 @@
         const inner2Popover = createPopover({
             reference: outer.querySelector('#open-inner-2'), panel: inner2, placement: 'bottom-start',
             shouldCloseOnEscape: true, shouldCloseOnOutsideClick: true,
-            onClose: (reason) => log.push(`inner-2:${reason}`),
+            closeCallback: (reason) => log.push(`inner-2:${reason}`),
         });
         outer.querySelector('#open-inner-2').addEventListener('click', () => inner2Popover.open());
         openOuter.addEventListener('click', () => (outerPopover.isOpen ? outerPopover.close() : outerPopover.open()));

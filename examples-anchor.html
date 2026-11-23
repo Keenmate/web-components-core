@@ -130,7 +130,7 @@
         <!-- AN03 · Drift detection                                        -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>AN03 · Containing blocks and drift (<code>shouldUseFixedContainingBlock</code> / <code>onDrift</code>)</h2>
+            <h2>AN03 · Containing blocks and drift (<code>shouldUseFixedContainingBlock</code> / <code>driftCallback</code>)</h2>
             <p>
                 <code>anchor()</code> places panels with <code>position: fixed</code>, which normally means "relative to
                 the window". But some CSS on an <em>ancestor</em> of the panel (<code>transform</code>,
@@ -153,7 +153,7 @@
                     what the default misses (<code>content-visibility: auto</code> below). web-multiselect sets it.
                 </li>
                 <li>
-                    <strong><code>onDrift</code></strong> — a safety net, not a fix. After each placement core checks
+                    <strong><code>driftCallback</code></strong> — a safety net, not a fix. After each placement core checks
                     where the panel really landed and calls it only when it is 1.5px or more off, naming the ancestor
                     and the CSS to blame. Pair it with the option above and log a warning once, so a page that still
                     breaks the panel tells the developer why.
@@ -166,7 +166,7 @@
             </ul>
             <p class="mt-1">
                 Try it: the panel below is a child of the dashed box. With <code>transform</code> the default already
-                lands on target. With <code>content-visibility: auto</code> the default drifts and <code>onDrift</code>
+                lands on target. With <code>content-visibility: auto</code> the default drifts and <code>driftCallback</code>
                 reports it; switch the option on and the panel is back on target.
             </p>
             <div class="controls">
@@ -181,7 +181,7 @@
             <div class="demo-area an-drift-box" id="an-drift-box" data-css="content-visibility">
                 <span class="pos-trigger" id="an-drift-ref">reference inside the dashed box</span>
                 <div class="output mt-1">
-                    <div class="output-label">onDrift report:</div>
+                    <div class="output-label">driftCallback report:</div>
                     <pre id="an-drift-out">(open the panel)</pre>
                 </div>
                 <button id="an-drift-btn" class="mt-1">Anchor a panel to it</button>
@@ -201,7 +201,7 @@ const handle = anchor(floating, reference, {   // reference: Element or VirtualE
   matchWidth: 'min',
   maxHeight: { padding: 8 },
   lockPlacement: 'freeze',
-  onDrift(report) { console.warn('panel drifted', report); },
+  driftCallback(report) { console.warn('panel drifted', report); },
 });
 
 handle.update();   // reposition now
@@ -226,8 +226,8 @@ handle.destroy();  // stop autoUpdate, restore the copied data-theme</code></pre
                     <tr><td><code>shouldUseFixedContainingBlock</code></td><td><code>false</code></td><td>Take the offset parent from the floating element's own containing-block ancestor.</td></tr>
                     <tr><td><code>platform</code></td><td>—</td><td>A custom Floating&nbsp;UI platform. Wins over <code>shouldUseFixedContainingBlock</code>.</td></tr>
                     <tr><td><code>beforeComputeCallback()</code></td><td>—</td><td>Runs right before each computation (publish a CSS var, clamp, …).</td></tr>
-                    <tr><td><code>onPlaced(placement)</code> · <code>onComputed({ x, y, placement })</code></td><td>—</td><td>After each placement.</td></tr>
-                    <tr><td><code>onDrift(report)</code></td><td>—</td><td>After a placement that landed 1.5px or more off. Element references only.</td></tr>
+                    <tr><td><code>placedCallback(placement)</code> · <code>computedCallback({ x, y, placement })</code></td><td>—</td><td>After each placement.</td></tr>
+                    <tr><td><code>driftCallback(report)</code></td><td>—</td><td>After a placement that landed 1.5px or more off. Element references only.</td></tr>
                 </tbody>
             </table>
             <table class="reference-table table-compact">
@@ -342,9 +342,9 @@ handle.destroy();  // stop autoUpdate, restore the copied data-theme</code></pre
                 handle = anchor(floating, ref, {
                     placement: 'bottom-start',
                     shouldUseFixedContainingBlock: fixedCb.checked,
-                    // onComputed runs first on every placement; onDrift only when drifted.
-                    onComputed: () => { out.textContent = 'on target: onDrift not called'; },
-                    onDrift: (report) => {
+                    // computedCallback runs first on every placement; driftCallback only when drifted.
+                    computedCallback: () => { out.textContent = 'on target: driftCallback not called'; },
+                    driftCallback: (report) => {
                         out.textContent =
                             `drifted by x: ${report.driftX.toFixed(1)}px, y: ${report.driftY.toFixed(1)}px
 ` +

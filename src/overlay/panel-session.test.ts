@@ -39,7 +39,7 @@ function setup(): { opener: HTMLButtonElement; page: HTMLElement; panel: HTMLEle
 describe('startPanelSession', () => {
   it('non-modal: role dialog without aria-modal, nothing inert, focus stays; end() restores', () => {
     const { opener, page, panel } = setup();
-    const session = startPanelSession(panel, { onDismiss: () => {} });
+    const session = startPanelSession(panel, { dismissCallback: () => {} });
     expect(panel.getAttribute('role')).toBe('dialog');
     expect(panel.hasAttribute('aria-modal')).toBe(false);
     expect(page.hasAttribute('inert')).toBe(false);
@@ -52,7 +52,7 @@ describe('startPanelSession', () => {
   it('Escape, a click outside and Back ask to close; a click inside does not', async () => {
     const { page, panel } = setup();
     const reasons: PanelDismissReason[] = [];
-    let session = startPanelSession(panel, { onDismiss: (r) => reasons.push(r) });
+    let session = startPanelSession(panel, { dismissCallback: (r) => reasons.push(r) });
     press(panel.querySelector('#ok')!);
     await new Promise((r) => setTimeout(r, 0));
     expect(reasons).toEqual([]);
@@ -60,10 +60,10 @@ describe('startPanelSession', () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(reasons).toEqual(['outside-click']); // the component closes and ends it
     session.end();
-    session = startPanelSession(panel, { onDismiss: (r) => reasons.push(r) });
+    session = startPanelSession(panel, { dismissCallback: (r) => reasons.push(r) });
     escape();
     session.end();
-    startPanelSession(panel, { onDismiss: (r) => reasons.push(r) });
+    startPanelSession(panel, { dismissCallback: (r) => reasons.push(r) });
     backHandler?.();
     expect(reasons).toEqual(['outside-click', 'escape', 'back']);
   });
@@ -71,7 +71,7 @@ describe('startPanelSession', () => {
   it('a dropdown opened inside closes first on Escape; a page dropdown opening elsewhere does not dismiss the panel', () => {
     const { panel } = setup();
     const reasons: string[] = [];
-    startPanelSession(panel, { onDismiss: (r) => reasons.push(`panel:${r}`) });
+    startPanelSession(panel, { dismissCallback: (r) => reasons.push(`panel:${r}`) });
     const inner = panel.querySelector<HTMLElement>('#ok')!;
     const dropdown = registerOverlay((r) => reasons.push(`dropdown:${r}`), 'page', { shouldCloseOnEscape: true });
     dropdown.activate({ trigger: inner });
@@ -86,7 +86,7 @@ describe('startPanelSession', () => {
     const { opener, page, panel } = setup();
     const reasons: PanelDismissReason[] = [];
     const session = startPanelSession(panel, {
-      onDismiss: (r) => reasons.push(r),
+      dismissCallback: (r) => reasons.push(r),
       shouldCloseOnOutsideClick: false,
       shouldCloseOnBack: false,
       initialFocus: true,

@@ -6,9 +6,9 @@
  * Pointer events throughout. Mouse / pen: the drag starts after `threshold` px of movement. Touch: the
  * finger must rest `longPressMs` first (moving earlier = the user scrolls; the drag never starts); once
  * started, the page doesn't scroll (a non-passive `touchmove` is prevented) and the long-press context
- * menu is suppressed. While dragging: `onMove` with the element under the pointer (shadow roots
+ * menu is suppressed. While dragging: `moveCallback` with the element under the pointer (shadow roots
  * pierced — give the drag image `pointer-events: none`), auto-scroll near the scroll container's edges,
- * Escape / `pointercancel` → `onCancel`. After a drop the trailing click is swallowed.
+ * Escape / `pointercancel` → `cancelCallback`. After a drop the trailing click is swallowed.
  */
 
 import { findScrollContainer } from './scroll-container.js';
@@ -40,15 +40,15 @@ export interface PointerDragOptions {
    */
   autoScroll?: false | { edge?: number; maxSpeed?: number; container?: HTMLElement | null; isEnabled?: (ctx: PointerDragContext) => boolean };
   /** The drag starts; `false` refuses it. */
-  onStart?: (ctx: PointerDragContext) => boolean | void;
-  onMove?: (ctx: PointerDragContext) => void;
-  onDrop?: (ctx: PointerDragContext) => void;
-  onCancel?: (ctx: PointerDragContext) => void;
+  beforeStartCallback?: (ctx: PointerDragContext) => boolean | void;
+  moveCallback?: (ctx: PointerDragContext) => void;
+  dropCallback?: (ctx: PointerDragContext) => void;
+  cancelCallback?: (ctx: PointerDragContext) => void;
 }
 
 export interface PointerDrag {
   readonly isDragging: boolean;
-  /** Abort a drag in progress (`onCancel`). */
+  /** Abort a drag in progress (`cancelCallback`). */
   cancel(): void;
   destroy(): void;
 }
@@ -127,7 +127,7 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
     const before = scroller.scrollTop + scroller.scrollLeft;
     scroller.scrollTop += dy;
     scroller.scrollLeft += dx;
-    if (scroller.scrollTop + scroller.scrollLeft !== before) call(options.onMove, null, 'onMove'); // new content under the pointer
+    if (scroller.scrollTop + scroller.scrollLeft !== before) call(options.moveCallback, null, 'moveCallback'); // new content under the pointer
     scrollFrame = view.requestAnimationFrame(autoScroll);
   };
 
@@ -155,7 +155,7 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
   };
 
   const start = (event: PointerEvent | null): void => {
-    if (call(options.onStart, event, 'onStart') === false) return reset();
+    if (call(options.beforeStartCallback, event, 'beforeStartCallback') === false) return reset();
     isDragging = true;
     const auto = options.autoScroll === false ? null : options.autoScroll;
     scroller = auto?.container ?? findScrollContainer(source!, { axis: 'both' }) ?? (container.scrollHeight > container.clientHeight ? container : null);
@@ -164,7 +164,7 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
     } catch {
       // the pointer is gone
     }
-    call(options.onMove, event, 'onMove');
+    call(options.moveCallback, event, 'moveCallback');
   };
 
   const onMove = (event: PointerEvent): void => {
@@ -182,7 +182,7 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
       return;
     }
     event.preventDefault();
-    call(options.onMove, event, 'onMove');
+    call(options.moveCallback, event, 'moveCallback');
     if (!scrollFrame) scrollFrame = view.requestAnimationFrame(autoScroll);
   };
 
@@ -192,14 +192,14 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
       lastX = event.clientX;
       lastY = event.clientY;
       const src = source!;
-      call(options.onDrop, event, 'onDrop');
+      call(options.dropCallback, event, 'dropCallback');
       guardGhostClick([src, container], { durationMs: 400 }); // the click that ends a drag isn't a click
     }
     reset();
   };
 
   const cancel = (event: PointerDragContext['event']): void => {
-    if (isDragging) call(options.onCancel, event, 'onCancel');
+    if (isDragging) call(options.cancelCallback, event, 'cancelCallback');
     reset();
   };
   const onCancelEvent = (event: PointerEvent): void => {

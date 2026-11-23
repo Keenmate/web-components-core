@@ -33,13 +33,13 @@ export interface SelectionOptions<K> {
   /** A key that can't be selected (a disabled row, a group header); default: all can. */
   isSelectable?: (key: K) => boolean;
   /** After every change (not called when nothing changed, nor for `isSilent` writes). */
-  onChange?: (change: SelectionChange<K>) => void;
-  /** Log source for a throwing `onChange`. */
+  changeCallback?: (change: SelectionChange<K>) => void;
+  /** Log source for a throwing `changeCallback`. */
   logSource?: unknown;
 }
 
 export interface WriteOptions {
-  /** Don't call `onChange` (a programmatic write the component reports itself, or not at all). */
+  /** Don't call `changeCallback` (a programmatic write the component reports itself, or not at all). */
   isSilent?: boolean;
 }
 
@@ -65,7 +65,7 @@ export interface SelectionModel<K> {
 }
 
 export function createSelection<K>(options: SelectionOptions<K>): SelectionModel<K> {
-  const { getOrderedKeys, onChange } = options;
+  const { getOrderedKeys, changeCallback } = options;
   const isSelectable = options.isSelectable ?? ((): boolean => true);
   const mode = (): SelectionModelMode => {
     const m = typeof options.mode === 'function' ? options.mode() : options.mode;
@@ -79,8 +79,8 @@ export function createSelection<K>(options: SelectionOptions<K>): SelectionModel
     const added = [...next].filter((k) => !selected.has(k));
     const removed = [...selected].filter((k) => !next.has(k));
     selected = next;
-    if ((!added.length && !removed.length) || opts.isSilent || !onChange) return;
-    runSafely(() => onChange({ added, removed, values: [...selected] }), { source: options.logSource ?? null, message: 'selection onChange threw' });
+    if ((!added.length && !removed.length) || opts.isSilent || !changeCallback) return;
+    runSafely(() => changeCallback({ added, removed, values: [...selected] }), { source: options.logSource ?? null, message: 'selection changeCallback threw' });
   };
 
   /** The selectable keys between `a` and `b` (inclusive) in display order; `[b]` when `a` isn't shown. */

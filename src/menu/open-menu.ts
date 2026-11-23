@@ -683,7 +683,7 @@ export function openMenu<Ctx, A extends string = string>(
         stopScrollClose = watchScrollClose({
           reference: opts.at instanceof Element ? opts.at : (elementAtPoint(opts.at, hostEl) ?? hostEl),
           isInside,
-          onScroll: () => close('scroll'),
+          scrollCallback: () => close('scroll'),
         });
       }
       window.addEventListener('blur', onBlur);
@@ -731,9 +731,9 @@ export function openMenu<Ctx, A extends string = string>(
     if (hadFocus && !isPointerAway && opts.returnFocusTo?.isConnected) {
       opts.returnFocusTo.focus({ preventScroll: true });
     }
-    // A throwing onClose must not escape close() (or the document listener that called it).
-    const { onClose } = opts;
-    if (onClose) runSafely(() => onClose(reason), { source: host, coreCategory: 'MENU', message: 'menu onClose threw' });
+    // A throwing closeCallback must not escape close() (or the document listener that called it).
+    const { closeCallback } = opts;
+    if (closeCallback) runSafely(() => closeCallback(reason), { source: host, coreCategory: 'MENU', message: 'menu closeCallback threw' });
   }
 
   // ── Open ───────────────────────────────────────────────────────────────
@@ -808,7 +808,7 @@ export function openMenu<Ctx, A extends string = string>(
     // Each its own modifier; both go once the longer of the two animations ends.
     animateOut([sheetEl, backdropEl], {
       className: (el) => (el === backdropEl ? `${SHEET}-backdrop--closing` : `${SHEET}--closing`),
-      onDone: () => {
+      doneCallback: () => {
         sheetEl.remove();
         backdropEl.remove();
       },
@@ -832,7 +832,7 @@ export function openMenu<Ctx, A extends string = string>(
     const chrome = createSheetHeader({
       title: '',
       closeLabel: opts.labels?.close ?? 'Close',
-      onClose: () => close('close-button'),
+      closeCallback: () => close('close-button'),
     });
     sheetHeader = chrome.header;
     sheetHeader.classList.add(`${SHEET}__header`);
@@ -853,7 +853,7 @@ export function openMenu<Ctx, A extends string = string>(
     const session = startSheetSession(sheet, {
       shouldFitToVisibleViewport: false, // no text field in a menu
       logSource: host instanceof ShadowRoot ? host.host : host instanceof Element ? host : undefined,
-      onBack: () => {
+      backCallback: () => {
         if (!isOpen) return;
         if (chain.length > 1) {
           goUp(chain.length - 1);

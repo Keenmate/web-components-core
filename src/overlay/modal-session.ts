@@ -10,7 +10,7 @@
  *   the dialog), the phone Back gesture, page scroll lock and the keyboard inset (`startSheetSession`);
  * - opened by a press (`isOpenedByPointer`): the tap's trailing "ghost" click on the panel / backdrop is swallowed.
  *
- * Core never closes the panel itself: `onDismiss(reason)` tells the component, which closes and calls `end()`.
+ * Core never closes the panel itself: `dismissCallback(reason)` tells the component, which closes and calls `end()`.
  * The panel's own `z-index` is the component's (`Z_INDEX.modal`, §12.18).
  */
 import { createFocusTrap, type FocusTrapOptions } from '../dom/focus-trap.js';
@@ -26,7 +26,7 @@ export interface ModalSessionOptions
   extends Pick<SheetSessionOptions, 'shouldLockScroll' | 'shouldCheckContainingBlock' | 'logSource'>,
     Pick<FocusTrapOptions, 'initialFocus' | 'returnFocusTo' | 'shouldMakeBackgroundInert'> {
   /** The user asked to close (see {@link ModalDismissReason}): close the panel and call `end()`. */
-  onDismiss: (reason: ModalDismissReason) => void;
+  dismissCallback: (reason: ModalDismissReason) => void;
   /**
    * `true` = core inserts a backdrop `<div class="km-modal-backdrop">` right before the panel and removes it on
    * end; an element = your own (core only wires its click); omitted / `false` = none (a full-screen sheet).
@@ -60,7 +60,7 @@ export interface ModalSessionOptions
 export interface ModalSession {
   /** Undo everything (idempotent) — call it on EVERY close. `shouldReturnFocus` default `true`. */
   end(opts?: { shouldReturnFocus?: boolean }): void;
-  /** Re-arm the Back entry from inside `onDismiss('back')` (one level up; the modal stays open). */
+  /** Re-arm the Back entry from inside `dismissCallback('back')` (one level up; the modal stays open). */
   rearmBack(): void;
   /** The backdrop in use (core's or yours), `null` without one. */
   readonly backdrop: HTMLElement | null;
@@ -95,7 +95,7 @@ export function startModalSession(panel: HTMLElement, opts: ModalSessionOptions)
   }
   if (backdrop && (opts.shouldCloseOnBackdropClick ?? true)) {
     const onClick = (e: Event): void => {
-      if (e.target === backdrop) opts.onDismiss('backdrop');
+      if (e.target === backdrop) opts.dismissCallback('backdrop');
     };
     const el = backdrop;
     el.addEventListener('click', onClick);
@@ -116,7 +116,7 @@ export function startModalSession(panel: HTMLElement, opts: ModalSessionOptions)
   // Scroll lock, keyboard inset, Back.
   const shouldCloseOnBack = opts.shouldCloseOnBack ?? true;
   const sheet = startSheetSession(panel, {
-    ...(shouldCloseOnBack ? { onBack: () => opts.onDismiss('back') } : {}),
+    ...(shouldCloseOnBack ? { backCallback: () => opts.dismissCallback('back') } : {}),
     shouldLockScroll: opts.shouldLockScroll,
     // sizes the panel to the visual viewport (inline height / top): right for a full-screen sheet only
     shouldFitToVisibleViewport: opts.shouldFitToVisibleViewport ?? false,
@@ -128,7 +128,7 @@ export function startModalSession(panel: HTMLElement, opts: ModalSessionOptions)
   const overlay: OverlayHandle = registerOverlay(
     (reason) => {
       if (isEnded) return;
-      opts.onDismiss(reason === 'escape' ? 'escape' : reason === 'parent' ? 'parent' : 'overlay');
+      opts.dismissCallback(reason === 'escape' ? 'escape' : reason === 'parent' ? 'parent' : 'overlay');
     },
     opts.group ?? MODAL_GROUP,
     {

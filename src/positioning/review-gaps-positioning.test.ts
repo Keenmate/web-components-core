@@ -119,16 +119,16 @@ describe('anchor — D-29 gaps', () => {
     expect(arrowEl.style.left).toBe('3px');
   });
 
-  it('onDrift is skipped for a virtual reference (no element to diagnose against)', async () => {
+  it('driftCallback is skipped for a virtual reference (no element to diagnose against)', async () => {
     const floating = document.createElement('div');
     document.body.append(floating);
     floating.getBoundingClientRect = () => ({ x: 500, y: 500, top: 500, left: 500, right: 500, bottom: 500, width: 0, height: 0, toJSON() {} }) as DOMRect;
-    const onDrift = vi.fn();
-    const onPlaced = vi.fn();
-    anchor(floating, { getBoundingClientRect: () => new DOMRect(0, 0, 0, 0) }, { onDrift, onPlaced });
+    const driftCallback = vi.fn();
+    const placedCallback = vi.fn();
+    anchor(floating, { getBoundingClientRect: () => new DOMRect(0, 0, 0, 0) }, { driftCallback, placedCallback });
     await settle();
-    expect(onPlaced).toHaveBeenCalled(); // positioned …
-    expect(onDrift).not.toHaveBeenCalled(); // … but never diagnosed
+    expect(placedCallback).toHaveBeenCalled(); // positioned …
+    expect(driftCallback).not.toHaveBeenCalled(); // … but never diagnosed
   });
 
   it("lockPlacement:'freeze' with shouldFlip:false never adds flip, and pins the resolved placement", async () => {
@@ -163,14 +163,14 @@ describe('anchor — D-29 gaps', () => {
     expect(floating.style.left).toBe('10px');
   });
 
-  it('a throwing onDrift is logged, not an unhandled rejection', async () => {
+  it('a throwing driftCallback is logged, not an unhandled rejection', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
     floating.getBoundingClientRect = () => ({ x: 300, y: 300, top: 300, left: 300, right: 300, bottom: 300, width: 0, height: 0, toJSON() {} }) as DOMRect;
     anchor(floating, reference, {
-      onDrift: () => {
+      driftCallback: () => {
         throw new Error('drift boom');
       },
     });
@@ -441,18 +441,18 @@ describe('createPopover — D-29 gaps', () => {
     expect(panel2.getAttribute('data-theme')).toBe('dark');
   });
 
-  it('forwards matchWidth, offset and onPlaced to anchor()', async () => {
+  it('forwards matchWidth, offset and placedCallback to anchor()', async () => {
     const reference = document.createElement('button');
     const panel = document.createElement('div');
     document.body.append(reference);
-    const onPlaced = vi.fn();
-    createPopover({ reference, panel, matchWidth: 'max', offset: 14, onPlaced }).open();
+    const placedCallback = vi.fn();
+    createPopover({ reference, panel, matchWidth: 'max', offset: 14, placedCallback }).open();
     await settle();
     expect(vi.mocked(fui.offset)).toHaveBeenCalledWith(14);
     const sizeMw = (computeCalls()[0]![2]!.middleware as unknown as { name: string; options: { apply: (a: unknown) => void } }[]).find((m) => m.name === 'size')!;
     sizeMw.options.apply({ rects: { reference: { width: 180 } }, elements: { floating: panel } });
     expect(panel.style.maxWidth).toBe('180px');
-    expect(onPlaced).toHaveBeenCalledWith('bottom-start');
+    expect(placedCallback).toHaveBeenCalledWith('bottom-start');
   });
 
   it('destroy() while open on a DETACHED reference closes cleanly', () => {

@@ -6,10 +6,10 @@
  * - `run(task, onResult)` replaces the previous run: its debounce is dropped, its `AbortSignal` aborts, and
  *   a late answer from it is ignored — only the LATEST run reaches `onResult`.
  * - A synchronous result is handed over at once (after the debounce) and never shows the loader.
- * - The loader (`onLoadingChange(true)`) starts with the async task — after `loaderDelayMs` when set, so a
+ * - The loader (`loadingChangeCallback(true)`) starts with the async task — after `loaderDelayMs` when set, so a
  *   fast answer never flashes it — and stays up while a newer run replaces a loading one (no flicker).
  * - An `AbortError` is never an error (the task gave up on our signal, or its own timeout signal);
- *   any other rejection goes to `onError`, or the logger when there is none.
+ *   any other rejection goes to `errorCallback`, or the logger when there is none.
  */
 import { runSafely } from '../logging/safe-call.js';
 
@@ -19,9 +19,9 @@ export interface AsyncRunnerOptions {
   /** Show the loader only when the task is still running after this long. Default `0` (at once). */
   loaderDelayMs?: number;
   /** The loading state changed (one call per change). */
-  onLoadingChange?(isLoading: boolean): void;
+  loadingChangeCallback?(isLoading: boolean): void;
   /** The latest run failed (never for an abort). Without it the error is logged. */
-  onError?(error: unknown): void;
+  errorCallback?(error: unknown): void;
   /** The element behind the runner — its logger reports thrown callbacks. */
   logSource?: Element | null;
 }
@@ -55,7 +55,7 @@ export function createAsyncRunner(opts: AsyncRunnerOptions = {}): AsyncRunner {
   const setLoading = (value: boolean): void => {
     if (value === isLoading) return;
     isLoading = value;
-    if (opts.onLoadingChange) runSafely(() => opts.onLoadingChange!(value), { source, message: 'async runner onLoadingChange threw' });
+    if (opts.loadingChangeCallback) runSafely(() => opts.loadingChangeCallback!(value), { source, message: 'async runner loadingChangeCallback threw' });
   };
 
   const stop = (): void => {
@@ -77,7 +77,7 @@ export function createAsyncRunner(opts: AsyncRunnerOptions = {}): AsyncRunner {
   const fail = (error: unknown): void => {
     settle();
     if (isAbortError(error)) return;
-    if (opts.onError) runSafely(() => opts.onError!(error), { source, message: 'async runner onError threw' });
+    if (opts.errorCallback) runSafely(() => opts.errorCallback!(error), { source, message: 'async runner errorCallback threw' });
     else runSafely(() => { throw error; }, { source, message: 'async task failed' });
   };
 

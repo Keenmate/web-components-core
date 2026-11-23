@@ -77,12 +77,12 @@ describe('startModalSession isOpenedByPointer', () => {
     const panel = document.createElement('div');
     panel.innerHTML = '<button>ok</button>';
     document.body.append(panel);
-    const onDismiss = vi.fn();
-    const session = startModalSession(panel, { backdrop: true, onDismiss, isOpenedByPointer: true });
+    const dismissCallback = vi.fn();
+    const session = startModalSession(panel, { backdrop: true, dismissCallback, isOpenedByPointer: true });
     session.backdrop!.click();
-    expect(onDismiss).not.toHaveBeenCalled();
+    expect(dismissCallback).not.toHaveBeenCalled();
     session.backdrop!.click();
-    expect(onDismiss).toHaveBeenCalledWith('backdrop');
+    expect(dismissCallback).toHaveBeenCalledWith('backdrop');
     session.end();
     panel.remove();
   });
@@ -90,10 +90,10 @@ describe('startModalSession isOpenedByPointer', () => {
   it('without it the first backdrop click dismisses', () => {
     const panel = document.createElement('div');
     document.body.append(panel);
-    const onDismiss = vi.fn();
-    const session = startModalSession(panel, { backdrop: true, onDismiss });
+    const dismissCallback = vi.fn();
+    const session = startModalSession(panel, { backdrop: true, dismissCallback });
     session.backdrop!.click();
-    expect(onDismiss).toHaveBeenCalledWith('backdrop');
+    expect(dismissCallback).toHaveBeenCalledWith('backdrop');
     session.end();
     panel.remove();
   });

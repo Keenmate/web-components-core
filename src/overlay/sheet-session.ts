@@ -19,7 +19,7 @@ export interface SheetSessionOptions {
    * from inside it to go up one level instead (a submenu, a nested step) and keep the sheet open.
    * Omit for a sheet Back shouldn't close (rare).
    */
-  onBack?: () => void;
+  backCallback?: () => void;
   /** Lock page scroll while open. Default `true`. */
   shouldLockScroll?: boolean;
   /** Track the virtual keyboard (`--km-keyboard-inset` on the panel). Default `true`. */
@@ -31,7 +31,7 @@ export interface SheetSessionOptions {
 }
 
 export interface SheetSession {
-  /** Re-arm the Back entry from inside `onBack` (one level up; the sheet stays open). */
+  /** Re-arm the Back entry from inside `backCallback` (one level up; the sheet stays open). */
   rearmBack(): void;
   /** Undo everything (idempotent) — call it on EVERY close: ✕, Escape, a pick, Back, disconnect. */
   end(): void;
@@ -48,8 +48,8 @@ export function startSheetSession(panel: HTMLElement, opts: SheetSessionOptions 
   if (opts.shouldLockScroll ?? true) undo.push(lockBodyScroll());
   if (opts.shouldFitToVisibleViewport ?? true) undo.push(fitToVisibleViewport(panel));
   const claim = (): void => {
-    if (!opts.onBack || isEnded) return;
-    releaseBack = claimBackEntry(() => opts.onBack!());
+    if (!opts.backCallback || isEnded) return;
+    releaseBack = claimBackEntry(() => opts.backCallback!());
   };
   claim();
 

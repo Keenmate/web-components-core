@@ -10,7 +10,7 @@
  * - opened by a press (`isOpenedByPointer`): the tap's trailing "ghost" click is swallowed.
  *
  * No backdrop, no `inert`, no focus trap, no scroll lock — that is what `startModalSession` adds. Focus stays
- * where it is unless `initialFocus` is given. Core never closes the panel itself: `onDismiss(reason)` tells the
+ * where it is unless `initialFocus` is given. Core never closes the panel itself: `dismissCallback(reason)` tells the
  * component, which closes and calls `end()`. Layout (`.km-drawer`) and stacking (`Z_INDEX`) are the component's.
  */
 import { registerOverlay, type OverlayHandle } from './active-overlay.js';
@@ -22,7 +22,7 @@ export type PanelDismissReason = 'escape' | 'outside-click' | 'back' | 'overlay'
 
 export interface PanelSessionOptions {
   /** The user asked to close (see {@link PanelDismissReason}): close the panel and call `end()`. */
-  onDismiss: (reason: PanelDismissReason) => void;
+  dismissCallback: (reason: PanelDismissReason) => void;
   /** Escape dismisses (`'escape'`). Default `true`. A function is asked at each press. */
   shouldCloseOnEscape?: boolean | (() => boolean);
   /** Runs before an Escape close; `false` keeps the panel open (it handled the key). */
@@ -48,7 +48,7 @@ export interface PanelSessionOptions {
 export interface PanelSession {
   /** Undo everything (idempotent) — call it on EVERY close. `shouldReturnFocus` default `false` (the page kept focus). */
   end(opts?: { shouldReturnFocus?: boolean }): void;
-  /** Re-arm the Back entry from inside `onDismiss('back')` (one level up; the panel stays open). */
+  /** Re-arm the Back entry from inside `dismissCallback('back')` (one level up; the panel stays open). */
   rearmBack(): void;
   /** `true` once {@link end} ran. */
   readonly isEnded: boolean;
@@ -71,13 +71,13 @@ export function startPanelSession(panel: HTMLElement, opts: PanelSessionOptions)
   let releaseBack: (() => void) | undefined;
   const claimBack = (): void => {
     if (isEnded || !(opts.shouldCloseOnBack ?? true)) return;
-    releaseBack = claimBackEntry(() => opts.onDismiss('back'));
+    releaseBack = claimBackEntry(() => opts.dismissCallback('back'));
   };
   claimBack();
 
   const overlay: OverlayHandle = registerOverlay(
     (reason) => {
-      if (!isEnded) opts.onDismiss(reason);
+      if (!isEnded) opts.dismissCallback(reason);
     },
     opts.group ?? PANEL_GROUP,
     {

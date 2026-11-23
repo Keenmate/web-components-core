@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   session option `shouldObserveKeyboardInset` → `shouldFitToVisibleViewport`.
 - Drop targets: `applyArmedState(host, internals, isArmed)` → `setDropActiveState(host, internals, isDropActive)`,
   and the state it sets is now the `drop-active` attribute + `:state(drop-active)` (was `armed`; the interact.js
-  term). `observePageDrag`'s `onChange` gets `isDropActive`.
+  term). `observePageDrag`'s change callback gets `isDropActive`.
 - `getLabelSiblings` → `getLabelFallbackKeys` (`/locale`); `menuPresentationInputs()` →
   `createMenuPresentationInputs()`, `menuPresentationOptions(config)` → `getMenuPresentationOptions(config)` (`/menu`);
   `getGlobalLogging` → `getPageLogging` (type `GlobalLoggingControls` → `PageLoggingControls`); `createStyleSlot` →
@@ -42,6 +42,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Selection` / `SelectionMode` globals); `createSelection`'s mode values are now `'single' | 'multiple'` (was
   `'multi'`; matches `selection-mode` + HTML `multiple` — any value other than `'single'` still means multiple).
   `RenderLoaderCallback` → `RenderLoadingCallback` (it types the `renderLoadingCallback` input).
+- **Options-bag callbacks are `*Callback`, not `on*`** (rule D-NC-26: `on*` is only an event twin, `el.on<Name>`).
+  Renamed outright per factory / helper:
+  - `/positioning` `anchor()` (`AnchorOptions`, also via `createPopover` / `createTooltip`): `onPlaced` → `placedCallback`,
+    `onComputed` → `computedCallback`, `onDrift` → `driftCallback`. `createPopover`: `onClose` → `closeCallback`.
+  - `/menu` `openMenu()`: `onClose` → `closeCallback`. `createSheetHeader()`: `onClose` → `closeCallback`.
+  - `startModalSession()` / `startPanelSession()`: `onDismiss` → `dismissCallback`. `startSheetSession()`: `onBack` →
+    `backCallback`.
+  - `animateOut()`: `onDone` → `doneCallback`. `createAsyncRunner()`: `onLoadingChange` → `loadingChangeCallback`,
+    `onError` → `errorCallback`. `createCustomStyles()`: `onApply` → `appliedCallback`. `observePageDrag()`: `onChange`
+    → `changeCallback`.
+  - `createPointerDrag()`: `onStart` → **`beforeStartCallback`** (returning `false` refuses the drag), `onMove` →
+    `moveCallback`, `onDrop` → `dropCallback`, `onCancel` → `cancelCallback`.
+  - `/a11y` `createActiveDescendant()`: `onActivate` → `activateCallback`, `onActiveChange` → `activeChangeCallback`;
+    `createRovingFocus()`: `onFocusItem` → `focusItemCallback`.
+  - `/search` `prepareSearchTerm()`: `onObjectTerm` → `objectTermCallback`. `createSelection()`: `onChange` →
+    `changeCallback`.
+  - Unchanged: action items keep `onClick` (D-NC-27); positional parameters (`claimBackEntry(onBack)`,
+    `registerOverlay(onDismiss, …)`, `runner.run(task, onResult)`) are not option names.
 
 ### Removed
 - `resolveEnumAttribute(raw, values, fallback)` — unused (no component or core caller); use `toEnum`.

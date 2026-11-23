@@ -17,8 +17,8 @@ describe('observePageDrag', () => {
   it('arms only for matching types; enter / leave depth; drop ends; unsubscribe', () => {
     const files = vi.fn();
     const nodes = vi.fn();
-    const stopFiles = observePageDrag({ onChange: files });
-    const stopNodes = observePageDrag({ types: ['application/x-node'], onChange: nodes });
+    const stopFiles = observePageDrag({ changeCallback: files });
+    const stopNodes = observePageDrag({ types: ['application/x-node'], changeCallback: nodes });
     window.dispatchEvent(drag('dragenter', ['text/plain']));
     expect(files).not.toHaveBeenCalled();
     window.dispatchEvent(drag('dragenter', ['Files']));
@@ -41,32 +41,32 @@ describe('observePageDrag', () => {
 
   it('the dragover heartbeat stopping ends it (Escape on an external drag)', () => {
     vi.useFakeTimers();
-    const onChange = vi.fn();
-    const stop = observePageDrag({ onChange });
+    const changeCallback = vi.fn();
+    const stop = observePageDrag({ changeCallback });
     window.dispatchEvent(drag('dragenter', ['Files']));
     vi.advanceTimersByTime(600);
-    expect(onChange).toHaveBeenLastCalledWith(false);
+    expect(changeCallback).toHaveBeenLastCalledWith(false);
     stop();
   });
 
   it('after Escape the same drag’s dragovers don’t re-arm; a new dragenter or a pause in them does', () => {
     vi.useFakeTimers();
-    const onChange = vi.fn();
-    const stop = observePageDrag({ onChange });
+    const changeCallback = vi.fn();
+    const stop = observePageDrag({ changeCallback });
     window.dispatchEvent(drag('dragenter', ['Files']));
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-    expect(onChange).toHaveBeenLastCalledWith(false);
+    expect(changeCallback).toHaveBeenLastCalledWith(false);
     for (let i = 0; i < 5; i++) {
       vi.advanceTimersByTime(100);
       window.dispatchEvent(drag('dragover', ['Files'])); // the same drag keeps pulsing
     }
-    expect(onChange).toHaveBeenCalledTimes(2); // armed, disarmed — not re-armed
+    expect(changeCallback).toHaveBeenCalledTimes(2); // armed, disarmed — not re-armed
     vi.advanceTimersByTime(500); // the pulses paused: a later dragover is a new drag
     window.dispatchEvent(drag('dragover', ['Files']));
-    expect(onChange).toHaveBeenLastCalledWith(true);
+    expect(changeCallback).toHaveBeenLastCalledWith(true);
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     window.dispatchEvent(drag('dragenter', ['Files'])); // a new dragenter re-arms at once
-    expect(onChange).toHaveBeenLastCalledWith(true);
+    expect(changeCallback).toHaveBeenLastCalledWith(true);
     stop();
   });
 
@@ -87,10 +87,10 @@ describe('createPointerDrag', () => {
     const drag = createPointerDrag(container, {
       getSource: (t) => t.closest('li'),
       autoScroll: false,
-      onStart: (ctx) => void calls.push(`start:${ctx.source.id}`),
-      onMove: () => void calls.push('move'),
-      onDrop: (ctx) => void calls.push(`drop:${ctx.x},${ctx.y}`),
-      onCancel: () => void calls.push('cancel'),
+      beforeStartCallback: (ctx) => void calls.push(`start:${ctx.source.id}`),
+      moveCallback: () => void calls.push('move'),
+      dropCallback: (ctx) => void calls.push(`drop:${ctx.x},${ctx.y}`),
+      cancelCallback: () => void calls.push('cancel'),
       ...opts,
     });
     return { container, drag, calls, a: document.getElementById('a')! };
@@ -155,7 +155,7 @@ describe('createPointerDrag', () => {
     expect(drag.isDragging).toBe(true);
   });
 
-  it('Escape / pointercancel cancel; onStart false refuses; right button ignored; destroy', () => {
+  it('Escape / pointercancel cancel; beforeStartCallback false refuses; right button ignored; destroy', () => {
     const { a, drag, calls } = setup();
     a.dispatchEvent(pointer('pointerdown', { button: 2 }));
     window.dispatchEvent(pointer('pointermove', { clientX: 50 }));
@@ -175,7 +175,7 @@ describe('createPointerDrag', () => {
     window.dispatchEvent(pointer('pointermove', { clientX: 50 }));
     expect(drag.isDragging).toBe(false);
 
-    const refused = setup({ onStart: () => false });
+    const refused = setup({ beforeStartCallback: () => false });
     refused.a.dispatchEvent(pointer('pointerdown', {}));
     window.dispatchEvent(pointer('pointermove', { clientX: 50 }));
     expect(refused.drag.isDragging).toBe(false);

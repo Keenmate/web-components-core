@@ -17,18 +17,18 @@ describe('createAsyncRunner', () => {
   afterEach(() => vi.useRealTimers());
 
   it('a synchronous result is delivered at once and never shows the loader', () => {
-    const onLoadingChange = vi.fn();
-    const runner = createAsyncRunner({ onLoadingChange });
+    const loadingChangeCallback = vi.fn();
+    const runner = createAsyncRunner({ loadingChangeCallback });
     const onResult = vi.fn();
     runner.run(() => [1, 2], onResult);
     expect(onResult).toHaveBeenCalledWith([1, 2]);
-    expect(onLoadingChange).not.toHaveBeenCalled();
+    expect(loadingChangeCallback).not.toHaveBeenCalled();
     expect(runner.isPending).toBe(false);
   });
 
   it('async: loader on at once by default, off before the result', async () => {
     const calls: string[] = [];
-    const runner = createAsyncRunner({ onLoadingChange: (v) => calls.push(`loading:${v}`) });
+    const runner = createAsyncRunner({ loadingChangeCallback: (v) => calls.push(`loading:${v}`) });
     const d = deferred<string>();
     runner.run(() => d.promise, (r) => calls.push(`result:${r}`));
     expect(runner.isLoading).toBe(true);
@@ -58,17 +58,17 @@ describe('createAsyncRunner', () => {
   });
 
   it('a replaced loading run keeps the loader up (no off/on flicker)', async () => {
-    const onLoadingChange = vi.fn();
-    const runner = createAsyncRunner({ onLoadingChange, loaderDelayMs: 200 });
+    const loadingChangeCallback = vi.fn();
+    const runner = createAsyncRunner({ loadingChangeCallback, loaderDelayMs: 200 });
     runner.run(() => new Promise(() => {}), () => {});
     vi.advanceTimersByTime(200);
-    expect(onLoadingChange.mock.calls).toEqual([[true]]);
+    expect(loadingChangeCallback.mock.calls).toEqual([[true]]);
     const d = deferred<number>();
     runner.run(() => d.promise, () => {});
-    expect(onLoadingChange.mock.calls).toEqual([[true]]);
+    expect(loadingChangeCallback.mock.calls).toEqual([[true]]);
     d.resolve(1);
     await tick();
-    expect(onLoadingChange.mock.calls).toEqual([[true], [false]]);
+    expect(loadingChangeCallback.mock.calls).toEqual([[true], [false]]);
   });
 
   it('debounce: only the last run of a burst starts', () => {
@@ -86,8 +86,8 @@ describe('createAsyncRunner', () => {
   });
 
   it('loaderDelayMs: a fast answer never shows the loader', async () => {
-    const onLoadingChange = vi.fn();
-    const runner = createAsyncRunner({ onLoadingChange, loaderDelayMs: 200 });
+    const loadingChangeCallback = vi.fn();
+    const runner = createAsyncRunner({ loadingChangeCallback, loaderDelayMs: 200 });
     const d = deferred<number>();
     const onResult = vi.fn();
     runner.run(() => d.promise, onResult);
@@ -95,39 +95,39 @@ describe('createAsyncRunner', () => {
     d.resolve(1);
     await tick();
     vi.advanceTimersByTime(500);
-    expect(onLoadingChange).not.toHaveBeenCalled();
+    expect(loadingChangeCallback).not.toHaveBeenCalled();
     expect(onResult).toHaveBeenCalledWith(1);
   });
 
-  it('errors go to onError; an AbortError never does', async () => {
-    const onError = vi.fn();
-    const runner = createAsyncRunner({ onError });
+  it('errors go to errorCallback; an AbortError never does', async () => {
+    const errorCallback = vi.fn();
+    const runner = createAsyncRunner({ errorCallback });
     const boom = new Error('boom');
     runner.run(() => Promise.reject(boom), () => {});
     await tick();
     await tick();
-    expect(onError).toHaveBeenCalledWith(boom);
+    expect(errorCallback).toHaveBeenCalledWith(boom);
     expect(runner.isLoading).toBe(false);
-    onError.mockClear();
+    errorCallback.mockClear();
     const abort = Object.assign(new Error('aborted'), { name: 'AbortError' });
     runner.run(() => Promise.reject(abort), () => {});
     await tick();
     await tick();
     runner.run(() => { throw abort; }, () => {});
-    expect(onError).not.toHaveBeenCalled();
+    expect(errorCallback).not.toHaveBeenCalled();
     expect(runner.isLoading).toBe(false);
   });
 
-  it('a synchronous throw goes to onError too', () => {
-    const onError = vi.fn();
-    const runner = createAsyncRunner({ onError });
+  it('a synchronous throw goes to errorCallback too', () => {
+    const errorCallback = vi.fn();
+    const runner = createAsyncRunner({ errorCallback });
     runner.run(() => { throw new Error('sync'); }, () => {});
-    expect(onError).toHaveBeenCalledOnce();
+    expect(errorCallback).toHaveBeenCalledOnce();
   });
 
   it('cancel() aborts, drops the result and the pending debounce, loader off', async () => {
-    const onLoadingChange = vi.fn();
-    const runner = createAsyncRunner({ onLoadingChange });
+    const loadingChangeCallback = vi.fn();
+    const runner = createAsyncRunner({ loadingChangeCallback });
     const d = deferred<number>();
     let signal!: AbortSignal;
     const onResult = vi.fn();
@@ -135,7 +135,7 @@ describe('createAsyncRunner', () => {
     runner.cancel();
     expect(signal.aborted).toBe(true);
     expect(runner.isLoading).toBe(false);
-    expect(onLoadingChange.mock.calls).toEqual([[true], [false]]);
+    expect(loadingChangeCallback.mock.calls).toEqual([[true], [false]]);
     d.resolve(1);
     await tick();
     expect(onResult).not.toHaveBeenCalled();

@@ -61,9 +61,9 @@
             document.body.append(panel);
             const close = () => {
                 session.end();
-                animateOut([panel], { className: 'km-drawer--closing', onDone: () => panel.remove() });
+                animateOut([panel], { className: 'km-drawer--closing', doneCallback: () => panel.remove() });
             };
-            const session = startModalSession(panel, { backdrop: true, onDismiss: close });
+            const session = startModalSession(panel, { backdrop: true, dismissCallback: close });
             panel.querySelector('#drawer-close').addEventListener('click', close);
         };
         document.getElementById('open-drawer').addEventListener('click', () => openDrawer('end'));
@@ -77,11 +77,11 @@
             document.body.append(panel);
             const close = () => {
                 session.end();
-                animateOut([panel], { className: 'km-drawer--closing', onDone: () => panel.remove() });
+                animateOut([panel], { className: 'km-drawer--closing', doneCallback: () => panel.remove() });
             };
             const session = startPanelSession(panel, {
                 trigger: e.currentTarget,
-                onDismiss: (reason) => { window.__panelReasons.push(reason); close(); },
+                dismissCallback: (reason) => { window.__panelReasons.push(reason); close(); },
             });
             panel.querySelector('#panel-close').addEventListener('click', close);
         });

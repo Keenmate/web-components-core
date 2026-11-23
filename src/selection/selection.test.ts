@@ -5,17 +5,17 @@ const KEYS = ['a', 'b', 'c', 'd', 'e', 'f'];
 
 const setup = (opts: Record<string, unknown> = {}) => {
   let keys = [...KEYS];
-  const onChange = vi.fn();
-  const sel = createSelection<string>({ getOrderedKeys: () => keys, onChange, ...opts });
-  return { sel, onChange, setKeys: (k: string[]) => (keys = k) };
+  const changeCallback = vi.fn();
+  const sel = createSelection<string>({ getOrderedKeys: () => keys, changeCallback, ...opts });
+  return { sel, changeCallback, setKeys: (k: string[]) => (keys = k) };
 };
 
 describe('createSelection — multiple', () => {
   it('click selects one; Ctrl toggles; Shift selects the range from the anchor; Ctrl+Shift adds it', () => {
-    const { sel, onChange } = setup();
+    const { sel, changeCallback } = setup();
     sel.click('b');
     expect(sel.values()).toEqual(['b']);
-    expect(onChange).toHaveBeenLastCalledWith({ added: ['b'], removed: [], values: ['b'] });
+    expect(changeCallback).toHaveBeenLastCalledWith({ added: ['b'], removed: [], values: ['b'] });
     sel.click('d', { shiftKey: true });
     expect(sel.values()).toEqual(['b', 'c', 'd']);
     expect(sel.anchor).toBe('b');
@@ -30,13 +30,13 @@ describe('createSelection — multiple', () => {
     expect(sel.has('a')).toBe(false);
   });
 
-  it('no change → no onChange; isSilent writes stay quiet', () => {
-    const { sel, onChange } = setup();
+  it('no change → no changeCallback; isSilent writes stay quiet', () => {
+    const { sel, changeCallback } = setup();
     sel.click('a');
     sel.click('a');
-    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(changeCallback).toHaveBeenCalledTimes(1);
     sel.set(['c', 'd'], { isSilent: true });
-    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(changeCallback).toHaveBeenCalledTimes(1);
     expect(sel.values()).toEqual(['c', 'd']);
   });
 
@@ -73,8 +73,8 @@ describe('createSelection — multiple', () => {
     expect(sel.values()).toEqual(['e']);
   });
 
-  it('a throwing onChange is logged; the selection still changes', () => {
-    const { sel } = setup({ onChange: () => { throw new Error('x'); } });
+  it('a throwing changeCallback is logged; the selection still changes', () => {
+    const { sel } = setup({ changeCallback: () => { throw new Error('x'); } });
     sel.click('a');
     expect(sel.values()).toEqual(['a']);
   });

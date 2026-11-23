@@ -31,15 +31,15 @@ describe('anchor', () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
-    const onPlaced = vi.fn();
+    const placedCallback = vi.fn();
 
-    const handle = anchor(floating, reference, { onPlaced });
+    const handle = anchor(floating, reference, { placedCallback });
     await Promise.resolve(); // let computePosition resolve
 
     expect(floating.style.position).toBe('fixed');
     expect(floating.style.left).toBe('10px');
     expect(floating.style.top).toBe('20px');
-    expect(onPlaced).toHaveBeenCalledWith('bottom-start');
+    expect(placedCallback).toHaveBeenCalledWith('bottom-start');
 
     const cleanup = vi.mocked(fui.autoUpdate).mock.results[0]!.value as ReturnType<typeof vi.fn>;
     handle.destroy();
@@ -74,14 +74,14 @@ describe('anchor', () => {
     }
   });
 
-  it('reports computed coordinates via onComputed', async () => {
+  it('reports computed coordinates via computedCallback', async () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
-    const onComputed = vi.fn();
-    anchor(floating, reference, { onComputed });
+    const computedCallback = vi.fn();
+    anchor(floating, reference, { computedCallback });
     await Promise.resolve();
-    expect(onComputed).toHaveBeenCalledWith({ x: 10, y: 20, placement: 'bottom-start' });
+    expect(computedCallback).toHaveBeenCalledWith({ x: 10, y: 20, placement: 'bottom-start' });
   });
 
   // Review D-14: callback throws used to become unhandled rejections that skipped the rest.
@@ -90,16 +90,16 @@ describe('anchor', () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
-    const onComputed = vi.fn();
+    const computedCallback = vi.fn();
     anchor(floating, reference, {
-      onPlaced: () => {
+      placedCallback: () => {
         throw new Error('placed boom');
       },
-      onComputed,
+      computedCallback,
     });
     await Promise.resolve();
     await Promise.resolve();
-    expect(onComputed).toHaveBeenCalledOnce();
+    expect(computedCallback).toHaveBeenCalledOnce();
     expect(error).toHaveBeenCalled();
     error.mockRestore();
   });
@@ -341,16 +341,16 @@ describe('anchor', () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
-    const onPlaced = vi.fn();
-    const onComputed = vi.fn();
+    const placedCallback = vi.fn();
+    const computedCallback = vi.fn();
 
-    const handle = anchor(floating, reference, { onPlaced, onComputed });
+    const handle = anchor(floating, reference, { placedCallback, computedCallback });
     handle.destroy(); // before computePosition's promise settles
     await Promise.resolve();
 
     expect(floating.style.left).toBe('0px');
-    expect(onPlaced).not.toHaveBeenCalled();
-    expect(onComputed).not.toHaveBeenCalled();
+    expect(placedCallback).not.toHaveBeenCalled();
+    expect(computedCallback).not.toHaveBeenCalled();
 
     handle.update(); // a no-op once destroyed
     expect(vi.mocked(fui.computePosition)).toHaveBeenCalledOnce();
@@ -381,36 +381,36 @@ describe('anchor', () => {
     expect(vi.mocked(fui.computePosition).mock.calls[0]![2]!.platform).toBe(platform);
   });
 
-  it('onDrift reports when the panel lands away from where it was positioned', async () => {
+  it('driftCallback reports when the panel lands away from where it was positioned', async () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
     // computePosition (mocked) writes x:10/y:20, but the panel actually renders at 100/100.
     floating.getBoundingClientRect = () =>
       ({ x: 100, y: 100, top: 100, left: 100, right: 100, bottom: 100, width: 0, height: 0, toJSON() {} }) as DOMRect;
-    const onDrift = vi.fn();
+    const driftCallback = vi.fn();
 
-    anchor(floating, reference, { onDrift });
+    anchor(floating, reference, { driftCallback });
     await Promise.resolve();
 
-    expect(onDrift).toHaveBeenCalledOnce();
-    const report = onDrift.mock.calls[0]![0] as { driftX: number; driftY: number };
+    expect(driftCallback).toHaveBeenCalledOnce();
+    const report = driftCallback.mock.calls[0]![0] as { driftX: number; driftY: number };
     expect(report.driftX).toBeCloseTo(90);
     expect(report.driftY).toBeCloseTo(80);
   });
 
-  it('onDrift does not fire when the panel is on target', async () => {
+  it('driftCallback does not fire when the panel is on target', async () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
     floating.getBoundingClientRect = () =>
       ({ x: 10, y: 20, top: 20, left: 10, right: 10, bottom: 20, width: 0, height: 0, toJSON() {} }) as DOMRect;
-    const onDrift = vi.fn();
+    const driftCallback = vi.fn();
 
-    anchor(floating, reference, { onDrift });
+    anchor(floating, reference, { driftCallback });
     await Promise.resolve();
 
-    expect(onDrift).not.toHaveBeenCalled();
+    expect(driftCallback).not.toHaveBeenCalled();
   });
 });
 
@@ -1030,14 +1030,14 @@ describe('positioning — review fixes', () => {
     expect(floating.hasAttribute('data-bs-theme')).toBe(false);
   });
 
-  it('anchor: onDrift is a fixed-strategy diagnosis — never called for absolute', async () => {
+  it('anchor: driftCallback is a fixed-strategy diagnosis — never called for absolute', async () => {
     const floating = document.createElement('div');
     const reference = document.createElement('button');
     document.body.append(floating, reference);
-    const onDrift = vi.fn();
-    anchor(floating, reference, { strategy: 'absolute', onDrift });
+    const driftCallback = vi.fn();
+    anchor(floating, reference, { strategy: 'absolute', driftCallback });
     await Promise.resolve();
     await Promise.resolve();
-    expect(onDrift).not.toHaveBeenCalled();
+    expect(driftCallback).not.toHaveBeenCalled();
   });
 });

@@ -2,7 +2,7 @@ import { test, expect } from './fixtures';
 
 // Review 2026-11-03 D-29 — the browser-only positioning / scroll scenarios jsdom can't show:
 //   - a panel inside a transformed / contained ancestor lands on target (shouldUseFixedContainingBlock),
-//     and onDrift names the culprit when the panel really drifts;
+//     and driftCallback names the culprit when the panel really drifts;
 //   - lockPlacement:'freeze' flips once near the viewport bottom and doesn't jump back while scrolling;
 //   - matchWidth 'min' / 'max', maxHeight capping on a short viewport, the arrow after a flip;
 //   - a tooltip mounted in a ShadowRoot picks up the shadow-scoped CSS; trigger removed; Escape;
@@ -29,7 +29,7 @@ test('shouldUseFixedContainingBlock: a fixed panel inside a transformed, bordere
     const ref = document.getElementById('ref')!;
     const panel = document.getElementById('panel')!;
     const drifts: unknown[] = [];
-    w.pos.anchor(panel, ref, { placement: 'bottom-start', offset: 8, shouldUseFixedContainingBlock: true, onDrift: (d: unknown) => drifts.push(d) });
+    w.pos.anchor(panel, ref, { placement: 'bottom-start', offset: 8, shouldUseFixedContainingBlock: true, driftCallback: (d: unknown) => drifts.push(d) });
     await w.frames(3);
     const a = ref.getBoundingClientRect();
     const b = panel.getBoundingClientRect();
@@ -52,7 +52,7 @@ test('shouldUseFixedContainingBlock: a contain:paint ancestor is recognised — 
     const ref = document.getElementById('ref')!;
     const panel = document.getElementById('panel')!;
     const drifts: unknown[] = [];
-    w.pos.anchor(panel, ref, { placement: 'bottom-start', offset: 8, shouldUseFixedContainingBlock: true, onDrift: (d: unknown) => drifts.push(d) });
+    w.pos.anchor(panel, ref, { placement: 'bottom-start', offset: 8, shouldUseFixedContainingBlock: true, driftCallback: (d: unknown) => drifts.push(d) });
     await w.frames(3);
     const a = ref.getBoundingClientRect();
     const b = panel.getBoundingClientRect();
@@ -63,7 +63,7 @@ test('shouldUseFixedContainingBlock: a contain:paint ancestor is recognised — 
   expect(r.drifts).toBe(0);
 });
 
-test('a real drift (platform says "viewport", a transformed ancestor traps the panel): onDrift names that ancestor', async ({ page }) => {
+test('a real drift (platform says "viewport", a transformed ancestor traps the panel): driftCallback names that ancestor', async ({ page }) => {
   const r = await page.evaluate(async () => {
     const w = window as any;
     const stage = document.getElementById('stage')!;
@@ -78,7 +78,7 @@ test('a real drift (platform says "viewport", a transformed ancestor traps the p
     const drifts: any[] = [];
     // A platform that wrongly claims the viewport is the offset parent → real drift.
     const platform = { ...w.pos.platform, getOffsetParent: () => window };
-    w.pos.anchor(panel, ref, { placement: 'bottom-start', platform, onDrift: (d: unknown) => drifts.push(d) });
+    w.pos.anchor(panel, ref, { placement: 'bottom-start', platform, driftCallback: (d: unknown) => drifts.push(d) });
     await w.frames(3);
     const box = culprit.getBoundingClientRect();
     const d = drifts[0];
@@ -101,10 +101,10 @@ test('a real drift (platform says "viewport", a transformed ancestor traps the p
   expect(Math.abs(r.driftY - r.paddingBoxY)).toBeLessThan(2);
 });
 
-// FIXED (D-29 #onDrift false positive): without shouldUseFixedContainingBlock, onDrift measures against
+// FIXED (D-29 #driftCallback false positive): without shouldUseFixedContainingBlock, driftCallback measures against
 // the VIEWPORT, but floating-ui's own platform already compensates for a transformed ancestor — the
-// panel lands on target and onDrift still fires (types.ts: "Not called when the panel is on target").
-test('no sugar: floating-ui compensates for a transformed ancestor itself — panel on target, onDrift silent', async ({ page }) => {
+// panel lands on target and driftCallback still fires (types.ts: "Not called when the panel is on target").
+test('no sugar: floating-ui compensates for a transformed ancestor itself — panel on target, driftCallback silent', async ({ page }) => {
   const r = await page.evaluate(async () => {
     const w = window as any;
     const stage = document.getElementById('stage')!;
@@ -116,7 +116,7 @@ test('no sugar: floating-ui compensates for a transformed ancestor itself — pa
     const ref = document.getElementById('ref')!;
     const panel = document.getElementById('panel')!;
     const drifts: unknown[] = [];
-    w.pos.anchor(panel, ref, { placement: 'bottom-start', offset: 8, onDrift: (d: unknown) => drifts.push(d) });
+    w.pos.anchor(panel, ref, { placement: 'bottom-start', offset: 8, driftCallback: (d: unknown) => drifts.push(d) });
     await w.frames(3);
     const a = ref.getBoundingClientRect();
     const b = panel.getBoundingClientRect();
@@ -144,7 +144,7 @@ test("lockPlacement:'freeze' flips once near the viewport bottom and doesn't jum
       w.handle = w.pos.anchor(panel, ref, {
         placement: 'bottom',
         ...(isFrozen ? { lockPlacement: 'freeze' } : {}),
-        onPlaced: (p: string) => placements.push(p),
+        placedCallback: (p: string) => placements.push(p),
       });
       await w.frames(3);
       const first = placements.at(-1);
@@ -233,7 +233,7 @@ test('the arrow moves to the bottom edge after a flip to top, pointing at the re
     window.scrollTo(0, ref.getBoundingClientRect().top + window.scrollY - (innerHeight - 80));
     await w.frames(2);
     let placed = '';
-    w.pos.anchor(panel, ref, { placement: 'bottom', offset: 8, arrow: { element: arrowEl }, onPlaced: (p: string) => (placed = p) });
+    w.pos.anchor(panel, ref, { placement: 'bottom', offset: 8, arrow: { element: arrowEl }, placedCallback: (p: string) => (placed = p) });
     await w.frames(3);
     const a = ref.getBoundingClientRect();
     const p = panel.getBoundingClientRect();

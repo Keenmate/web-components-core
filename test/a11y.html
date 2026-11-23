@@ -42,13 +42,13 @@
                 const listbox = root.getElementById('lb');
                 createActiveDescendant(input, listbox, {
                     getItems: () => [...listbox.children],
-                    onActiveChange: (item) => {
+                    activeChangeCallback: (item) => {
                         for (const li of listbox.children) {
                             li.classList.toggle('is-active', li === item);
                             li.setAttribute('aria-selected', String(li === item));
                         }
                     },
-                    onActivate: (item) => { document.getElementById('picked').textContent = item.textContent; },
+                    activateCallback: (item) => { document.getElementById('picked').textContent = item.textContent; },
                 });
             }
         }

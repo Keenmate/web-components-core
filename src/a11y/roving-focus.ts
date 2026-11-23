@@ -32,7 +32,7 @@ export interface RovingFocusOptions {
   /** An item the keys skip (default: none — APG keeps disabled items focusable). */
   isSkipped?: (item: HTMLElement) => boolean;
   /** Focus moved to `item` (keys, type-to-find, a click, `focusItem`). */
-  onFocusItem?: (item: HTMLElement, index: number) => void;
+  focusItemCallback?: (item: HTMLElement, index: number) => void;
   /**
    * Bring the focused item into view inside its scroll container (never the page; focus itself uses
    * `preventScroll`). A function is asked per move — the component's `beforeScrollCallback` gate. Default `true`.
@@ -52,7 +52,7 @@ export interface RovingFocus {
 }
 
 export function createRovingFocus(container: HTMLElement, options: RovingFocusOptions): RovingFocus {
-  const { getItems, orientation = 'vertical', columns = 1, isWrapping = false, hasTypeahead = false, onFocusItem } = options;
+  const { getItems, orientation = 'vertical', columns = 1, isWrapping = false, hasTypeahead = false, focusItemCallback } = options;
   const isSkipped = options.isSkipped ?? ((): boolean => false);
   const getText = options.getItemText ?? ((item: HTMLElement): string => item.textContent ?? '');
   const typeahead = hasTypeahead ? createTypeahead() : null;
@@ -75,7 +75,7 @@ export function createRovingFocus(container: HTMLElement, options: RovingFocusOp
       const scroll = options.shouldScroll ?? true;
       const isScrolling = typeof scroll === 'function' ? runSafely(() => scroll(item), { source: container, message: 'shouldScroll threw' }) : { isOk: true as const, value: scroll };
       if (isScrolling.isOk && isScrolling.value !== false) scrollIntoContainer(item, { block: 'nearest', inline: 'nearest' });
-      if (onFocusItem) runSafely(() => onFocusItem(item, list.indexOf(item)), { source: container, message: 'onFocusItem threw' });
+      if (focusItemCallback) runSafely(() => focusItemCallback(item, list.indexOf(item)), { source: container, message: 'focusItemCallback threw' });
     }
   };
 
@@ -137,7 +137,7 @@ export function createRovingFocus(container: HTMLElement, options: RovingFocusOp
     const item = list.find((candidate) => candidate === event.target || candidate.contains(event.target as Node));
     if (!item || item === current) return;
     setTabStop(list, item);
-    if (onFocusItem) runSafely(() => onFocusItem(item, list.indexOf(item)), { source: container, message: 'onFocusItem threw' });
+    if (focusItemCallback) runSafely(() => focusItemCallback(item, list.indexOf(item)), { source: container, message: 'focusItemCallback threw' });
   };
 
   container.addEventListener('keydown', onKeydown);
