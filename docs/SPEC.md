@@ -2630,6 +2630,10 @@ every element. Decided 2026-10-26 / 10-27 / 10-28 (rulebook D-NC-24), built 2026
   (`options.parseNumberCallback`), then `window.components.locale.parseNumberCallback`; `ctx = { text, locale,
   decimalSeparator, thousandsSeparator, parseDefault() }` → a number, `null` = not a number, `undefined` = next rule
   (a throw is logged, next rule).
+- **Text compare:** `getCollator(locale?, options?, source?)` → a cached `Intl.Collator` for `resolveLocale(locale)`
+  (the same instance per resolved locale + options, option order irrelevant); never throws — an invalid tag warns and
+  falls through like `resolveLocale`, options `Intl` rejects warn and are dropped. Every component text sort uses it
+  (`getCollator(this.config.locale, { numeric: true }).compare`), never a bare `localeCompare()` (browser locale).
 - **Labels:** `createLabels(host, DEFAULT_LABELS, () => this.config.labels, { tag, getLocale })` → `{ template,
   text, html, all }`. A user callback's context gets `ctx.labels = createLabelsView(labels)` → frozen `{ text, html }`
   only (the paths that run the translate callbacks; `template` / `all` skip them) — never a plain labels object. Keys are flat `<elementType>.<name>` — element types `buttons`, `tooltips`, `ariaLabels`,

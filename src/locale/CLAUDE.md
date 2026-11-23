@@ -7,7 +7,8 @@
 from here (the `localeChanged()` hook) — the rest of the module stays off the base import graph.
 `settings.ts`: per key instance → page → `Intl`; page keys apply to every element (user preference).
 `numbers.ts`: `formatNumber` swaps separators into `formatToParts`; `parseNumber` checks group positions (a group mark only between real groups, `parseNumberCallback` element → page → core) and strips group + spaces (literal
-NBSP / NNBSP / thin space in the regex), `−` → `-`. `labels.ts`: `createLabels(host | null, …)` (null = a public engine without its element: pass `tag` + `getTranslateCallback`) → `text` (no escaping) / `html`
+NBSP / NNBSP / thin space in the regex), `−` → `-`. `collation.ts`: `getCollator(locale?, options?, source?)` — module cache keyed by
+resolved locale + sorted defined options; bad options warn + build without them (never throws). `labels.ts`: `createLabels(host | null, …)` (null = a public engine without its element: pass `tag` + `getTranslateCallback`) → `text` (no escaping) / `html`
 (params escaped, or all with `shouldEscapeLabels`); keys flat `<elementType>.<name>`, full key `<tag>.<key>` (`tag` = the
 component's own name); instance short OR full key → page `labels[full]` → default (the per-call `{ fallback }` of `text` / `html` in place of `defaults[key]` when given, else the key itself — `defaultTemplate()`; a template like any default); the element's `translateCallback` (`getTranslateCallback` / `host.translateCallback`) then the page-wide one, via `runSafely` (full key,
 RAW params) for every key the instance did NOT set — a non-string falls back; an `ariaLabels.x` / `tooltips.x` that resolved to its

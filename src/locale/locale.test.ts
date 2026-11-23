@@ -4,6 +4,7 @@ import {
   createLabelsView,
   formatLabel,
   formatNumber,
+  getCollator,
   getDateFormat,
   getLabelFallbackKeys,
   resolveLocaleSettings,
@@ -122,6 +123,46 @@ describe('resolveLocale / resolveLocaleSettings', () => {
     expect(getMonthNames('en-US', 'short')[11]).toBe('Dec');
     expect(getWeekdayNames('en-US')).toEqual(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
     expect(getWeekdayNames('de', 'long')[1]).toBe('Montag');
+  });
+});
+
+describe('getCollator', () => {
+  it('sorts by the resolved locale: Czech "ch" after "h"', () => {
+    const words = ['chata', 'hrad', 'cibule', 'ivan'];
+    expect([...words].sort(getCollator('cs-CZ').compare)).toEqual(['cibule', 'hrad', 'chata', 'ivan']);
+    expect([...words].sort(getCollator('en-US').compare)).toEqual(['chata', 'cibule', 'hrad', 'ivan']);
+  });
+
+  it('instance → page → browser, like formatNumber', () => {
+    page().locale = { locale: 'cs-CZ' };
+    expect(getCollator().resolvedOptions().locale).toMatch(/^cs/);
+    expect(getCollator('auto').resolvedOptions().locale).toMatch(/^cs/);
+    expect(getCollator(null).resolvedOptions().locale).toMatch(/^cs/);
+    expect(getCollator('de-DE').resolvedOptions().locale).toMatch(/^de/);
+  });
+
+  it('numeric option: "item 2" before "item 10"', () => {
+    expect(['item 10', 'item 2', 'item 1'].sort(getCollator('en-US', { numeric: true }).compare)).toEqual(['item 1', 'item 2', 'item 10']);
+    expect(['item 10', 'item 2'].sort(getCollator('en-US').compare)).toEqual(['item 10', 'item 2']);
+  });
+
+  it('cached per resolved locale + options (key order irrelevant)', () => {
+    const a = getCollator('cs-CZ', { numeric: true, sensitivity: 'base' });
+    expect(getCollator('cs-cz', { sensitivity: 'base', numeric: true })).toBe(a);
+    expect(getCollator('cs-CZ', { numeric: true, sensitivity: 'base', caseFirst: undefined })).toBe(a);
+    expect(getCollator('cs-CZ', { numeric: true })).not.toBe(a);
+    expect(getCollator('de-DE', { numeric: true, sensitivity: 'base' })).not.toBe(a);
+    page().locale = { locale: 'cs-CZ' };
+    expect(getCollator(undefined, { numeric: true, sensitivity: 'base' })).toBe(a);
+  });
+
+  it('never throws: an invalid locale falls through, invalid options are dropped (both warn)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    page().locale = { locale: 'cs-CZ' };
+    expect(getCollator('not a locale!!').resolvedOptions().locale).toMatch(/^cs/);
+    const bad = getCollator('en-US', { sensitivity: 'nope' as Intl.CollatorOptions['sensitivity'] });
+    expect(bad.resolvedOptions().sensitivity).toBe('variant');
+    expect(warn).toHaveBeenCalledTimes(2);
   });
 });
 

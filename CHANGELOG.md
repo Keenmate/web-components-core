@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`getCollator(locale?, options?, source?)`** (audit G33, `/locale`): a cached `Intl.Collator` for the resolved
+  locale (instance → `window.components.locale` → browser, like `formatNumber`), one instance per locale + options;
+  never throws (invalid tag / options warn and fall back). Components sort text with
+  `getCollator(this.config.locale, { numeric: true }).compare` instead of a bare `localeCompare()` (browser locale) —
+  a Czech page now sorts "ch" after "h".
 - **`createLayer(host, { customStylesOptions })`** (audit G2, `/positioning`): the component's custom CSS in its layer.
   Pass the same `CustomStylesOptions` object the main `createCustomStyles` takes; the layer writes the tag's page-wide
   and the instance's custom CSS into its own shadow root (an unshared handle, `shouldShareLayers: false` forced), keeps it

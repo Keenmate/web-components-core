@@ -478,7 +478,7 @@ toast or message stays yours — `announce()` is what screen readers hear.
 Every UI string goes through one seam ([SPEC §12.24](SPEC.md), rulebook D-NC-24):
 
 ```ts
-import { createLabels, resolveLocaleSettings, getMonthNames, formatNumber } from '@keenmate/web-components-core/locale';
+import { createLabels, resolveLocaleSettings, getMonthNames, formatNumber, getCollator } from '@keenmate/web-components-core/locale';
 
 // English only; flat keys `<elementType>.<name>` (buttons, tooltips, ariaLabels, placeholders, headers, labels,
 // messages, errors, menuItems, columnHeaders)
@@ -493,6 +493,7 @@ row.innerHTML = this.#labels.html('labels.addNew', { value: typed });           
 const { locale, dateFormat, timeFormat, weekStartDay } = resolveLocaleSettings({ locale: this.config.locale });
 getMonthNames(locale);                          // from Intl — no language tables
 formatNumber(1234.5, { locale });               // '1 234,5' with the page's separators
+rows.sort((a, b) => getCollator(this.config.locale, { numeric: true }).compare(a.name, b.name)); // Czech: 'ch' after 'h'; cached
 
 protected override localeChanged(): void { this.#renderTexts(); }   // a page-wide change: re-render, keep state
 
@@ -1578,7 +1579,7 @@ The main index is in 13 sections (the comments in `src/index.ts`), one row each:
 | `/actions` | `runAction`, `resolveActionItem`, `resolveMenuEntries`, `loadMenuChildren`, `normalizeActionItems` (string shorthand → items), `readActionDataset(trigger)`, `isActionBusy`, `createMenuDivider` / `isMenuDivider`, shortcuts: `bindShortcuts`, `matchesShortcut`, `parseShortcut`, `formatShortcut`, `getShortcutKeycaps`, `isTypingTarget` |
 | `/menu` | `openMenu(entries, ctx, opts)`, `MENU_CSS` |
 | `/a11y` | `createActiveDescendant(input, listbox, opts)` → `{ active, activeIndex, setActive, move, refresh, destroy }`, `createRovingFocus(container, opts)` → `{ current, currentIndex, focusItem, refresh, destroy }`, `createTypeahead(ms)`, `isPrintableKey`, `TYPEAHEAD_TIMEOUT_MS`, `createFocusTrap(panel, opts)` / `getTabbables(container)` (the focus trap a modal session uses) |
-| `/locale` | `createLabels(host, defaults, getOwn, { getLocale })` → `{ template, text, html, all }` (`text` / `html(key, params?, { fallback? })`), `createLabelsView(labels)` → `{ text, html }` (a callback's `ctx.labels`), `resolveLabel`, `formatLabel`, `resolveLocale`, `resolveLocaleSettings`, `getDateFormat` / `getTimeFormat` / `getWeekStartDay` / `getNumberSeparators`, `getMonthNames` / `getWeekdayNames`, `formatNumber` / `parseNumber`, `getPageLocale` / `getPageSecurity` / `observePageLocale` |
+| `/locale` | `createLabels(host, defaults, getOwn, { getLocale })` → `{ template, text, html, all }` (`text` / `html(key, params?, { fallback? })`), `createLabelsView(labels)` → `{ text, html }` (a callback's `ctx.labels`), `resolveLabel`, `formatLabel`, `resolveLocale`, `resolveLocaleSettings`, `getDateFormat` / `getTimeFormat` / `getWeekStartDay` / `getNumberSeparators`, `getMonthNames` / `getWeekdayNames`, `formatNumber` / `parseNumber`, `getCollator`, `getPageLocale` / `getPageSecurity` / `observePageLocale` |
 | `/dialog` | `openDialog(opts)` → `{ result, close, panel, body }`, `confirmDialog(opts)` → `Promise<boolean>`, `promptDialog(opts)` → `Promise<string \| null>`, `DIALOG_CSS` |
 | `/search` | `normalizeSearchText`, `prepareSearchTerm` / `matchesSearchTerm` / `NO_SEARCH_TERM`, `findTextMatches` / `matchesText`, `findRegexMatches` / `createRegexCompiler` / `createStatelessRegex`, `findHighlightRanges` / `wrapRanges` / `highlightHtml` (`escapeHtml` → main index) |
 | `/testing` | `mount`, `mountBeforeUpgrade`, `cleanup`, `defineOnce`, `uniqueTag`, `nextTick`, `nextFrame`, `listen` (event spy), `waitForEvent`, `captureConsole`, `resetPageState` |
