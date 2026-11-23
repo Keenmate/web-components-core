@@ -16,7 +16,7 @@ import {
   BlissElement, define, toBool, toEnum, toInt, escapeHtml,
   observeTextInput, isImeEnter, createVirtualWindow, createSelection, keepScrollAcrossMove,
 } from './src/index.js';
-import type { InputDef, VirtualWindow, SelectionModel } from './src/index.js';
+import type { InputDef, VirtualWindow, KeySelection } from './src/index.js';
 import { createActiveDescendant, createRovingFocus } from './src/a11y/index.js';
 import type { ActiveDescendant, RovingFocus } from './src/a11y/index.js';
 
@@ -172,7 +172,7 @@ export class CoreDemoBiglist extends BlissElement {
 
   #scroller: HTMLElement | null = null;
   #virtual: VirtualWindow | null = null;
-  #selection: SelectionModel<number> | null = null;
+  #selection: KeySelection<number> | null = null;
   #keys: number[] = [];
   #cursor = 0;
   #stopKeep: (() => void) | null = null;

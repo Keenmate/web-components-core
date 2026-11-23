@@ -16,7 +16,7 @@
 
 import { runSafely } from '../logging/safe-call.js';
 
-export type SelectionModelMode = 'single' | 'multiple';
+export type KeySelectionMode = 'single' | 'multiple';
 
 export interface SelectionChange<K> {
   added: K[];
@@ -27,7 +27,7 @@ export interface SelectionChange<K> {
 
 export interface SelectionOptions<K> {
   /** `'multiple'` (default) or `'single'` — a function when it's a live input. */
-  mode?: SelectionModelMode | (() => SelectionModelMode);
+  mode?: KeySelectionMode | (() => KeySelectionMode);
   /** Every key in display order — ranges and `selectAll` use it. */
   getOrderedKeys: () => readonly K[];
   /** A key that can't be selected (a disabled row, a group header); default: all can. */
@@ -43,7 +43,7 @@ export interface WriteOptions {
   isSilent?: boolean;
 }
 
-export interface SelectionModel<K> {
+export interface KeySelection<K> {
   /** Apply a click with its modifier keys (`metaKey` counts as Ctrl). */
   click(key: K, modifiers?: { shiftKey?: boolean; ctrlKey?: boolean; metaKey?: boolean }): void;
   /** Flip one key (Space in a multiple list, a checkbox); the anchor moves to it. */
@@ -64,10 +64,10 @@ export interface SelectionModel<K> {
   setAnchor(key: K | null): void;
 }
 
-export function createSelection<K>(options: SelectionOptions<K>): SelectionModel<K> {
+export function createSelection<K>(options: SelectionOptions<K>): KeySelection<K> {
   const { getOrderedKeys, changeCallback } = options;
   const isSelectable = options.isSelectable ?? ((): boolean => true);
-  const mode = (): SelectionModelMode => {
+  const mode = (): KeySelectionMode => {
     const m = typeof options.mode === 'function' ? options.mode() : options.mode;
     return m === 'single' ? 'single' : 'multiple';
   };

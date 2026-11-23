@@ -100,7 +100,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `callSafely` → `runSafely`, `notifyEach` → `notifyListeners` (internal `composedParent` → `deepParent`).
 - Verb-first / qualified names (naming review R1–R16): `onTextInput` → `observeTextInput`,
   `onOverlayActivated` → `observeOverlayActivation`, `watchPageDrag` → `observePageDrag` (type
-  `WatchPageDragOptions` → `ObservePageDragOptions`), `toLogLevelNumber` → `parseLogLevel`, `statelessRegex` →
+  `WatchPageDragOptions` → `ObservePageDragOptions`), `toLogLevelNumber` removed from the public API (use
+  `isLogLevel` / `LOG_LEVELS`; see Removed), `statelessRegex` →
   `createStatelessRegex` (`/search`), `stateStorageKey` → `getStateStorageKey`, `shortcutKeycaps` →
   `getShortcutKeycaps` (`/actions`), `getLocaleSettings` → `resolveLocaleSettings` (`/locale`), `observeLocale` →
   `observePageLocale` (`/locale`), `getRegisteredTags` → `getConnectedTags` (it lists tags with a connected
@@ -120,7 +121,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `createMenuPresentationInputs()`, `menuPresentationOptions(config)` → `getMenuPresentationOptions(config)` (`/menu`);
   `getGlobalLogging` → `getPageLogging` (type `GlobalLoggingControls` → `PageLoggingControls`); `createStyleSlot` →
   `createStyleElement` (types `StyleSlot` / `StyleSlotOptions` → `StyleElement` / `StyleElementOptions`).
-- Types: `Selection` → `SelectionModel` and `SelectionMode` → `SelectionModelMode` (they shadowed the lib.dom
+- Types: `Selection` → `KeySelection` and `SelectionMode` → `KeySelectionMode` (they shadowed the lib.dom
   `Selection` / `SelectionMode` globals); `createSelection`'s mode values are now `'single' | 'multiple'` (was
   `'multi'`; matches `selection-mode` + HTML `multiple` — any value other than `'single'` still means multiple).
   `RenderLoaderCallback` → `RenderLoadingCallback` (it types the `renderLoadingCallback` input).
@@ -178,8 +179,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Internal plumbing no longer exported (naming review §7; no component imports them): `defaultEventProperty`,
   `normalizeEventDefs` (BlissElement event-table plumbing), `publishLoaderHook`, `publishIconHook`,
   `publishLocaleHooks` (`/locale`) — the `window.components.*` accessors are installed by `registerComponent()` /
-  `renderLoader()` / `renderIcon()` / the locale getters as before, `parseLogLevel` (use `isLogLevel` /
-  `LOG_LEVELS`), type `ScrollLockState` (the shared state shape stays documented in SPEC §12.9).
+  `renderLoader()` / `renderIcon()` / the locale getters as before, `toLogLevelNumber` (the internal
+  log-level parser; use `isLogLevel` / `LOG_LEVELS`), type `ScrollLockState` (the shared state shape stays documented in SPEC §12.9).
 - `coreLogging` (a lazy proxy over the same bundle) — use `getCoreLogging()`.
 
 ### Fixed

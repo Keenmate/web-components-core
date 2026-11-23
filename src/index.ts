@@ -237,7 +237,7 @@ export { computeVirtualRange, createVirtualWindow } from './dom/virtual-window.j
 export type { VirtualRange, VirtualRangeInput, VirtualRenderContext, VirtualWindow, VirtualWindowOptions } from './dom/virtual-window.js';
 // Selection model: click / Ctrl / Shift rules, anchor, ranges in display order (SPEC §12.27).
 export { createSelection } from './selection/selection.js';
-export type { SelectionModel, SelectionChange, SelectionModelMode, SelectionOptions } from './selection/selection.js';
+export type { KeySelection, SelectionChange, KeySelectionMode, SelectionOptions } from './selection/selection.js';
 
 // ── 12. Pointer drag & page drag ──────────────────────────────────────────────────────────────────
 // Page-wide drop-active state for drop targets + pointer drags that work with a finger (SPEC §12.28).
