@@ -52,10 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   through; a component may name its icons with built-in names (`add`, `delete`). A map value is an icon string
   resolved by the same rules (a built-in name draws the built-in; loops skipped). New export `isIconMap` for the component's `icons` row
   (`toObject({ validate: isIconMap })`, `on: 'update'`). `iconsChanged()` now also fires on a `window.components.icons`
-  assignment and after `update()` for an `icons` change. Example: DH05b in `examples-dom.html`. `/menu`: `openMenu(…, {
+  assignment and after `update()` for an `icons` change. Example: DH09 in `examples-dom.html`. `/menu`: `openMenu(…, {
   iconDefaults })` passes the component's name → icon map to every item icon's `renderIcon` as `defaults` (host = the
   component element, so `el.icons` / `renderIconCallback` apply) — menu entries carry icon names.
-  Icons demo cards DH05c–DH05h (`examples-dom.html`, `<core-demo-icon-toolbar>`): `el.icons`, page-wide map precedence,
+  Icons demo cards DH10–DH15 (`examples-dom.html`, `<core-demo-icon-toolbar>`): `el.icons`, page-wide map precedence,
   Lucide through the page hook (CDN + base64 data URL), `/menu` `iconDefaults`, Font Awesome through `customStyles`,
   `--base-icon-*` per element. Documented: an icon font inside a shadow root needs the page's `customStyles` `@import`.
 - **Labels per-call default: `labels.text(key, params?, { fallback })` / `html(key, params?, { fallback })`** (also on
