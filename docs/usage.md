@@ -1386,6 +1386,12 @@ const menu = openMenu(entries, ctx, {
 menu.close();
 ```
 
+**Shift+F10 / the ContextMenu key.** Open the menu from your keydown handler (`shouldFocusFirst: true`). The
+native `contextmenu` the browser raises right after (Chromium: on keyup for the ContextMenu key, even when you
+prevented the keydown) is swallowed by the open menu — no native menu over yours, and your `contextmenu`
+listener is not called for it. A real right-click still reaches your listener (open the next menu there).
+No code or option needed; don't add your own guard.
+
 **Phone: a bottom sheet, for free.** `presentation: 'auto'` (the default) classifies the device
 (`classifyDevice()` — the same device class web-multiselect and web-grid use) and looks it up in
 `presentationMap` (default `{ mobile: 'sheet', tablet: 'floating', desktop: 'floating' }`), so on

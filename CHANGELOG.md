@@ -139,6 +139,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `coreLogging` (a lazy proxy over the same bundle) — use `getCoreLogging()`.
 
 ### Fixed
+- **`/menu` `openMenu` swallows the keyboard-initiated native `contextmenu`** (audit G21, SPEC §12.13): after a
+  component opened its menu from Shift+F10 / the ContextMenu key, the browser's own `contextmenu` (Chromium
+  `button: -1`; the ContextMenu key fires it on keyup even when the keydown was prevented) could show the native
+  menu over ours or make the component re-open. While open, the menu now `preventDefault`s + stops it (document
+  capture, removed on close; no option). Keyboard-initiated = `button !== 2` and no `pointerdown` since the last
+  key press — a real right-click or a touch long-press passes through and opens the component's next menu as
+  before. web-editor / web-treeview / web-grid can drop their own guards.
 - **CEM: `controller`, `on()` and `isLoggingEnabled` are in every manifest** (`/cem` `CORE_DECLARED_API`): public
   `BlissElement` members a component manifest did not list unless the component re-declared them. A unit test now
   compares the list with every public member of the class.

@@ -683,6 +683,28 @@ export function openMenu<Ctx, A extends string = string>(
     // keydown in capture on the document: the menu is keyboard-modal while open,
     // whether focus is in it (submenu nav) or still on the opener (shortcuts, ↓).
     document.addEventListener('keydown', onKeydown, true);
+    // The keyboard-initiated native `contextmenu` (Shift+F10 / the ContextMenu key) belongs to this
+    // menu: the component's keydown opened it, then the browser raises its own `contextmenu` (Chromium:
+    // on keydown for Shift+F10, on KEYUP for the ContextMenu key — preventing the keydown doesn't stop
+    // that one). Swallowed while open so the native menu never shows over ours, and the component never
+    // re-opens from it. Keyboard-initiated = not the secondary button (Chromium -1, Firefox 0) AND no
+    // pointer press since the last key press — a real right-click (button 2) or a touch long-press
+    // (pointerdown first) passes through and opens the component's next menu as usual.
+    let lastPress: 'key' | 'pointer' = 'key';
+    const onPressKey = () => {
+      lastPress = 'key';
+    };
+    const onPressPointer = () => {
+      lastPress = 'pointer';
+    };
+    const onNativeContextMenu = (e: Event) => {
+      if ((e as MouseEvent).button === 2 || lastPress === 'pointer') return;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    document.addEventListener('keydown', onPressKey, true);
+    document.addEventListener('pointerdown', onPressPointer, true);
+    document.addEventListener('contextmenu', onNativeContextMenu, true);
     let stopScrollClose: (() => void) | undefined;
     if (shouldDismissOutside) {
       document.addEventListener('pointerdown', onPointerDown, true);
@@ -710,6 +732,9 @@ export function openMenu<Ctx, A extends string = string>(
     }
     detachListeners = () => {
       document.removeEventListener('keydown', onKeydown, true);
+      document.removeEventListener('keydown', onPressKey, true);
+      document.removeEventListener('pointerdown', onPressPointer, true);
+      document.removeEventListener('contextmenu', onNativeContextMenu, true);
       if (!shouldDismissOutside) return;
       document.removeEventListener('pointerdown', onPointerDown, true);
       stopScrollClose?.();

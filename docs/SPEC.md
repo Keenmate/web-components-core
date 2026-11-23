@@ -2128,7 +2128,15 @@ render items the same way;
 label and shortcut are text. Items are `div[role=menuitem][tabindex=-1]` (not buttons —
 no native Space/Enter click to double-fire). The keyboard is a capture `keydown` on the
 document while open, so the menu is keyboard-modal whether focus is in it or still on
-the opener; handled keys are consumed. Arrow keys / Home / End skip dividers and disabled
+the opener; handled keys are consumed. **The keyboard-initiated native `contextmenu` (decided 2026-11-23,
+audit G21).** A component opens its menu from the keydown (Shift+F10 / the ContextMenu key); the browser then
+raises its own `contextmenu` (Chromium: `button: -1`, on keydown for Shift+F10 — a prevented keydown suppresses
+it — and on KEYUP for the ContextMenu key, which a prevented keydown does not; Firefox: `button: 0`; `pointerType`
+is no signal — Chromium reports `'mouse'`). While open, the menu swallows it itself (a capture `contextmenu`
+listener on the document, `preventDefault` + `stopPropagation`, removed on close; no option), so neither the
+native menu nor the component's own `contextmenu` handler (a re-open) sees it. Keyboard-initiated = `button !== 2`
+AND no `pointerdown` since the last key press: a real right-click (`button: 2`) or a touch long-press (pointerdown
+first) passes through and opens the component's next menu as before. Components drop their own copies. Arrow keys / Home / End skip dividers and disabled
 items (by design, review A-21: the MUI / Radix / React Aria default; the Keenmate components
 all skip). Hover focuses items (roving focus follows the
 pointer). Focus returns to `returnFocusTo` only when the menu held focus and the close

@@ -10,6 +10,7 @@ import type { Page } from '@playwright/test';
 //     outside-click dismisses;
 //   - keyboard: Shift+F10 opens focused, Home/End/arrows (skip disabled, wrap), → / ← submenus,
 //     item shortcut, Tab closes, focus returns to the (re-rendered) row;
+//   - G21: the native contextmenu after a keyboard open is swallowed; a right-click still opens a menu;
 //   - dropdown from a button: keyboard activation focuses the first item; hidden items omitted;
 //   - theming: page-wide --km-menu-* and the per-instance private --_km-menu-* layer.
 //
@@ -124,6 +125,44 @@ test('keyboard: Shift+F10 opens with focus, arrows skip disabled, → / ← subm
   await page.keyboard.press('F2'); // the Rename shortcut
   await expect(menus(page)).toHaveCount(0);
   await expect(row(page, 'renamed-budget.xlsx')).toBeFocused(); // focus returned to the row, kept across the re-render
+});
+
+test('the native contextmenu after a keyboard open is swallowed; a right-click still opens a menu (G21)', async ({ page }) => {
+  // Record every native contextmenu at the window (capture: runs before openMenu's document listener).
+  await page.evaluate(() => {
+    const w = window as any;
+    w.nativeMenus = [];
+    window.addEventListener('contextmenu', (e) => w.nativeMenus.push(e), true);
+    document.getElementById('files')!.dataset.keepKeyDefault = '';
+  });
+  const native = () =>
+    page.evaluate(() => (window as any).nativeMenus.map((e: MouseEvent) => ({ button: e.button, isPrevented: e.defaultPrevented })));
+
+  for (const keys of ['Shift+F10', 'ContextMenu']) {
+    await reset(page);
+    await page.evaluate(() => ((window as any).nativeMenus.length = 0));
+    await row(page, 'contract.docx').focus();
+    await page.keyboard.press(keys);
+    await expect(item(page, 'Open')).toBeFocused();
+    // Chromium raises it with button -1 (Shift+F10 on keydown, the ContextMenu key on keyup).
+    await expect.poll(native).toEqual([{ button: -1, isPrevented: true }]);
+    expect(await steps(page)).toEqual(['openMenu()']); // the row's contextmenu listener never re-opened it
+    await expect(menus(page)).toHaveCount(1);
+    await page.keyboard.press('Escape');
+    await expect(menus(page)).toHaveCount(0);
+  }
+
+  // A real right-click while the keyboard-opened menu is open: the component's next menu, at the pointer.
+  await reset(page);
+  await page.evaluate(() => ((window as any).nativeMenus.length = 0));
+  await row(page, 'contract.docx').focus();
+  await page.keyboard.press('Shift+F10');
+  await expect(item(page, 'Open')).toBeFocused();
+  await row(page, 'report.pdf').click({ button: 'right' });
+  await expect(menus(page)).toHaveCount(1);
+  await expect(item(page, 'Archive')).not.toHaveAttribute('aria-disabled', 'true'); // report.pdf's menu (not locked)
+  expect((await native()).at(-1)).toEqual({ button: 2, isPrevented: true }); // prevented by the row's own listener
+  expect(await steps(page)).toEqual(['openMenu()', 'closeCallback', 'openMenu()']);
 });
 
 test('dropdown from a button: keyboard activation focuses the first item; hidden item omitted', async ({ page }) => {

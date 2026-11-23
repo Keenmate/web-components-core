@@ -9,7 +9,10 @@ focus in the menu or still on the opener; handled keys are consumed). Dismiss li
 (pointerdown / blur / `registerOverlay` + the shared `watchScrollClose()` scroll rule from
 `src/positioning/scroll-close.ts`, the same as `createPopover()` — no bare wheel; a point menu's reference is the deepest
 element under the point inside the host, so a component's own inner scroller closes it too) attach synchronously at open
-and are all removed in `close()` — keep add/remove balanced (a test counts them). A leaf
+and are all removed in `close()` — keep add/remove balanced (a test counts them). While open a document capture
+`contextmenu` listener swallows the KEYBOARD-initiated native `contextmenu` (G21: `button !== 2` AND no `pointerdown`
+since the last `keydown` — tracked by two more capture listeners; Chromium sends `button: -1`, `pointerType: 'mouse'`,
+the ContextMenu key on keyup); a real right-click / long-press passes through. e2e: `menu.spec.ts` "G21". A leaf
 closes BEFORE `runAction` (focus is back on the opener when the action runs); keep-open
 items refresh their level after the returned promise settles. Items are `div`s, not
 buttons (no native Space-on-keyup click). A toggle item (defines `isToggled` /

@@ -518,7 +518,9 @@ export class FxFiles extends BlissElement<{ action: FilesDetail }> {
       });
       li.addEventListener('keydown', (e) => {
         if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) {
-          e.preventDefault();
+          // data-keep-key-default: leave the keydown alone, so Chromium raises its native `contextmenu` for
+          // Shift+F10 too (the ContextMenu key raises it on keyup either way) — openMenu must swallow it (G21).
+          if (!('keepKeyDefault' in this.dataset)) e.preventDefault();
           this.open(this.#rowEntries(), this.withContext({ file }), li, li, true, 'context-menu');
         }
       });

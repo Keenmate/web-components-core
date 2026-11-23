@@ -600,6 +600,39 @@ describe('dismiss + cleanup', () => {
     winRemove.mockRestore();
   });
 
+  describe('the keyboard-initiated native contextmenu (G21)', () => {
+    const native = (init: MouseEventInit) => {
+      const e = new MouseEvent('contextmenu', { bubbles: true, composed: true, cancelable: true, ...init });
+      opener.dispatchEvent(e);
+      return e;
+    };
+
+    it('is swallowed while the menu is open (Chromium button -1, Firefox 0) and never reaches the component', () => {
+      const seen = vi.fn();
+      host.addEventListener('contextmenu', seen);
+      const { handle } = open(basic, { shouldFocusFirst: true });
+      expect(native({ button: -1 }).defaultPrevented).toBe(true);
+      expect(native({ button: 0 }).defaultPrevented).toBe(true);
+      expect(seen).not.toHaveBeenCalled();
+      expect(handle.isOpen).toBe(true);
+      handle.close();
+      expect(native({ button: 0 }).defaultPrevented).toBe(false);
+      expect(seen).toHaveBeenCalledOnce();
+    });
+
+    it('a real right-click (button 2) or a touch long-press (pointerdown first) passes through', () => {
+      const seen = vi.fn();
+      host.addEventListener('contextmenu', seen);
+      open(basic, { shouldCloseOnOutsideInteraction: false });
+      expect(native({ button: 2 }).defaultPrevented).toBe(false);
+      opener.dispatchEvent(new Event('pointerdown', { bubbles: true, composed: true }));
+      expect(native({ button: 0 }).defaultPrevented).toBe(false);
+      expect(seen).toHaveBeenCalledTimes(2);
+      key('Shift'); // a key press after it: the next non-secondary contextmenu is the keyboard's again
+      expect(native({ button: 0 }).defaultPrevented).toBe(true);
+    });
+  });
+
   it('an element `at` leaves the gap to anchor() (the page token --base-dropdown-offset); a point sits at the cursor', () => {
     open(basic, { at: opener, placement: 'top-start' });
     expect(anchors[0]!.reference).toBe(opener);
