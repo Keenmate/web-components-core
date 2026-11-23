@@ -1771,7 +1771,8 @@ sheet uses it too (`src/overlay/back-entry.ts`).
 `startSheetSession(panel, { backCallback, shouldLockScroll, shouldFitToVisibleViewport, shouldCheckContainingBlock,
 logSource })` (`src/overlay/sheet-session.ts`) composes `lockBodyScroll` + `fitToVisibleViewport` + `claimBackEntry`
 (+ a one-time containing-block warning via `getFixedPositionOffsetParent`) behind one idempotent `end()`;
-`rearmBack()` re-claims from inside `backCallback`. Components start their full-screen sheet with it.
+`rearmBack()` re-claims from inside `backCallback`. A phone sheet is modal (rule C-CA-19), so a component's
+full-screen sheet gets it through `startModalSession()` (§12.19), which runs it underneath.
 
 **Sheet chrome (`SHEET_CHROME_CSS` + `createSheetHeader()`, decided 2026-11-13).** Every phone
 sheet / full-screen panel has ONE header bar: `.km-sheet-header` > `.km-sheet-title` (optional) +
@@ -1786,6 +1787,23 @@ rule, §12.13); the page themes every sheet with `--km-sheet-*`. Sizes from base
 (`--base-space-*`, `--base-font-size-lg`, `--base-font-weight-semibold`, × `--base-rem`). Replaces the
 four copies (menu sheet + grid sheet: a text ✕; multiselect + daterangepicker: the mask chip this
 standardises on) and the dropzone drawer / popover close (`src/overlay/sheet-chrome.ts`).
+
+**Full-screen frame `.km-sheet` (decided 2026-11-23, audit Q8 / G4).** The phone full-screen sheet PANEL, next to
+`.km-drawer` (§12.29) in `SHEET_CHROME_CSS`: `position: fixed` pinned by `top` / `inset-inline-start` with
+`100dvw × 100dvh` — NOT `inset: 0`, because the keyboard inset (`fitToVisibleViewport`) writes an inline `height` /
+`top` that a pinned bottom would defeat — `box-sizing: border-box`, full-bleed background, four-edge
+`env(safe-area-inset-*)` padding, `overflow: hidden` + `overscroll-behavior: contain`, the modal tier, no margin /
+border / radius / shadow / resize, and a flex column: the header (`createSheetHeader()`) then `.km-sheet-body` (the
+scroller: `flex: 1`, `min-height: 0`, `overflow-y: auto`) — or the component's own scrolling column. It fades + rises
+in on `--km-sheet-duration` (→ `--base-duration-medium`; `data-motion` / reduced motion through the token) by
+`--km-sheet-enter-offset`; closing = `animateOut(panel, { className: 'km-sheet--closing' })`. Variables (same layering
+as `.km-drawer`: `--_km-sheet-*` → `--km-sheet-*` → base tokens → `light-dark()`): `--km-sheet-bg` (→
+`--base-elevated-bg`, `--base-main-bg`), `-color` (→ `--base-text-color-1`), `-z-index` (→ `--base-z-modal`),
+`-duration`, `-enter-offset`. A component's full-screen sheet = its panel + `.km-sheet` + `startModalSession(panel, {
+dismissCallback, shouldFitToVisibleViewport: true })` (rule C-CA-19). It replaces six copies: web-multiselect
+`.ms__dropdown--fullscreen` + `.ms__selected-popover--fullscreen`, web-daterangepicker `.drp__picker--fullscreen`,
+web-dropzone `.dz__popover--sheet` / `.dz__indicator-drawer--sheet`, web-grid `.wg__dropdown--sheet` +
+`.wg-datepicker-container--sheet`. `/menu`'s sheet is a bottom sheet (not full-screen) and keeps `.km-menu-sheet`.
 
 ### 12.10 Theme context (dark / light) — IMPLEMENTED (`src/environment/theme.ts`)
 
@@ -2067,13 +2085,21 @@ through `MOTION_CSS` (`adoptMotionStyles(sheet)` on open), no own media query. T
   The header shows the deepest level's name (`title`, else the opening item's text). Tap / click /
   Enter / → drill in; hover never does. Focus moves into the new level (its Back row, or its
   first item when the keyboard opened it).
+- **Modal (decided 2026-11-23, audit Q2; rule C-CA-19).** The sheet and the drawer run through
+  `startModalSession(sheet, { backdrop: <the menu's backdrop>, initialFocus: false, … })` (§12.19): the page
+  behind is `inert` (the opener too), Tab stays inside — it swaps between the shown level (its first row) and
+  the header's close button, never closes the menu (a `renderMenuCallback` sheet: the focus trap cycles its
+  fields) — scroll lock and the Back entry come from the same session. Escape, whichever capture listener sees
+  it first (the menu's keydown or the overlay router via `beforeEscapeCallback`), goes up one drilled-in level,
+  else closes. The session joins `overlayGroup` when given, else the modal-only group.
 - **Focus.** On open focus moves into the sheet (the root level, or its first item with
-  `shouldFocusFirst`); on close it returns to `returnFocusTo` — also for a backdrop tap
-  (the sheet is modal; the backdrop's `mousedown` is prevented so focus never leaves).
+  `shouldFocusFirst`); on close the session returns it to `returnFocusTo`, else to what had it at
+  open — also for a backdrop tap (the backdrop's `mousedown` is prevented so focus never leaves);
+  not after `'blur'` / `'overlay'`.
 - **Dismiss.** The backdrop closes on `click` (its `pointerdown` doesn't, so the tap can't click
-  through to the page) — reason `'outside-click'`; the close button → `'close-button'`; Escape /
-  Tab / blur / overlay / action as before; no scroll close (page scroll is locked by
-  `lockBodyScroll()` for the sheet's lifetime).
+  through to the page; wired by the modal session) — reason `'outside-click'`; the close button →
+  `'close-button'`; Escape / blur / overlay / action as before (Tab no longer closes a sheet); no
+  scroll close (page scroll is locked for the sheet's lifetime).
 - **Phone Back.** While open the sheet holds ONE history entry (`pushState`, same URL — the
   core `claimBackEntry()`, §12.9; page-wide state): Back in a
   submenu goes up one level and re-arms the entry; at the root it closes with `'back'`. Closed any
@@ -2458,6 +2484,7 @@ Tab or a screen reader out of the page behind.
    `aria-modal`; no backdrop, no inert, no trap, no scroll lock; focus stays unless `initialFocus`; `end()` returns
    focus only with `shouldReturnFocus: true`. Own overlay group (a page dropdown doesn't dismiss it; a second
    panel does, unless opened from inside it). A separate function, not a `startModalSession` flag.
+   Core's own `/menu` phone sheet / drawer runs through `startModalSession` too (§12.13, decided 2026-11-23).
 2. **`/dialog`** — `openDialog({ title, message, content, actions, isDismissible, beforeCloseCallback, labels,
    container, trigger })` → `{ result: Promise<string | null>, close, panel, body }`, `confirmDialog()` →
    `Promise<boolean>`, `promptDialog({ value, label, validate, inputType })` → `Promise<string | null>`. Own layer
@@ -2743,6 +2770,8 @@ Decided 2026-11-17:
   page stays usable around (an upload monitor), `startPanelSession(panel, { dismissCallback })`; closing =
   `session.end()` + `animateOut(panel, { className: 'km-drawer--closing' })`. `/menu`'s drawer presentation keeps
   its own `.km-menu-sheet--drawer` (same look, its own variables).
+- **Full-screen frame**: `.km-sheet` (+ `.km-sheet-body`, `.km-sheet--closing`) in the same stylesheet — the phone
+  full-screen sheet panel, §12.9; with `startModalSession(panel, { dismissCallback, shouldFitToVisibleViewport: true })`.
 
 ### 12.30 IME-safe text input — IMPLEMENTED (`src/dom/text-input.ts`, main index)
 

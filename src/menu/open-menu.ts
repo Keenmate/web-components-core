@@ -25,7 +25,7 @@ import { anchor } from '../positioning/anchor.js';
 import { inheritTheme } from '../positioning/inherit-theme.js';
 import { watchScrollClose } from '../positioning/scroll-close.js';
 import type { AnchorHandle } from '../positioning/types.js';
-import { startSheetSession } from '../overlay/sheet-session.js';
+import { startModalSession, type ModalSession } from '../overlay/modal-session.js';
 import { MENU_CSS } from './styles.js';
 import { createSheetHeader, SHEET_CHROME_CSS } from '../overlay/sheet-chrome.js';
 import type {
@@ -172,8 +172,8 @@ export function openMenu<Ctx, A extends string = string>(
   let sheetHeader: HTMLElement | null = null;
   let sheetTitle: HTMLElement | null = null;
   let backdrop: HTMLElement | null = null;
-  /** Undo the sheet session: scroll lock + the history entry. */
-  let endSheetSession: (() => void) | null = null;
+  /** The sheet's modal session (inert page + Tab trap, scroll lock, Back, backdrop click — SPEC §12.19). */
+  let modalSession: ModalSession | null = null;
   /** The "Back" rows at the top of a drilled-in submenu (sheet only; not action items). */
   const backRows = new WeakSet<HTMLElement>();
 
@@ -560,6 +560,8 @@ export function openMenu<Ctx, A extends string = string>(
 
   const onKeydown = (event: KeyboardEvent): void => {
     if (!isOpen || event.isComposing) return;
+    // A sheet's Escape the overlay router already took (its modal session: up one level, else close).
+    if (sheet && event.key === 'Escape' && event.defaultPrevented) return;
     // Two menus open (a context menu over a pinned one): only the topmost one handles keys.
     const stack = openMenuStack();
     if (stack[stack.length - 1] !== menuToken) return;
@@ -588,6 +590,16 @@ export function openMenu<Ctx, A extends string = string>(
     if (event.key === 'Tab') {
       // A custom menu (renderMenuCallback) may hold a form: Tab moves between its fields.
       if (isCustom && inside >= 0) return;
+      if (sheet) {
+        // The sheet is modal (SPEC §12.19): Tab stays inside — it swaps between the header's close button and
+        // the shown level (its focused row, else the first one). A custom sheet leaves it to the focus trap.
+        if (isCustom) return;
+        if (isInHeader) focusItem(enabledItems(level)[0] ?? level.el);
+        else (sheetHeader?.querySelector('.km-sheet-close') as HTMLElement | null)?.focus({ preventScroll: true });
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
       close('tab'); // focus returns, then the browser moves it on — no preventDefault
       return;
     }
@@ -689,9 +701,11 @@ export function openMenu<Ctx, A extends string = string>(
       window.addEventListener('blur', onBlur);
       // In the page-wide overlay tree (SPEC §12.9): a menu opened from inside another
       // overlay (a context menu in a dropdown) is its child and doesn't dismiss it.
-      overlay = registerOverlay(() => close('overlay'), opts.overlayGroup, { getElement: () => sheet ?? chain[0]?.el });
-      const hostElement = typeof ShadowRoot !== 'undefined' && host instanceof ShadowRoot ? host.host : (host as Element);
-      overlay.activate({ trigger: opts.returnFocusTo ?? (opts.at instanceof Element ? opts.at : hostElement) });
+      // A sheet is in the tree through its modal session.
+      if (!sheet) {
+        overlay = registerOverlay(() => close('overlay'), opts.overlayGroup, { getElement: () => chain[0]?.el });
+        overlay.activate({ trigger: opener });
+      }
     }
     detachListeners = () => {
       document.removeEventListener('keydown', onKeydown, true);
@@ -722,15 +736,17 @@ export function openMenu<Ctx, A extends string = string>(
       level.position?.destroy();
       if (!sheet) level.el.remove(); // a sheet's levels leave with it
     }
-    if (sheet && backdrop) removeSheetAnimated(sheet, backdrop);
-    endSheetSession?.();
-    endSheetSession = null;
     // A sheet is modal: a backdrop tap dismisses it like Escape (focus goes back to the opener).
     const isPointerAway =
       (reason === 'outside-click' && !isSheet) || reason === 'scroll' || reason === 'blur' || reason === 'overlay';
-    if (hadFocus && !isPointerAway && opts.returnFocusTo?.isConnected) {
+    if (modalSession) {
+      // Un-inerts the page first, then focus goes back (to `returnFocusTo`, else what had it at open).
+      modalSession.end({ shouldReturnFocus: !isPointerAway });
+      modalSession = null;
+    } else if (hadFocus && !isPointerAway && opts.returnFocusTo?.isConnected) {
       opts.returnFocusTo.focus({ preventScroll: true });
     }
+    if (sheet && backdrop) removeSheetAnimated(sheet, backdrop);
     // A throwing closeCallback must not escape close() (or the document listener that called it).
     const { closeCallback } = opts;
     if (closeCallback) runSafely(() => closeCallback(reason), { source: host, coreCategory: 'MENU', message: 'menu closeCallback threw' });
@@ -819,7 +835,7 @@ export function openMenu<Ctx, A extends string = string>(
   function openSheet(): void {
     backdrop = document.createElement('div');
     backdrop.className = `${SHEET}-backdrop`;
-    backdrop.addEventListener('click', () => close('outside-click'));
+    backdrop.setAttribute('aria-hidden', 'true');
     // A press on the backdrop must not pull focus out of the sheet (it returns to the opener on close).
     backdrop.addEventListener('mousedown', (e) => e.preventDefault());
     sheet = document.createElement('div');
@@ -849,20 +865,35 @@ export function openMenu<Ctx, A extends string = string>(
     // Durations come from the motion tokens: make sure OS reduced motion / data-motion reach them.
     adoptMotionStyles(sheet);
     syncSheet();
-    // Scroll lock + the phone Back entry: up one submenu level (the entry is re-armed), else close.
-    const session = startSheetSession(sheet, {
-      shouldFitToVisibleViewport: false, // no text field in a menu
+    // Modal (SPEC §12.19, rule C-CA-19): the page behind is inert, Tab stays inside, scroll lock, the
+    // backdrop click, Escape and the phone Back entry (up one submenu level — the entry is re-armed —
+    // else close). Escape: whichever capture listener runs first (the menu's keydown or the overlay
+    // router) goes up one level in a drilled-in submenu, else closes.
+    const session = startModalSession(sheet, {
+      backdrop,
+      trigger: opener,
+      // focus goes back to `returnFocusTo`, else to what had it at open (`null` = nowhere)
+      returnFocusTo: opts.returnFocusTo !== undefined ? opts.returnFocusTo : (deepActiveElement() as HTMLElement | null),
+      initialFocus: false, // the menu focuses its level / first row itself
+      beforeEscapeCallback: () => {
+        if (chain.length <= 1) return true;
+        goUp(chain.length - 1);
+        return false;
+      },
+      ...(opts.overlayGroup !== undefined ? { group: opts.overlayGroup } : {}),
       logSource: host instanceof ShadowRoot ? host.host : host instanceof Element ? host : undefined,
-      backCallback: () => {
+      dismissCallback: (reason) => {
         if (!isOpen) return;
-        if (chain.length > 1) {
+        if (reason === 'back' && chain.length > 1) {
           goUp(chain.length - 1);
           session.rearmBack();
-        } else close('back');
+        } else {
+          close(reason === 'backdrop' ? 'outside-click' : reason === 'escape' || reason === 'back' ? reason : 'overlay');
+        }
       },
     });
-    endSheetSession = session.end;
-    // Modal: focus moves into the sheet (and returns to `returnFocusTo` on close).
+    modalSession = session;
+    // Focus moves into the sheet (and returns on close).
     if (!opts.shouldFocusFirst) rootLevel.el.focus({ preventScroll: true });
   }
 

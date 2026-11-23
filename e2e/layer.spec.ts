@@ -52,6 +52,37 @@ test('drawer preset: on the end edge, full height, modal; Escape slides it out a
   await expect(page.locator('#open-drawer')).toBeFocused();
 });
 
+test('full-screen frame (.km-sheet): covers the viewport at the modal tier, header + scrolling body, modal; Escape closes', async ({ page }) => {
+  await page.click('#open-sheet');
+  const sheet = page.locator('#sheet');
+  await expect(sheet).toBeVisible();
+  await sheet.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+  const viewport = page.viewportSize()!;
+  const box = (await sheet.boundingBox())!;
+  expect(box.x).toBe(0);
+  expect(box.y).toBe(0);
+  expect(Math.round(box.width)).toBe(viewport.width);
+  expect(Math.round(box.height)).toBe(viewport.height);
+  expect(await sheet.evaluate((el) => getComputedStyle(el).zIndex)).toBe('7000');
+  // the header stays; the body is the scroller and fills the rest
+  const header = (await sheet.locator('.km-sheet-header').boundingBox())!;
+  const body = page.locator('#sheet-body');
+  const bodyBox = (await body.boundingBox())!;
+  expect(Math.round(bodyBox.y)).toBe(Math.round(header.y + header.height));
+  expect(Math.round(bodyBox.y + bodyBox.height)).toBe(viewport.height);
+  expect(await body.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  await body.evaluate((el) => (el.scrollTop = 200));
+  expect(Math.round((await sheet.locator('.km-sheet-header').boundingBox())!.y)).toBe(Math.round(header.y));
+  expect(await page.locator('#open-sheet').evaluate((el) => !!el.closest('[inert]'))).toBe(true);
+  // pinned top / start only (no bottom): the keyboard inset's inline height wins, the body shrinks with it
+  await sheet.evaluate((el) => (el.style.height = '300px'));
+  expect(Math.round((await sheet.boundingBox())!.height)).toBe(300);
+  expect(Math.round((await body.boundingBox())!.y + (await body.boundingBox())!.height)).toBe(300);
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  await expect(page.locator('#open-sheet')).toBeFocused();
+});
+
 test('non-modal drawer (startPanelSession): the page stays usable; a click outside and Escape close it', async ({ page }) => {
   await page.click('#open-panel-drawer');
   const drawer = page.locator('#panel-drawer');

@@ -5,7 +5,7 @@ import type { Page } from '@playwright/test';
 // (resolvePresentation) → a bottom sheet on a phone (touch, short side < 600), the floating menu
 // on a desktop. Sheet: full width at the bottom, header (title + close), 44px rows, submenus drill
 // in (Back row), backdrop / Escape / close button / phone Back close, page scroll locked, focus
-// returns to the opener.
+// returns to the opener. Modal (startModalSession, rule C-CA-19): page inert, Tab trapped.
 //
 // Fixture: test/menu-sheet.html (<fx-files> from test/interaction-fixtures.ts).
 
@@ -137,6 +137,49 @@ test.describe('phone (touch, 390 x 844)', () => {
     await expect(sheet(page)).toHaveCount(0);
     expect(await details(page, 'closeCallback')).toEqual(['close-button', 'escape']);
     await expect.poll(() => focusedText(page)).toBe('Actions');
+  });
+
+  test('modal: the page behind is inert, Tab stays inside, Escape closes, focus returns; the page is usable again', async ({ page }) => {
+    const isInert = (locator: ReturnType<Page['locator']>) => locator.evaluate((el) => !!el.closest('[inert]') || (el.getRootNode() as ShadowRoot).host?.closest?.('[inert]') != null);
+    const isFocusInSheet = () =>
+      page.evaluate(() => {
+        const root = document.getElementById('files')!.shadowRoot!;
+        return !!root.activeElement && !!root.querySelector('.km-menu-sheet')?.contains(root.activeElement);
+      });
+    await actionsButton(page).tap();
+    await expect(sheet(page)).toBeVisible();
+    await animated(page);
+    expect(await isInert(page.locator('h1'))).toBe(true);
+    expect(await isInert(actionsButton(page))).toBe(true);
+    expect(await isInert(sheet(page))).toBe(false);
+    expect(await isInert(backdrop(page))).toBe(false);
+    await expect(sheet(page)).toHaveAttribute('aria-modal', 'true');
+
+    expect(await isFocusInSheet()).toBe(true);
+    for (let i = 0; i < 5; i++) {
+      await page.keyboard.press(i % 2 ? 'Shift+Tab' : 'Tab');
+      expect(await isFocusInSheet()).toBe(true);
+    }
+    await expect(sheet(page)).toBeVisible(); // Tab no longer closes a sheet
+
+    await page.keyboard.press('Escape');
+    await expect(sheet(page)).toHaveCount(0);
+    expect(await details(page, 'closeCallback')).toEqual(['escape']);
+    await expect.poll(() => focusedText(page)).toBe('Actions');
+    expect(await isInert(page.locator('h1'))).toBe(false);
+    expect(await isInert(actionsButton(page))).toBe(false);
+  });
+
+  test('modal: Escape in a drilled-in submenu goes up one level first', async ({ page }) => {
+    await row(page, 'report.pdf').click({ button: 'right' });
+    await item(page, 'Share').tap();
+    await expect(title(page)).toHaveText('Share');
+    await page.keyboard.press('Escape');
+    await expect(title(page)).toHaveText('report.pdf');
+    await expect(sheet(page)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(sheet(page)).toHaveCount(0);
+    expect(await details(page, 'closeCallback')).toEqual(['escape']);
   });
 
   test('the phone Back button goes up one submenu level, then closes ("back")', async ({ page }) => {

@@ -269,7 +269,8 @@ Scroll positions survive a DOM move with `keepScrollAcrossMove(this, () => [scro
 Typed text goes through `observeTextInput(input, cb)` and keydown handlers return on `isImeEnter(e)` (IME-safe, SPEC §12.30).
 
 A styled panel outside the component (drag ghost, drop pads, cover) is `createLayer(host, { css, className })`
-(`/positioning`); an edge drawer is `.km-drawer km-drawer--<side>` (`SHEET_CHROME_CSS`) + `startModalSession` (SPEC §12.29).
+(`/positioning`); an edge drawer is `.km-drawer km-drawer--<side>` (`SHEET_CHROME_CSS`) + `startModalSession` (SPEC §12.29);
+a phone full-screen sheet is `.km-sheet` (header + `.km-sheet-body`) + `startModalSession({ shouldFitToVisibleViewport: true })` (SPEC §12.9).
 
 In-page drags go through `createPointerDrag` (mouse + touch, long press, auto-scroll); a drop target's
 "files over the page" state through `observePageDrag` (`src/dom/`, main index, SPEC §12.28).

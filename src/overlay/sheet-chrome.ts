@@ -1,7 +1,8 @@
 /**
  * The phone sheet chrome (SPEC §12.9): ONE header bar + title + close button for every
  * full-screen / bottom / side sheet a component opens (the `/menu` sheet, the multiselect and
- * daterangepicker full-screen pickers, the grid's editor sheets, the dropzone drawer …).
+ * daterangepicker full-screen pickers, the grid's editor sheets, the dropzone drawer …), plus two
+ * panel presets: `.km-sheet` (the full-screen frame) and `.km-drawer` (an edge drawer).
  *
  * A component adds the classes to its own elements (or builds them with `createSheetHeader()`)
  * and adopts `SHEET_CHROME_CSS` into the root they live in (`adoptStyles`, §12.8). Its own BEM
@@ -40,6 +41,7 @@ const CLOSE_BG_HOVER = ks('close-bg-hover', 'var(--base-hover-bg, color-mix(in s
 const DRAWER_SIZE = ks('drawer-size', 'min(320px, 85vw)');
 const DRAWER_RADIUS = ks('drawer-border-radius', rem('border-radius-lg', 0.8));
 const DRAWER_DURATION = ks('drawer-duration', 'var(--base-duration-medium, 0.25s)');
+const FRAME_DURATION = ks('duration', 'var(--base-duration-medium, 0.25s)');
 const EASE_OUT = 'var(--base-ease-out, cubic-bezier(0, 0, 0.2, 1))';
 const EASE_IN = 'var(--base-ease-in, cubic-bezier(0.4, 0, 1, 1))';
 
@@ -218,6 +220,62 @@ export const SHEET_CHROME_CSS = `
 @keyframes km-drawer-out-right { from { transform: translateX(100%); } }
 @keyframes km-drawer-out-top { from { transform: translateY(-100%); } }
 @keyframes km-drawer-out-bottom { from { transform: translateY(100%); } }
+
+/* ── Full-screen frame (SPEC §12.9, Q8): the phone full-screen sheet panel ──────────────────────────────
+   The component adds .km-sheet to its panel (header = createSheetHeader(), then .km-sheet-body — or its own
+   scrolling column) and runs it through startModalSession(panel, { dismissCallback, shouldFitToVisibleViewport:
+   true }). Pinned by top / inline-start + 100dvw x 100dvh, NOT inset: 0 — the keyboard inset
+   (fitToVisibleViewport) writes an inline height / top, which a pinned bottom would defeat. Full-bleed
+   background, content padded out of the safe areas, the modal tier, motion tokens. Closing:
+   animateOut(panel, { className: 'km-sheet--closing' }). */
+.km-sheet {
+  position: fixed;
+  top: 0;
+  inset-inline-start: 0;
+  z-index: ${ks('z-index', 'var(--base-z-modal, 7000)')};
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100dvw;
+  height: 100dvh;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100dvw;
+  max-height: 100dvh;
+  margin: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  overflow: hidden;
+  overscroll-behavior: contain;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  resize: none;
+  background: ${ks('bg', 'var(--base-elevated-bg, var(--base-main-bg, light-dark(#ffffff, #2b2b2b)))')};
+  color: ${ks('color', 'var(--base-text-color-1, light-dark(#242424, #f5f5f5))')};
+  animation: km-sheet-in ${FRAME_DURATION} ${EASE_OUT} both;
+}
+
+.km-sheet:focus {
+  outline: none;
+}
+
+/* The scrolling column under the header (a component with its own list scroller can skip it). */
+.km-sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.km-sheet.km-sheet--closing {
+  pointer-events: none;
+  animation-name: km-sheet-out;
+  animation-timing-function: ${EASE_IN};
+  animation-direction: reverse;
+}
+
+@keyframes km-sheet-in { from { opacity: 0; transform: translateY(${ks('enter-offset', `calc(3.2 * ${REM})`)}); } }
+@keyframes km-sheet-out { from { opacity: 0; transform: translateY(${ks('enter-offset', `calc(3.2 * ${REM})`)}); } }
 
 @media (forced-colors: active) {
   .km-drawer {

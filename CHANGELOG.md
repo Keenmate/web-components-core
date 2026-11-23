@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`closest` across shadow roots), `isDeepInside(el, container)` (containment across shadow roots),
   `runSafely(fn, log)` (a throw is logged and returned, not propagated), `notifyListeners(listeners, value, log)`
   (a throwing listener is logged and skipped) + types `SafeCallLog`, `SafeCallResult`. Components drop their copies.
+- **Full-screen sheet frame `.km-sheet`** in `SHEET_CHROME_CSS` (next to `.km-drawer`): the phone full-screen sheet
+  panel — fixed, pinned top / inline-start at `100dvw × 100dvh` (the keyboard inset keeps working), four-edge
+  safe-area padding, the modal tier, a header + `.km-sheet-body` scrolling column, fade + rise on the motion tokens
+  (`.km-sheet--closing` for `animateOut`). New variables `--km-sheet-bg` / `-color` / `-z-index` / `-duration` /
+  `-enter-offset` (→ `--base-elevated-bg` / `--base-main-bg`, `--base-text-color-1`, `--base-z-modal`,
+  `--base-duration-medium`). Replaces the six component copies (multiselect ×2, daterangepicker, dropzone, grid ×2).
+  Example: DH03 in `examples-dom.html`.
 
 ### Changed — BREAKING (renames, no aliases)
 - Internal → exported names: `composedClosest` → `deepClosest`, `isAtOrBelow` → `isDeepInside`,
@@ -68,6 +75,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - type `ComponentContext` is no longer exported from `/actions` — import it from the main index.
   - `createFocusTrap`, `getTabbables` and types `FocusTrap` / `FocusTrapOptions` moved from the main index to
     **`/a11y`** (next to the other keyboard / focus helpers; `startModalSession` stays in the main index).
+
+### Changed
+- **`/menu`'s phone sheet / drawer is modal** (rule C-CA-19): it runs through `startModalSession` — the page behind
+  (the opener too) is `inert`, Tab stays inside (between the shown level and the close button; it no longer closes a
+  sheet), Escape goes up one drilled-in level else closes, scroll lock / Back / backdrop click as before. Focus goes
+  back to `returnFocusTo`, else to what had it when the sheet opened. The floating menu is unchanged.
 
 ### Removed
 - `resolveEnumAttribute(raw, values, fallback)` — unused (no component or core caller); use `toEnum`.

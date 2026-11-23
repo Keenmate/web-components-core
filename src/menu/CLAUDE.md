@@ -25,9 +25,13 @@ on the same DOM: `--drawer` + physical `--left` / `--right`. Close removal is de
 close — the shared `createSheetHeader()` / `SHEET_CHROME_CSS`, `src/overlay/sheet-chrome.ts`) over a `.km-menu-sheet-backdrop`, levels inside it with only the deepest shown (`syncSheet()`
 — call it whenever the chain changes); drilled-in levels get a Back row (`backRows`, part of
 `enabledItems()` but not of `records` — guard `records.get()` with `?.`). Hover never opens a
-submenu there. Backdrop closes on `click`, not `pointerdown`; no scroll close; one core
-`startSheetSession()` per open sheet (`src/overlay/sheet-session.ts`: scroll lock + Back entry, `rearmBack()` for a
-submenu Back), ended in `close()` via `endSheetSession`. Tests: `sheet.test.ts` (mocks `getEnvironment`), e2e `menu-sheet.spec.ts`.
+submenu there. Backdrop closes on `click`, not `pointerdown`; no scroll close. The sheet is MODAL: one core
+`startModalSession()` per open sheet (`src/overlay/modal-session.ts`: inert page + focus trap, scroll lock, Back entry
+— `rearmBack()` for a submenu Back —, the backdrop click, Escape via `beforeEscapeCallback` = up one level else close),
+ended in `close()` (`modalSession.end({ shouldReturnFocus })` BEFORE the animated removal, so the page is un-inert
+when focus goes back). `initialFocus: false` (the menu focuses itself); Tab in a sheet swaps between the shown level and
+the close button (never closes); a sheet registers no overlay of its own (the session's); a sheet's Escape the
+router already `preventDefault`ed is skipped in `onKeydown`. Tests: `sheet.test.ts` (mocks `getEnvironment`), e2e `menu-sheet.spec.ts`.
 
 Item icons: `renderIcon(icon, { host: findComponentElement(host), context: { item } })` — the closest custom element (or shadow host), so the component's own `renderIconCallback` applies.
 

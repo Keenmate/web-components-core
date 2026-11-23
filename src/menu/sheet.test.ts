@@ -357,3 +357,51 @@ describe('closing', () => {
     expect(backRow()!.textContent).toBe('Zpět');
   });
 });
+
+describe('modal (SPEC §12.19, rule C-CA-19)', () => {
+  it('the page behind is inert while open (incl. the opener next to the sheet); closing restores it', () => {
+    const outside = document.createElement('button');
+    document.body.append(outside);
+    open();
+    expect(outside.hasAttribute('inert')).toBe(true);
+    expect(opener.hasAttribute('inert')).toBe(true);
+    expect(backdrop()!.hasAttribute('inert')).toBe(false);
+    expect(sheet()!.hasAttribute('inert')).toBe(false);
+    handle!.close();
+    expect(outside.hasAttribute('inert')).toBe(false);
+    expect(opener.hasAttribute('inert')).toBe(false);
+  });
+
+  it('Tab stays inside: it swaps between the rows and the close button; the menu stays open', () => {
+    const { closeCallback } = open({ shouldFocusFirst: true });
+    expect(active()).toBe(byId('open'));
+    key('Tab');
+    expect(active()).toBe(shadow.querySelector('.km-sheet-close'));
+    key('Tab');
+    expect(active()).toBe(byId('open'));
+    byId('share').click(); // drilled in: Tab from the close button lands in the shown level
+    key('Tab');
+    expect(active()).toBe(shadow.querySelector('.km-sheet-close'));
+    key('Tab');
+    expect(visibleLevel().contains(active())).toBe(true);
+    expect(handle!.isOpen).toBe(true);
+    expect(closeCallback).not.toHaveBeenCalled();
+  });
+
+  it('without returnFocusTo, focus goes back to what had it at open', () => {
+    open({ returnFocusTo: undefined });
+    expect(active()).toBe(levels()[0]);
+    key('Escape');
+    expect(handle!.isOpen).toBe(false);
+    expect(active()).toBe(opener);
+  });
+
+  it('a drawer is modal too', () => {
+    const outside = document.createElement('div');
+    document.body.append(outside);
+    open({ presentation: 'drawer' });
+    expect(outside.hasAttribute('inert')).toBe(true);
+    handle!.close();
+    expect(outside.hasAttribute('inert')).toBe(false);
+  });
+});

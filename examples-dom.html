@@ -65,7 +65,7 @@ this.#stopDropActive();</code></pre></div>
         <!-- DH03 · createLayer + drawers                                  -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>DH03 · Layers and drawers: <code>createLayer</code>, <code>.km-drawer</code></h2>
+            <h2>DH03 · Layers, drawers and the full-screen sheet: <code>createLayer</code>, <code>.km-drawer</code>, <code>.km-sheet</code></h2>
             <p>
                 A <strong>layer</strong> is a styled panel outside the component — its own shadow root with your CSS, in
                 the overlay container, above the page (<code>Z_INDEX</code>), following the host's theme.
@@ -76,6 +76,10 @@ this.#stopDropActive();</code></pre></div>
                 backdrop close) — or <code>startPanelSession</code> for a drawer the page stays usable around (Escape or a
                 click outside closes it; no backdrop, nothing inert). <code>--start</code> / <code>--end</code> follow the
                 writing direction.
+                A <strong>full-screen sheet</strong> (a phone picker) is the <code>.km-sheet</code> frame from the same
+                stylesheet: the whole screen, content kept out of the notch / home-bar safe areas, the core header
+                (<code>createSheetHeader</code>) on top and <code>.km-sheet-body</code> scrolling under it — always
+                with <code>startModalSession</code>.
             </p>
             <div class="controls">
                 <button id="dh03-cover">Cover the DH02 zone for 2 s</button>
@@ -85,6 +89,7 @@ this.#stopDropActive();</code></pre></div>
                 <button data-side="top">top</button>
                 <button data-side="bottom">bottom</button>
                 <button id="dh03-panel">end, non-modal (<code>startPanelSession</code>)</button>
+                <button id="dh03-sheet">full-screen sheet (<code>.km-sheet</code>)</button>
                 <label><input type="checkbox" id="dh03-rtl"> <code>dir="rtl"</code></label>
             </div>
             <div class="code-block" data-language="js"><pre><code>import { createLayer } from '@keenmate/web-components-core/positioning';
@@ -98,7 +103,14 @@ layer.destroy();
 adoptStyles(this.shadowRoot, SHEET_CHROME_CSS);
 panel.classList.add('km-drawer', 'km-drawer--end');
 const session = startModalSession(panel, { backdrop: true, dismissCallback: () =&gt; close() });
-const close = () =&gt; { session.end(); animateOut([panel], { className: 'km-drawer--closing', doneCallback: () =&gt; panel.remove() }); };</code></pre></div>
+const close = () =&gt; { session.end(); animateOut([panel], { className: 'km-drawer--closing', doneCallback: () =&gt; panel.remove() }); };
+
+// a phone full-screen sheet: header + scrolling body, the keyboard shrinks it
+sheet.classList.add('km-sheet');
+body.classList.add('km-sheet-body');
+sheet.replaceChildren(createSheetHeader({ title: 'Pick a city', closeLabel: 'Close', closeCallback: () =&gt; close() }).header, body);
+const session = startModalSession(sheet, { dismissCallback: () =&gt; close(), shouldFitToVisibleViewport: true });
+// close: session.end(); animateOut([sheet], { className: 'km-sheet--closing', doneCallback: () =&gt; sheet.remove() });</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -265,6 +277,7 @@ protected override createController() {
                     <tr><td><code>createLayer(host, { css, className, zIndex, isInteractive, container })</code> (<code>/positioning</code>)</td><td>A themed panel in the overlay container with its own shadow root: <code>{ element, layer, place(rect), syncTheme, destroy }</code>.</td></tr>
                     <tr><td><code>startPanelSession(panel, { dismissCallback, shouldCloseOnEscape, shouldCloseOnOutsideClick, shouldCloseOnBack, trigger, initialFocus })</code></td><td>A non-modal panel: Escape / a click outside / Back → <code>dismissCallback(reason)</code>; no backdrop, inert page or focus trap. <code>{ end, rearmBack, isEnded }</code>.</td></tr>
                     <tr><td><code>.km-drawer</code> · <code>--start</code> / <code>--end</code> / <code>--top</code> / <code>--bottom</code> / <code>--closing</code> (<code>SHEET_CHROME_CSS</code>)</td><td>An edge drawer; <code>--km-sheet-drawer-size</code> / <code>-max-height</code> / <code>-bg</code> / <code>-color</code> / <code>-shadow</code> / <code>-border-radius</code> / <code>-duration</code>.</td></tr>
+                    <tr><td><code>.km-sheet</code> · <code>.km-sheet-body</code> · <code>--closing</code> (<code>SHEET_CHROME_CSS</code>)</td><td>The phone full-screen sheet frame (fixed, 100dvw × 100dvh, safe areas, modal tier, header + scrolling body); <code>--km-sheet-bg</code> / <code>-color</code> / <code>-z-index</code> / <code>-duration</code> / <code>-enter-offset</code>.</td></tr>
                     <tr><td><code>copyText(text)</code> · <code>readPasteText(event, { type, shouldNormalizeNewlines })</code></td><td>Copy with the Clipboard API or the <code>execCommand</code> fallback (→ <code>Promise&lt;boolean&gt;</code>); a paste's text, CRLF → LF.</td></tr>
                     <tr><td><code>renderIcon(icon, { prefix })</code> · <code>ICON_CSS</code></td><td>Markup raw → a built-in name masked from <code>--base-icon-&lt;name&gt;</code> → the page-wide <code>renderIconCallback</code> → class names as an icon font → escaped text.</td></tr>
                     <tr><td><code>renderSlot(container, result | () =&gt; result, { renderDefault, memoKey })</code></td><td>String = HTML, node = mounted, <code>null</code> = default, <code>false</code> = hidden; a same <code>memoKey</code> skips the hook. Returns <code>'custom' | 'default' | 'hidden'</code>.</td></tr>
@@ -276,7 +289,7 @@ protected override createController() {
     <script type="module" src="examples-dom-card.ts"></script>
 
     <script type="module">
-        import { copyText, readPasteText, renderIcon, renderSlot, ICON_CSS, SHEET_CHROME_CSS, adoptStyles, escapeHtml, startModalSession, startPanelSession, animateOut } from '/src/index.ts';
+        import { copyText, readPasteText, renderIcon, renderSlot, ICON_CSS, SHEET_CHROME_CSS, createSheetHeader, adoptStyles, escapeHtml, startModalSession, startPanelSession, animateOut } from '/src/index.ts';
         import { createLayer } from '/src/positioning/index.ts';
         await Promise.all(['core-demo-sortable', 'core-demo-drop', 'core-demo-counter'].map((t) => customElements.whenDefined(t)));
         const $ = (id) => document.getElementById(id);
@@ -343,6 +356,33 @@ protected override createController() {
             };
             const session = startPanelSession(panel, { dismissCallback: close, trigger: e.currentTarget, isOpenedByPointer: e.detail > 0 });
             panel.querySelector('[data-close]').addEventListener('click', close);
+        });
+
+        $('dh03-sheet').addEventListener('click', (e) => {
+            const sheet = document.createElement('div');
+            sheet.className = 'km-sheet';
+            sheet.setAttribute('aria-label', 'Pick a city');
+            const body = document.createElement('div');
+            body.className = 'km-sheet-body';
+            const list = document.createElement('div');
+            list.className = 'controls';
+            for (const city of ['Prague', 'Brno', 'Ostrava', 'Plzeň', 'Liberec', 'Olomouc', 'České Budějovice', 'Hradec Králové', 'Ústí nad Labem', 'Pardubice', 'Zlín', 'Havířov', 'Kladno', 'Most', 'Opava', 'Frýdek-Místek', 'Karviná', 'Jihlava', 'Teplice', 'Děčín']) {
+                const row = document.createElement('button');
+                row.textContent = city;
+                row.addEventListener('click', () => close());
+                list.append(row);
+            }
+            const wrap = document.createElement('div');
+            wrap.className = 'container';
+            wrap.append(list);
+            body.append(wrap);
+            const close = () => {
+                session.end();
+                animateOut([sheet], { className: 'km-sheet--closing', doneCallback: () => sheet.remove() });
+            };
+            sheet.append(createSheetHeader({ title: 'Pick a city', closeLabel: 'Close', closeCallback: close }).header, body);
+            document.body.append(sheet);
+            const session = startModalSession(sheet, { dismissCallback: close, shouldFitToVisibleViewport: true, isOpenedByPointer: e.detail > 0 });
         });
 
         // DH04 — the user's own clipboard, on the user's click only

@@ -357,6 +357,32 @@ instance by mapping your variables onto the private layer, with no fallback:
 }
 ```
 
+### Full-screen sheet frame (`.km-sheet`)
+
+The phone full-screen sheet PANEL is core's `.km-sheet` class (SPEC §12.9) — never a component's own
+`position: fixed; 100dvw × 100dvh; env(safe-area-inset-*)` block. It is a flex column (the header, then
+`.km-sheet-body`, the scroller), full-bleed background, content padded out of the safe areas, the modal tier,
+pinned by `top` / inline-start (not `inset: 0`: the keyboard inset sets an inline `height`). Every phone sheet is
+modal (rule C-CA-19):
+
+```ts
+adoptStyles(this.shadowRoot!, SHEET_CHROME_CSS);
+panel.classList.add('km-sheet');                         // its anchored / floating classes off
+body.classList.add('km-sheet-body');                     // or your own scrolling column (flex: 1; min-height: 0)
+panel.replaceChildren(createSheetHeader({ title, closeLabel, closeCallback: () => close() }).header, body);
+const session = startModalSession(panel, {
+  dismissCallback: () => close(),
+  shouldFitToVisibleViewport: true,                     // the soft keyboard shrinks the sheet, not the list
+  isOpenedByPointer,                                    // opened on a press
+});
+const close = () => { session.end(); animateOut([panel], { className: 'km-sheet--closing', doneCallback: () => panel.remove() }); };
+```
+
+Theme it like the header: `--_km-sheet-bg` / `-color` / `-z-index` / `-duration` / `-enter-offset` on your host
+from your own variables (no fallback); the page sets `--km-sheet-*`. `.km-sheet` is one class in
+`@layer component` — drop (or out-rank) your panel's own floating geometry (`max-height`, radius, shadow) in sheet
+mode.
+
 ## Stacking tiers (`Z_INDEX`)
 
 One z-index scale for every overlay (the `--base-z-*` tokens, SPEC §12.18). Use the constant in CSS you
@@ -1449,7 +1475,7 @@ The main index is in 13 sections (the comments in `src/index.ts`), one row each:
 | 4 Environment | `getEnvironment`, `observeEnvironment`, `observeViewport`, `configureBreakpoints` / `BREAKPOINTS_CHANGE_EVENT`, `classifyDevice` / `TABLET_MIN_SHORT_SIDE`, `observeElementSize`, `createElementSizeObserver(listener)` (`observe` / `unobserve` / `disconnect` — one listener for a changing set of elements, shared observer), `CONTAINER_SIZES` / `CONTAINER_SIZE_TOKENS` / `DEFAULT_CONTAINER_LINES` / `readContainerLines` / `resolveContainerSize` (narrow / medium / wide), `isRtl(el)` (effective writing direction, across shadow roots) |
 | 5 Theme, motion, CSS timing | `getThemeContext`, `observeThemeContext`, `setThemeMode` / `getThemeMode` (force dark / light page-wide), `readThemeSignal(el)`, `resolveThemeSource(host, source)`, `THEME_CONTEXT_ATTRIBUTE`, `THEME_SOURCE_ATTRIBUTE`; `getPageMotion`, `observePageMotion`, `adoptMotionStyles(node)`, `MOTION_CSS`, `MOTION_PRESETS`, `MOTION_VALUES`, `MOTION_ATTRIBUTE`, `MOTION_DATA_ATTRIBUTE`; `isMotionOff` / `readScrollBehavior` / `readCssDurationMs` / `readCssLengthPx` / `parseCssTimeMs` (resolved CSS in JS), `animateOut` / `readAnimationMs` / `EXIT_HEIGHT_VAR` (exit animations) |
 | 6 Styles & rendering | `adoptStyles(root, ...css)` / `createStyleElement(root)` (style injection), `createCustomStyles` (the `customStyles` input), `extractConsumedCssVars`, `extractDeclaredCssVars`, `lintCssVars` (read vs declared `--prefix-*` names), `suggestCssVars` (likely target of a typo), `renderSlot` / `renderSlotHtml` (a render callback's result: HTML / node / default / hidden, memoized; the string form for string-built rows), `renderIcon` / `ICON_CSS` / `BUILT_IN_ICON_NAMES` / `observeIconHook(listener)` (icon strings: markup / built-in name / page `renderIconCallback` / icon-font classes / text; the page hook's changes — a BlissElement gets them through `iconsChanged()`), `renderLoader(host, container, context, opts)` (loading states), `escapeHtml(text)` |
-| 7 Overlays (non-floating; floating panels → `/positioning`) | `Z_INDEX` (stacking tiers), `resolvePresentation` / `DEFAULT_PRESENTATION_MAP` / `createPresentationContext` (floating panel vs fullscreen sheet), `lockBodyScroll()` (shared ref-counted lock), `fitToVisibleViewport(panel)`, `claimBackEntry(onBack)` (phone Back closes the sheet), `startSheetSession(panel, { backCallback })` (scroll lock + keyboard inset + Back + containing-block check, one `end()`), `startModalSession` / `startPanelSession` (modal / non-modal panel; the trap alone is `/a11y` `createFocusTrap`), `guardGhostClick` (a tap's trailing click), `SHEET_CHROME_CSS` / `createSheetHeader()` (the sheet header + close button), `registerOverlay` / `notifyOverlayActivated` / `observeOverlayActivation` / `dismissAllOverlays` / `OVERLAY_ACTIVATE_EVENT` / `ALL_OVERLAY_GROUPS` (one overlay open at a time, nesting, Escape routing) |
+| 7 Overlays (non-floating; floating panels → `/positioning`) | `Z_INDEX` (stacking tiers), `resolvePresentation` / `DEFAULT_PRESENTATION_MAP` / `createPresentationContext` (floating panel vs fullscreen sheet), `lockBodyScroll()` (shared ref-counted lock), `fitToVisibleViewport(panel)`, `claimBackEntry(onBack)` (phone Back closes the sheet), `startSheetSession(panel, { backCallback })` (scroll lock + keyboard inset + Back + containing-block check, one `end()`), `startModalSession` / `startPanelSession` (modal / non-modal panel; the trap alone is `/a11y` `createFocusTrap`), `guardGhostClick` (a tap's trailing click), `SHEET_CHROME_CSS` / `createSheetHeader()` (the sheet header + close button; `.km-sheet` full-screen frame, `.km-drawer` presets), `registerOverlay` / `notifyOverlayActivated` / `observeOverlayActivation` / `dismissAllOverlays` / `OVERLAY_ACTIVATE_EVENT` / `ALL_OVERLAY_GROUPS` (one overlay open at a time, nesting, Escape routing) |
 | 8 Shadow-DOM tree & screen reader | `deepActiveElement()` (the focused element inside shadow roots), `deepElementFromPoint`, `deepClosest(el, selector)` / `isDeepInside(el, container)` (`closest` / containment across shadow roots), `announce(text)` (screen-reader live region) |
 | 9 Keyboard & text, clipboard | `observeTextInput` / `isImeEnter` (IME-safe typed text; the shortcut guard `isTypingTarget` is in `/actions`), `copyText` / `readPasteText` (clipboard) |
 | 10 Forms, async, persistence | `createFormInputs` / `formatFormValue` (form submission), `createAsyncRunner` (latest-request-wins loading), `createStateStore` / `getStateStorageKey` (persisted UI state) |

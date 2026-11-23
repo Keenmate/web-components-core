@@ -21,10 +21,11 @@
     <button id="open-drawer">open drawer</button>
     <button id="open-drawer-rtl">open drawer (rtl, start)</button>
     <button id="open-panel-drawer">open non-modal drawer</button>
+    <button id="open-sheet">open full-screen sheet</button>
     <input id="page-field" aria-label="page field">
 
     <script type="module">
-        import { startModalSession, startPanelSession, animateOut, SHEET_CHROME_CSS, adoptStyles } from '/src/index.ts';
+        import { startModalSession, startPanelSession, animateOut, SHEET_CHROME_CSS, adoptStyles, createSheetHeader } from '/src/index.ts';
         import { createLayer } from '/src/positioning/index.ts';
 
         customElements.define('fx-layer-host', class extends HTMLElement {
@@ -84,6 +85,22 @@
                 dismissCallback: (reason) => { window.__panelReasons.push(reason); close(); },
             });
             panel.querySelector('#panel-close').addEventListener('click', close);
+        });
+        document.getElementById('open-sheet').addEventListener('click', () => {
+            const sheet = document.createElement('div');
+            sheet.className = 'km-sheet';
+            sheet.id = 'sheet';
+            const body = document.createElement('div');
+            body.className = 'km-sheet-body';
+            body.id = 'sheet-body';
+            body.innerHTML = Array.from({ length: 60 }, (_, i) => `<button class="sheet-row">row ${i + 1}</button><br>`).join('');
+            const close = () => {
+                session.end();
+                animateOut([sheet], { className: 'km-sheet--closing', doneCallback: () => sheet.remove() });
+            };
+            sheet.append(createSheetHeader({ title: 'Sheet', closeLabel: 'Close', closeCallback: close }).header, body);
+            document.body.append(sheet);
+            const session = startModalSession(sheet, { dismissCallback: close, shouldFitToVisibleViewport: true });
         });
     </script>
 </body>
