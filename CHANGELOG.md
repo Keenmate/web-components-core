@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it afterwards; named groups untouched. Opt out with `shouldDismissPageOverlays: false`. Underneath: new
   `activate({ dismissGroups })` on the `registerOverlay()` handle. Components drop their own
   `dismissAllOverlays()` call before opening a modal.
+- **`createAsyncRunner({ concurrency: 'exclusive' })`** (audit Q9): while a task is running a new `run()` is refused
+  (not queued) — for actions that must not overlap (web-daterangepicker month navigation drops its
+  `isMonthChanging` gate). A debounce wait is not running: the newest call still replaces the pending one.
+  Default `'latest'` = unchanged (a new run supersedes the old).
 
 ### Changed — BREAKING (renames, no aliases)
 - **`createStateStore()` takes ONE `getConfig()`** instead of `getKey()` / `getLoadCallback()` / `getSaveCallback()`:
@@ -87,6 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     **`/a11y`** (next to the other keyboard / focus helpers; `startModalSession` stays in the main index).
 
 ### Changed
+- **`createAsyncRunner().run()` returns a boolean** (was `void`): `true` = started / scheduled, `false` = refused
+  (`concurrency: 'exclusive'` while a task runs). Always `true` in the default `'latest'` mode.
 - **`/menu`'s phone sheet / drawer is modal** (rule C-CA-19): it runs through `startModalSession` — the page behind
   (the opener too) is `inert`, Tab stays inside (between the shown level and the close button; it no longer closes a
   sheet), Escape goes up one drilled-in level else closes, scroll lock / Back / backdrop click as before. Focus goes

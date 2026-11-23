@@ -2554,11 +2554,17 @@ The submission convention (light-DOM hidden inputs, never `setFormValue`) had th
 
 Five copies of "latest request wins" (web-multiselect search, web-commandpalette palette + usage, web-grid
 dropdown, web-editor pipelines), each with a different subset. Decided 2026-11-17:
-**`createAsyncRunner({ debounceMs, loaderDelayMs = 0, loadingChangeCallback, errorCallback, logSource })`** →
-`{ run(task, onResult), cancel(), isLoading, isPending }`.
+**`createAsyncRunner({ concurrency = 'latest', debounceMs, loaderDelayMs = 0, loadingChangeCallback, errorCallback, logSource })`** →
+`{ run(task, onResult): boolean, cancel(), isLoading, isPending }`.
 
 - `run(task: (signal) => T | PromiseLike<T>, onResult)` replaces the previous run: its debounce is dropped, its
   signal aborts, a late answer is ignored (generation check) — only the latest run reaches `onResult`.
+- `concurrency: 'exclusive'` (audit Q9, 2026-11-23 — web-daterangepicker's month navigation `isMonthChanging`
+  gate): while a task is RUNNING (from its start until it settles or `cancel()`) a new `run()` is REFUSED —
+  returns `false`, nothing is queued, the running task is untouched. A debounce wait is not running: inside it
+  the newest call still replaces the pending one (so the debounce keeps its "last call of a burst" meaning). A
+  `run()` from `onResult` is allowed (the task has settled). `run()` returns `true` (started / scheduled) in both
+  modes otherwise.
 - A synchronous result is delivered at once (after the debounce) with no loader. An async one turns the
   loader on — after `loaderDelayMs` when set (web-editor's 200 ms `PendingGate`), at once otherwise
   (web-multiselect) — and a run replacing a loading one keeps it on (no flicker). Loader off before `onResult`.

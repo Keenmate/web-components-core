@@ -60,7 +60,9 @@ visible). Release returns focus only when it was inside the panel or on `<body>`
 `createFormInputs(host)` (`form-inputs.ts`): reuses its inputs by index, re-appends when a framework dropped
 them, no `id`. `formatFormValue`: the callback wins (also over `array`); a thrown `undefined` becomes an Error.
 `createAsyncRunner` (`async-runner.ts`): generation counter + AbortController per run; the loader survives a
-replacing run (no flicker); `isPending` covers the debounce wait. `announce` (`announce.ts`): regions found by
+replacing run (no flicker); `isPending` covers the debounce wait. `concurrency: 'exclusive'` refuses `run()`
+(returns `false`) while `controller` is set — i.e. a task is running (start → settle / stop); a debounce wait has
+no controller, so it still replaces. `announce` (`announce.ts`): regions found by
 `[data-km-announcer]` under `<body>` (shared across core copies); `focus-trap.ts` skips them when inerting.
 Ghost click lives in `src/overlay/ghost-click.ts` (`startModalSession({ isOpenedByPointer })`).
 

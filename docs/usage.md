@@ -450,6 +450,15 @@ this.#search.run(
 this.#search.cancel();                                         // close / disconnect()
 ```
 
+An action that must not overlap itself (month navigation, save) uses `concurrency: 'exclusive'` — a `run()` while
+a task is running is refused (returns `false`, not queued) — instead of a private `isBusy` flag:
+
+```ts
+#navigate = createAsyncRunner({ concurrency: 'exclusive', loadingChangeCallback: (v) => this.#renderLoading(v), logSource: this });
+
+if (!this.#navigate.run((signal) => this.#loadMonth(target, signal), () => this.#showMonth(target))) return;   // busy
+```
+
 ## Screen-reader announcements
 
 Say what changed when focus doesn't move ([SPEC §12.23](SPEC.md)):

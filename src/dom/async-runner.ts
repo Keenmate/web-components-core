@@ -8,12 +8,22 @@
  * - A synchronous result is handed over at once (after the debounce) and never shows the loader.
  * - The loader (`loadingChangeCallback(true)`) starts with the async task — after `loaderDelayMs` when set, so a
  *   fast answer never flashes it — and stays up while a newer run replaces a loading one (no flicker).
+ * - `concurrency: 'exclusive'` turns it around: while a task is RUNNING a new `run()` is refused (returns `false`,
+ *   nothing queued) — month navigation, a save button. A debounce wait is not running: inside it the newest call
+ *   still replaces the pending one.
  * - An `AbortError` is never an error (the task gave up on our signal, or its own timeout signal);
  *   any other rejection goes to `errorCallback`, or the logger when there is none.
  */
 import { runSafely } from '../logging/safe-call.js';
 
 export interface AsyncRunnerOptions {
+  /**
+   * What a `run()` does while another run is in flight. `'latest'` (default): it replaces it (debounce dropped,
+   * signal aborted, late answer ignored). `'exclusive'`: it is REFUSED (`run()` returns `false`, not queued) while
+   * a task is actually running — from the task's start until it settles or `cancel()`. During a debounce wait
+   * nothing runs yet, so a newer call still replaces the pending one (returns `true`).
+   */
+  concurrency?: 'latest' | 'exclusive';
   /** Wait this long after the last `run()` before starting the task (`0` = start at once). A function is read per run. */
   debounceMs?: number | (() => number);
   /** Show the loader only when the task is still running after this long. Default `0` (at once). */
@@ -27,8 +37,12 @@ export interface AsyncRunnerOptions {
 }
 
 export interface AsyncRunner {
-  /** Start `task` (after the debounce), replacing the previous run; `onResult` gets its result if it is still the latest. */
-  run<T>(task: (signal: AbortSignal) => T | PromiseLike<T>, onResult: (result: T) => void): void;
+  /**
+   * Start `task` (after the debounce), replacing the previous run; `onResult` gets its result if it is still the
+   * latest. Returns `true` when the run was started / scheduled, `false` when refused (`'exclusive'` while a task
+   * is running).
+   */
+  run<T>(task: (signal: AbortSignal) => T | PromiseLike<T>, onResult: (result: T) => void): boolean;
   /** Drop the pending / running task (abort it, ignore its result) and turn the loader off — close, disconnect. */
   cancel(): void;
   /** `true` while the loader is shown. */
@@ -51,6 +65,7 @@ export function createAsyncRunner(opts: AsyncRunnerOptions = {}): AsyncRunner {
   let isLoading = false;
   let isPending = false;
   const source = opts.logSource ?? null;
+  const isExclusive = opts.concurrency === 'exclusive';
 
   const setLoading = (value: boolean): void => {
     if (value === isLoading) return;
@@ -119,12 +134,15 @@ export function createAsyncRunner(opts: AsyncRunnerOptions = {}): AsyncRunner {
 
   return {
     run(task, onResult) {
+      // `controller` is set exactly while a task runs (start → settle / stop).
+      if (isExclusive && controller) return false;
       stop();
       const gen = ++generation;
       isPending = true;
       const wait = typeof opts.debounceMs === 'function' ? opts.debounceMs() : (opts.debounceMs ?? 0);
       if (wait > 0) debounceTimer = setTimeout(() => start(gen, task, onResult), wait);
       else start(gen, task, onResult);
+      return true;
     },
     cancel() {
       stop();
