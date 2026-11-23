@@ -17,13 +17,22 @@ export type LoadStateCallback<S, C extends object = Partial<ComponentContext>> =
 /** `saveStateCallback(ctx)` — store `ctx.state` (the whole state) for `ctx.key`. May be async. */
 export type SaveStateCallback<S, C extends object = Partial<ComponentContext>> = (ctx: { key: string; state: S } & C) => void | Promise<void>;
 
+/** The persistence inputs of a component (rulebook C-CA-17 row names) — in a BlissElement, `this.config`. */
+export interface StateStoreConfig<S> {
+  /** Empty / `null` / unset = persistence off. */
+  storageKey?: string | null;
+  /** `null` / unset (and no `saveStateCallback`) → localStorage. */
+  loadStateCallback?: LoadStateCallback<S> | null;
+  /** `null` / unset (and no `loadStateCallback`) → localStorage. */
+  saveStateCallback?: SaveStateCallback<S> | null;
+}
+
 export interface StateStoreOptions<S> {
-  /** The current `storageKey`; empty / `null` = persistence off. Read on every call. */
-  getKey(): string | null | undefined;
-  /** The current `loadStateCallback` (null → localStorage). */
-  getLoadCallback?(): LoadStateCallback<S> | null | undefined;
-  /** The current `saveStateCallback` (null → localStorage). */
-  getSaveCallback?(): SaveStateCallback<S> | null | undefined;
+  /**
+   * The current persistence inputs, read on every call (a new key / callback takes effect at once) —
+   * in a BlissElement `() => this.config`.
+   */
+  getConfig(): StateStoreConfig<S>;
   /**
    * Wrap the callback data (`{ key }` / `{ key, state }`) in the component's callback context —
    * in a BlissElement `(data) => this.withContext(data)`.
@@ -58,10 +67,13 @@ export function createStateStore<S extends object>(host: HTMLElement, opts: Stat
    * that sets `loadStateCallback` after the first load, or removes it again, reads from the new store.
    */
   let cache: { key: string; source: 'host' | 'local'; state: S | null } | null = null;
-  const sourceOf = (): 'host' | 'local' => (opts.getLoadCallback?.() || opts.getSaveCallback?.() ? 'host' : 'local');
+  const sourceOf = (): 'host' | 'local' => {
+    const config = opts.getConfig();
+    return config.loadStateCallback || config.saveStateCallback ? 'host' : 'local';
+  };
   const cached = (key: string): boolean => cache?.key === key && cache.source === sourceOf();
   const currentKey = (): string | null => {
-    const key = opts.getKey();
+    const key = opts.getConfig().storageKey;
     return typeof key === 'string' && key.length > 0 ? key : null;
   };
   const ctx = (data: { key: string; state?: S }) => (opts.toContext ? opts.toContext(data) : data);
@@ -72,8 +84,9 @@ export function createStateStore<S extends object>(host: HTMLElement, opts: Stat
    */
   let hasWarnedHalf = false;
   const hostCallbacks = () => {
-    const load = opts.getLoadCallback?.() ?? null;
-    const save = opts.getSaveCallback?.() ?? null;
+    const config = opts.getConfig();
+    const load = config.loadStateCallback ?? null;
+    const save = config.saveStateCallback ?? null;
     if ((load || save) && !(load && save) && !hasWarnedHalf) {
       hasWarnedHalf = true;
       log().warn(`${load ? 'loadStateCallback' : 'saveStateCallback'} is set without ${load ? 'saveStateCallback' : 'loadStateCallback'}: the host keeps the state, so set both (localStorage is not used)`);

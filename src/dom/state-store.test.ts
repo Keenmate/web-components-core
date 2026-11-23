@@ -16,25 +16,25 @@ afterEach(() => {
 
 describe('createStateStore', () => {
   it('off without a storage key: load → null, save writes nothing', async () => {
-    const store = createStateStore<S>(host(), { getKey: () => '' });
+    const store = createStateStore<S>(host(), { getConfig: () => ({ storageKey: '' }) });
     await store.save({ width: 10 });
     expect(await store.load()).toBeNull();
     expect(localStorage.length).toBe(0);
   });
 
   it('default store is localStorage under km-state:<tag>:<key>; save merges into the whole state', async () => {
-    const store = createStateStore<S>(host(), { getKey: () => 'a' });
+    const store = createStateStore<S>(host(), { getConfig: () => ({ storageKey: 'a' }) });
     await store.save({ width: 300 });
     await store.save({ height: 200 });
     expect(JSON.parse(localStorage.getItem(getStateStorageKey('web-thing', 'a'))!)).toEqual({ width: 300, height: 200 });
-    const fresh = createStateStore<S>(host(), { getKey: () => 'a' });
+    const fresh = createStateStore<S>(host(), { getConfig: () => ({ storageKey: 'a' }) });
     expect(await fresh.load()).toEqual({ width: 300, height: 200 });
   });
 
   it('the key is read per call: a new key loads its own state', async () => {
     let key = 'a';
     localStorage.setItem(getStateStorageKey('web-thing', 'b'), JSON.stringify({ width: 7 }));
-    const store = createStateStore<S>(host(), { getKey: () => key });
+    const store = createStateStore<S>(host(), { getConfig: () => ({ storageKey: key }) });
     await store.save({ width: 1 });
     key = 'b';
     expect(await store.load()).toEqual({ width: 7 });
@@ -43,9 +43,11 @@ describe('createStateStore', () => {
   it('callbacks replace localStorage; they get the component context, the key and the WHOLE state', async () => {
     const saved: unknown[] = [];
     const store = createStateStore<S>(host(), {
-      getKey: () => 'k',
-      getLoadCallback: () => async ({ key }) => (key === 'k' ? { width: 5 } : null),
-      getSaveCallback: () => (ctx) => void saved.push(ctx),
+      getConfig: () => ({
+        storageKey: 'k',
+        loadStateCallback: async ({ key }) => (key === 'k' ? { width: 5 } : null),
+        saveStateCallback: (ctx) => void saved.push(ctx),
+      }),
       toContext: (data) => Object.defineProperty({ ...data }, 'controller', { value: 'ctl', enumerable: false }),
     });
     expect(await store.load()).toEqual({ width: 5 });
@@ -58,11 +60,13 @@ describe('createStateStore', () => {
   it('never throws: a failing callback or a corrupt entry is logged / ignored', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     localStorage.setItem(getStateStorageKey('web-thing', 'bad'), '{not json');
-    expect(await createStateStore<S>(host(), { getKey: () => 'bad' }).load()).toBeNull();
+    expect(await createStateStore<S>(host(), { getConfig: () => ({ storageKey: 'bad' }) }).load()).toBeNull();
     const store = createStateStore<S>(host(), {
-      getKey: () => 'k',
-      getLoadCallback: () => () => { throw new Error('offline'); },
-      getSaveCallback: () => async () => { throw new Error('offline'); },
+      getConfig: () => ({
+        storageKey: 'k',
+        loadStateCallback: () => { throw new Error('offline'); },
+        saveStateCallback: async () => { throw new Error('offline'); },
+      }),
     });
     expect(await store.load()).toBeNull();
     await expect(store.save({ width: 1 })).resolves.toBeUndefined();
@@ -74,8 +78,8 @@ describe('createStateStore', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const saved: unknown[] = [];
     localStorage.setItem(getStateStorageKey('web-thing', 'k'), JSON.stringify({ width: 99 }));
-    const store = createStateStore<S>(host(), { getKey: () => 'k', getSaveCallback: () => (ctx) => void saved.push(ctx.state) });
-    expect(await createStateStore<S>(host(), { getKey: () => 'k', getSaveCallback: () => () => {} }).load()).toBeNull(); // not the stale localStorage
+    const store = createStateStore<S>(host(), { getConfig: () => ({ storageKey: 'k', saveStateCallback: (ctx) => void saved.push(ctx.state) }) });
+    expect(await createStateStore<S>(host(), { getConfig: () => ({ storageKey: 'k', saveStateCallback: () => {} }) }).load()).toBeNull(); // not the stale localStorage
     await store.save({ width: 1 });
     await store.save({ height: 2 });
     expect(saved).toEqual([{ width: 1 }, { width: 1, height: 2 }]);
@@ -87,7 +91,7 @@ describe('createStateStore', () => {
   it('the cache is per key AND source: a load callback set after the first load is asked', async () => {
     localStorage.setItem(getStateStorageKey('web-thing', 'k'), JSON.stringify({ width: 1 }));
     let load: (() => S) | null = null;
-    const store = createStateStore<S>(host(), { getKey: () => 'k', getLoadCallback: () => load, getSaveCallback: () => (load ? () => {} : null) });
+    const store = createStateStore<S>(host(), { getConfig: () => ({ storageKey: 'k', loadStateCallback: load, saveStateCallback: load ? () => {} : null }) });
     expect(await store.load()).toEqual({ width: 1 }); // localStorage
     load = () => ({ width: 2 });
     expect(await store.load()).toEqual({ width: 2 }); // the host now
@@ -96,7 +100,7 @@ describe('createStateStore', () => {
   });
 
   it('clear() removes the saved state', async () => {
-    const store = createStateStore<S>(host(), { getKey: () => 'a' });
+    const store = createStateStore<S>(host(), { getConfig: () => ({ storageKey: 'a' }) });
     await store.save({ width: 1 });
     await store.clear();
     expect(localStorage.getItem(getStateStorageKey('web-thing', 'a'))).toBeNull();

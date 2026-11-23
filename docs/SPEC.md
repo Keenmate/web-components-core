@@ -2419,8 +2419,9 @@ no host store), web-commandpalette (favorites / recents: `usage-key`, `loadUsage
 | `loadStateCallback` | — | `toFunction()` | `(ctx & { key }) => S \| null \| Promise<…>`; set → the host keeps the state |
 | `saveStateCallback` | — | `toFunction()` | `(ctx & { key, state: S })`, the WHOLE state each time |
 
-and one handle: `createStateStore(host, { getKey, getLoadCallback, getSaveCallback, toContext })` →
-`{ load(), save(partial), clear() }`. Default store `localStorage['km-state:<tag>:<storage-key>']`; the cache is per key and store (setting / removing a callback later
+and one handle: `createStateStore(host, { getConfig, toContext })` → `{ load(), save(partial), clear() }`;
+`getConfig()` returns `{ storageKey, loadStateCallback, saveStateCallback }` (the row names, so a BlissElement passes
+`() => this.config`) and is read on every call. Default store `localStorage['km-state:<tag>:<storage-key>']`; the cache is per key and store (setting / removing a callback later
 reads from the new store); EITHER callback set → the host keeps the state and
 localStorage is never used (a missing half is a no-op, warned once — set both);
 `save()` merges the partial into the whole state; the key is read per call (a new key loads its own

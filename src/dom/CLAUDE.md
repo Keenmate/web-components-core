@@ -129,7 +129,8 @@ memo; `result` may be a thunk (skipped on a memo hit). `hidden` toggled only by 
 
 ## Persisted UI state (`src/dom/state-store.ts`, SPEC §12.17 — implemented)
 
-`createStateStore(host, { getKey, getLoadCallback?, getSaveCallback?, toContext? })` → `{ load, save, clear }`.
+`createStateStore(host, { getConfig, toContext? })` → `{ load, save, clear }`; `getConfig()` returns `{ storageKey, loadStateCallback,
+saveStateCallback }` (the row names — a BlissElement passes `() => this.config`), read on every call.
 The component's input rows are `storageKey` (`storage-key`, unset = off), `loadStateCallback`, `saveStateCallback`
 (rulebook C-CA-17). Default store `localStorage['km-state:<tag>:<key>']` (`getStateStorageKey()`); `save(partial)` merges
 into the WHOLE state and the save callback gets all of it; cache per key, the key is read per call; either callback set = host mode (no localStorage, a missing half is a no-op + one warning); never throws

@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Example: DH03 in `examples-dom.html`.
 
 ### Changed — BREAKING (renames, no aliases)
+- **`createStateStore()` takes ONE `getConfig()`** instead of `getKey()` / `getLoadCallback()` / `getSaveCallback()`:
+  it returns `{ storageKey, loadStateCallback, saveStateCallback }` (the rulebook C-CA-17 input names, new type
+  `StateStoreConfig<S>`), so a component passes `getConfig: () => this.config`. Read on every call; semantics
+  unchanged (empty / `null` key = off, no callback → localStorage). App-facing API (the three inputs) unchanged.
 - Internal → exported names: `composedClosest` → `deepClosest`, `isAtOrBelow` → `isDeepInside`,
   `callSafely` → `runSafely`, `notifyEach` → `notifyListeners` (internal `composedParent` → `deepParent`).
 - Verb-first / qualified names (naming review R1–R16): `onTextInput` → `observeTextInput`,

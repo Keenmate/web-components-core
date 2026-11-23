@@ -1183,7 +1183,7 @@ What the user arranged — a popover's size, column widths / order — survives 
 every component (SPEC §12.17, rulebook C-CA-17). Three input rows and one handle:
 
 ```ts
-import { createStateStore, toFunction, toText, type LoadStateCallback, type SaveStateCallback } from '@keenmate/web-components-core';
+import { createStateStore, toFunction, toText } from '@keenmate/web-components-core';
 
 static inputs = [
   // …
@@ -1193,9 +1193,7 @@ static inputs = [
 ];
 
 #state = createStateStore<MyState>(this, {
-  getKey: () => this.config.storageKey as string | null,
-  getLoadCallback: () => this.config.loadStateCallback as LoadStateCallback<MyState> | null,
-  getSaveCallback: () => this.config.saveStateCallback as SaveStateCallback<MyState> | null,
+  getConfig: () => this.config,                  // { storageKey, loadStateCallback, saveStateCallback }, read per call
   toContext: (data) => this.withContext(data),   // BlissElement: controller + element + extras
 });
 

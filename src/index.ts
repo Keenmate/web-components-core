@@ -223,7 +223,7 @@ export { createAsyncRunner } from './dom/async-runner.js';
 export type { AsyncRunner, AsyncRunnerOptions } from './dom/async-runner.js';
 // Persisted UI state (SPEC §12.17): storageKey + load / save callbacks, localStorage by default.
 export { createStateStore, getStateStorageKey } from './dom/state-store.js';
-export type { LoadStateCallback, SaveStateCallback, StateStore, StateStoreOptions } from './dom/state-store.js';
+export type { LoadStateCallback, SaveStateCallback, StateStore, StateStoreConfig, StateStoreOptions } from './dom/state-store.js';
 
 // ── 11. Scrolling, virtual lists, selection ───────────────────────────────────────────────────────
 // Container scroll (SPEC §12.15): scroll the one container around an element, never the page.
