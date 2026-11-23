@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc26] - 2026-11-23
+
 ### Added
 - **`createPointerDrag`: `PointerDragContext.pressEvent` + `threshold(pressEvent)`** (audit G10a, SPEC §12.28): every
   callback (`beforeStartCallback` / `moveCallback` / `dropCallback` / `cancelCallback`, `autoScroll.isEnabled`) gets the
