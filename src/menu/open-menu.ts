@@ -6,7 +6,7 @@
  * `/positioning` `anchor()`, dismisses on outside interaction, and implements the
  * WAI-ARIA menu keyboard model with roving focus.
  */
-import { getMenuChildren, isMenuDivider, resolveMenuEntries } from '../actions/resolve.js';
+import { loadMenuChildren, isMenuDivider, resolveMenuEntries } from '../actions/resolve.js';
 import type { MenuEntry, MenuItem, ResolvedActionItem } from '../actions/types.js';
 import { formatShortcut, matchesShortcut } from '../actions/shortcut.js';
 import { deepActiveElement } from '../dom/active-element.js';
@@ -412,7 +412,7 @@ export function openMenu<Ctx, A extends string = string>(
       owner,
       source:
         typeof item.getChildrenCallback === 'function'
-          ? () => getMenuChildren(item, ctx, host)
+          ? () => loadMenuChildren(item, ctx, host)
           : () => item.children ?? [],
       position: null,
       token: 0,

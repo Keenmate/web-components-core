@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Test — onTextInput + isImeEnter</title>
+    <title>Test — observeTextInput + isImeEnter</title>
     <link rel="stylesheet" href="test-fixtures.css">
 </head>
 <body>
@@ -12,11 +12,11 @@
     <input id="search" aria-label="search">
 
     <script type="module">
-        import { onTextInput, isImeEnter } from '/src/index.ts';
+        import { observeTextInput, isImeEnter } from '/src/index.ts';
         const input = document.getElementById('search');
         const log = [];
         window.__log = log;
-        onTextInput(input, (value) => log.push(`text:${value}`));
+        observeTextInput(input, (value) => log.push(`text:${value}`));
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') log.push(isImeEnter(e) ? 'enter:ime' : 'enter:submit');
         });

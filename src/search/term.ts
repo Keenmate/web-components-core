@@ -1,4 +1,4 @@
-import { matchesText, statelessRegex } from './match.js';
+import { matchesText, createStatelessRegex } from './match.js';
 import { normalizeSearchText } from './normalize.js';
 import type { ActiveSearchTerm, PreparedSearchTerm, SearchBehavior, SearchMatch } from './types.js';
 
@@ -60,7 +60,7 @@ export interface PrepareSearchTermOptions {
 export function prepareSearchTerm(term: string, opts: PrepareSearchTermOptions): ActiveSearchTerm {
   if (opts.getSearchTermCallback) {
     const prepared = opts.getSearchTermCallback(term);
-    if (prepared instanceof RegExp) return { kind: 'regex', re: statelessRegex(prepared) };
+    if (prepared instanceof RegExp) return { kind: 'regex', re: createStatelessRegex(prepared) };
     if (prepared == null || prepared === '') return NO_SEARCH_TERM;
     if (typeof prepared !== 'string') {
       opts.onObjectTerm?.(prepared);

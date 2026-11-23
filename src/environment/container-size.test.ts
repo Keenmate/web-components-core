@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CONTAINER_SIZE_TOKENS, DEFAULT_CONTAINER_SIZES, resolveContainerSize } from './container-size.js';
+import { CONTAINER_SIZE_TOKENS, DEFAULT_CONTAINER_LINES, resolveContainerSize } from './container-size.js';
 
 describe('container sizes', () => {
   it('buckets a width against the default lines (480 / 768)', () => {
@@ -24,7 +24,7 @@ describe('container sizes', () => {
 
   it.skipIf(!baseCss.includes('--base-container-'))('defaults match base-css-variables', () => {
     for (const key of ['narrow', 'medium'] as const) {
-      expect(baseCss).toMatch(new RegExp(`${CONTAINER_SIZE_TOKENS[key]}:\\s*${DEFAULT_CONTAINER_SIZES[key]}px\\s*;`));
+      expect(baseCss).toMatch(new RegExp(`${CONTAINER_SIZE_TOKENS[key]}:\\s*${DEFAULT_CONTAINER_LINES[key]}px\\s*;`));
     }
   });
 });

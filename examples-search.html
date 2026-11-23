@@ -233,7 +233,7 @@ searchCallback = ({ term, signal, entries }) => {
             <div class="code-block" data-language="js"><pre><code>import {
   normalizeSearchText,                    // (text, behavior = 'normalized') → string
   findTextMatches, matchesText,           // (text, term, match) → ranges / boolean (prepared strings)
-  findRegexMatches, statelessRegex,       // regex helpers
+  findRegexMatches, createStatelessRegex,       // regex helpers
   NO_SEARCH_TERM, createRegexCompiler,    // { compile(pattern) → RegExp | null (last valid), reset() }
   prepareSearchTerm,                      // (term, { behavior, match, regex, getSearchTermCallback?, onObjectTerm? }) → ActiveSearchTerm
   matchesSearchTerm,                      // (term, match, prepared | () => prepared, raw | () => raw) → boolean

@@ -96,6 +96,6 @@ export function findRegexMatches(text: string, re: RegExp): SearchRange[] {
 }
 
 /** A RegExp safe to `.test()` repeatedly — `g` / `y` make `test()` stateful via `lastIndex`. */
-export function statelessRegex(re: RegExp): RegExp {
+export function createStatelessRegex(re: RegExp): RegExp {
   return /[gy]/.test(re.flags) ? new RegExp(re.source, re.flags.replace(/[gy]/g, '')) : re;
 }

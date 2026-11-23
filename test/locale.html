@@ -15,7 +15,7 @@
 
     <script type="module">
         import { BlissElement, define, toObject, toText } from '/src/index.ts';
-        import { createLabels, getLocaleSettings, getMonthNames, formatNumber, parseNumber } from '/src/locale/index.ts';
+        import { createLabels, resolveLocaleSettings, getMonthNames, formatNumber, parseNumber } from '/src/locale/index.ts';
 
         const DEFAULTS = { 'buttons.cancel': 'Cancel {name}', 'headers.title': '<b>Files</b> for {user}' };
 
@@ -31,7 +31,7 @@
             localeChanged() { this.#render(); }
             #render() {
                 this.renders++;
-                const s = getLocaleSettings({ locale: this.config.locale });
+                const s = resolveLocaleSettings({ locale: this.config.locale });
                 this.innerHTML = `
                     <button class="cancel"></button>
                     <h3 class="title">${this.#labels.html('headers.title', { user: '<script>x' })}</h3>

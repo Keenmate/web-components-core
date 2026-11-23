@@ -250,7 +250,7 @@ List / tree / grid / toolbar keys go through core `/a11y` (`src/a11y/`, SPEC §1
 
 UI strings + locale go through core `/locale` (`src/locale/`, SPEC §12.24): `createLabels(host, DEFAULT_LABELS,
 () => this.config.labels, { tag: '<component>' })` (`.text` / `.html`; flat keys `<elementType>.<name>`, page-wide one flat
-dictionary `'<component>.<elementType>.<name>'`, `translateCallback` for an app's own i18n — the element's own first, then the page-wide one), `getLocaleSettings` / `resolveLocale`, `formatNumber` /
+dictionary `'<component>.<elementType>.<name>'`, `translateCallback` for an app's own i18n — the element's own first, then the page-wide one), `resolveLocaleSettings` / `resolveLocale`, `formatNumber` /
 `parseNumber`; page-wide `window.components.locale` / `.security`; the opt-in `localeChanged()` hook re-renders.
 
 A `render*Callback` result goes through `renderSlot(container, result, { renderDefault, memoKey })` (SPEC §12.35).
@@ -266,13 +266,13 @@ Clipboard: `copyText(text)` (API + execCommand fallback) and `readPasteText(even
 
 Scroll positions survive a DOM move with `keepScrollAcrossMove(this, () => [scrollers])` (SPEC §12.31).
 
-Typed text goes through `onTextInput(input, cb)` and keydown handlers return on `isImeEnter(e)` (IME-safe, SPEC §12.30).
+Typed text goes through `observeTextInput(input, cb)` and keydown handlers return on `isImeEnter(e)` (IME-safe, SPEC §12.30).
 
 A styled panel outside the component (drag ghost, drop pads, cover) is `createLayer(host, { css, className })`
 (`/positioning`); an edge drawer is `.km-drawer km-drawer--<side>` (`SHEET_CHROME_CSS`) + `startModalSession` (SPEC §12.29).
 
 In-page drags go through `createPointerDrag` (mouse + touch, long press, auto-scroll); a drop target's
-"files over the page" state through `watchPageDrag` (`src/dom/`, main index, SPEC §12.28).
+"files over the page" state through `observePageDrag` (`src/dom/`, main index, SPEC §12.28).
 
 Selected keys + anchor (click / Ctrl / Shift rules) go through `createSelection` (`src/selection/`, main index,
 SPEC §12.27).

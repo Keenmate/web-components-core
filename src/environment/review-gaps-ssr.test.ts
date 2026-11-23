@@ -62,7 +62,7 @@ describe('V-19 #7 — SSR: no window / document', () => {
 
   it('global: registerComponent / instances / page settings without a window', async () => {
     const { registerComponent } = await import('../global/register-component.js');
-    const { getInstances, getRegisteredTags } = await import('../global/instances.js');
+    const { getInstances, getConnectedTags } = await import('../global/instances.js');
     const { publishPageSetting } = await import('../global/page-setting.js');
     class El {}
     const entry = registerComponent('ssr-el', El as unknown as CustomElementConstructor, {
@@ -71,26 +71,26 @@ describe('V-19 #7 — SSR: no window / document', () => {
     });
     expect(entry.version()).toBe('1');
     expect(getInstances('ssr-el')).toEqual([]);
-    expect(getRegisteredTags()).toEqual([]);
+    expect(getConnectedTags()).toEqual([]);
     expect(() => publishPageSetting('x', { get: () => 1, set: () => {} })).not.toThrow();
   });
 
   it('overlay: scroll lock, keyboard inset, active-overlay and presentation are SSR-safe', async () => {
     const { lockBodyScroll } = await import('../overlay/scroll-lock.js');
-    const { observeKeyboardInset } = await import('../overlay/keyboard-inset.js');
+    const { fitToVisibleViewport } = await import('../overlay/keyboard-inset.js');
     const overlay = await import('../overlay/active-overlay.js');
     const { resolvePresentation } = await import('../overlay/presentation.js');
     const env = await import('./environment.js');
 
     const release = lockBodyScroll();
     expect(() => release()).not.toThrow();
-    expect(() => observeKeyboardInset({ style: {} } as HTMLElement)()).not.toThrow();
+    expect(() => fitToVisibleViewport({ style: {} } as HTMLElement)()).not.toThrow();
 
     const handle = overlay.registerOverlay(() => {});
     expect(() => handle.activate()).not.toThrow();
     expect(() => overlay.notifyOverlayActivated()).not.toThrow();
     expect(() => overlay.dismissAllOverlays()).not.toThrow();
-    overlay.onOverlayActivated(() => {})();
+    overlay.observeOverlayActivation(() => {})();
     handle.destroy();
     overlay.__resetOverlays();
 

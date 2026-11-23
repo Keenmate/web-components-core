@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  getMenuChildren,
+  loadMenuChildren,
   isActionBusy,
   isMenuDivider,
   createMenuDivider,
@@ -127,17 +127,17 @@ describe('resolveMenuEntries', () => {
   });
 });
 
-describe('getMenuChildren', () => {
+describe('loadMenuChildren', () => {
   it('callback (async) wins over static children; a throw falls back', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    expect(await getMenuChildren({ children: [{ id: 's' }] }, ctx)).toEqual([{ id: 's' }]);
-    expect(await getMenuChildren({ children: [{ id: 's' }], getChildrenCallback: async () => [{ id: 'd' }] }, ctx)).toEqual([
+    expect(await loadMenuChildren({ children: [{ id: 's' }] }, ctx)).toEqual([{ id: 's' }]);
+    expect(await loadMenuChildren({ children: [{ id: 's' }], getChildrenCallback: async () => [{ id: 'd' }] }, ctx)).toEqual([
       { id: 'd' },
     ]);
     expect(
-      await getMenuChildren({ children: [{ id: 's' }], getChildrenCallback: () => { throw new Error('x'); } }, ctx),
+      await loadMenuChildren({ children: [{ id: 's' }], getChildrenCallback: () => { throw new Error('x'); } }, ctx),
     ).toEqual([{ id: 's' }]);
-    expect(await getMenuChildren({}, ctx)).toEqual([]);
+    expect(await loadMenuChildren({}, ctx)).toEqual([]);
     error.mockRestore();
   });
 });

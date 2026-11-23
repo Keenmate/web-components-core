@@ -970,11 +970,11 @@ not design choices.
   component uses it as-is, redefines it, or extends it.
 
 ```ts
-export const DEFAULT_CATEGORIES = ['INIT', 'DATA', 'UI'] as const;
+export const DEFAULT_LOG_CATEGORIES = ['INIT', 'DATA', 'UI'] as const;
 
 export function createLoggers<C extends string>(
   namespace: string,
-  categories: readonly C[] = DEFAULT_CATEGORIES,
+  categories: readonly C[] = DEFAULT_LOG_CATEGORIES,
 ): {
   loggers: Record<C, Logger>;
   enableLogging(level?: LogLevel): void;   // the type's own level (default debug)
@@ -990,7 +990,7 @@ Usage — defaults, redefine, or extend:
 ```ts
 const { loggers } = createLoggers('MULTISELECT');                                   // defaults: INIT/DATA/UI
 const { loggers } = createLoggers('TREEVIEW', ['INIT','DATA','INDEX','UI','DRAG']); // redefine
-const { loggers } = createLoggers('DROPZONE', [...DEFAULT_CATEGORIES, 'FILE']);     // extend
+const { loggers } = createLoggers('DROPZONE', [...DEFAULT_LOG_CATEGORIES, 'FILE']);     // extend
 export const { INIT: initLogger, DATA: dataLogger, UI: uiLogger } = loggers;
 ```
 
@@ -1026,11 +1026,11 @@ component. Spans for `summary()` are capped (`maxSpans`, default 1000, oldest dr
   Element resolution (`src/logging/element-logger.ts`): a custom element, a plain
   element inside one's shadow root, a shadow root's host, or a ctx's `element`
   (the component context). `resolveActionItem` / `resolveMenuEntries` /
-  `getMenuChildren` / `runBeforeCallback*` take an optional trailing `logSource`
+  `loadMenuChildren` / `runBeforeCallback*` take an optional trailing `logSource`
   (default: the ctx); `openMenu` passes its `host`, `runAction` its detail.
 - **Page-wide switch — `window.components.logging`** (non-enumerable; tag names
   always contain a hyphen, so no clash, and enumerating `window.components` /
-  `getRegisteredTags()` still yields components only): `enableLogging(level?)`,
+  `getConnectedTags()` still yields components only): `enableLogging(level?)`,
   `disableLogging()`, `setLogLevel(level)`, `resetLogging()`, `getCategories()` — the
   per-component method names. Sets the page level of every bundle created so far AND later
   (a late `createLoggers()` adopts it). Components bundle their own core copy, so the state
@@ -1201,7 +1201,7 @@ auto-registered while the rest did not. Core consolidates it:
   registry entry's `getInstances()` is wired to it. No per-component tracker.
   The elements ARE the per-instance handles: a devtools overlay
   (Ctrl-Alt-C → list a tag's instances → act on one) enumerates tags via
-  `window.components` + `getRegisteredTags()` and each tag's instances via
+  `window.components` + `getConnectedTags()` and each tag's instances via
   `getInstances()`.
 - **Per-instance logging** — `BlissElement` exposes `this.log` (an instance
   logger per category of the tag's `createLoggers` bundle, wired by
@@ -1222,7 +1222,7 @@ auto-registered while the rest did not. Core consolidates it:
 
 ### 12.4 Other candidates (later modules)
 - **Callbacks & events model** — IMPLEMENTED, see §12.5 (`static events` +
-  `emit()` + managed `on<Name>` properties, and `runHook()` for `*Callback`s).
+  `emit()` + managed `on<Name>` properties, and `runCallback()` for `*Callback`s).
 - **Theming / CSS cascade-layer helpers** — the RUNTIME step (adopt a
   stylesheet into a shadow root) is IMPLEMENTED, see §12.8 (`adoptStyles`
   + `createStyleSlot`). The authoring conventions (`@layer` order, `?inline`
@@ -1470,12 +1470,12 @@ synchronous today (ms: a click selects in the same tick) and must stay so for
 sync hooks. This supersedes the per-component result objects
 (drp's `{ action: 'accept' | 'adjust' | … }`).
 
-**`*Callback` — `runHook(key, ctx, { whenUnset, errorCallback? })`.** Core owns only
+**`*Callback` — `runCallback(key, ctx, { whenUnset, errorCallback? })`.** Core owns only
 the drift-prone plumbing: unset → `whenUnset`; the callback is invoked with a
 single `ctx` argument and its result is normalized through `Promise.resolve` (so
 sync OR async both work); a throw routes to `errorCallback` if given, else **re-throws**
 (no silent swallow — a component that forgets `errorCallback` fails loudly).
-`runHook` stays the generic path for providers / renderers whose result has no
+`runCallback` stays the generic path for providers / renderers whose result has no
 shared meaning; interceptors use `runBeforeCallback` above, whose contract core
 now owns (the drp result objects it used to defer to go in rc15).
 
@@ -1654,7 +1654,7 @@ Rule of thumb: **class-only policy → `resolvePresentation(mode, env, map)`;
 width-aware (or any snapshot field) → `classifyDevice(env)` + your own branch.**
 
 Overlay runtime helpers for the fullscreen tier: `lockBodyScroll()` (ref-counted
-body-scroll lock) and `observeKeyboardInset(panel)` (pin a fixed sheet above the
+body-scroll lock) and `fitToVisibleViewport(panel)` (pin a fixed sheet above the
 soft keyboard via `visualViewport`).
 
 `lockBodyScroll()` **pins** `<body>` (since rc18): on the first lock it records
@@ -1675,7 +1675,7 @@ overlay state can't live in module variables:
 - the lock's count and snapshot live on `globalThis[Symbol.for('km-scroll-lock')]`
   (`ScrollLockState`: `{ count, saved: { scrollX, scrollY, style, body?, rootStyle? } | null }`) — a
   documented shape, so non-core code (pure-css) can join the same lock;
-- `ALL_GROUPS` (the `dismissAllOverlays()` wildcard of `km-overlay-activate`) is
+- `ALL_OVERLAY_GROUPS` (the `dismissAllOverlays()` wildcard of `km-overlay-activate`) is
   `Symbol.for('km-overlay-all-groups')`, so a dismiss from one component's copy
   reaches every other copy and outside listeners can compare against it;
 - the breakpoint table (`configureBreakpoints()`, the tokens settled by page load) lives on
@@ -1759,7 +1759,7 @@ the page to the top after the lock put it back. Replaces the private copies in w
 sheet uses it too (`src/overlay/back-entry.ts`).
 
 `startSheetSession(panel, { onBack, shouldLockScroll, shouldObserveKeyboardInset, shouldCheckContainingBlock,
-logSource })` (`src/overlay/sheet-session.ts`) composes `lockBodyScroll` + `observeKeyboardInset` + `claimBackEntry`
+logSource })` (`src/overlay/sheet-session.ts`) composes `lockBodyScroll` + `fitToVisibleViewport` + `claimBackEntry`
 (+ a one-time containing-block warning via `getFixedPositionOffsetParent`) behind one idempotent `end()`;
 `rearmBack()` re-claims from inside `onBack`. Components start their full-screen sheet with it.
 
@@ -1936,7 +1936,7 @@ ASCII code point skips the Unicode work), so normalizing 100k grid values costs 
 
 **API** (`@keenmate/web-components-core/search`, not re-exported from the root):
 `normalizeSearchText`, `findTextMatches`, `matchesText`, `findRegexMatches`,
-`statelessRegex`, `NO_SEARCH_TERM`, `createRegexCompiler`, `prepareSearchTerm`,
+`createStatelessRegex`, `NO_SEARCH_TERM`, `createRegexCompiler`, `prepareSearchTerm`,
 `matchesSearchTerm`, `findHighlightRanges`, `wrapRanges`, `highlightHtml`, `escapeHtml` (the same function is also on the root index); types `SearchBehavior`,
 `SearchMatch`, `SearchTermContext`, `PreparedSearchTerm`, `SearchEntry`,
 `SearchCallbackContext`, `ActiveSearchTerm`, `SearchRange`, `HighlightResult`,
@@ -1964,7 +1964,7 @@ Helpers: `resolveActionItem(item, ctx, defaults?)` (callback > static >
 component default > base; a throwing callback is logged and the static value
 used), `resolveMenuEntries(entries, ctx, defaults?)` (drops hidden items, trims
 leading / trailing / doubled dividers, expands string built-ins),
-`getMenuChildren`, `normalizeActionItems` (string shorthand),
+`loadMenuChildren`, `normalizeActionItems` (string shorthand),
 `readActionDataset(el)` (`data-*` minus `action` / `id`).
 
 **One `action` event per component.** `runAction({ detail, beforeActionCallback,
@@ -1989,7 +1989,7 @@ else Ctrl), space-separated sequences, `KeyboardEvent.key` names (aliases `Plus`
 ProseMirror `Mod-Shift-z` read too; free text with other characters is not a shortcut and shows as is).
 `parseShortcut` / `matchesShortcut(event, s)` (modifiers exact, a bare single character ignores Shift, letters /
 digits also match by `event.code` for macOS Option) / `formatShortcut` (`Ctrl+Shift+Z`, Apple `⇧⌘Z`) /
-`shortcutKeycaps` / `isTypingTarget` / `bindShortcuts(target, bindings | () => bindings, { sequenceTimeoutMs })`
+`getShortcutKeycaps` / `isTypingTarget` / `bindShortcuts(target, bindings | () => bindings, { sequenceTimeoutMs })`
 (sequences, plain keys skipped while typing unless `shouldFireWhileTyping`, `run()` returning `false` keeps the
 default). `/menu` formats item shortcuts and matches them with it.
 ### 12.13 Menu (context / dropdown menus) — IMPLEMENTED (`src/menu/`, subpath `/menu`)
@@ -2539,7 +2539,7 @@ every element. Decided 2026-10-26 / 10-27 / 10-28 (rulebook D-NC-24), built 2026
   { shouldEscapeLabels }` — non-enumerable accessors (`publishLocaleHooks()`, from `registerComponent()` and
   every read), state in `sharedState('locale')`. Assigning REPLACES the object; it is stored as a frozen copy
   (nested mutation throws instead of being silently missed). A non-object warns and is ignored.
-- **Settings** (`getLocaleSettings(instance)`): per key instance → page → derived from `Intl` for the resolved
+- **Settings** (`resolveLocaleSettings(instance)`): per key instance → page → derived from `Intl` for the resolved
   locale — `getDateFormat` (`YYYY` / `MM` / `DD` tokens from `formatToParts`), `getTimeFormat` (`hourCycle`),
   `getWeekStartDay` (`Intl.Locale` `getWeekInfo()` / `weekInfo`, then a region table), `getNumberSeparators`.
   The page-wide keys are the USER's preference, so they apply also to an element with its own `locale`.
@@ -2587,7 +2587,7 @@ every element. Decided 2026-10-26 / 10-27 / 10-28 (rulebook D-NC-24), built 2026
   `translateCallback` pluralizes every key). Numbers are locale-formatted and (in `html()`) strings escaped at
   ANY depth of plain objects / arrays — the translate callback gets that same deep-escaped copy, numbers raw.
   Flat `{name}` params keep working. Core stays a formatter: no plural / select syntax (the app's library does it).
-- **Live:** `observeLocale(listener)` hears page-locale / security assignments and the browser `languagechange`;
+- **Live:** `observePageLocale(listener)` hears page-locale / security assignments and the browser `languagechange`;
   BlissElement's opt-in `localeChanged()` hook (override = subscribed while connected) re-renders texts. Not
   called on the first connect (`reinit()` read the locale); a change while detached fires on reconnect (a
   revision counter).
@@ -2680,7 +2680,7 @@ Two gaps from the audit (B11 / B12): only web-dropzone knew when files were drag
 `page-file-drag.ts`), and in-page drags (web-treeview nodes, web-grid columns / rows) were HTML5 DnD or mouse
 events — nothing on a phone except web-treeview's own touch-event copy. Decided 2026-11-17:
 
-- **`watchPageDrag({ types = ['Files'], onChange(isArmed) })`** → unsubscribe: one window listener set (capture
+- **`observePageDrag({ types = ['Files'], onChange(isArmed) })`** → unsubscribe: one window listener set (capture
   phase) shared by every watcher; per watcher only drags carrying one of its `dataTransfer.types` arm it. Start:
   a matching `dragenter` / `dragover`; end: `drop`, leaving the window (enter / leave depth), `dragend`, Escape,
   or 350 ms without a `dragover` pulse (Escape on an external drag never reaches JS). After Escape the same
@@ -2699,7 +2699,7 @@ events — nothing on a phone except web-treeview's own touch-event copy. Decide
   re-run as content slides under the pointer. Escape / `pointercancel` → `onCancel`. The click that ends a drop
   is swallowed (`guardGhostClick`). Pointer capture on the container.
 - Not in core: the drag image / drop indicator, drop rules, cross-window HTML5 DnD (a component may keep
-  `draggable` for dragging OUT of the page; its drop targets still use `watchPageDrag` to arm).
+  `draggable` for dragging OUT of the page; its drop targets still use `observePageDrag` to arm).
 
 ### 12.29 Styled layers + the drawer preset — IMPLEMENTED (`src/positioning/layer.ts`, `/positioning`; `.km-drawer` in `SHEET_CHROME_CSS`)
 
@@ -2737,10 +2737,10 @@ Audit B16: only web-commandpalette handled IME composition (Japanese / Chinese /
 with suggestions); web-multiselect, web-treeview, web-grid and web-editor searched on every intermediate
 `input` and treated the candidate-confirming Enter as their own. Decided 2026-11-17:
 
-- **`onTextInput(input, callback(value, event))`** → unsubscribe: `input` events with `isComposing` are skipped,
+- **`observeTextInput(input, callback(value, event))`** → unsubscribe: `input` events with `isComposing` are skipped,
   `compositionend` delivers the committed text, and Firefox's plain `input` right after `compositionend` (same
   value, same task) is dropped; a same-value `input` later is a real edit. Works on an input, a textarea or a
-  contenteditable (`textContent`). Delegated: `onTextInput(container, cb, { selector })` — one subscription on an
+  contenteditable (`textContent`). Delegated: `observeTextInput(container, cb, { selector })` — one subscription on an
   element / shadow root covers every matching descendant, including ones re-rendered later (web-grid's filter
   row); the callback's third argument is the matched element.
 - **`isImeEnter(event)`**: `isComposing` or `keyCode === 229` (Safari's confirming Enter arrives after

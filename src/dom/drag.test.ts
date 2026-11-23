@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { applyArmedState, watchPageDrag } from './page-drag.js';
+import { applyArmedState, observePageDrag } from './page-drag.js';
 import { createPointerDrag } from './pointer-drag.js';
 
 /** jsdom has no DragEvent / PointerEvent: plain events with the fields the code reads. */
@@ -13,12 +13,12 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('watchPageDrag', () => {
+describe('observePageDrag', () => {
   it('arms only for matching types; enter / leave depth; drop ends; unsubscribe', () => {
     const files = vi.fn();
     const nodes = vi.fn();
-    const stopFiles = watchPageDrag({ onChange: files });
-    const stopNodes = watchPageDrag({ types: ['application/x-node'], onChange: nodes });
+    const stopFiles = observePageDrag({ onChange: files });
+    const stopNodes = observePageDrag({ types: ['application/x-node'], onChange: nodes });
     window.dispatchEvent(drag('dragenter', ['text/plain']));
     expect(files).not.toHaveBeenCalled();
     window.dispatchEvent(drag('dragenter', ['Files']));
@@ -42,7 +42,7 @@ describe('watchPageDrag', () => {
   it('the dragover heartbeat stopping ends it (Escape on an external drag)', () => {
     vi.useFakeTimers();
     const onChange = vi.fn();
-    const stop = watchPageDrag({ onChange });
+    const stop = observePageDrag({ onChange });
     window.dispatchEvent(drag('dragenter', ['Files']));
     vi.advanceTimersByTime(600);
     expect(onChange).toHaveBeenLastCalledWith(false);
@@ -52,7 +52,7 @@ describe('watchPageDrag', () => {
   it('after Escape the same drag’s dragovers don’t re-arm; a new dragenter or a pause in them does', () => {
     vi.useFakeTimers();
     const onChange = vi.fn();
-    const stop = watchPageDrag({ onChange });
+    const stop = observePageDrag({ onChange });
     window.dispatchEvent(drag('dragenter', ['Files']));
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(onChange).toHaveBeenLastCalledWith(false);

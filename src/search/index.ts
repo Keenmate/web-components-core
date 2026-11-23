@@ -6,7 +6,7 @@
  * A separate subpath so components without a search box don't pull it.
  */
 export { normalizeSearchText } from './normalize.js';
-export { findTextMatches, matchesText, findRegexMatches, statelessRegex } from './match.js';
+export { findTextMatches, matchesText, findRegexMatches, createStatelessRegex } from './match.js';
 export { NO_SEARCH_TERM, createRegexCompiler, prepareSearchTerm, matchesSearchTerm } from './term.js';
 export type { RegexCompiler, PrepareSearchTermOptions } from './term.js';
 export { escapeHtml } from '../dom/escape-html.js';

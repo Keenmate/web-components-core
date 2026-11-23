@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createMenuDivider, getMenuChildren, isActionBusy, resolveMenuEntries, runAction } from './resolve.js';
+import { createMenuDivider, loadMenuChildren, isActionBusy, resolveMenuEntries, runAction } from './resolve.js';
 import type { ActionEventDetail, ActionItem, MenuEntry, MenuItem } from './types.js';
 
 // Review 2026-11-03 A-27 (test gaps): the /actions scenarios resolve.test.ts did not cover yet.
@@ -40,19 +40,19 @@ describe('A-27 resolveMenuEntries — divider merge', () => {
   });
 });
 
-describe('A-27 getMenuChildren', () => {
+describe('A-27 loadMenuChildren', () => {
   it('a getChildrenCallback returning undefined / null (sync or async) gives []', async () => {
     const item = (cb: () => unknown) => ({ getChildrenCallback: cb }) as unknown as MenuItem<RowCtx>;
-    expect(await getMenuChildren(item(() => undefined), ctx)).toEqual([]);
-    expect(await getMenuChildren(item(() => null), ctx)).toEqual([]);
-    expect(await getMenuChildren(item(async () => undefined), ctx)).toEqual([]);
-    expect(await getMenuChildren(item(async () => null), ctx)).toEqual([]);
+    expect(await loadMenuChildren(item(() => undefined), ctx)).toEqual([]);
+    expect(await loadMenuChildren(item(() => null), ctx)).toEqual([]);
+    expect(await loadMenuChildren(item(async () => undefined), ctx)).toEqual([]);
+    expect(await loadMenuChildren(item(async () => null), ctx)).toEqual([]);
   });
 
   it('a rejecting getChildrenCallback is logged and falls back to the static children', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const item: MenuItem<RowCtx> = { children: [{ id: 's' }], getChildrenCallback: async () => Promise.reject(new Error('no')) };
-    expect(await getMenuChildren(item, ctx)).toEqual([{ id: 's' }]);
+    expect(await loadMenuChildren(item, ctx)).toEqual([{ id: 's' }]);
     expect(error).toHaveBeenCalled();
   });
 });

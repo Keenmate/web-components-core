@@ -8,7 +8,7 @@
  * `position: fixed` sheet in its own box — warned once per session through the element's logger, naming it.
  */
 import { claimBackEntry } from './back-entry.js';
-import { observeKeyboardInset } from './keyboard-inset.js';
+import { fitToVisibleViewport } from './keyboard-inset.js';
 import { lockBodyScroll } from './scroll-lock.js';
 import { describeContainingBlockProps, getFixedPositionOffsetParent } from '../positioning/containing-block.js';
 import { coreLog } from '../logging/element-logger.js';
@@ -46,7 +46,7 @@ export function startSheetSession(panel: HTMLElement, opts: SheetSessionOptions 
   let isEnded = false;
 
   if (opts.shouldLockScroll ?? true) undo.push(lockBodyScroll());
-  if (opts.shouldObserveKeyboardInset ?? true) undo.push(observeKeyboardInset(panel));
+  if (opts.shouldObserveKeyboardInset ?? true) undo.push(fitToVisibleViewport(panel));
   const claim = (): void => {
     if (!opts.onBack || isEnded) return;
     releaseBack = claimBackEntry(() => opts.onBack!());

@@ -93,7 +93,7 @@ test.describe('touch', () => {
   });
 });
 
-test('watchPageDrag: a file dragged over the page arms the zone; a drop disarms it', async ({ page }) => {
+test('observePageDrag: a file dragged over the page arms the zone; a drop disarms it', async ({ page }) => {
   const dt = await page.evaluateHandle(() => {
     const d = new DataTransfer();
     d.items.add(new File(['x'], 'a.txt', { type: 'text/plain' }));

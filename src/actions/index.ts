@@ -15,7 +15,7 @@ export type {
 } from './types.js';
 export {
   createMenuDivider,
-  getMenuChildren,
+  loadMenuChildren,
   isActionBusy,
   isMenuDivider,
   normalizeActionItems,
@@ -34,6 +34,6 @@ export {
   matchesShortcut,
   parseKeyChord,
   parseShortcut,
-  shortcutKeycaps,
+  getShortcutKeycaps,
 } from './shortcut.js';
 export type { BindShortcutsOptions, KeyChord, ShortcutBinding, ShortcutOptions } from './shortcut.js';

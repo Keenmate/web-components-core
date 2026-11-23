@@ -69,14 +69,14 @@ import { trackInstance, untrackInstance } from '../global/instances.js';
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
 import { coreLog, getElementLoggers, setInstanceLogLevelSource } from '../logging/element-logger.js';
 import type { InstanceLogger, LogLevelDesc } from '../logging/create-loggers.js';
-import { DEFAULT_ENABLED_LEVEL, LOG_LEVELS, isLogLevel, toLogLevelNumber } from '../logging/log-core.js';
+import { DEFAULT_ENABLED_LOG_LEVEL, LOG_LEVELS, isLogLevel, parseLogLevel } from '../logging/log-core.js';
 import { dispatch, type DispatchOptions } from './dispatch.js';
 import { withComponentContext, type ComponentContext, type EmitDetail } from './context.js';
 import { hasRemovalWatchers, notifyRemoval } from './removal-watch.js';
 import { notifyConnected } from './connection-watch.js';
 import { warnUnusedPageStyles } from '../dom/custom-styles.js';
 import { isRtl } from '../dom/direction.js';
-import { getLocaleRevision, observeLocale } from '../locale/page-locale.js';
+import { getLocaleRevision, observePageLocale } from '../locale/page-locale.js';
 import { getIconHookRevision, observeIconHook } from '../dom/render-icon.js';
 import {
   normalizeEventDefs,
@@ -738,7 +738,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     if (this.localeChanged !== BlissElement.prototype.localeChanged) {
       const seen = this.#localeRevision;
       this.#localeRevision = getLocaleRevision();
-      if (!step(() => (this.#localeUnsub = observeLocale(() => {
+      if (!step(() => (this.#localeUnsub = observePageLocale(() => {
         this.#localeRevision = getLocaleRevision();
         this.localeChanged();
       })))) return this.#rethrow(firstError);
@@ -1197,7 +1197,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * page → `warn`). The seam a Ctrl-Alt-C overlay calls after the user picks one instance.
    * An invalid level warns and changes nothing.
    */
-  enableLogging(level: LogLevelDesc = DEFAULT_ENABLED_LEVEL): void {
+  enableLogging(level: LogLevelDesc = DEFAULT_ENABLED_LOG_LEVEL): void {
     if (!isLogLevel(level)) {
       this.#warn(`enableLogging: invalid level "${String(level)}" (expected trace | debug | info | warn | error | silent)`);
       return;
@@ -1217,7 +1217,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
 
   /** Whether this element has its own log level that prints something (set, and not `silent`). */
   get isLoggingEnabled(): boolean {
-    const rank = toLogLevelNumber(this.#logLevel);
+    const rank = parseLogLevel(this.#logLevel);
     return rank !== undefined && rank !== LOG_LEVELS.SILENT;
   }
 
@@ -1863,7 +1863,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * plumbing. Correctness that used to drift across per-component hook wrappers
    * lives here once.
    */
-  protected async runHook<Ctx, R>(
+  protected async runCallback<Ctx, R>(
     callbackKey: string,
     ctx: Ctx,
     opts: { whenUnset: R; errorCallback?: (error: unknown) => R },

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { bindShortcuts, formatShortcut, isTypingTarget, matchesShortcut, parseShortcut, shortcutKeycaps } from './shortcut.js';
+import { bindShortcuts, formatShortcut, isTypingTarget, matchesShortcut, parseShortcut, getShortcutKeycaps } from './shortcut.js';
 
 const key = (k: string, mods: Partial<KeyboardEventInit> = {}, code?: string) =>
   new KeyboardEvent('keydown', { key: k, code, bubbles: true, cancelable: true, composed: true, ...mods });
@@ -49,7 +49,7 @@ describe('format', () => {
     expect(formatShortcut('g f', { isApple: false })).toBe('G F');
     expect(formatShortcut('Shift+ArrowUp', { isApple: false })).toBe('Shift+↑');
     expect(formatShortcut('right-click', { isApple: false })).toBe('right-click');
-    expect(shortcutKeycaps('Ctrl+Alt+Delete', { isApple: false })).toEqual([['Ctrl', 'Alt', 'Del']]);
+    expect(getShortcutKeycaps('Ctrl+Alt+Delete', { isApple: false })).toEqual([['Ctrl', 'Alt', 'Del']]);
   });
 });
 

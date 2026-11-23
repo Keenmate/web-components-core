@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { __resetScrollLock, lockBodyScroll } from './scroll-lock.js';
-import { observeKeyboardInset } from './keyboard-inset.js';
+import { fitToVisibleViewport } from './keyboard-inset.js';
 
 // Review 2026-11-03 V-19 #6 (overlay test gaps). Nested overlays (V-09) and dismissAllOverlays(undefined)
 // (V-12) are in active-overlay.test.ts ('active-overlay nesting'); pinch-zoom in keyboard-inset.test.ts.
@@ -87,7 +87,7 @@ describe('V-19 #6 — lock → <body> swapped (Turbo / htmx) → release', () =>
   });
 });
 
-describe('V-19 #6 — observeKeyboardInset: an offsetTop change via the scroll event alone', () => {
+describe('V-19 #6 — fitToVisibleViewport: an offsetTop change via the scroll event alone', () => {
   class FakeViewport extends EventTarget {
     height = 800;
     offsetTop = 0;
@@ -109,7 +109,7 @@ describe('V-19 #6 — observeKeyboardInset: an offsetTop change via the scroll e
 
   it('follows the visual viewport scrolling (iOS bringing the field into view) without a resize', () => {
     const panel = document.createElement('div');
-    const cleanup = observeKeyboardInset(panel);
+    const cleanup = fitToVisibleViewport(panel);
     vp.height = 450; // keyboard already open
     vp.offsetTop = 120;
     vp.dispatchEvent(new Event('scroll'));
@@ -126,7 +126,7 @@ describe('V-19 #6 — observeKeyboardInset: an offsetTop change via the scroll e
 
   it('a pinch-zoom scroll (scale ≠ 1) is ignored', () => {
     const panel = document.createElement('div');
-    const cleanup = observeKeyboardInset(panel);
+    const cleanup = fitToVisibleViewport(panel);
     expect(panel.style.top).toBe('0px');
     vp.scale = 2;
     vp.offsetTop = 200;

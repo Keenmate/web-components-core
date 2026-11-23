@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BlissElement } from '../element/bliss-element.js';
 import { createLoggers } from '../logging/create-loggers.js';
-import { getInstances, getRegisteredTags } from './instances.js';
+import { getInstances, getConnectedTags } from './instances.js';
 import { registerComponent } from './register-component.js';
 
 let seq = 0;
@@ -87,13 +87,13 @@ describe('live-instance registry', () => {
     document.body.append(a, b);
     expect(getInstances(tag)).toEqual([a, b]);
     expect(window.components?.[tag]?.getInstances()).toEqual([a, b]);
-    expect(getRegisteredTags()).toContain(tag);
+    expect(getConnectedTags()).toContain(tag);
 
     a.remove();
     expect(getInstances(tag)).toEqual([b]);
     b.remove();
     expect(getInstances(tag)).toEqual([]);
-    expect(getRegisteredTags()).not.toContain(tag);
+    expect(getConnectedTags()).not.toContain(tag);
   });
 
   it('per-instance logging: enableLogging() makes only that element loud', () => {
@@ -181,7 +181,7 @@ describe('live-instance registry', () => {
 
 // Review V-02 / V-03 / L-11: every component bundles its own copy of core.
 describe('two copies of core on one page', () => {
-  it('getInstances() / getRegisteredTags() from another copy see this copy’s elements', async () => {
+  it('getInstances() / getConnectedTags() from another copy see this copy’s elements', async () => {
     const tag = freshTag();
     class El extends BlissElement {}
     registerComponent(tag, El as unknown as CustomElementConstructor, { config: { name: 'x', version: '1' } });
@@ -191,7 +191,7 @@ describe('two copies of core on one page', () => {
     const other = await import('./instances.js'); // a second module instance = another bundle
     expect(other.getInstances).not.toBe(getInstances);
     expect(other.getInstances(tag)).toEqual([el]);
-    expect(other.getRegisteredTags()).toContain(tag);
+    expect(other.getConnectedTags()).toContain(tag);
   });
 
   it('a second copy registering an already-defined tag keeps the first entry and warns', async () => {

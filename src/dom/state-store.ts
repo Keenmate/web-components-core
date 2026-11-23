@@ -42,7 +42,7 @@ export interface StateStore<S> {
 }
 
 /** The localStorage entry: `km-state:<tag>:<key>`. */
-export function stateStorageKey(tag: string, key: string): string {
+export function getStateStorageKey(tag: string, key: string): string {
   return `km-state:${tag}:${key}`;
 }
 
@@ -94,7 +94,7 @@ export function createStateStore<S extends object>(host: HTMLElement, opts: Stat
       }
     }
     try {
-      const raw = globalThis.localStorage?.getItem(stateStorageKey(tag, key));
+      const raw = globalThis.localStorage?.getItem(getStateStorageKey(tag, key));
       return raw ? (JSON.parse(raw) as S) : null;
     } catch {
       return null; // no localStorage (private mode, SSR) or a corrupt entry: start fresh
@@ -114,7 +114,7 @@ export function createStateStore<S extends object>(host: HTMLElement, opts: Stat
       return;
     }
     try {
-      globalThis.localStorage?.setItem(stateStorageKey(tag, key), JSON.stringify(state));
+      globalThis.localStorage?.setItem(getStateStorageKey(tag, key), JSON.stringify(state));
     } catch {
       // quota / private mode: keep working from memory
     }
@@ -143,7 +143,7 @@ export function createStateStore<S extends object>(host: HTMLElement, opts: Stat
       cache = { key, source: sourceOf(), state: null };
       if (hostCallbacks()) return write(key, {} as S);
       try {
-        globalThis.localStorage?.removeItem(stateStorageKey(tag, key));
+        globalThis.localStorage?.removeItem(getStateStorageKey(tag, key));
       } catch {
         // nothing to remove
       }

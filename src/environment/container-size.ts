@@ -12,7 +12,7 @@ export const CONTAINER_SIZES = ['narrow', 'medium', 'wide'] as const;
 export type ContainerSize = (typeof CONTAINER_SIZES)[number];
 
 /** The upper bounds (exclusive) of `narrow` and `medium`, in px, when the tokens are not set. */
-export const DEFAULT_CONTAINER_SIZES = { narrow: 480, medium: 768 } as const;
+export const DEFAULT_CONTAINER_LINES = { narrow: 480, medium: 768 } as const;
 
 /** The CSS tokens that move the lines. */
 export const CONTAINER_SIZE_TOKENS = {
@@ -23,8 +23,8 @@ export const CONTAINER_SIZE_TOKENS = {
 /** The two lines at `el`, in px (tokens resolved where they apply; defaults otherwise). */
 export function readContainerLines(el: Element): { narrow: number; medium: number } {
   return {
-    narrow: readCssLengthPx(el, CONTAINER_SIZE_TOKENS.narrow, DEFAULT_CONTAINER_SIZES.narrow),
-    medium: readCssLengthPx(el, CONTAINER_SIZE_TOKENS.medium, DEFAULT_CONTAINER_SIZES.medium),
+    narrow: readCssLengthPx(el, CONTAINER_SIZE_TOKENS.narrow, DEFAULT_CONTAINER_LINES.narrow),
+    medium: readCssLengthPx(el, CONTAINER_SIZE_TOKENS.medium, DEFAULT_CONTAINER_LINES.medium),
   };
 }
 

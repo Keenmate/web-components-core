@@ -3,7 +3,7 @@ import { BlissElement } from '../element/bliss-element.js';
 import { createLoggers } from '../logging/create-loggers.js';
 import { registerComponent } from './register-component.js';
 
-// Review 2026-11-03 V-19 #5 (global test gaps). Cross-copy getInstances / getRegisteredTags (V-02)
+// Review 2026-11-03 V-19 #5 (global test gaps). Cross-copy getInstances / getConnectedTags (V-02)
 // and the same tag from two copies (V-03) are in register-component.test.ts ('two copies of core on one page').
 
 let seq = 0;

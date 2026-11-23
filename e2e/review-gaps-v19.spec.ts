@@ -5,7 +5,7 @@ import { test, expect, type Page } from './fixtures';
 //     inside a non-Bliss shadow root (nothing in the document's light DOM adopted the presets first);
 //   - scroll lock (V-11): pinning the body on desktop doesn't shift the content sideways (scrollbar
 //     compensation);
-//   - scroll lock + observeKeyboardInset on a mobile viewport: a fixed panel tracks the visual viewport,
+//   - scroll lock + fitToVisibleViewport on a mobile viewport: a fixed panel tracks the visual viewport,
 //     not the pinned body's negative top.
 //
 // Fixtures: test/motion.html, test/scroll-lock.html (reused; no new fixture needed).
@@ -79,7 +79,7 @@ test.describe('scroll lock', () => {
     expect(await box()).toEqual(before);
   });
 
-  test('mobile viewport: a fixed panel with observeKeyboardInset tracks the visual viewport while the body is pinned', async ({ page }) => {
+  test('mobile viewport: a fixed panel with fitToVisibleViewport tracks the visual viewport while the body is pinned', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.evaluate(() => window.scrollTo({ top: 1200, behavior: 'instant' }));
     const result = await page.evaluate(async () => {
@@ -88,7 +88,7 @@ test.describe('scroll lock', () => {
       const panel = document.createElement('div');
       panel.style.cssText = 'position: fixed; left: 0; right: 0; top: 0; height: 100dvh; display: flex; flex-direction: column;';
       document.body.appendChild(panel);
-      const cleanup = core.observeKeyboardInset(panel);
+      const cleanup = core.fitToVisibleViewport(panel);
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       const vv = window.visualViewport!;
       const rect = panel.getBoundingClientRect();

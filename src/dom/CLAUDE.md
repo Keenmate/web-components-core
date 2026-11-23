@@ -75,7 +75,7 @@ jsdom: the unit test fakes `clientHeight` / `scrollTop` / rects; `e2e/virtual-wi
 
 ## Drag (`src/dom/page-drag.ts`, `src/dom/pointer-drag.ts`, SPEC §12.28 — implemented)
 
-`watchPageDrag`: module-level watcher set (per core copy — the state needn't be page-wide), window capture
+`observePageDrag`: module-level watcher set (per core copy — the state needn't be page-wide), window capture
 listeners while any watcher exists, `Date.now()` heartbeat (fake-timer friendly); Escape sets `isDismissed` — same-drag `dragover`s (gaps ≤ the
 timeout) are ignored until a `dragenter`, a pulse pause, `drop` / `dragend` or the last unsubscribe. `createPointerDrag`: pointerdown
 on the container → window capture listeners for move / up / cancel / keydown; touch adds a non-passive
@@ -87,7 +87,7 @@ PointerEvent / DragEvent / `elementFromPoint`: the unit test dispatches plain ev
 
 ## IME-safe text (`src/dom/text-input.ts`, SPEC §12.30 — implemented)
 
-`onTextInput`: skip `input` with `isComposing`; `compositionend` delivers and remembers the value until a
+`observeTextInput`: skip `input` with `isComposing`; `compositionend` delivers and remembers the value until a
 `setTimeout(0)` (delegated `{ selector }`: target = `composedPath()[0].closest(selector)` inside the container,
 the duplicate check is per target) (Firefox's duplicate `input` comes in the same task — a microtask would clear too early, between
 the two dispatches). `isImeEnter` = `isComposing || keyCode === 229`. e2e drives a real composition through CDP
@@ -131,7 +131,7 @@ memo; `result` may be a thunk (skipped on a memo hit). `hidden` toggled only by 
 
 `createStateStore(host, { getKey, getLoadCallback?, getSaveCallback?, toContext? })` → `{ load, save, clear }`.
 The component's input rows are `storageKey` (`storage-key`, unset = off), `loadStateCallback`, `saveStateCallback`
-(rulebook C-CA-17). Default store `localStorage['km-state:<tag>:<key>']` (`stateStorageKey()`); `save(partial)` merges
+(rulebook C-CA-17). Default store `localStorage['km-state:<tag>:<key>']` (`getStateStorageKey()`); `save(partial)` merges
 into the WHOLE state and the save callback gets all of it; cache per key, the key is read per call; either callback set = host mode (no localStorage, a missing half is a no-op + one warning); never throws
 (callback / storage failures → the element's logger, state kept in memory). No `localStorage` in components.
 

@@ -1,18 +1,18 @@
 <meta name="kmwc:title" content="Lists, keys and selection">
-<meta name="kmwc:subtitle" content="The pieces every list, tree, grid and picker shares: keyboard navigation from <code>/a11y</code> — <code>createActiveDescendant</code> for a combobox, <code>createRovingFocus</code> for a toolbar or a calendar grid (SPEC §12.25) — IME-safe typed text (<code>onTextInput</code> / <code>isImeEnter</code>, §12.30), file-manager selection (<code>createSelection</code>, §12.27), virtual rows (<code>createVirtualWindow</code>, §12.26) and scroll positions that survive a DOM move (<code>keepScrollAcrossMove</code>, §12.31). Roles, <code>aria-selected</code> and the highlight stay the component's; the demos are small demo elements (<code>examples-lists-card.ts</code>).">
+<meta name="kmwc:subtitle" content="The pieces every list, tree, grid and picker shares: keyboard navigation from <code>/a11y</code> — <code>createActiveDescendant</code> for a combobox, <code>createRovingFocus</code> for a toolbar or a calendar grid (SPEC §12.25) — IME-safe typed text (<code>observeTextInput</code> / <code>isImeEnter</code>, §12.30), file-manager selection (<code>createSelection</code>, §12.27), virtual rows (<code>createVirtualWindow</code>, §12.26) and scroll positions that survive a DOM move (<code>keepScrollAcrossMove</code>, §12.31). Roles, <code>aria-selected</code> and the highlight stay the component's; the demos are small demo elements (<code>examples-lists-card.ts</code>).">
 <meta name="kmwc:entry" content="none">
 
         <!-- ============================================================= -->
-        <!-- LI01 · createActiveDescendant + onTextInput                   -->
+        <!-- LI01 · createActiveDescendant + observeTextInput                   -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>LI01 · A combobox: <code>createActiveDescendant</code> and <code>onTextInput</code></h2>
+            <h2>LI01 · A combobox: <code>createActiveDescendant</code> and <code>observeTextInput</code></h2>
             <p>
                 Focus never leaves the input. ↓ / ↑ / Home / End / PageDown move the highlighted option, core writes
                 <code>aria-activedescendant</code>, the option ids, <code>aria-controls</code> and scrolls the
                 <em>listbox only</em> (never the page); the highlight class is the component's
                 (<code>onActiveChange</code>). Enter picks (<code>onActivate</code>). The filter listens through
-                <code>onTextInput</code>: with an IME (Japanese, Chinese, Korean) it runs once per confirmed word, not for
+                <code>observeTextInput</code>: with an IME (Japanese, Chinese, Korean) it runs once per confirmed word, not for
                 every half-typed syllable, and the Enter that confirms a candidate (<code>isImeEnter</code>) doesn't pick.
             </p>
             <div class="demo-area">
@@ -20,14 +20,14 @@
                 <div class="log-panel log-panel--dark mt-1" data-empty="Type, then use the arrows and Enter." id="li01-log"></div>
             </div>
             <div class="code-block" data-language="js"><pre><code>import { createActiveDescendant } from '@keenmate/web-components-core/a11y';
-import { onTextInput, isImeEnter } from '@keenmate/web-components-core';
+import { observeTextInput, isImeEnter } from '@keenmate/web-components-core';
 
 this.#nav = createActiveDescendant(this.#input, this.#listbox, {
   getItems: () =&gt; [...this.#listbox.querySelectorAll('[role="option"]')],
   onActiveChange: (item) =&gt; this.#paintHighlight(item),   // your class; aria-activedescendant is core's
   onActivate: (item) =&gt; this.#select(item.dataset.value), // Enter
 });
-this.#stopText = onTextInput(this.#input, (term) =&gt; { this.#render(term); this.#nav.refresh(); });
+this.#stopText = observeTextInput(this.#input, (term) =&gt; { this.#render(term); this.#nav.refresh(); });
 this.#input.addEventListener('keydown', (e) =&gt; { if (isImeEnter(e)) return; /* … */ });</code></pre></div>
         </div>
 
@@ -170,7 +170,7 @@ keepScrollAcrossMove(this, () =&gt; [this.#body, this.#sidebar]);   // read on e
                     <tr><td><code>createActiveDescendant(input, listbox, { getItems, onActivate, onActiveChange, isWrapping, isSkipped, hasHomeEnd, pageSize, shouldScroll })</code> (<code>/a11y</code>)</td><td>Focus stays in <code>input</code>; arrows / Home / End / PageUp / PageDown move the active item; <code>aria-activedescendant</code>, ids, <code>aria-controls</code>, <code>tabindex=-1</code> on the listbox; scrolls inside the listbox only. Returns <code>{ active, activeIndex, setActive, move, refresh, destroy }</code>.</td></tr>
                     <tr><td><code>createRovingFocus(container, { getItems, orientation, columns, isWrapping, hasTypeahead, getItemText, isSkipped, onFocusItem })</code> (<code>/a11y</code>)</td><td>One tab stop; arrows move real focus (<code>horizontal</code> / <code>vertical</code> / <code>grid</code>, RTL-aware). Returns <code>{ current, currentIndex, focusItem, refresh, destroy }</code>.</td></tr>
                     <tr><td><code>createTypeahead</code> · <code>isPrintableKey</code> · <code>TYPEAHEAD_TIMEOUT_MS</code> (<code>/a11y</code>)</td><td>The type-to-jump buffer both helpers use, on its own.</td></tr>
-                    <tr><td><code>onTextInput(input, cb)</code> · <code>isImeEnter(e)</code></td><td>Typed text, once per confirmed IME word; returns a stop function. Is this Enter the IME confirming a candidate?</td></tr>
+                    <tr><td><code>observeTextInput(input, cb)</code> · <code>isImeEnter(e)</code></td><td>Typed text, once per confirmed IME word; returns a stop function. Is this Enter the IME confirming a candidate?</td></tr>
                     <tr><td><code>createSelection({ mode, getOrderedKeys, isSelectable, onChange })</code></td><td><code>click(key, modifiers)</code> · <code>toggle</code> · <code>extendTo</code> · <code>selectAll</code> · <code>clear</code> · <code>set(keys, { isSilent })</code> · <code>has</code> · <code>values</code> · <code>size</code> · <code>anchor</code> · <code>setAnchor</code>.</td></tr>
                     <tr><td><code>createVirtualWindow(scroller, { getCount, rowHeight, overscan, render, insetTop, hasStructure })</code></td><td>Renders the visible range into <code>.km-virtual-window</code> inside a full-height <code>.km-virtual-spacer</code>. Returns <code>{ range, window, refresh, scrollToIndex, indexAt, destroy }</code>.</td></tr>
                     <tr><td><code>keepScrollAcrossMove(host, () =&gt; scrollers)</code></td><td>Remembers each scroller's position and restores it after a DOM move; returns a stop function.</td></tr>
@@ -194,7 +194,7 @@ keepScrollAcrossMove(this, () =&gt; [this.#body, this.#sidebar]);   // read on e
 
         // LI01
         const combo = $('li01-combo');
-        combo.addEventListener('text', (e) => log($('li01-log'), `onTextInput → "${e.detail.term}"`, 'muted'));
+        combo.addEventListener('text', (e) => log($('li01-log'), `observeTextInput → "${e.detail.term}"`, 'muted'));
         combo.addEventListener('active', (e) => log($('li01-log'), `active → ${e.detail.value ?? '(none)'}  aria-activedescendant="${e.detail.id ?? ''}"`, 'info'));
         combo.addEventListener('pick', (e) => log($('li01-log'), `pick → ${e.detail.value}`, 'ok'));
 

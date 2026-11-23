@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { isImeEnter, onTextInput } from './text-input.js';
+import { isImeEnter, observeTextInput } from './text-input.js';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -14,11 +14,11 @@ const compositionEnd = (el: HTMLInputElement, value: string): void => {
   el.dispatchEvent(new CompositionEvent('compositionend', { data: value }));
 };
 
-describe('onTextInput', () => {
+describe('observeTextInput', () => {
   it('plain typing: one call per input', () => {
     const el = document.createElement('input');
     const cb = vi.fn();
-    onTextInput(el, cb);
+    observeTextInput(el, cb);
     type(el, 'a');
     type(el, 'ab');
     expect(cb.mock.calls.map((c) => c[0])).toEqual(['a', 'ab']);
@@ -27,7 +27,7 @@ describe('onTextInput', () => {
   it('Chromium order: composing inputs skipped, compositionend delivers once', () => {
     const el = document.createElement('input');
     const cb = vi.fn();
-    onTextInput(el, cb);
+    observeTextInput(el, cb);
     type(el, 'k', true);
     type(el, 'か', true);
     compositionEnd(el, '漢');
@@ -38,7 +38,7 @@ describe('onTextInput', () => {
     vi.useFakeTimers();
     const el = document.createElement('input');
     const cb = vi.fn();
-    onTextInput(el, cb);
+    observeTextInput(el, cb);
     type(el, 'か', true);
     compositionEnd(el, '漢');
     type(el, '漢');
@@ -54,7 +54,7 @@ describe('onTextInput', () => {
     document.body.append(host);
     const root = host.attachShadow({ mode: 'open' });
     const cb = vi.fn();
-    const stop = onTextInput(root, cb, { selector: 'input.filter' });
+    const stop = observeTextInput(root, cb, { selector: 'input.filter' });
     root.innerHTML = '<input class="filter" data-col="a"><input class="other">';
     type(root.querySelector('.filter')!, 'x');
     type(root.querySelector('.other')!, 'ignored');
@@ -71,7 +71,7 @@ describe('onTextInput', () => {
   it('unsubscribe stops it', () => {
     const el = document.createElement('input');
     const cb = vi.fn();
-    const stop = onTextInput(el, cb);
+    const stop = observeTextInput(el, cb);
     stop();
     type(el, 'x');
     expect(cb).not.toHaveBeenCalled();

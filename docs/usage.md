@@ -234,7 +234,7 @@ protected override environmentChanged(env: EnvironmentSnapshot) {
 
 Rule of thumb: **class-only policy → `resolvePresentation(mode, env, map)`;
 width-aware → `classifyDevice(env)` + your own branch.** For the fullscreen tier,
-`lockBodyScroll()` and `observeKeyboardInset(panel)` handle page-scroll locking
+`lockBodyScroll()` and `fitToVisibleViewport(panel)` handle page-scroll locking
 and keeping the sheet above the soft keyboard. See [SPEC §12.9](SPEC.md) for
 the full rationale (why 600px, capability over width). The author-facing setting
 type is `Presentation` (`'auto' | 'floating' | 'modal' | 'fullscreen'`).
@@ -257,7 +257,7 @@ this.#sheet = startSheetSession(panel, {
 this.#sheet?.end();
 ```
 
-It locks page scroll (`lockBodyScroll`), tracks the virtual keyboard (`observeKeyboardInset`), holds one
+It locks page scroll (`lockBodyScroll`), tracks the virtual keyboard (`fitToVisibleViewport`), holds one
 history entry for the whole page (`claimBackEntry`; closing any other way gives it back one task later, and
 the page keeps its scroll position), and warns once when an ancestor with `transform` / `filter` / … traps
 the fixed panel in its own box. `shouldLockScroll` / `shouldObserveKeyboardInset` /
@@ -440,7 +440,7 @@ toast or message stays yours — `announce()` is what screen readers hear.
 Every UI string goes through one seam ([SPEC §12.24](SPEC.md), rulebook D-NC-24):
 
 ```ts
-import { createLabels, getLocaleSettings, getMonthNames, formatNumber } from '@keenmate/web-components-core/locale';
+import { createLabels, resolveLocaleSettings, getMonthNames, formatNumber } from '@keenmate/web-components-core/locale';
 
 // English only; flat keys `<elementType>.<name>` (buttons, tooltips, ariaLabels, placeholders, headers, labels,
 // messages, errors, menuItems, columnHeaders)
@@ -452,7 +452,7 @@ const DEFAULT_LABELS = { 'ariaLabels.cancelFile': 'Cancel {name}', 'labels.addNe
 button.setAttribute('aria-label', this.#labels.text('ariaLabels.cancelFile', { name: file.name })); // text: never escaped
 row.innerHTML = this.#labels.html('labels.addNew', { value: typed });                                // HTML: the value is escaped
 
-const { locale, dateFormat, timeFormat, weekStartDay } = getLocaleSettings({ locale: this.config.locale });
+const { locale, dateFormat, timeFormat, weekStartDay } = resolveLocaleSettings({ locale: this.config.locale });
 getMonthNames(locale);                          // from Intl — no language tables
 formatNumber(1234.5, { locale });               // '1 234,5' with the page's separators
 
@@ -624,14 +624,14 @@ keepScrollAcrossMove(this, () => [this.#body, this.#sidebar]);   // read on ever
 
 ## Typed text (IME-safe)
 
-Listen to what the user typed with `onTextInput`, not a bare `input` listener — an IME fires `input` for every
+Listen to what the user typed with `observeTextInput`, not a bare `input` listener — an IME fires `input` for every
 half-typed syllable ([SPEC §12.30](SPEC.md)):
 
 ```ts
-import { onTextInput, isImeEnter } from '@keenmate/web-components-core';
+import { observeTextInput, isImeEnter } from '@keenmate/web-components-core';
 
-this.#stopText = onTextInput(this.#searchInput, (term) => this.#search.run((signal) => this.#load(term, signal), this.#show));
-onTextInput(this.shadowRoot!, (value, e, input) => this.#filter(input.dataset.column!, value), { selector: '.filter-input' });
+this.#stopText = observeTextInput(this.#searchInput, (term) => this.#search.run((signal) => this.#load(term, signal), this.#show));
+observeTextInput(this.shadowRoot!, (value, e, input) => this.#filter(input.dataset.column!, value), { selector: '.filter-input' });
 // ↑ delegated: re-rendered inputs need no re-subscribing
 this.#searchInput.addEventListener('keydown', (e) => {
   if (isImeEnter(e)) return;                 // the IME confirming a candidate, not "pick the option"
@@ -677,13 +677,13 @@ const session = startPanelSession(panel, { onDismiss: () => close(), trigger: bu
 // Escape (a dropdown inside closes first), a click outside, Back → onDismiss; no backdrop / inert / trap
 ```
 
-## Drag (`createPointerDrag`, `watchPageDrag`)
+## Drag (`createPointerDrag`, `observePageDrag`)
 
 In-page drags that work with a finger, and drop targets that light up while files are dragged over the page
 ([SPEC §12.28](SPEC.md)):
 
 ```ts
-import { createPointerDrag, watchPageDrag, applyArmedState } from '@keenmate/web-components-core';
+import { createPointerDrag, observePageDrag, applyArmedState } from '@keenmate/web-components-core';
 
 #drag = createPointerDrag(this.#body, {
   getSource: (target) => target.closest('.row'),          // null = not draggable here
@@ -695,7 +695,7 @@ import { createPointerDrag, watchPageDrag, applyArmedState } from '@keenmate/web
 });
 
 // connect() / disconnect()
-this.#stopArmed = watchPageDrag({ types: ['Files'], onChange: (isArmed) => applyArmedState(this, this.internals, isArmed) });
+this.#stopArmed = observePageDrag({ types: ['Files'], onChange: (isArmed) => applyArmedState(this, this.internals, isArmed) });
 ```
 
 Give your drag image `pointer-events: none` so the hit test sees what's under it.
@@ -960,7 +960,7 @@ window.components['web-multiselect'].logging.enableLogging()
 ```
 
 The returned elements **are** the per-instance handles — enumerate tags with
-`getRegisteredTags()`, each tag's instances with `getInstances(tag)`.
+`getConnectedTags()`, each tag's instances with `getInstances(tag)`.
 
 ## Logging
 
@@ -1263,7 +1263,7 @@ Apple / Ctrl elsewhere (`'Mod+S'`), a sequence separated by a space (`'g f'`); k
 and run the item on it while open.
 
 ```ts
-import { bindShortcuts, formatShortcut, shortcutKeycaps } from '@keenmate/web-components-core/actions';
+import { bindShortcuts, formatShortcut, getShortcutKeycaps } from '@keenmate/web-components-core/actions';
 
 // bind: one keydown listener, sequences, skips plain keys while typing, ignores IME composition
 const unbind = bindShortcuts(this.shadowRoot!, () =>
@@ -1271,7 +1271,7 @@ const unbind = bindShortcuts(this.shadowRoot!, () =>
 );
 
 formatShortcut('Mod+Shift+Z');   // 'Ctrl+Shift+Z' — Apple '⇧⌘Z'
-shortcutKeycaps('Ctrl+K');       // [['Ctrl', 'K']] — one <kbd> per cap
+getShortcutKeycaps('Ctrl+K');       // [['Ctrl', 'K']] — one <kbd> per cap
 ```
 
 `matchesShortcut(event, 'Ctrl+D')` / `parseShortcut(text)` / `isTypingTarget(event)` are there for a
@@ -1445,26 +1445,26 @@ explain the main ones; [SPEC](SPEC.md) has the design notes.
 | Input plumbing (engine / test code) | `resolveFromAttribute` / `resolveFromProperty` (run one value through a row's converter), `collectEngineConfig` (config for an engine, keeping meaningful `null`s), `deriveClearableKeys` / `isClearableInput` / `isClearableConverter` (which inputs a `null` clears) |
 | Element | `BlissElement`, `INPUT_REJECTED_EVENT` (`'input-rejected'`, a refused write), `define(tag, Class)` (define once), `dispatch(target, name, detail)` (the free event helper under `emit()`), `defaultEventProperty(name)` (`'node-select'` → `'onNodeSelect'`), `withComponentContext(detail, controller, element, extras?)` / `COMPONENT_CONTEXT_KEYS` (the non-enumerable `controller` / `element`), `createControllerFacade(target, spec)` (the frozen public controller over a lazy engine); `normalizeEventDefs` is internal plumbing |
 | Before-callbacks | `runBeforeCallback` (async; `false` cancels, a value replaces), `runBeforeCallbackSync`, `runBeforeCallbackEager` (stays synchronous for a sync hook) |
-| Registration | `registerComponent(tag, Class, opts)` (`window.components[tag]`), `getInstances(tag)`, `getRegisteredTags()` — page-wide, across copies of core |
-| DOM | `adoptStyles(root, ...css)` / `createStyleSlot(root)` (style injection), `renderLoader(host, container, context, opts)` / `publishLoaderHook()` (loading states), `scrollIntoContainer` / `findScrollContainer` (container scroll), `scrollContainerToBox` / `getScrollTopForBox` (a virtual-list row by index), `createVirtualWindow` / `computeVirtualRange` (a virtual list over fixed-height rows; the bare range math), `createSelection` (selected keys + anchor, click / Ctrl / Shift rules), `createPointerDrag` / `deepElementFromPoint` (mouse + touch drag), `onTextInput` / `isImeEnter` (IME-safe typed text), `keepScrollAcrossMove` (scroll positions across a DOM move), `copyText` / `readPasteText` (clipboard), `renderIcon` / `ICON_CSS` / `BUILT_IN_ICON_NAMES` / `publishIconHook()` / `observeIconHook(listener)` (icon strings: markup / built-in name / page `renderIconCallback` / icon-font classes / text; the page hook's changes — a BlissElement gets them through `iconsChanged()`), `renderSlot` / `renderSlotHtml` (a render callback's result: HTML / node / default / hidden, memoized; the string form for string-built rows), `watchPageDrag` / `applyArmedState` (page-wide file drag), `createStateStore` (persisted UI state), `deepActiveElement()` (the focused element inside shadow roots), `deepClosest(el, selector)` / `isDeepInside(el, container)` (`closest` / containment across shadow roots), `escapeHtml(text)` (also on `/search`), `createMicrotaskScheduler()` (coalesce a burst into one run), `createDebounce(fn, ms)` (`schedule(...args)` / `flush()` / `cancel()`; last call wins, `ms <= 0` = synchronous, `ms` may be a function), `createThrottle(fn, ms)` (leading + one trailing run), `createFrameScheduler(fn)` (one run per animation frame), `isMotionOff` / `readScrollBehavior` / `readCssDurationMs` / `readCssLengthPx` (resolved CSS in JS), `Z_INDEX` (stacking tiers), `isRtl(el)` (effective writing direction, across shadow roots), `createId(prefix)` (page-unique id for ARIA references / `for`), `createFocusTrap` / `getTabbables` (focus trap), `createFormInputs` / `formatFormValue` (form submission), `createAsyncRunner` (latest-request-wins loading), `announce(text)` (screen-reader live region), `guardGhostClick` (a tap's trailing click), `resolveEnumAttribute(raw, values, fallback)` |
+| Registration | `registerComponent(tag, Class, opts)` (`window.components[tag]`), `getInstances(tag)`, `getConnectedTags()` — page-wide, across copies of core |
+| DOM | `adoptStyles(root, ...css)` / `createStyleSlot(root)` (style injection), `renderLoader(host, container, context, opts)` / `publishLoaderHook()` (loading states), `scrollIntoContainer` / `findScrollContainer` (container scroll), `scrollContainerToBox` / `getScrollTopForBox` (a virtual-list row by index), `createVirtualWindow` / `computeVirtualRange` (a virtual list over fixed-height rows; the bare range math), `createSelection` (selected keys + anchor, click / Ctrl / Shift rules), `createPointerDrag` / `deepElementFromPoint` (mouse + touch drag), `observeTextInput` / `isImeEnter` (IME-safe typed text), `keepScrollAcrossMove` (scroll positions across a DOM move), `copyText` / `readPasteText` (clipboard), `renderIcon` / `ICON_CSS` / `BUILT_IN_ICON_NAMES` / `publishIconHook()` / `observeIconHook(listener)` (icon strings: markup / built-in name / page `renderIconCallback` / icon-font classes / text; the page hook's changes — a BlissElement gets them through `iconsChanged()`), `renderSlot` / `renderSlotHtml` (a render callback's result: HTML / node / default / hidden, memoized; the string form for string-built rows), `observePageDrag` / `applyArmedState` (page-wide file drag), `createStateStore` (persisted UI state), `deepActiveElement()` (the focused element inside shadow roots), `deepClosest(el, selector)` / `isDeepInside(el, container)` (`closest` / containment across shadow roots), `escapeHtml(text)` (also on `/search`), `createMicrotaskScheduler()` (coalesce a burst into one run), `createDebounce(fn, ms)` (`schedule(...args)` / `flush()` / `cancel()`; last call wins, `ms <= 0` = synchronous, `ms` may be a function), `createThrottle(fn, ms)` (leading + one trailing run), `createFrameScheduler(fn)` (one run per animation frame), `isMotionOff` / `readScrollBehavior` / `readCssDurationMs` / `readCssLengthPx` (resolved CSS in JS), `Z_INDEX` (stacking tiers), `isRtl(el)` (effective writing direction, across shadow roots), `createId(prefix)` (page-unique id for ARIA references / `for`), `createFocusTrap` / `getTabbables` (focus trap), `createFormInputs` / `formatFormValue` (form submission), `createAsyncRunner` (latest-request-wins loading), `announce(text)` (screen-reader live region), `guardGhostClick` (a tap's trailing click), `resolveEnumAttribute(raw, values, fallback)` |
 | CSS-variable lint | `extractConsumedCssVars`, `extractDeclaredCssVars`, `lintCssVars` (read vs declared `--prefix-*` names), `suggestCssVars` (likely target of a typo) |
 | Environment | `getEnvironment`, `observeEnvironment`, `observeViewport`, `observeElementSize`, `createElementSizeObserver(listener)` (`observe` / `unobserve` / `disconnect` — one listener for a changing set of elements, shared observer), `configureBreakpoints` / `BREAKPOINTS_CHANGE_EVENT`, `classifyDevice` / `TABLET_MIN_SHORT_SIDE` |
 | Theme | `getThemeContext`, `observeThemeContext`, `setThemeMode` / `getThemeMode` (force dark / light page-wide), `readThemeSignal(el)`, `resolveThemeSource(host, source)`, `THEME_CONTEXT_ATTRIBUTE`, `THEME_SOURCE_ATTRIBUTE` |
 | Motion | `getPageMotion`, `observePageMotion`, `adoptMotionStyles(node)`, `MOTION_CSS`, `MOTION_PRESETS`, `MOTION_VALUES`, `MOTION_ATTRIBUTE`, `MOTION_DATA_ATTRIBUTE` |
-| Overlays | `resolvePresentation` / `DEFAULT_PRESENTATION_MAP` / `createPresentationContext` (floating panel vs fullscreen sheet), `lockBodyScroll()` (shared ref-counted lock), `observeKeyboardInset(panel)`, `startSheetSession(panel, { onBack })` (scroll lock + keyboard inset + Back + containing-block check, one `end()`), `claimBackEntry(onBack)` (phone Back closes the sheet), `SHEET_CHROME_CSS` / `createSheetHeader()` (the sheet header + close button), `registerOverlay` / `notifyOverlayActivated` / `onOverlayActivated` / `dismissAllOverlays` / `OVERLAY_ACTIVATE_EVENT` / `ALL_GROUPS` (one overlay open at a time, nesting, Escape routing) |
-| Logging | `createLoggers(namespace, categories?)`, `createPerfLogger(namespace, { thresholdMs, maxSpans })` (spans + item counts + metadata, `measureAsync`, `count`, `summarize`), `getGlobalLogging()` (= `window.components.logging`), `getCoreLogging()` / `coreLogging` / `CORE_LOG_CATEGORIES` (core's own messages), `setLogPersistKeyPrefix` / `getLogPersistKeyPrefix`, `isLogLevel`, `toLogLevelNumber`, `LOG_LEVELS`, `DEFAULT_CATEGORIES`, `DEFAULT_LOG_LEVEL`, `DEFAULT_ENABLED_LEVEL`, `runSafely(fn, log)` / `notifyListeners(listeners, value, log)` (call code core doesn't own: a throw is logged, not propagated) |
+| Overlays | `resolvePresentation` / `DEFAULT_PRESENTATION_MAP` / `createPresentationContext` (floating panel vs fullscreen sheet), `lockBodyScroll()` (shared ref-counted lock), `fitToVisibleViewport(panel)`, `startSheetSession(panel, { onBack })` (scroll lock + keyboard inset + Back + containing-block check, one `end()`), `claimBackEntry(onBack)` (phone Back closes the sheet), `SHEET_CHROME_CSS` / `createSheetHeader()` (the sheet header + close button), `registerOverlay` / `notifyOverlayActivated` / `observeOverlayActivation` / `dismissAllOverlays` / `OVERLAY_ACTIVATE_EVENT` / `ALL_OVERLAY_GROUPS` (one overlay open at a time, nesting, Escape routing) |
+| Logging | `createLoggers(namespace, categories?)`, `createPerfLogger(namespace, { thresholdMs, maxSpans })` (spans + item counts + metadata, `measureAsync`, `count`, `summarize`), `getGlobalLogging()` (= `window.components.logging`), `getCoreLogging()` / `coreLogging` / `CORE_LOG_CATEGORIES` (core's own messages), `setLogPersistKeyPrefix` / `getLogPersistKeyPrefix`, `isLogLevel`, `parseLogLevel`, `LOG_LEVELS`, `DEFAULT_LOG_CATEGORIES`, `DEFAULT_LOG_LEVEL`, `DEFAULT_ENABLED_LOG_LEVEL`, `runSafely(fn, log)` / `notifyListeners(listeners, value, log)` (call code core doesn't own: a throw is logged, not propagated) |
 
 ### Subpaths
 
 | Entry point | Exports |
 |---|---|
 | `/positioning` | `anchor`, `createPopover`, `createTooltip`, `findOverlayContainer(trigger)` (where a portaled panel goes), `createLayer(host, opts)` (a styled layer outside the component), `getFixedPositionOffsetParent` / `detectFixedDrift` / `findContainingBlockCulprit` / `describeContainingBlockProps` (fixed containing blocks and drift), `platform` (Floating UI's, for a custom one) |
-| `/actions` | `runAction`, `resolveActionItem`, `resolveMenuEntries`, `getMenuChildren`, `normalizeActionItems` (string shorthand → items), `readActionDataset(trigger)`, `isActionBusy`, `createMenuDivider` / `isMenuDivider`, shortcuts: `bindShortcuts`, `matchesShortcut`, `parseShortcut`, `formatShortcut`, `shortcutKeycaps`, `isTypingTarget` |
+| `/actions` | `runAction`, `resolveActionItem`, `resolveMenuEntries`, `loadMenuChildren`, `normalizeActionItems` (string shorthand → items), `readActionDataset(trigger)`, `isActionBusy`, `createMenuDivider` / `isMenuDivider`, shortcuts: `bindShortcuts`, `matchesShortcut`, `parseShortcut`, `formatShortcut`, `getShortcutKeycaps`, `isTypingTarget` |
 | `/menu` | `openMenu(entries, ctx, opts)`, `MENU_CSS` |
 | `/a11y` | `createActiveDescendant(input, listbox, opts)` → `{ active, activeIndex, setActive, move, refresh, destroy }`, `createRovingFocus(container, opts)` → `{ current, currentIndex, focusItem, refresh, destroy }`, `createTypeahead(ms)`, `isPrintableKey`, `TYPEAHEAD_TIMEOUT_MS` |
-| `/locale` | `createLabels(host, defaults, getOwn, { getLocale })` → `{ template, text, html, all }`, `createLabelsView(labels)` → `{ text, html }` (a callback's `ctx.labels`), `resolveLabel`, `formatLabel`, `resolveLocale`, `getLocaleSettings`, `getDateFormat` / `getTimeFormat` / `getWeekStartDay` / `getNumberSeparators`, `getMonthNames` / `getWeekdayNames`, `formatNumber` / `parseNumber`, `getPageLocale` / `getPageSecurity` / `observeLocale` / `publishLocaleHooks` |
+| `/locale` | `createLabels(host, defaults, getOwn, { getLocale })` → `{ template, text, html, all }`, `createLabelsView(labels)` → `{ text, html }` (a callback's `ctx.labels`), `resolveLabel`, `formatLabel`, `resolveLocale`, `resolveLocaleSettings`, `getDateFormat` / `getTimeFormat` / `getWeekStartDay` / `getNumberSeparators`, `getMonthNames` / `getWeekdayNames`, `formatNumber` / `parseNumber`, `getPageLocale` / `getPageSecurity` / `observePageLocale` / `publishLocaleHooks` |
 | `/dialog` | `openDialog(opts)` → `{ result, close, panel, body }`, `confirmDialog(opts)` → `Promise<boolean>`, `promptDialog(opts)` → `Promise<string \| null>`, `DIALOG_CSS` |
-| `/search` | `normalizeSearchText`, `prepareSearchTerm` / `matchesSearchTerm` / `NO_SEARCH_TERM`, `findTextMatches` / `matchesText`, `findRegexMatches` / `createRegexCompiler` / `statelessRegex`, `findHighlightRanges` / `wrapRanges` / `highlightHtml` / `escapeHtml` |
+| `/search` | `normalizeSearchText`, `prepareSearchTerm` / `matchesSearchTerm` / `NO_SEARCH_TERM`, `findTextMatches` / `matchesText`, `findRegexMatches` / `createRegexCompiler` / `createStatelessRegex`, `findHighlightRanges` / `wrapRanges` / `highlightHtml` / `escapeHtml` |
 | `/testing` | `mount`, `mountBeforeUpgrade`, `cleanup`, `defineOnce`, `uniqueTag`, `nextTick`, `nextFrame`, `listen` (event spy), `waitForEvent`, `captureConsole`, `resetPageState` |
 | `/cem` | `blissAnalyzerConfig`, `blissInputsPlugin`, `publicApiPlugin` / `keepPublicApi`, `cssVariablesFromManifestPlugin`, `withCoreDeclared` / `CORE_DECLARED_API` / `CORE_DECLARED_INPUTS` / `CORE_DECLARED_EVENTS`, `extractBlissClass` / `extractBlissClasses` / `extractRegistrations` / `parseRegisterComponentCall` |
 

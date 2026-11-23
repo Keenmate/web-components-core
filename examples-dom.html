@@ -1,5 +1,5 @@
 <meta name="kmwc:title" content="DOM helpers">
-<meta name="kmwc:subtitle" content="Small helpers every component used to write its own way: in-page drag with mouse and touch (<code>createPointerDrag</code>) and a drop target that lights up while files are over the page (<code>watchPageDrag</code>, SPEC §12.28), layers and edge drawers (<code>createLayer</code>, <code>.km-drawer</code>, §12.29), the clipboard (<code>copyText</code> / <code>readPasteText</code>, §12.32), icon strings (<code>renderIcon</code>, §12.33), render-callback results (<code>renderSlot</code>, §12.35) and the public controller (<code>createControllerFacade</code>, §12.34). The demos are small demo elements (<code>examples-dom-card.ts</code>) or plain page markup.">
+<meta name="kmwc:subtitle" content="Small helpers every component used to write its own way: in-page drag with mouse and touch (<code>createPointerDrag</code>) and a drop target that lights up while files are over the page (<code>observePageDrag</code>, SPEC §12.28), layers and edge drawers (<code>createLayer</code>, <code>.km-drawer</code>, §12.29), the clipboard (<code>copyText</code> / <code>readPasteText</code>, §12.32), icon strings (<code>renderIcon</code>, §12.33), render-callback results (<code>renderSlot</code>, §12.35) and the public controller (<code>createControllerFacade</code>, §12.34). The demos are small demo elements (<code>examples-dom-card.ts</code>) or plain page markup.">
 <meta name="kmwc:entry" content="none">
 <style>
     /* DH05 · built-in icon tokens — what @keenmate/base-css-variables defines on :root (any mask image works). */
@@ -39,10 +39,10 @@ this.#drag = createPointerDrag(this.#list, {
         </div>
 
         <!-- ============================================================= -->
-        <!-- DH02 · watchPageDrag                                          -->
+        <!-- DH02 · observePageDrag                                          -->
         <!-- ============================================================= -->
         <div class="card">
-            <h2>DH02 · Files over the page: <code>watchPageDrag</code></h2>
+            <h2>DH02 · Files over the page: <code>observePageDrag</code></h2>
             <p>
                 Drag a file from your desktop over <em>any part of this page</em>: the zone arms as soon as the files enter
                 the window (not only when they reach it) and disarms when they leave, are dropped or the drag is
@@ -53,10 +53,10 @@ this.#drag = createPointerDrag(this.#list, {
                 <core-demo-drop id="dh02-drop"></core-demo-drop>
                 <div class="log-panel log-panel--dark mt-1" data-empty="Drag a file over the page." id="dh02-log"></div>
             </div>
-            <div class="code-block" data-language="js"><pre><code>import { watchPageDrag, applyArmedState } from '@keenmate/web-components-core';
+            <div class="code-block" data-language="js"><pre><code>import { observePageDrag, applyArmedState } from '@keenmate/web-components-core';
 
 // connect()
-this.#stopArmed = watchPageDrag({ types: ['Files'], onChange: (isArmed) =&gt; applyArmedState(this, this.internals, isArmed) });
+this.#stopArmed = observePageDrag({ types: ['Files'], onChange: (isArmed) =&gt; applyArmedState(this, this.internals, isArmed) });
 // disconnect()
 this.#stopArmed();</code></pre></div>
         </div>
@@ -261,7 +261,7 @@ protected override createController() {
                 <tbody>
                     <tr><td><code>createPointerDrag(container, { getSource, threshold, longPressMs, autoScroll, onStart, onMove, onDrop, onCancel })</code></td><td>Mouse + touch drags inside a component: threshold, touch long press, edge auto-scroll, Escape; the context has <code>source</code>, <code>x</code>, <code>y</code>, <code>target</code> (through shadow roots), <code>pointerType</code>. Returns <code>{ isDragging, cancel, destroy }</code>.</td></tr>
                     <tr><td><code>deepElementFromPoint(document, x, y)</code></td><td>The innermost element at a point, through open shadow roots.</td></tr>
-                    <tr><td><code>watchPageDrag({ types, onChange })</code> · <code>applyArmedState(host, internals, isArmed)</code></td><td>Files (or other types) dragged over the window, one shared listener set; returns a stop function. The <code>armed</code> attribute + <code>:state(armed)</code>.</td></tr>
+                    <tr><td><code>observePageDrag({ types, onChange })</code> · <code>applyArmedState(host, internals, isArmed)</code></td><td>Files (or other types) dragged over the window, one shared listener set; returns a stop function. The <code>armed</code> attribute + <code>:state(armed)</code>.</td></tr>
                     <tr><td><code>createLayer(host, { css, className, zIndex, isInteractive, container })</code> (<code>/positioning</code>)</td><td>A themed panel in the overlay container with its own shadow root: <code>{ element, layer, place(rect), syncTheme, destroy }</code>.</td></tr>
                     <tr><td><code>startPanelSession(panel, { onDismiss, shouldCloseOnEscape, shouldCloseOnOutsideClick, shouldCloseOnBack, trigger, initialFocus })</code></td><td>A non-modal panel: Escape / a click outside / Back → <code>onDismiss(reason)</code>; no backdrop, inert page or focus trap. <code>{ end, rearmBack, isEnded }</code>.</td></tr>
                     <tr><td><code>.km-drawer</code> · <code>--start</code> / <code>--end</code> / <code>--top</code> / <code>--bottom</code> / <code>--closing</code> (<code>SHEET_CHROME_CSS</code>)</td><td>An edge drawer; <code>--km-sheet-drawer-size</code> / <code>-max-height</code> / <code>-bg</code> / <code>-color</code> / <code>-shadow</code> / <code>-border-radius</code> / <code>-duration</code>.</td></tr>

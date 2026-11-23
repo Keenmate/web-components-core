@@ -5,14 +5,14 @@
  * `<core-demo-sortable>` — a list inside an `overflow: hidden` box, reordered with `createPointerDrag`
  * (mouse + touch long press + auto-scroll, Escape cancels); the drag ghost is a `createLayer` so the box
  * can't clip it.
- * `<core-demo-drop>` — lights up while files are dragged anywhere over the page (`watchPageDrag` +
+ * `<core-demo-drop>` — lights up while files are dragged anywhere over the page (`observePageDrag` +
  * `applyArmedState` → `armed` attribute + `:state(armed)`), and lists what's dropped on it.
  * `<core-demo-counter>` — its `controller` is a `createControllerFacade` over a private engine.
  *
  * Their CSS is the element's own (shadow) CSS, like any component's; page tokens (--kmwc-*) inherit in, so
  * they follow light / dark. Demo-only — not part of the published package.
  */
-import { BlissElement, define, escapeHtml, watchPageDrag, applyArmedState, createPointerDrag, createControllerFacade } from './src/index.js';
+import { BlissElement, define, escapeHtml, observePageDrag, applyArmedState, createPointerDrag, createControllerFacade } from './src/index.js';
 import type { InputDef, PointerDrag } from './src/index.js';
 import { createLayer } from './src/positioning/index.js';
 import type { Layer } from './src/positioning/index.js';
@@ -140,7 +140,7 @@ export class CoreDemoDrop extends BlissElement {
   }
 
   protected override connect(): void {
-    this.#stopWatch = watchPageDrag({
+    this.#stopWatch = observePageDrag({
       types: ['Files'],
       onChange: (isArmed) => {
         applyArmedState(this, this.internals, isArmed);

@@ -6,14 +6,14 @@ import {
   formatNumber,
   getDateFormat,
   getLabelSiblings,
-  getLocaleSettings,
+  resolveLocaleSettings,
   getMonthNames,
   getNumberSeparators,
   getPageLocale,
   getTimeFormat,
   getWeekdayNames,
   getWeekStartDay,
-  observeLocale,
+  observePageLocale,
   parseNumber,
   publishLocaleHooks,
   resolveLocale,
@@ -36,7 +36,7 @@ describe('window.components.locale / .security', () => {
     publishLocaleHooks();
     expect(Object.keys(window.components!)).not.toContain('locale');
     const heard = vi.fn();
-    const stop = observeLocale(heard);
+    const stop = observePageLocale(heard);
     const mine = { locale: 'cs-CZ', labels: { 'web-x.buttons.ok': 'Dobře' } };
     page().locale = mine;
     expect(heard).toHaveBeenCalledTimes(1);
@@ -79,7 +79,7 @@ describe('window.components.locale / .security', () => {
 
   it('the browser languagechange event notifies', () => {
     const heard = vi.fn();
-    const stop = observeLocale(heard);
+    const stop = observePageLocale(heard);
     const before = getLocaleRevision();
     window.dispatchEvent(new Event('languagechange'));
     expect(heard).toHaveBeenCalledTimes(1);
@@ -88,7 +88,7 @@ describe('window.components.locale / .security', () => {
   });
 });
 
-describe('resolveLocale / getLocaleSettings', () => {
+describe('resolveLocale / resolveLocaleSettings', () => {
   it('instance → page → browser; auto / invalid fall through', () => {
     vi.spyOn(navigator, 'language', 'get').mockReturnValue('fr-FR');
     expect(resolveLocale()).toBe('fr-FR');
@@ -100,14 +100,14 @@ describe('resolveLocale / getLocaleSettings', () => {
 
   it('per key: instance → page → derived from the resolved locale', () => {
     page().locale = { locale: 'en-US', decimalSeparator: ',' };
-    const s = getLocaleSettings({ locale: 'de-DE', weekStartDay: 0 });
+    const s = resolveLocaleSettings({ locale: 'de-DE', weekStartDay: 0 });
     expect(s.locale).toBe('de-DE');
     expect(s.weekStartDay).toBe(0); // instance
     expect(s.decimalSeparator).toBe(','); // page (the user's preference)
     expect(s.thousandsSeparator).toBe('.'); // derived for de
     expect(s.dateFormat).toBe('DD.MM.YYYY');
     expect(s.timeFormat).toBe('24h');
-    expect(getLocaleSettings({ locale: 'en-US', weekStartDay: 9 }).weekStartDay).toBe(0); // invalid → derived (US Sunday)
+    expect(resolveLocaleSettings({ locale: 'en-US', weekStartDay: 9 }).weekStartDay).toBe(0); // invalid → derived (US Sunday)
   });
 
   it('derivations from Intl', () => {

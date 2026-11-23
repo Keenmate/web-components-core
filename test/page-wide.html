@@ -39,7 +39,7 @@
     </div>
 
     <script type="module">
-        import { getRegisteredTags, getInstances, coreLogging, LOG_LEVELS } from '/src/index.ts';
+        import { getConnectedTags, getInstances, coreLogging, LOG_LEVELS } from '/src/index.ts';
         import { captureConsole } from '/test/capture-console.ts';
         import { fxLogging } from '/test/page-wide-fixtures.ts';
 
@@ -89,7 +89,7 @@
         };
 
         const ids = (list) => list.map((e) => e.id);
-        window.fx = { captureConsole, levels, getRegisteredTags, getInstances, ids, loaderHooks, loaderState, hookLog };
+        window.fx = { captureConsole, levels, getConnectedTags, getInstances, ids, loaderHooks, loaderState, hookLog };
         document.body.dataset.ready = 'true';
     </script>
 </body>

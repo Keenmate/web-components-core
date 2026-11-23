@@ -12,11 +12,11 @@ vi.mock('../positioning/anchor.js', () => ({
 
 import { BlissElement } from '../element/bliss-element.js';
 import { runBeforeCallback, runBeforeCallbackSync } from '../element/before-callback.js';
-import { getMenuChildren, resolveActionItem, runAction } from '../actions/resolve.js';
+import { loadMenuChildren, resolveActionItem, runAction } from '../actions/resolve.js';
 import type { ActionEventDetail } from '../actions/types.js';
 import { openMenu } from '../menu/open-menu.js';
 import { resolveThemeSource, setThemeMode } from '../environment/theme.js';
-import { getInstances, getRegisteredTags } from '../global/instances.js';
+import { getInstances, getConnectedTags } from '../global/instances.js';
 import { registerComponent } from '../global/register-component.js';
 import { toInt } from '../inputs/converters.js';
 import type { InputDef } from '../inputs/types.js';
@@ -202,7 +202,7 @@ describe('window.components.logging (page-wide switch)', () => {
     expect(Object.keys(components)).not.toContain('logging');
     expect(Object.keys(components)).toContain(tag);
     for (const key in components) expect(key).not.toBe('logging');
-    expect(getRegisteredTags()).not.toContain('logging');
+    expect(getConnectedTags()).not.toContain('logging');
     expect(getInstances('logging')).toEqual([]);
   });
 
@@ -415,7 +415,7 @@ describe('former console call sites', () => {
     expect(consoleLines(warn)).toEqual([`[${ns}:INIT] #p rejected invalid value for property "pageSize"; keeping previous value`]);
   });
 
-  it('resolveActionItem / getMenuChildren: through the ctx element, else CORE:ACTIONS', async () => {
+  it('resolveActionItem / loadMenuChildren: through the ctx element, else CORE:ACTIONS', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const ns = freshNs();
     const { make } = defineComponent({ namespace: ns });
@@ -423,7 +423,7 @@ describe('former console call sites', () => {
     const ctx = Object.defineProperty({}, 'element', { value: el, enumerable: false });
     resolveActionItem({ text: 's', getTextCallback: () => { throw new Error('x'); } }, ctx);
     resolveActionItem({ text: 's', getTextCallback: () => { throw new Error('x'); } }, { name: 'plain' });
-    await getMenuChildren({ getChildrenCallback: () => { throw new Error('y'); } }, {}, el);
+    await loadMenuChildren({ getChildrenCallback: () => { throw new Error('y'); } }, {}, el);
     expect(consoleLines(error)).toEqual([
       `[${ns}:UI] #tv action item getTextCallback threw — using the static value`,
       '[CORE:ACTIONS] action item getTextCallback threw — using the static value',

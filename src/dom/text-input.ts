@@ -5,7 +5,7 @@
  * half-typed syllables; one that handles Enter picks an option while the user only confirmed a kana.
  * web-commandpalette had the one correct copy.
  *
- * - `onTextInput(input, callback)` calls `callback(value)` once per committed change: `input` events while
+ * - `observeTextInput(input, callback)` calls `callback(value)` once per committed change: `input` events while
  *   composing are skipped, `compositionend` delivers the result, and Firefox's extra `input` after
  *   `compositionend` (same value) is dropped. `{ selector }` = delegated: one subscription on a container
  *   covers every matching (re-rendered) input under it.
@@ -28,7 +28,7 @@ export interface TextInputOptions {
 }
 
 /** Subscribe to committed text changes; returns the unsubscribe. */
-export function onTextInput(
+export function observeTextInput(
   input: TextInputElement | ShadowRoot,
   callback: (value: string, event: Event, target: TextInputElement) => void,
   options: TextInputOptions = {},

@@ -37,7 +37,7 @@ export function getInstances<T extends HTMLElement = HTMLElement>(tagName: strin
 }
 
 /** Every tag that currently has at least one connected instance. */
-export function getRegisteredTags(): string[] {
+export function getConnectedTags(): string[] {
   const map = registry();
   return Array.from(map.keys()).filter((tag) => (map.get(tag)?.size ?? 0) > 0);
 }

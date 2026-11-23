@@ -3,7 +3,7 @@ import {
   registerOverlay,
   notifyOverlayActivated,
   dismissAllOverlays,
-  onOverlayActivated,
+  observeOverlayActivation,
   OVERLAY_ACTIVATE_EVENT,
   __resetOverlays,
 } from './active-overlay.js';
@@ -100,9 +100,9 @@ describe('active-overlay coordination', () => {
     expect(a).toHaveBeenCalledTimes(1);
   });
 
-  it('onOverlayActivated lets outside code react to KM activations', () => {
+  it('observeOverlayActivation lets outside code react to KM activations', () => {
     const seen: unknown[] = [];
-    const off = onOverlayActivated((source) => seen.push(source));
+    const off = observeOverlayActivation((source) => seen.push(source));
 
     const ha = registerOverlay(() => {});
     ha.activate();
@@ -277,7 +277,7 @@ describe('active-overlay nesting', () => {
     const hModal = registerOverlay(dismissModal, undefined, { getElement: () => modal.el });
     hModal.activate();
     const seen: unknown[] = [];
-    onOverlayActivated((_source, _group, ancestors) => seen.push(...ancestors));
+    observeOverlayActivation((_source, _group, ancestors) => seen.push(...ancestors));
     notifyOverlayActivated('pure-css-menu', undefined, seen); // empty — dismisses the modal
     expect(dismissModal).toHaveBeenCalledTimes(1);
   });
@@ -300,7 +300,7 @@ describe('active-overlay nesting', () => {
     hFirst.activate();
     hSecond.activate(); // dismisses `first`, whose handler does nothing
     const seen: unknown[][] = [];
-    onOverlayActivated((_source, _group, ancestors) => seen.push([...ancestors]));
+    observeOverlayActivation((_source, _group, ancestors) => seen.push([...ancestors]));
     registerOverlay(vi.fn()).activate({ trigger: first.trigger }); // `first` is closed: not a parent any more
     expect(seen).toEqual([[]]);
   });

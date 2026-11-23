@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const calls: string[] = [];
 let backHandler: (() => void) | undefined;
 vi.mock('./scroll-lock.js', () => ({ lockBodyScroll: () => (calls.push('lock'), () => calls.push('unlock')) }));
-vi.mock('./keyboard-inset.js', () => ({ observeKeyboardInset: () => (calls.push('inset'), () => calls.push('uninset')) }));
+vi.mock('./keyboard-inset.js', () => ({ fitToVisibleViewport: () => (calls.push('inset'), () => calls.push('uninset')) }));
 vi.mock('./back-entry.js', () => ({
   claimBackEntry: (onBack: () => void) => {
     backHandler = onBack;

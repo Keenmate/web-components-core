@@ -16,6 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed — BREAKING (renames, no aliases)
 - Internal → exported names: `composedClosest` → `deepClosest`, `isAtOrBelow` → `isDeepInside`,
   `callSafely` → `runSafely`, `notifyEach` → `notifyListeners` (internal `composedParent` → `deepParent`).
+- Verb-first / qualified names (naming review R1–R16): `onTextInput` → `observeTextInput`,
+  `onOverlayActivated` → `observeOverlayActivation`, `watchPageDrag` → `observePageDrag` (type
+  `WatchPageDragOptions` → `ObservePageDragOptions`), `toLogLevelNumber` → `parseLogLevel`, `statelessRegex` →
+  `createStatelessRegex` (`/search`), `stateStorageKey` → `getStateStorageKey`, `shortcutKeycaps` →
+  `getShortcutKeycaps` (`/actions`), `getLocaleSettings` → `resolveLocaleSettings` (`/locale`), `observeLocale` →
+  `observePageLocale` (`/locale`), `getRegisteredTags` → `getConnectedTags` (it lists tags with a connected
+  instance), `DEFAULT_CATEGORIES` → `DEFAULT_LOG_CATEGORIES`, `DEFAULT_ENABLED_LEVEL` → `DEFAULT_ENABLED_LOG_LEVEL`,
+  `ALL_GROUPS` → `ALL_OVERLAY_GROUPS`, `DEFAULT_CONTAINER_SIZES` → `DEFAULT_CONTAINER_LINES` (the boundary widths),
+  `getMenuChildren` → `loadMenuChildren` (`/actions`, async), protected `BlissElement#runHook` → `runCallback`
+  (it runs a consumer `*Callback`).
 
 ### Fixed
 - **Escape and a tooltip shown by keyboard focus** (`/positioning` `createTooltip`, SPEC §12.2, WCAG 1.4.13): the

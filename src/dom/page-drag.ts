@@ -13,7 +13,7 @@
  * `window`, so a target's `stopPropagation()` can't hide anything.
  */
 
-export interface WatchPageDragOptions {
+export interface ObservePageDragOptions {
   /** `dataTransfer.types` that count (any of them); default `['Files']`. */
   types?: readonly string[];
   /** `true` when a matching drag starts over the page, `false` when it ends. Not called on subscribe. */
@@ -137,7 +137,7 @@ function listen(isOn: boolean): void {
 }
 
 /** Watch page-wide drags of `types`; returns the (idempotent) unsubscribe. SSR-safe. */
-export function watchPageDrag(options: WatchPageDragOptions): () => void {
+export function observePageDrag(options: ObservePageDragOptions): () => void {
   if (typeof window === 'undefined') return () => {};
   const watcher: Watcher = { types: options.types?.length ? [...options.types] : ['Files'], onChange: options.onChange, isArmed: false };
   if (watchers.size === 0) listen(true);

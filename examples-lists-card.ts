@@ -2,7 +2,7 @@
  * Demo elements for the lists page (SPEC §12.25–§12.27, §12.30, §12.31) — stand-ins for a real component's
  * combobox, toolbar / calendar grid and long list, WITHOUT pulling in one of the KM components.
  *
- * `<core-demo-combo>` — a search input + listbox: `onTextInput` filters (IME-safe), `createActiveDescendant`
+ * `<core-demo-combo>` — a search input + listbox: `observeTextInput` filters (IME-safe), `createActiveDescendant`
  * moves the highlight while focus stays in the input, Enter picks (`isImeEnter` skipped).
  * `<core-demo-roving layout="toolbar | grid">` — one tab stop, the arrows move real focus (`createRovingFocus`,
  * typeahead on the toolbar).
@@ -14,7 +14,7 @@
  */
 import {
   BlissElement, define, toBool, toEnum, toInt, escapeHtml,
-  onTextInput, isImeEnter, createVirtualWindow, createSelection, keepScrollAcrossMove,
+  observeTextInput, isImeEnter, createVirtualWindow, createSelection, keepScrollAcrossMove,
 } from './src/index.js';
 import type { InputDef, VirtualWindow, Selection } from './src/index.js';
 import { createActiveDescendant, createRovingFocus } from './src/a11y/index.js';
@@ -73,7 +73,7 @@ export class CoreDemoCombo extends BlissElement {
       },
       onActivate: (item) => this.#pick(item),
     });
-    this.#stopText = onTextInput(input, (term) => {
+    this.#stopText = observeTextInput(input, (term) => {
       this.emit('text', { term });
       this.#render(term);
     });

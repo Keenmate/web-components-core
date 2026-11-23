@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createStateStore, stateStorageKey } from './state-store.js';
+import { createStateStore, getStateStorageKey } from './state-store.js';
 
 type S = { width?: number; height?: number };
 
@@ -26,14 +26,14 @@ describe('createStateStore', () => {
     const store = createStateStore<S>(host(), { getKey: () => 'a' });
     await store.save({ width: 300 });
     await store.save({ height: 200 });
-    expect(JSON.parse(localStorage.getItem(stateStorageKey('web-thing', 'a'))!)).toEqual({ width: 300, height: 200 });
+    expect(JSON.parse(localStorage.getItem(getStateStorageKey('web-thing', 'a'))!)).toEqual({ width: 300, height: 200 });
     const fresh = createStateStore<S>(host(), { getKey: () => 'a' });
     expect(await fresh.load()).toEqual({ width: 300, height: 200 });
   });
 
   it('the key is read per call: a new key loads its own state', async () => {
     let key = 'a';
-    localStorage.setItem(stateStorageKey('web-thing', 'b'), JSON.stringify({ width: 7 }));
+    localStorage.setItem(getStateStorageKey('web-thing', 'b'), JSON.stringify({ width: 7 }));
     const store = createStateStore<S>(host(), { getKey: () => key });
     await store.save({ width: 1 });
     key = 'b';
@@ -57,7 +57,7 @@ describe('createStateStore', () => {
 
   it('never throws: a failing callback or a corrupt entry is logged / ignored', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    localStorage.setItem(stateStorageKey('web-thing', 'bad'), '{not json');
+    localStorage.setItem(getStateStorageKey('web-thing', 'bad'), '{not json');
     expect(await createStateStore<S>(host(), { getKey: () => 'bad' }).load()).toBeNull();
     const store = createStateStore<S>(host(), {
       getKey: () => 'k',
@@ -73,19 +73,19 @@ describe('createStateStore', () => {
   it('one callback alone still means the host keeps the state: no localStorage, a warning once', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const saved: unknown[] = [];
-    localStorage.setItem(stateStorageKey('web-thing', 'k'), JSON.stringify({ width: 99 }));
+    localStorage.setItem(getStateStorageKey('web-thing', 'k'), JSON.stringify({ width: 99 }));
     const store = createStateStore<S>(host(), { getKey: () => 'k', getSaveCallback: () => (ctx) => void saved.push(ctx.state) });
     expect(await createStateStore<S>(host(), { getKey: () => 'k', getSaveCallback: () => () => {} }).load()).toBeNull(); // not the stale localStorage
     await store.save({ width: 1 });
     await store.save({ height: 2 });
     expect(saved).toEqual([{ width: 1 }, { width: 1, height: 2 }]);
-    expect(JSON.parse(localStorage.getItem(stateStorageKey('web-thing', 'k'))!)).toEqual({ width: 99 }); // untouched
+    expect(JSON.parse(localStorage.getItem(getStateStorageKey('web-thing', 'k'))!)).toEqual({ width: 99 }); // untouched
     expect(warn.mock.calls.filter((c) => String(c.join(' ')).includes('saveStateCallback is set without loadStateCallback'))).toHaveLength(2); // once per store
     warn.mockRestore();
   });
 
   it('the cache is per key AND source: a load callback set after the first load is asked', async () => {
-    localStorage.setItem(stateStorageKey('web-thing', 'k'), JSON.stringify({ width: 1 }));
+    localStorage.setItem(getStateStorageKey('web-thing', 'k'), JSON.stringify({ width: 1 }));
     let load: (() => S) | null = null;
     const store = createStateStore<S>(host(), { getKey: () => 'k', getLoadCallback: () => load, getSaveCallback: () => (load ? () => {} : null) });
     expect(await store.load()).toEqual({ width: 1 }); // localStorage
@@ -99,7 +99,7 @@ describe('createStateStore', () => {
     const store = createStateStore<S>(host(), { getKey: () => 'a' });
     await store.save({ width: 1 });
     await store.clear();
-    expect(localStorage.getItem(stateStorageKey('web-thing', 'a'))).toBeNull();
+    expect(localStorage.getItem(getStateStorageKey('web-thing', 'a'))).toBeNull();
     expect(await store.load()).toBeNull();
   });
 });

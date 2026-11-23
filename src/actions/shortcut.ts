@@ -143,7 +143,7 @@ function keyLabel(key: string, isApple: boolean): string {
  * The key caps of a shortcut, per chord, in platform order: `[['Ctrl', 'Shift', 'Z']]` / Apple
  * `[['⇧', '⌘', 'Z']]`; `'g f'` → `[['G'], ['F']]`. For rendering `<kbd>`s.
  */
-export function shortcutKeycaps(shortcut: string | undefined, opts?: ShortcutOptions): string[][] {
+export function getShortcutKeycaps(shortcut: string | undefined, opts?: ShortcutOptions): string[][] {
   const isApple = isAppleDefault(opts);
   return parseShortcut(shortcut, opts).map((c) => {
     const caps: string[] = [];
@@ -168,7 +168,7 @@ export function shortcutKeycaps(shortcut: string | undefined, opts?: ShortcutOpt
  * space. Unparseable text comes back unchanged (a free-form hint still shows).
  */
 export function formatShortcut(shortcut: string | undefined, opts?: ShortcutOptions): string {
-  const caps = shortcutKeycaps(shortcut, opts);
+  const caps = getShortcutKeycaps(shortcut, opts);
   if (!caps.length) return shortcut ?? '';
   const isApple = isAppleDefault(opts);
   return caps.map((chord) => chord.join(isApple ? '' : '+')).join(' ');

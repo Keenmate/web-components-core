@@ -335,13 +335,13 @@ describe('on() typed subscription', () => {
   });
 });
 
-describe('runHook', () => {
+describe('runCallback', () => {
   class Host extends BlissElement {
     protected static override inputs = [
       { configKey: 'beforeSelectCallback', on: 'none' as const },
     ];
     run<R>(ctx: unknown, opts: { whenUnset: R; errorCallback?: (e: unknown) => R }): Promise<R> {
-      return this.runHook('beforeSelectCallback', ctx, opts);
+      return this.runCallback('beforeSelectCallback', ctx, opts);
     }
   }
   const hostTag = freshTag();

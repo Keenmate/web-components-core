@@ -139,7 +139,7 @@ export function resolveMenuEntries<Ctx, A extends string>(
 }
 
 /** A menu item's submenu: `getChildrenCallback` (may be async) wins over `children`. `logSource`: see {@link resolveActionItem}. */
-export async function getMenuChildren<Ctx, A extends string>(
+export async function loadMenuChildren<Ctx, A extends string>(
   item: MenuItem<Ctx, A>,
   ctx: Ctx,
   logSource: unknown = ctx,

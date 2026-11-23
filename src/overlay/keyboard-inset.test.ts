@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { observeKeyboardInset } from './keyboard-inset.js';
+import { fitToVisibleViewport } from './keyboard-inset.js';
 
 /**
  * jsdom implements neither `window.visualViewport` nor a real rAF loop, so we
@@ -17,7 +17,7 @@ class FakeViewport extends EventTarget {
   }
 }
 
-describe('observeKeyboardInset', () => {
+describe('fitToVisibleViewport', () => {
   let vp: FakeViewport;
 
   beforeEach(() => {
@@ -37,14 +37,14 @@ describe('observeKeyboardInset', () => {
 
   it('pins the panel to the visual viewport height + offset on attach', () => {
     const panel = document.createElement('div');
-    observeKeyboardInset(panel);
+    fitToVisibleViewport(panel);
     expect(panel.style.height).toBe('800px');
     expect(panel.style.top).toBe('0px');
   });
 
   it('shrinks the panel as the keyboard opens (viewport resize)', () => {
     const panel = document.createElement('div');
-    observeKeyboardInset(panel);
+    fitToVisibleViewport(panel);
     vp.resizeTo(500, 40); // keyboard opens: shorter viewport, scrolled down
     expect(panel.style.height).toBe('500px');
     expect(panel.style.top).toBe('40px');
@@ -53,7 +53,7 @@ describe('observeKeyboardInset', () => {
   // Review V-14 ---------------------------------------------------------------
   it('leaves the panel alone while pinch-zoomed, and follows again at scale 1', () => {
     const panel = document.createElement('div');
-    observeKeyboardInset(panel);
+    fitToVisibleViewport(panel);
     vp.scale = 2;
     vp.resizeTo(400, 120); // zoomed in: the visual viewport is small, not because of a keyboard
     expect(panel.style.height).toBe('800px');
@@ -66,7 +66,7 @@ describe('observeKeyboardInset', () => {
     const panel = document.createElement('div');
     panel.style.height = '90vh';
     panel.style.top = '5vh';
-    const cleanup = observeKeyboardInset(panel);
+    const cleanup = fitToVisibleViewport(panel);
     expect(panel.style.height).toBe('800px');
     cleanup();
     expect(panel.style.height).toBe('90vh');
@@ -82,14 +82,14 @@ describe('observeKeyboardInset', () => {
     Object.defineProperty(frameView, 'visualViewport', { value: frameVp, configurable: true });
     Object.defineProperty(frameView, 'requestAnimationFrame', { value: window.requestAnimationFrame, configurable: true });
     const panel = iframe.contentDocument!.createElement('div');
-    observeKeyboardInset(panel);
+    fitToVisibleViewport(panel);
     expect(panel.style.height).toBe('300px'); // the iframe's viewport, not the top window's 800
     iframe.remove();
   });
 
   it('cleanup detaches listeners and clears the inline geometry', () => {
     const panel = document.createElement('div');
-    const cleanup = observeKeyboardInset(panel);
+    const cleanup = fitToVisibleViewport(panel);
     cleanup();
     expect(panel.style.height).toBe('');
     expect(panel.style.top).toBe('');
@@ -104,7 +104,7 @@ describe('observeKeyboardInset', () => {
       frames[id - 1] = () => {};
     });
     const panel = document.createElement('div');
-    const cleanup = observeKeyboardInset(panel); // queues the first write
+    const cleanup = fitToVisibleViewport(panel); // queues the first write
     cleanup();
     frames.forEach((cb) => cb(0));
     expect(panel.style.height).toBe('');
@@ -114,7 +114,7 @@ describe('observeKeyboardInset', () => {
   it('is a no-op returning a no-op cleanup when visualViewport is unavailable', () => {
     Object.defineProperty(window, 'visualViewport', { value: undefined, configurable: true });
     const panel = document.createElement('div');
-    const cleanup = observeKeyboardInset(panel);
+    const cleanup = fitToVisibleViewport(panel);
     expect(panel.style.height).toBe('');
     expect(() => cleanup()).not.toThrow();
   });

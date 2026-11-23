@@ -9,7 +9,7 @@ import type { Page } from './fixtures';
  *   - PG01 registry: tag entries only (logging / renderLoadingCallback non-enumerable), an entry
  *     created by a classic script BEFORE core loaded is adopted (same object, props kept),
  *     version()/config/logging, getInstances() tracks connect order (add / move re-tracks last /
- *     remove), shouldAutoDefine:false + entry.register(), getRegisteredTags()
+ *     remove), shouldAutoDefine:false + entry.register(), getConnectedTags()
  *   - PG02 logging: every bundle defaults to warn; instance loggers labelled [FXPG:CAT] #id;
  *     core's invalid-attribute warning routed to the element's INIT logger (reflected value
  *     written back) or to CORE:ELEMENT for a tag without a bundle; page switch
@@ -53,7 +53,7 @@ type Reg = Record<string, Entry> & {
 type Fx = {
   captureConsole(fn: () => void): Line[];
   levels(): { FXPG: Record<string, string>; CORE: Record<string, string> };
-  getRegisteredTags(): string[];
+  getConnectedTags(): string[];
   getInstances(tag: string): HTMLElement[];
   ids(list: HTMLElement[]): string[];
   loaderHooks: Record<string, unknown>;
@@ -88,7 +88,7 @@ test('PG01: registry entries, non-enumerable globals, adopted early entry, insta
         keys: Object.keys(reg),
         hasLogging: 'logging' in reg,
         hasLoader: 'renderLoadingCallback' in reg,
-        tags: fx.getRegisteredTags(),
+        tags: fx.getConnectedTags(),
         version: reg['fx-pg']!.version(),
         name: reg['fx-pg']!.config.name,
         tagLogging: !!reg['fx-pg']!.logging,

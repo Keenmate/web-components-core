@@ -3,7 +3,7 @@
 `page-locale.ts`: `window.components.locale` / `.security` accessors (`publishPageSetting`), state in
 `sharedState('locale')` with a revision counter + listeners; assigning replaces (frozen copy, labels too —
 `labels` is ONE flat dictionary `'<component>.<elementType>.<name>'`, non-strings dropped, a nested per-tag object warns;
-`formatLabelCallback` (renamed `translateCallback`) warns + dropped); `languagechange` bumps the revision too. BlissElement imports only `observeLocale` / `getLocaleRevision`
+`formatLabelCallback` (renamed `translateCallback`) warns + dropped); `languagechange` bumps the revision too. BlissElement imports only `observePageLocale` / `getLocaleRevision`
 from here (the `localeChanged()` hook) — the rest of the module stays off the base import graph.
 `settings.ts`: per key instance → page → `Intl`; page keys apply to every element (user preference).
 `numbers.ts`: `formatNumber` swaps separators into `formatToParts`; `parseNumber` checks group positions (a group mark only between real groups, `parseNumberCallback` element → page → core) and strips group + spaces (literal

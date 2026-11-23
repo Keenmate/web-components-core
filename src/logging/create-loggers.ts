@@ -10,7 +10,7 @@
  * for why. Consumers depend only on the {@link Logger} / {@link LogLevelDesc}
  * surface below, never on the engine internals.
  */
-import { DEFAULT_ENABLED_LEVEL, LOG_LEVELS, getLogger, isLogLevel, toLogLevelNumber, type LogLevelDesc, type CoreLogger } from './log-core.js';
+import { DEFAULT_ENABLED_LOG_LEVEL, LOG_LEVELS, getLogger, isLogLevel, parseLogLevel, type LogLevelDesc, type CoreLogger } from './log-core.js';
 import { registerGlobalLoggingTarget } from './global-logging.js';
 
 /**
@@ -36,9 +36,9 @@ export interface Logger {
 export type { LogLevelDesc };
 
 /** Baseline categories. A component uses these as-is, redefines, or extends them. */
-export const DEFAULT_CATEGORIES = ['INIT', 'DATA', 'UI'] as const;
+export const DEFAULT_LOG_CATEGORIES = ['INIT', 'DATA', 'UI'] as const;
 
-export { DEFAULT_ENABLED_LEVEL };
+export { DEFAULT_ENABLED_LOG_LEVEL };
 
 /**
  * The level used when no level is set anywhere — element, component type (category) or
@@ -134,7 +134,7 @@ function makeInstanceLogger(meta: CategoryMeta, instanceId: InstanceLabel, getOv
     out[name] = (...args: unknown[]): void => {
       const override = getOverride();
       // The closest level that is set: the element's own, else the category's effective level.
-      const effective = toLogLevelNumber(override) ?? meta.logger.getLevel();
+      const effective = parseLogLevel(override) ?? meta.logger.getLevel();
       if (methodLevel < effective) return;
       // Looked up per call (not bound once), so a console replaced later — a test
       // spy, a log collector — still receives the line.
@@ -187,15 +187,15 @@ export interface LoggerBundle<C extends string> {
  * ```ts
  * const { loggers } = createLoggers('MULTISELECT');                          // INIT/DATA/UI
  * const { loggers } = createLoggers('TREEVIEW', ['INIT','DATA','INDEX']);    // redefine
- * const { loggers } = createLoggers('DROPZONE', [...DEFAULT_CATEGORIES, 'FILE']); // extend
+ * const { loggers } = createLoggers('DROPZONE', [...DEFAULT_LOG_CATEGORIES, 'FILE']); // extend
  * export const { INIT: initLogger, DATA: dataLogger, UI: uiLogger } = loggers;
  * ```
  */
-export function createLoggers(namespace: string): LoggerBundle<(typeof DEFAULT_CATEGORIES)[number]>;
+export function createLoggers(namespace: string): LoggerBundle<(typeof DEFAULT_LOG_CATEGORIES)[number]>;
 export function createLoggers<const C extends string>(namespace: string, categories: readonly C[]): LoggerBundle<C>;
 export function createLoggers<C extends string>(
   namespace: string,
-  categories: readonly C[] = DEFAULT_CATEGORIES as readonly string[] as readonly C[],
+  categories: readonly C[] = DEFAULT_LOG_CATEGORIES as readonly string[] as readonly C[],
 ): LoggerBundle<C> {
   const loggers = {} as Record<C, Logger>;
   const meta = {} as Record<C, CategoryMeta>;
@@ -217,7 +217,7 @@ export function createLoggers<C extends string>(
     namespace,
     loggers,
     LOGGING_CATEGORIES: categories,
-    enableLogging(level: LogLevelDesc = DEFAULT_ENABLED_LEVEL) {
+    enableLogging(level: LogLevelDesc = DEFAULT_ENABLED_LOG_LEVEL) {
       setAll(level);
     },
     disableLogging() {

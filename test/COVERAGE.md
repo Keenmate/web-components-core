@@ -119,7 +119,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | Registry entry created before core loaded is adopted (same object, props kept) | ✓ | `page.spec.ts` | `page-wide.html` |
 | Custom CSS: page layer `window.components[tag].customStyles` (`@import` of a real file) / `.getCustomStylesCallback(ctx)` per instance, instance layer after it, live update + later instances, beats `@layer component` | ✓ | `custom-styles.spec.ts` | `custom-styles.html` |
 | Custom CSS `@import` also linked in the document head, so its `@font-face` registers (Chromium ignores it in a shadow root); removed with the last user | ✓ | `custom-styles.spec.ts` | `custom-styles.html` |
-| getInstances() connect order (add / move re-tracks last / remove); getRegisteredTags(); shouldAutoDefine:false + register() | ✓ | `page.spec.ts` | `page-wide.html` |
+| getInstances() connect order (add / move re-tracks last / remove); getConnectedTags(); shouldAutoDefine:false + register() | ✓ | `page.spec.ts` | `page-wide.html` |
 | Logging: default warn; [TAG:CAT] #id labels; invalid attr routed to INIT (or CORE:ELEMENT without a bundle) | ✓ | `page.spec.ts` | `page-wide.html` |
 | Logging: page switch (CORE included), per instance, per tag, per category | ✓ | `page.spec.ts` | `page-wide.html` |
 | Loader precedence instance > page > default; role/aria-label; throwing hook → logged + default; cleanup; remove() restores | ✓ | `page.spec.ts` | `page-wide.html` |
@@ -336,7 +336,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | Mouse reorder: threshold, drop indicator under the pointer, the drop isn't also a click; a wobble stays a click | ✓ | `drag.spec.ts` | `drag.html` |
 | Auto-scroll at the list's bottom edge (page stays), hit test inside a shadow root, Escape cancels | ✓ | `drag.spec.ts` | `drag.html` |
 | Touch (CDP): long press + move drags without scrolling the list; a quick swipe scrolls and never starts a drag | ✓ | `drag.spec.ts` | `drag.html` |
-| `watchPageDrag`: a file drag arms the zone, drop disarms; a text drag never arms | ✓ | `drag.spec.ts` | `drag.html` |
+| `observePageDrag`: a file drag arms the zone, drop disarms; a text drag never arms | ✓ | `drag.spec.ts` | `drag.html` |
 
 ## 13m. Selection (`selection.spec.ts`)
 

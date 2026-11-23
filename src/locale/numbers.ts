@@ -4,7 +4,7 @@
  * every number a user types (a grid cell editor, a filter).
  */
 
-import { getLocaleSettings } from './settings.js';
+import { resolveLocaleSettings } from './settings.js';
 import { getPageLocale } from './page-locale.js';
 import type { LocaleSettings } from './page-locale.js';
 import { runSafely } from '../logging/safe-call.js';
@@ -24,7 +24,7 @@ export interface NumberFormatOptions extends LocaleSettings {
 export function formatNumber(value: number, options: NumberFormatOptions = {}): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '';
   const { minimumFractionDigits, maximumFractionDigits, shouldGroup = true, ...settings } = options;
-  const resolved = getLocaleSettings(settings);
+  const resolved = resolveLocaleSettings(settings);
   const parts = new Intl.NumberFormat(resolved.locale, { minimumFractionDigits, maximumFractionDigits, useGrouping: shouldGroup }).formatToParts(value);
   return parts
     .map((p) => (p.type === 'decimal' ? resolved.decimalSeparator : p.type === 'group' ? resolved.thousandsSeparator : p.value))
@@ -71,7 +71,7 @@ export interface ParseNumberOptions extends LocaleSettings {
 export function parseNumber(text: string, options: ParseNumberOptions = {}, source?: unknown): number | null {
   if (typeof text !== 'string') return null;
   const { parseNumberCallback, ...settings } = options;
-  const resolved = getLocaleSettings(settings, source);
+  const resolved = resolveLocaleSettings(settings, source);
   const parseDefault = (): number | null => parseNumberDefault(text, resolved.decimalSeparator, resolved.thousandsSeparator);
   const callbacks: Array<[unknown, string]> = [
     [parseNumberCallback, 'parseNumberCallback'],

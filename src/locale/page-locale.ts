@@ -209,7 +209,7 @@ export function getLocaleRevision(): number {
  * browser language changed); returns the unsubscribe. A BlissElement gets this through the
  * `localeChanged()` hook instead.
  */
-export function observeLocale(listener: () => void): () => void {
+export function observePageLocale(listener: () => void): () => void {
   publishLocaleHooks();
   const { listeners } = state();
   const wrapped = (): void => listener();

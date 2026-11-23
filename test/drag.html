@@ -23,7 +23,7 @@
     <output id="log"></output>
 
     <script type="module">
-        import { createPointerDrag, watchPageDrag, applyArmedState } from '/src/index.ts';
+        import { createPointerDrag, observePageDrag, applyArmedState } from '/src/index.ts';
         const list = document.getElementById('list');
         let items = Array.from({ length: 30 }, (_, i) => `Item ${i}`);
         const render = () => { list.innerHTML = items.map((t) => `<li data-key="${t}">${t}</li>`).join(''); };
@@ -60,7 +60,7 @@
         list.addEventListener('click', (e) => log.push(`click:${e.target.dataset?.key ?? ''}`));
 
         const zone = document.getElementById('zone');
-        watchPageDrag({ onChange: (isArmed) => applyArmedState(zone, null, isArmed) });
+        observePageDrag({ onChange: (isArmed) => applyArmedState(zone, null, isArmed) });
     </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findRegexMatches, findTextMatches, matchesText, statelessRegex } from './index.js';
+import { findRegexMatches, findTextMatches, matchesText, createStatelessRegex } from './index.js';
 import type { SearchMatch } from './index.js';
 
 describe('findTextMatches / matchesText', () => {
@@ -64,16 +64,16 @@ describe('findRegexMatches', () => {
   });
 });
 
-describe('statelessRegex', () => {
+describe('createStatelessRegex', () => {
   it('strips g and y so test() is repeatable', () => {
-    const re = statelessRegex(/a/gi);
+    const re = createStatelessRegex(/a/gi);
     expect(re.flags).toBe('i');
     expect([re.test('a'), re.test('a'), re.test('a')]).toEqual([true, true, true]);
-    expect(statelessRegex(/a/y).flags).toBe('');
+    expect(createStatelessRegex(/a/y).flags).toBe('');
   });
 
   it('returns a flag-free regex unchanged', () => {
     const re = /a/i;
-    expect(statelessRegex(re)).toBe(re);
+    expect(createStatelessRegex(re)).toBe(re);
   });
 });

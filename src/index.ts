@@ -50,7 +50,7 @@ export type {
   RegisterComponentOptions,
   ComponentsRegistry,
 } from './global/register-component.js';
-export { getInstances, getRegisteredTags } from './global/instances.js';
+export { getInstances, getConnectedTags } from './global/instances.js';
 
 // Generic DOM utilities
 export { resolveEnumAttribute } from './dom/resolve-enum-attribute.js';
@@ -83,7 +83,7 @@ export { animateOut, EXIT_HEIGHT_VAR, readAnimationMs } from './dom/animate-out.
 export type { AnimateOutHandle, AnimateOutOptions } from './dom/animate-out.js';
 export type { StyleSlot, StyleSlotOptions } from './dom/adopt-styles.js';
 export { createCustomStyles } from './dom/custom-styles.js';
-export { createStateStore, stateStorageKey } from './dom/state-store.js';
+export { createStateStore, getStateStorageKey } from './dom/state-store.js';
 export type { LoadStateCallback, SaveStateCallback, StateStore, StateStoreOptions } from './dom/state-store.js';
 export type { CustomStylesCallback, CustomStylesHandle, CustomStylesOptions, CustomStylesSource } from './dom/custom-styles.js';
 // Shared loader (SPEC §12.14): instance renderLoadingCallback > window.components.renderLoadingCallback > <prefix>__loader span.
@@ -108,11 +108,11 @@ export type { ReadPasteOptions } from './dom/clipboard.js';
 // Scroll positions kept across a DOM move (SPEC §12.31).
 export { keepScrollAcrossMove } from './dom/keep-scroll.js';
 // Typed text, IME-safe: one callback per committed change; the IME's own Enter (SPEC §12.30).
-export { onTextInput, isImeEnter } from './dom/text-input.js';
+export { observeTextInput, isImeEnter } from './dom/text-input.js';
 export type { TextInputElement, TextInputOptions } from './dom/text-input.js';
 // Drag: page-wide armed state for drop targets + pointer drags that work with a finger (SPEC §12.28).
-export { watchPageDrag, applyArmedState } from './dom/page-drag.js';
-export type { WatchPageDragOptions } from './dom/page-drag.js';
+export { observePageDrag, applyArmedState } from './dom/page-drag.js';
+export type { ObservePageDragOptions } from './dom/page-drag.js';
 export { createPointerDrag, deepElementFromPoint } from './dom/pointer-drag.js';
 export type { PointerDrag, PointerDragContext, PointerDragOptions } from './dom/pointer-drag.js';
 // Selection model: click / Ctrl / Shift rules, anchor, ranges in display order (SPEC §12.27).
@@ -149,7 +149,7 @@ export type {
 // element-box companion to observeViewport. Prefer CSS container queries when
 // the reflow is presentational; use this for structural (JS) reflow.
 export { observeElementSize, createElementSizeObserver } from './environment/element-size.js';
-export { CONTAINER_SIZES, CONTAINER_SIZE_TOKENS, DEFAULT_CONTAINER_SIZES, readContainerLines, resolveContainerSize } from './environment/container-size.js';
+export { CONTAINER_SIZES, CONTAINER_SIZE_TOKENS, DEFAULT_CONTAINER_LINES, readContainerLines, resolveContainerSize } from './environment/container-size.js';
 export type { ContainerSize } from './environment/container-size.js';
 export type { ElementSize, ElementSizeListener, ElementSizeObserver, ObserveElementSizeOptions } from './environment/element-size.js';
 // Theme context (SPEC §12.10): dark/light detected once per page (or per
@@ -187,7 +187,7 @@ export type { Motion } from './environment/motion.js';
 export { resolvePresentation, DEFAULT_PRESENTATION_MAP, createPresentationContext } from './overlay/presentation.js';
 export type { Presentation, ResolvedPresentation, PresentationMap, PresentationContext } from './overlay/presentation.js';
 export { lockBodyScroll, type ScrollLockState } from './overlay/scroll-lock.js';
-export { observeKeyboardInset } from './overlay/keyboard-inset.js';
+export { fitToVisibleViewport } from './overlay/keyboard-inset.js';
 // The phone Back gesture for a sheet: one history entry while it is open (SPEC §12.9).
 export { claimBackEntry } from './overlay/back-entry.js';
 export { startSheetSession } from './overlay/sheet-session.js';
@@ -207,14 +207,14 @@ export {
   registerOverlay,
   notifyOverlayActivated,
   dismissAllOverlays,
-  onOverlayActivated,
+  observeOverlayActivation,
   OVERLAY_ACTIVATE_EVENT,
-  ALL_GROUPS,
+  ALL_OVERLAY_GROUPS,
 } from './overlay/active-overlay.js';
 export type { ActivateOverlayOptions, OverlayDismissReason, OverlayHandle, OverlayActivateDetail, RegisterOverlayOptions } from './overlay/active-overlay.js';
 
 // Logging (SPEC §12.1) — engine is vendored (no `loglevel` dependency); see log-core.ts.
-export { createLoggers, DEFAULT_CATEGORIES, DEFAULT_ENABLED_LEVEL, DEFAULT_LOG_LEVEL } from './logging/create-loggers.js';
+export { createLoggers, DEFAULT_LOG_CATEGORIES, DEFAULT_ENABLED_LOG_LEVEL, DEFAULT_LOG_LEVEL } from './logging/create-loggers.js';
 export type { LoggerBundle, Logger, LogLevelDesc, InstanceLogger, InstanceLabel } from './logging/create-loggers.js';
 export { getGlobalLogging } from './logging/global-logging.js';
 export type { GlobalLoggingControls } from './logging/global-logging.js';
@@ -223,7 +223,7 @@ export type { CoreLogCategory } from './logging/element-logger.js';
 // Call code core doesn't own (a hook, a listener) without letting it throw through: logged + reported.
 export { runSafely, notifyListeners } from './logging/safe-call.js';
 export type { SafeCallLog, SafeCallResult } from './logging/safe-call.js';
-export { setLogPersistKeyPrefix, getLogPersistKeyPrefix, isLogLevel, toLogLevelNumber, LOG_LEVELS } from './logging/log-core.js';
+export { setLogPersistKeyPrefix, getLogPersistKeyPrefix, isLogLevel, parseLogLevel, LOG_LEVELS } from './logging/log-core.js';
 export type { LogLevelName } from './logging/log-core.js';
 export { createPerfLogger } from './logging/perf-logger.js';
 export type { PerfLogger, PerfLoggerOptions } from './logging/perf-logger.js';

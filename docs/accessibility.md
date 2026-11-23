@@ -52,7 +52,7 @@ and Escape hides it without moving the pointer or focus (WCAG 1.4.13).
 - **Scroll lock** — `lockBodyScroll()` (fullscreen sheets) is shared and ref-counted across
   components, pins the body in place and pads for the removed scrollbar, so the page behind a
   sheet neither scrolls nor shifts.
-- **Soft keyboard** — `observeKeyboardInset(panel)` keeps a fullscreen sheet above the on-screen
+- **Soft keyboard** — `fitToVisibleViewport(panel)` keeps a fullscreen sheet above the on-screen
   keyboard.
 
 ## Forms and disabled state

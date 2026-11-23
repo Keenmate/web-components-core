@@ -1,9 +1,9 @@
 /** Locale + UI strings (SPEC §12.24): `window.components.locale` / `.security`, settings, numbers, labels. */
-export { getPageLocale, getPageSecurity, observeLocale, publishLocaleHooks } from './page-locale.js';
+export { getPageLocale, getPageSecurity, observePageLocale, publishLocaleHooks } from './page-locale.js';
 export type { LabelTranslateContext, LocaleSettings, PageLocale, PageSecurity, TranslateCallback } from './page-locale.js';
 export {
   getDateFormat,
-  getLocaleSettings,
+  resolveLocaleSettings,
   getMonthNames,
   getNumberSeparators,
   getTimeFormat,
