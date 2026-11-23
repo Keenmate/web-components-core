@@ -4,7 +4,7 @@ import { test, expect } from './fixtures';
 //   - el.form on a non-form-associated BlissElement is null (no throw, no internals attached);
 //   - one throwing environment listener (discrete + viewport channels) doesn't stop the others;
 //   - one throwing theme listener doesn't stop the others.
-//   - setAttributes() warns about a key that isn't an input (a renamed `data` → `nodes` once
+//   - setProperties() warns about a key that isn't an input (a renamed `data` → `nodes` once
 //     left web-treeview's performance page with an empty tree and no error).
 // Each test builds its own elements against core (window.core, loaded from /src).
 //
@@ -106,7 +106,7 @@ test('a throwing theme listener does not stop the others', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => (window as any).themes.at(-1))).toBe('dark');
 });
 
-test('setAttributes() warns about a key that is not an input instead of dropping it silently', async ({ page }) => {
+test('setProperties() warns about a key that is not an input instead of dropping it silently', async ({ page }) => {
   const result = await page.evaluate(() => {
     const { BlissElement, define, toText } = (window as any).core;
     class RenamedEl extends BlissElement {
@@ -121,7 +121,7 @@ test('setAttributes() warns about a key that is not an input instead of dropping
     const original = console.warn;
     console.warn = (...args: unknown[]) => { warnings.push(args.map(String).join(' ')); };
     try {
-      el.setAttributes({ data: [{ id: 1 }], label: 'ok' });
+      el.setProperties({ data: [{ id: 1 }], label: 'ok' });
     } finally {
       console.warn = original;
     }
@@ -129,7 +129,7 @@ test('setAttributes() warns about a key that is not an input instead of dropping
     return { warnings, updates: el.updates };
   });
   expect(result.updates).toEqual([{ label: 'ok' }]); // the real input still applies
-  expect(result.warnings.some((w) => w.includes('setAttributes: "data" is not an input of <regression-renamed-el>'))).toBe(true);
+  expect(result.warnings.some((w) => w.includes('setProperties: "data" is not an input of <regression-renamed-el>'))).toBe(true);
 });
 
 // Review 2026-11-03 E-01: the write-back of an invalid core attribute runs while the browser

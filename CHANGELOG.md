@@ -26,6 +26,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ALL_GROUPS` → `ALL_OVERLAY_GROUPS`, `DEFAULT_CONTAINER_SIZES` → `DEFAULT_CONTAINER_LINES` (the boundary widths),
   `getMenuChildren` → `loadMenuChildren` (`/actions`, async), protected `BlissElement#runHook` → `runCallback`
   (it runs a consumer `*Callback`).
+- `BlissElement#setAttributes(values)` → **`setProperties(values)`** (keys: property names or their attribute
+  names; values of any type, one batch through the input pipeline — the old name read like a bulk `setAttribute`).
+  Protected `engineConfig(exclude?)` → `getEngineConfig(exclude?)`.
+- `observeKeyboardInset(panel)` → `fitToVisibleViewport(panel)` (it writes the panel's inline height / top); the
+  session option `shouldObserveKeyboardInset` → `shouldFitToVisibleViewport`.
+- Drop targets: `applyArmedState(host, internals, isArmed)` → `setDropActiveState(host, internals, isDropActive)`,
+  and the state it sets is now the `drop-active` attribute + `:state(drop-active)` (was `armed`; the interact.js
+  term). `observePageDrag`'s `onChange` gets `isDropActive`.
+- `getLabelSiblings` → `getLabelFallbackKeys` (`/locale`); `menuPresentationInputs()` →
+  `createMenuPresentationInputs()`, `menuPresentationOptions(config)` → `getMenuPresentationOptions(config)` (`/menu`);
+  `getGlobalLogging` → `getPageLogging` (type `GlobalLoggingControls` → `PageLoggingControls`); `createStyleSlot` →
+  `createStyleElement` (types `StyleSlot` / `StyleSlotOptions` → `StyleElement` / `StyleElementOptions`).
+
+### Removed
+- `resolveEnumAttribute(raw, values, fallback)` — unused (no component or core caller); use `toEnum`.
 
 ### Fixed
 - **Escape and a tooltip shown by keyboard focus** (`/positioning` `createTooltip`, SPEC §12.2, WCAG 1.4.13): the

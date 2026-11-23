@@ -1,17 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { BlissElement } from '../element/bliss-element.js';
-import { menuPresentationInputs, menuPresentationOptions } from './inputs.js';
+import { createMenuPresentationInputs, getMenuPresentationOptions } from './inputs.js';
 
 class MenuHost extends BlissElement {
-  protected static override inputs = [...menuPresentationInputs()];
+  protected static override inputs = [...createMenuPresentationInputs()];
   /** What the host passes to openMenu(). */
   menuOptions() {
-    return menuPresentationOptions(this.config);
+    return getMenuPresentationOptions(this.config);
   }
 }
 customElements.define('zz-menu-host', MenuHost);
 
-describe('menuPresentationInputs (the standard menu-host inputs)', () => {
+describe('createMenuPresentationInputs (the standard menu-host inputs)', () => {
   it('menu-presentation / menu-side parse into the config; defaults auto / start; invalid keeps the previous value', async () => {
     const el = document.createElement('zz-menu-host') as MenuHost & Record<string, unknown>;
     document.body.append(el);

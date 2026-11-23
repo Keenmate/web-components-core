@@ -101,9 +101,9 @@ test('observePageDrag: a file dragged over the page arms the zone; a drop disarm
   });
   await page.dispatchEvent('body', 'dragenter', { dataTransfer: dt });
   await page.dispatchEvent('body', 'dragover', { dataTransfer: dt });
-  await expect(page.locator('#zone')).toHaveAttribute('armed', '');
+  await expect(page.locator('#zone')).toHaveAttribute('drop-active', '');
   await page.dispatchEvent('body', 'drop', { dataTransfer: dt });
-  await expect(page.locator('#zone')).not.toHaveAttribute('armed', '');
+  await expect(page.locator('#zone')).not.toHaveAttribute('drop-active', '');
 
   const text = await page.evaluateHandle(() => {
     const d = new DataTransfer();
@@ -112,5 +112,5 @@ test('observePageDrag: a file dragged over the page arms the zone; a drop disarm
   });
   await page.dispatchEvent('body', 'dragenter', { dataTransfer: text }); // not files: never arms
   await page.waitForTimeout(50);
-  await expect(page.locator('#zone')).not.toHaveAttribute('armed', '');
+  await expect(page.locator('#zone')).not.toHaveAttribute('drop-active', '');
 });

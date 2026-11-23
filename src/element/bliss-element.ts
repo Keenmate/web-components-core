@@ -170,11 +170,11 @@ export const INPUT_REJECTED_EVENT = 'input-rejected';
 
 /**
  * A value an element refused (SPEC §6): the detail of the `input-rejected` event and an
- * entry of what {@link BlissElement.setAttributes} returns. The element warned and kept
+ * entry of what {@link BlissElement.setProperties} returns. The element warned and kept
  * its previous value (`kept`, what the getter now returns).
  */
 export interface InputRejection {
-  /** The input's `configKey` (or the key passed to `setAttributes()` when it names no input). */
+  /** The input's `configKey` (or the key passed to `setProperties()` when it names no input). */
   configKey: string;
   /** The attribute, when the value came in through one. */
   attribute?: string;
@@ -190,7 +190,7 @@ export interface InputRejection {
 
 /**
  * The properties core declares on every element (besides the input table), in ONE
- * place: `observedAttributes`, {@link BlissElement.setAttributes} (by property or
+ * place: `observedAttributes`, {@link BlissElement.setProperties} (by property or
  * attribute name), and the pre-upgrade lift (a value assigned before the element
  * upgraded) are all derived from it. A subclass that declares the same name as its
  * own input owns it instead. Each attribute's reaction lives in `attributeChangedCallback`.
@@ -344,7 +344,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   #isApplying = false;
   /** True until the constructor returns: `input-rejected` waits for a microtask then (see #reject). */
   #isConstructing = true;
-  /** Rejections of the running `setAttributes()` call, returned to its caller. */
+  /** Rejections of the running `setProperties()` call, returned to its caller. */
   #rejections: InputRejection[] | null = null;
   /** `connect()` ran and `disconnect()` hasn't yet — keeps the two balanced when a build throws. */
   #isActive = false;
@@ -992,7 +992,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * {@link InputRejection} each (`[]` when everything applied). Each also fires
    * `input-rejected`, like any other write.
    */
-  setAttributes(values: Record<string, unknown>): InputRejection[] {
+  setProperties(values: Record<string, unknown>): InputRejection[] {
     const outer = this.#rejections;
     const rejections: InputRejection[] = [];
     this.#rejections = rejections;
@@ -1017,7 +1017,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
         }
         this.#reject(
           { configKey: key, value, reason: `not an input of <${this.localName}>`, kept: undefined, source: 'property' },
-          `setAttributes: "${key}" is not an input of <${this.localName}> (not a configKey or attribute); skipped`,
+          `setProperties: "${key}" is not an input of <${this.localName}> (not a configKey or attribute); skipped`,
           value,
         );
       }
@@ -1061,7 +1061,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * of guessing with a bare `await Promise.resolve()`.
    *
    * Note: loose property assignments coalesce on a microtask, so
-   * `el.x = …; await el.whenSettled()` awaits that microtask. `setAttributes()`
+   * `el.x = …; await el.whenSettled()` awaits that microtask. `setProperties()`
    * and `batch()` flush synchronously, so after either the element is already
    * settled. While the element is **detached**, pending changes are held (the
    * flush no-ops until connected), so the promise resolves on the next connect's
@@ -1161,7 +1161,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * `Object.assign` an `update(partial)` onto. See the null-clear contract
    * (SPEC §6).
    */
-  protected engineConfig(exclude?: Iterable<string>): Record<string, unknown> {
+  protected getEngineConfig(exclude?: Iterable<string>): Record<string, unknown> {
     return collectEngineConfig(this.#config, { exclude });
   }
 
@@ -2045,7 +2045,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
 
   /**
    * A written value was refused (SPEC §6): warn as before, hand it to the running
-   * `setAttributes()`, and fire `input-rejected` (+ `onInputRejected`) — synchronously, so
+   * `setProperties()`, and fire `input-rejected` (+ `onInputRejected`) — synchronously, so
    * `el.x = bad` has been reported when the assignment returns. A rejection during the
    * constructor (a value assigned before upgrade) fires on the next microtask instead: the
    * subclass's fields, `createController()` and listeners aren't there yet.

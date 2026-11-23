@@ -246,7 +246,7 @@ describe('E-23 #6 — throwing converters on the batch-value, deferred-reflect a
   it('a batch value whose validate throws is skipped with a warning; the others apply', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const el = makeBatch();
-    expect(() => el.setAttributes({ mode: 'preset' })).not.toThrow();
+    expect(() => el.setProperties({ mode: 'preset' })).not.toThrow();
     expect(el.label).toBe('set');
     expect(el.broken).toBe('');
     expect(el.shown).toBe('b'); // staged, though its attribute could not be written

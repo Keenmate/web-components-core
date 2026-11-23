@@ -11,7 +11,7 @@
         #list li { height: 30px; line-height: 30px; padding: 0 8px; border-bottom: 1px solid #eee; }
         #list li.is-over { background: #cde; }
         #zone { margin-top: 12px; padding: 12px; border: 2px dashed #999; }
-        #zone[armed] { border-color: #06c; background: #eef6ff; }
+        #zone[drop-active] { border-color: #06c; background: #eef6ff; }
     </style>
 </head>
 <body>
@@ -23,7 +23,7 @@
     <output id="log"></output>
 
     <script type="module">
-        import { createPointerDrag, observePageDrag, applyArmedState } from '/src/index.ts';
+        import { createPointerDrag, observePageDrag, setDropActiveState } from '/src/index.ts';
         const list = document.getElementById('list');
         let items = Array.from({ length: 30 }, (_, i) => `Item ${i}`);
         const render = () => { list.innerHTML = items.map((t) => `<li data-key="${t}">${t}</li>`).join(''); };
@@ -60,7 +60,7 @@
         list.addEventListener('click', (e) => log.push(`click:${e.target.dataset?.key ?? ''}`));
 
         const zone = document.getElementById('zone');
-        observePageDrag({ onChange: (isArmed) => applyArmedState(zone, null, isArmed) });
+        observePageDrag({ onChange: (isDropActive) => setDropActiveState(zone, null, isDropActive) });
     </script>
 </body>
 </html>

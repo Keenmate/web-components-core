@@ -511,7 +511,7 @@ function resolveExport(ts: TS, exported: string, sf: SourceFile, opts: ExtractOp
   return { reason: `'${sf.fileName}' doesn't export \`${exported}\`` };
 }
 
-/** `...menuPresentationInputs()` — a core row factory (no arguments): its rows as a parsed array literal. */
+/** `...createMenuPresentationInputs()` — a core row factory (no arguments): its rows as a parsed array literal. */
 function coreRowFactory(ts: TS, expr: Expression): { arr: TsNamespace.ArrayLiteralExpression; sf: SourceFile } | undefined {
   const e = unwrap(ts, expr);
   if (!ts.isCallExpression(e) || e.arguments.length > 0 || !ts.isIdentifier(e.expression)) return undefined;

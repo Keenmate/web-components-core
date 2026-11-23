@@ -76,7 +76,7 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
    pipeline (parse/validate → stage → dispatch per `on`), so everything is
    reactive by construction. It is SSR-safe via the
    `typeof HTMLElement !== 'undefined'` stub, computes `observedAttributes`
-   from the input table, coalesces bursts (`setAttributes()` / `batch()` /
+   from the input table, coalesces bursts (`setProperties()` / `batch()` /
    microtask), and provides typed events via `this.emit()` (the free
    `dispatch()` function underneath; bubbles, **not composed**). `emit()` attaches
    the component context (`controller` from `createController()`, `element`,
@@ -185,7 +185,7 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
   parse, or dispatch plumbing in a component.
 - Core hooks stay **`protected`** in a component (`reinit()`, `update()`, `connect()`,
   `disconnect()`, `destroyCallback()`, the `*Changed()` hooks, …). Writing many inputs at
-  once is core's public `el.setAttributes(props)` / `el.batch()`, never a component's own
+  once is core's public `el.setProperties(props)` / `el.batch()`, never a component's own
   public `el.update(props)` (it skips parse/validation and `this.config`, so the next flush
   restores the old values). Rulebook C-CA-14 checks it.
 - Reactivity is declared per input (`on: 'update' | 'reinit' | 'none'`) and
@@ -206,7 +206,7 @@ Two load-bearing concepts. Understanding both requires reading §4–§6 of the 
   (the default before any valid one). Converters flag a bad attribute string via
   `fromAttribute`'s `reportInvalid` argument; a reflected input then writes its
   current value back (SPEC §6). Every refusal also fires the core `input-rejected`
-  event, synchronously (`setAttributes()` returns them too) — a new rejection path
+  event, synchronously (`setProperties()` returns them too) — a new rejection path
   goes through `#reject()`, not a bare warning.
 - Docs/IntelliSense are **secondary** and fed from JSDoc comments (BlissFramework
   C-CEM-13 format), *not* from the parser structure. Converter introspection
@@ -302,7 +302,7 @@ exception is revoked — they're silenced by `disableLogging()` like everything 
 `BlissElement.whenSettled(): Promise<void>` (in **core**, not just tests)
 resolves after the pending flush's `reinit()`/`update()` runs — immediately when
 nothing is pending, after the microtask for loose assignments, already-settled
-after `setAttributes()`/`batch()`, on next connect for detached changes, on
+after `setProperties()`/`batch()`, on next connect for detached changes, on
 `release()` for a deferred element (by design — "settled" means built; release
 first, then await). It's the deterministic read-after-write signal — mainly for
 tests; app code needs it only to read back rendered state (shadow DOM, layout,

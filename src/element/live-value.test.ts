@@ -111,9 +111,9 @@ describe('InputDef.getLiveValue', () => {
     document.body.append(el);
     el.addItem('b');
     el.failNextReinit = true;
-    expect(() => el.setAttributes({ height: 20 })).toThrow('boom');
+    expect(() => el.setProperties({ height: 20 })).toThrow('boom');
     expect(el.items).toEqual(['a']);
-    el.setAttributes({ height: 30 }); // retry succeeds → rebuilt from config
+    el.setProperties({ height: 30 }); // retry succeeds → rebuilt from config
     el.addItem('c');
     expect(el.items).toEqual(['a', 'c']);
   });

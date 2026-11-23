@@ -1,21 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveEnumAttribute } from './resolve-enum-attribute.js';
 import { createMicrotaskScheduler } from './microtask-scheduler.js';
-
-describe('resolveEnumAttribute', () => {
-  const MODES = ['top', 'bottom'] as const;
-
-  it('matches against the set with a fallback', () => {
-    expect(resolveEnumAttribute('top', MODES, 'bottom')).toBe('top');
-    expect(resolveEnumAttribute('nope', MODES, 'bottom')).toBe('bottom');
-    expect(resolveEnumAttribute(null, MODES, 'bottom')).toBe('bottom');
-  });
-
-  it('supports case-insensitive matching', () => {
-    expect(resolveEnumAttribute('TOP', MODES, 'bottom', { isCaseInsensitive: true })).toBe('top');
-    expect(resolveEnumAttribute('TOP', MODES, 'bottom')).toBe('bottom');
-  });
-});
 
 describe('createMicrotaskScheduler', () => {
   it('coalesces repeated scheduling of the same task into one run', async () => {

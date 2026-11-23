@@ -179,9 +179,9 @@ describe('getBatchValuesCallback', () => {
     expect(warn).toHaveBeenCalledTimes(1);
   });
 
-  it('setAttributes() keys count as explicit', () => {
+  it('setProperties() keys count as explicit', () => {
     const el = make();
-    el.setAttributes({ mode: 'excel', editTrigger: 'click' });
+    el.setProperties({ mode: 'excel', editTrigger: 'click' });
     expect(el.editTrigger).toBe('click');
     expect(el.getAttribute('edit-trigger')).toBe('click');
   });

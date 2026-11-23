@@ -113,7 +113,7 @@ el.removeAttribute('count');     // → default 3</code></pre></div>
             <p>
                 The page is told too: every refused write fires <strong><code>input-rejected</code></strong> (twin
                 <code>onInputRejected</code>, bubbles, not composed) <em>before the write returns</em>, with
-                <code>{ configKey, attribute?, value, reason?, kept, source }</code>, and <code>setAttributes()</code>
+                <code>{ configKey, attribute?, value, reason?, kept, source }</code>, and <code>setProperties()</code>
                 returns the list of what it refused. <code>setAttribute()</code> and a property assignment can't return
                 anything (the browser's API), so a framework wrapper listens for the event to surface the error or
                 revert its own bound value to <code>kept</code>.
@@ -131,7 +131,7 @@ el.removeAttribute('count');     // → default 3</code></pre></div>
                         <button data-op="prop-tags-string"><code>el.tags = 'a,b'</code> — not an array</button>
                         <button data-op="prop-label-empty"><code>el.label = ''</code></button>
                         <button data-op="attr-count-8"><code>setAttribute('count', '8')</code> — valid</button>
-                        <button data-op="set-attributes"><code>setAttributes({ count: 3, limit: 'x', colour: 'red' })</code></button>
+                        <button data-op="set-attributes"><code>setProperties({ count: 3, limit: 'x', colour: 'red' })</code></button>
                     </div>
                 </div>
                 <div>
@@ -154,7 +154,7 @@ el.count = 99;                   // warn · count stays 5 (max: 10)
 el.addEventListener('input-rejected', (e) =&gt; {
   e.detail; // { configKey: 'count', value: 99, kept: 5, source: 'property' }
 });
-el.setAttributes({ count: 3, limit: 'x' }); // → [{ configKey: 'limit', value: 'x', kept: 50, … }]</code></pre></div>
+el.setProperties({ count: 3, limit: 'x' }); // → [{ configKey: 'limit', value: 'x', kept: 50, … }]</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -214,7 +214,7 @@ el.setAttributes({ count: 3, limit: 'x' }); // → [{ configKey: 'limit', value:
 reinit()        { /* rebuild everything from this.config */ }
 update(partial) { /* patch only partial's keys — e.g. { caption: 'Quarterly' } */ }
 
-el.setAttributes({ caption: 'Mixed', layout: 'grid' });  // → reinit() only, no update partial</code></pre></div>
+el.setProperties({ caption: 'Mixed', layout: 'grid' });  // → reinit() only, no update partial</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -225,7 +225,7 @@ el.setAttributes({ caption: 'Mixed', layout: 'grid' });  // → reinit() only, n
             <p>
                 Loose property assignments in the same synchronous block <strong>coalesce on a microtask</strong> into one
                 flush — nothing has run right after the writes; <code>await el.whenSettled()</code> is the deterministic
-                read-after-write signal. Assignments split across ticks are one flush each. <code>setAttributes({…})</code>
+                read-after-write signal. Assignments split across ticks are one flush each. <code>setProperties({…})</code>
                 and <code>batch(fn)</code> make the batch explicit and flush <em>synchronously</em>. An imperative method that
                 reads live state calls <code>this.flush()</code> first, so <code>el.x = …; el.method()</code> works without an
                 <code>await</code>. Configuring a <strong>detached</strong> element and appending it builds once.
@@ -238,7 +238,7 @@ el.setAttributes({ caption: 'Mixed', layout: 'grid' });  // → reinit() only, n
                     <div class="controls mt-1">
                         <button id="in04-loose">3 loose writes, same tick</button>
                         <button id="in04-ticks">3 writes across ticks</button>
-                        <button id="in04-setattrs"><code>setAttributes({…})</code></button>
+                        <button id="in04-setattrs"><code>setProperties({…})</code></button>
                         <button id="in04-batch"><code>batch(() =&gt; {…})</code></button>
                         <button id="in04-settled"><code>await whenSettled()</code> before reading</button>
                         <button id="in04-flush">Imperative method: without vs with <code>flush()</code></button>
@@ -255,7 +255,7 @@ el.setAttributes({ caption: 'Mixed', layout: 'grid' });  // → reinit() only, n
 // nothing has run yet — one microtask flush is queued
 await el.whenSettled();                 // → ONE update({ caption: 'B', accent: 'green' })
 
-el.setAttributes({ caption: 'C', 'page-size': 6 });   // configKey or attribute name; flushed now
+el.setProperties({ caption: 'C', 'page-size': 6 });   // configKey or attribute name; flushed now
 el.batch(() =&gt; { el.caption = 'D'; el.accent = 'red'; });  // one flush, synchronous
 
 // Inside the component — imperative methods flush first:
@@ -264,7 +264,7 @@ el.pageSize = 8; el.readRendered().pageSize;          // 8, no await needed
 
 // Pay for the build once: configure detached, then append
 const fresh = document.createElement('core-demo-reactivity');
-fresh.setAttributes({ layout: 'grid', pageSize: 8 });
+fresh.setProperties({ layout: 'grid', pageSize: 8 });
 document.body.append(fresh);            // ONE reinit() with the full config</code></pre></div>
         </div>
 
@@ -288,7 +288,7 @@ document.body.append(fresh);            // ONE reinit() with the full config</co
                         <span class="muted">Pick <code>excel</code>: one write, three inputs change, one <code>update</code> in the log. <code>custom</code> sets nothing else.</span>
                     </div>
                     <div class="controls">
-                        <button id="in05-explicit"><code>setAttributes({ mode: 'excel', editTrigger: 'none' })</code></button>
+                        <button id="in05-explicit"><code>setProperties({ mode: 'excel', editTrigger: 'none' })</code></button>
                         <span class="muted">The excel preset says <code>dblclick</code>, but <code>editTrigger</code> stays <code>none</code> — the explicit value wins. <code>hasGridLines</code> still comes from the preset.</span>
                     </div>
                     <table class="reference-table table-compact table-scroll mt-1">
@@ -313,7 +313,7 @@ document.body.append(fresh);            // ONE reinit() with the full config</co
 ];
 
 el.mode = 'excel';                  // → ONE update({ mode, editTrigger: 'dblclick', hasGridLines: true })
-el.setAttributes({ mode: 'excel', editTrigger: 'none' });   // explicit editTrigger wins</code></pre></div>
+el.setProperties({ mode: 'excel', editTrigger: 'none' });   // explicit editTrigger wins</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -376,14 +376,14 @@ el.items;                           // getter: the component's live rows (user-a
                     <tr><td><code>protected reinit()</code></td><td>Full rebuild from <code>this.config</code>: first connect + any batch changing an <code>on: 'reinit'</code> input.</td></tr>
                     <tr><td><code>protected update(partial)</code></td><td>In-place patch with just the changed <code>on: 'update'</code> keys (no reinit key in the batch).</td></tr>
                     <tr><td><code>protected config</code></td><td>The validated, effective config (defaults + attributes + properties + responsive overrides).</td></tr>
-                    <tr><td><code>setAttributes(values)</code></td><td>Apply many inputs (by <code>configKey</code> or attribute name) as one synchronous flush. Returns the refused writes (<code>InputRejection[]</code>).</td></tr>
+                    <tr><td><code>setProperties(values)</code></td><td>Apply many inputs (by <code>configKey</code> or attribute name) as one synchronous flush. Returns the refused writes (<code>InputRejection[]</code>).</td></tr>
                     <tr><td><code>input-rejected</code> event</td><td>Fired synchronously for every refused attribute / property write (the element warned and kept the previous value); detail: <code>configKey</code>, <code>attribute</code>, <code>value</code>, <code>reason</code>, <code>kept</code>, <code>source</code>.</td></tr>
                     <tr><td><code>batch(fn)</code></td><td>Run <code>fn</code>; coalesce its property writes into one synchronous flush.</td></tr>
                     <tr><td><code>whenSettled(): Promise&lt;void&gt;</code></td><td>Resolves after the pending flush ran (immediately when nothing is pending; on next connect while detached).</td></tr>
                     <tr><td><code>flush()</code></td><td>Apply pending writes now — call it at the top of imperative methods.</td></tr>
                     <tr><td><code>getBatchValuesCallback(value, config)</code></td><td>Row field: other inputs to set in the same batch; explicit writes in that batch win; one level only.</td></tr>
                     <tr><td><code>getLiveValue(el)</code></td><td>Row field: the getter returns live state after the first build (not while the write is staged); <code>undefined</code> → stored value. Setter and <code>this.config</code> unchanged.</td></tr>
-                    <tr><td><code>protected engineConfig(exclude?)</code> · <code>clearableConfigKeys</code></td><td>A copy of <code>this.config</code> to hand to an engine, <code>null</code>s kept (a <code>null</code> on a clearable input is a deliberate clear); the set of inputs that admit <code>null</code>.</td></tr>
+                    <tr><td><code>protected getEngineConfig(exclude?)</code> · <code>clearableConfigKeys</code></td><td>A copy of <code>this.config</code> to hand to an engine, <code>null</code>s kept (a <code>null</code> on a clearable input is a deliberate clear); the set of inputs that admit <code>null</code>.</td></tr>
                 </tbody>
             </table>
         </div>
@@ -522,10 +522,10 @@ el.items;                           // getter: the component's live rows (user-a
             'prop-label-empty': { code: "el.label = ''", key: 'label', attr: 'label', run: () => { el2.label = ''; } },
             'attr-count-8': { code: "setAttribute('count', '8')", key: 'count', attr: 'count', run: () => el2.setAttribute('count', '8') },
             'set-attributes': {
-                code: "setAttributes({ count: 3, limit: 'x', colour: 'red' })",
+                code: "setProperties({ count: 3, limit: 'x', colour: 'red' })",
                 key: 'count',
                 attr: 'count',
-                run: () => { lastReturn2 = el2.setAttributes({ count: 3, limit: 'x', colour: 'red' }); },
+                run: () => { lastReturn2 = el2.setProperties({ count: 3, limit: 'x', colour: 'red' }); },
             },
         };
         // What the page hears: the input-rejected event (detail = { configKey, attribute?, value, reason?, kept, source }).
@@ -586,7 +586,7 @@ el.items;                           // getter: the component's live rows (user-a
         $('in03-mixed').addEventListener('click', () => {
             n3 += 1;
             const layout = el3.layout === 'list' ? 'grid' : 'list';
-            run3(`el.setAttributes({ caption: 'Mixed ${n3}', layout: '${layout}' })`, () => el3.setAttributes({ caption: `Mixed ${n3}`, layout }));
+            run3(`el.setProperties({ caption: 'Mixed ${n3}', layout: '${layout}' })`, () => el3.setProperties({ caption: `Mixed ${n3}`, layout }));
         });
         counters3();
 
@@ -625,10 +625,10 @@ el.items;                           // getter: the component's live rows (user-a
         });
         $('in04-setattrs').addEventListener('click', async () => {
             n4 += 1;
-            head4("setAttributes({ caption, 'page-size' })");
+            head4("setProperties({ caption, 'page-size' })");
             const size = el4.pageSize === 6 ? 4 : 6;
             const calls = await recordHooks(el4, (calls) => {
-                el4.setAttributes({ caption: `Set ${n4}`, 'page-size': size });
+                el4.setProperties({ caption: `Set ${n4}`, 'page-size': size });
                 log(log4, `  synchronously after the call: ${calls.length} hook call(s)`, 'ok');
             });
             hooks4(calls);
@@ -697,8 +697,8 @@ el.items;                           // getter: the component's live rows (user-a
             state5();
         });
         $('in05-explicit').addEventListener('click', () => {
-            log(log5, "› <code>el.setAttributes({ mode: 'excel', editTrigger: 'none' })</code>", 'action');
-            el5.setAttributes({ mode: 'excel', editTrigger: 'none' });
+            log(log5, "› <code>el.setProperties({ mode: 'excel', editTrigger: 'none' })</code>", 'action');
+            el5.setProperties({ mode: 'excel', editTrigger: 'none' });
             $('in05-mode').value = 'excel';
             state5();
         });

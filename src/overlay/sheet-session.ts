@@ -23,7 +23,7 @@ export interface SheetSessionOptions {
   /** Lock page scroll while open. Default `true`. */
   shouldLockScroll?: boolean;
   /** Track the virtual keyboard (`--km-keyboard-inset` on the panel). Default `true`. */
-  shouldObserveKeyboardInset?: boolean;
+  shouldFitToVisibleViewport?: boolean;
   /** Warn once when an ancestor traps the fixed panel in its own box. Default `true`. */
   shouldCheckContainingBlock?: boolean;
   /** The element whose logger the warning goes through (default: the panel's shadow host, else the panel). */
@@ -46,7 +46,7 @@ export function startSheetSession(panel: HTMLElement, opts: SheetSessionOptions 
   let isEnded = false;
 
   if (opts.shouldLockScroll ?? true) undo.push(lockBodyScroll());
-  if (opts.shouldObserveKeyboardInset ?? true) undo.push(fitToVisibleViewport(panel));
+  if (opts.shouldFitToVisibleViewport ?? true) undo.push(fitToVisibleViewport(panel));
   const claim = (): void => {
     if (!opts.onBack || isEnded) return;
     releaseBack = claimBackEntry(() => opts.onBack!());

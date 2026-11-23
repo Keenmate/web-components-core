@@ -314,8 +314,8 @@ describe('define() — a name taken by a different constructor', () => {
 });
 
 // I-18 e2e list: "nullclear covers only one input type" — the other clearable families
-// through engineConfig(). Pure input-table behaviour, so a unit test (no browser needed).
-describe('engineConfig() — clearing a tristate bool, a nullable enum and a callback', () => {
+// through getEngineConfig(). Pure input-table behaviour, so a unit test (no browser needed).
+describe('getEngineConfig() — clearing a tristate bool, a nullable enum and a callback', () => {
   class ClearHost extends BlissElement {
     protected static override inputs: readonly InputDef[] = [
       { configKey: 'isSorted', attribute: 'is-sorted', converter: toBool('tristate') },
@@ -324,10 +324,10 @@ describe('engineConfig() — clearing a tristate bool, a nullable enum and a cal
     ];
     readonly sent: Record<string, unknown>[] = [];
     protected override reinit(): void {
-      this.sent.push(this.engineConfig());
+      this.sent.push(this.getEngineConfig());
     }
     protected override update(partial: Record<string, unknown>): void {
-      this.sent.push({ ...this.engineConfig(), ...partial });
+      this.sent.push({ ...this.getEngineConfig(), ...partial });
     }
     clearable(): ReadonlySet<string> {
       return this.clearableConfigKeys;

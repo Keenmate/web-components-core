@@ -17,7 +17,7 @@ import type { Page } from './fixtures';
  *   - PG03 loader: instance hook > page hook > default <span class="<prefix>__loader"> with
  *     role/aria-label; a throwing instance hook is logged and falls back to the default (the
  *     previous hook's cleanup runs); remove() restores the container (attributes + children)
- *   - PG04 adoptStyles shares one CSSStyleSheet across instances; createStyleSlot replaces in
+ *   - PG04 adoptStyles shares one CSSStyleSheet across instances; createStyleElement replaces in
  *     place and null removes it
  *
  * Fixture: test/page-wide.html (inline classic script pre-creates the early registry entry)
@@ -237,7 +237,7 @@ test('PG03: loader precedence instance > page > default; throwing hook → defau
   expect((await state()).pageHook).toBe('undefined');
 });
 
-test('PG04: adoptStyles shares one sheet; createStyleSlot replaces in place', async ({ page }) => {
+test('PG04: adoptStyles shares one sheet; createStyleElement replaces in place', async ({ page }) => {
   const read = () =>
     page.evaluate(() => {
       const a = document.getElementById('pg-a')!.shadowRoot!;

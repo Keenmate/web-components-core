@@ -112,7 +112,7 @@ describe('input-rejected', () => {
   });
 });
 
-describe('setAttributes() returns what it refused', () => {
+describe('setProperties() returns what it refused', () => {
   beforeEach(() => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
@@ -123,7 +123,7 @@ describe('setAttributes() returns what it refused', () => {
 
   it('[] when everything applies', () => {
     const el = make();
-    expect(el.setAttributes({ limit: 5, size: 'lg' })).toEqual([]);
+    expect(el.setProperties({ limit: 5, size: 'lg' })).toEqual([]);
     expect(el.limit).toBe(5);
   });
 
@@ -131,7 +131,7 @@ describe('setAttributes() returns what it refused', () => {
     const el = make();
     const listener = vi.fn();
     el.addEventListener(INPUT_REJECTED_EVENT, listener);
-    const rejected = el.setAttributes({ limit: 'abc', size: 'lg', colour: 'red', motion: 'turbo' });
+    const rejected = el.setProperties({ limit: 'abc', size: 'lg', colour: 'red', motion: 'turbo' });
     expect(rejected).toEqual([
       { configKey: 'limit', value: 'abc', kept: 50, source: 'property' },
       { configKey: 'colour', value: 'red', reason: 'not an input of <rejecting-element>', kept: undefined, source: 'property' },
@@ -141,16 +141,16 @@ describe('setAttributes() returns what it refused', () => {
     expect(listener).toHaveBeenCalledTimes(3);
   });
 
-  it('a nested setAttributes() (from a listener) returns its own rejections only', () => {
+  it('a nested setProperties() (from a listener) returns its own rejections only', () => {
     const el = make();
     let inner: InputRejection[] | undefined;
     let isNested = false;
     el.addEventListener(INPUT_REJECTED_EVENT, () => {
       if (isNested) return; // the inner call's own rejection fires this listener too
       isNested = true;
-      inner = el.setAttributes({ size: 'xxl' });
+      inner = el.setProperties({ size: 'xxl' });
     });
-    const outer = el.setAttributes({ limit: 0 });
+    const outer = el.setProperties({ limit: 0 });
     expect(outer.map((r) => r.configKey)).toEqual(['limit']);
     expect(inner?.map((r) => r.configKey)).toEqual(['size']);
   });

@@ -11,7 +11,7 @@
  * surface below, never on the engine internals.
  */
 import { DEFAULT_ENABLED_LOG_LEVEL, LOG_LEVELS, getLogger, isLogLevel, parseLogLevel, type LogLevelDesc, type CoreLogger } from './log-core.js';
-import { registerGlobalLoggingTarget } from './global-logging.js';
+import { registerPageLoggingTarget } from './global-logging.js';
 
 /**
  * The public logger surface: the five level methods plus level control.
@@ -254,6 +254,6 @@ export function createLoggers<C extends string>(
   };
   // Enlist under the page-wide switch (window.components.logging); adopts the
   // current global level when one was already set.
-  registerGlobalLoggingTarget(bundle);
+  registerPageLoggingTarget(bundle);
   return bundle;
 }

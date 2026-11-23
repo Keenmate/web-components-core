@@ -217,7 +217,7 @@ stage.append(el);   // console warning: "&lt;core-demo-lifecycle&gt; was destroy
             <h2>LC06 · A throwing hook doesn't wedge the element</h2>
             <p>
                 An error thrown by a hook is rethrown to whoever flushed: the caller of
-                <code>batch()</code> / <code>setAttributes()</code> / <code>flush()</code>, or the browser's error
+                <code>batch()</code> / <code>setProperties()</code> / <code>flush()</code>, or the browser's error
                 reporting for a flush inside <code>connectedCallback</code>. The element still recovers.
                 <code>whenSettled()</code> waiters resolve anyway, a failed <code>reinit()</code> is owed and
                 retried on the next flush (any change, or a plain <code>flush()</code>; the owed rebuild beats an
@@ -271,7 +271,7 @@ fresh.flush();         // reinit() → connect() → ready</code></pre></div>
                     <tr><td><code>ready</code> event / <code>onReady</code></td><td>event + twin</td><td>Fired at the same moment. The twin is called with the detail, then the event is dispatched (bubbles, not composed).</td></tr>
                     <tr><td><code>isReady</code> / <code>whenReady()</code></td><td>getter / method</td><td>Flag and promise for the same moment. <code>whenReady()</code> never rejects: a failing first build keeps it pending; <code>destroy()</code> resolves it (check <code>isDestroyed</code> after awaiting).</td></tr>
                     <tr><td><code>whenSettled()</code> / <code>flush()</code></td><td>methods</td><td>Await the pending flush, or apply it synchronously now. <code>flush()</code> also retries an owed failed <code>reinit()</code>.</td></tr>
-                    <tr><td><code>batch(fn)</code> / <code>setAttributes(obj)</code></td><td>methods</td><td>Coalesce several writes into one synchronous flush. A throwing hook is rethrown to the caller.</td></tr>
+                    <tr><td><code>batch(fn)</code> / <code>setProperties(obj)</code></td><td>methods</td><td>Coalesce several writes into one synchronous flush. A throwing hook is rethrown to the caller.</td></tr>
                 </tbody>
             </table>
             <div class="note">

@@ -148,13 +148,13 @@ x-comp[defer]:not([ready]) { min-height: 2.5rem; visibility: hidden; }
 **Refused values are reported** (every component): an invalid attribute or property
 value warns and keeps the previous value, and fires **`input-rejected`** (+
 `onInputRejected`) before the write returns, so a framework wrapper can surface it or
-revert its bound value. `setAttributes()` returns the same list:
+revert its bound value. `setProperties()` returns the same list:
 
 ```js
 el.addEventListener('input-rejected', (e) => {
   e.detail; // { configKey: 'limit', attribute: 'limit', value: 'abc', reason: 'expected an integer', kept: 50, source: 'attribute' }
 });
-const rejected = el.setAttributes({ limit: 'x', colour: 'red' }); // [{ configKey: 'limit', … }, { configKey: 'colour', … }]
+const rejected = el.setProperties({ limit: 'x', colour: 'red' }); // [{ configKey: 'limit', … }, { configKey: 'colour', … }]
 ```
 
 **Disabled**: core implements `formDisabledCallback` for form-associated elements.
@@ -166,8 +166,8 @@ element by its own `disabled` attribute, so a non-reflecting input would stay
 disabled after `el.isDisabled = false` (core warns). A fieldset never writes
 `el.isDisabled`.
 
-Batch many changes into one reinit/update with `setAttributes({ ... })` or
-`batch(() => { ... })`. A `setAttributes()` key that isn't an input (configKey or
+Batch many changes into one reinit/update with `setProperties({ ... })` or
+`batch(() => { ... })`. A `setProperties()` key that isn't an input (configKey or
 attribute name, or a core-declared `shouldDefer` / `themeSource` / `responsive*`) warns and
 is skipped — a renamed or misspelled key is never dropped silently. To await the pipeline deterministically — in a test or
 before reading rendered state — use **`await el.whenSettled()`**: it resolves
@@ -260,7 +260,7 @@ this.#sheet?.end();
 It locks page scroll (`lockBodyScroll`), tracks the virtual keyboard (`fitToVisibleViewport`), holds one
 history entry for the whole page (`claimBackEntry`; closing any other way gives it back one task later, and
 the page keeps its scroll position), and warns once when an ancestor with `transform` / `filter` / … traps
-the fixed panel in its own box. `shouldLockScroll` / `shouldObserveKeyboardInset` /
+the fixed panel in its own box. `shouldLockScroll` / `shouldFitToVisibleViewport` /
 `shouldCheckContainingBlock: false` switch a piece off; the three helpers stay exported for anything else.
 
 ### Modal session (dialog / centered picker / full-screen sheet)
@@ -276,7 +276,7 @@ this.#modal = startModalSession(panel, {
   backdrop: true,                         // core adds a dimmed <div> before the panel; or your own element; omit = none
   onDismiss: (reason) => this.close(reason),  // 'escape' | 'back' | 'backdrop' | 'overlay' | 'parent'
   trigger: this.#input,                   // focus returns here on end()
-  // shouldObserveKeyboardInset: true,    // a FULL-SCREEN sheet: size to the visual viewport
+  // shouldFitToVisibleViewport: true,    // a FULL-SCREEN sheet: size to the visual viewport
 });
 
 // on EVERY close
@@ -683,7 +683,7 @@ In-page drags that work with a finger, and drop targets that light up while file
 ([SPEC §12.28](SPEC.md)):
 
 ```ts
-import { createPointerDrag, observePageDrag, applyArmedState } from '@keenmate/web-components-core';
+import { createPointerDrag, observePageDrag, setDropActiveState } from '@keenmate/web-components-core';
 
 #drag = createPointerDrag(this.#body, {
   getSource: (target) => target.closest('.row'),          // null = not draggable here
@@ -695,7 +695,7 @@ import { createPointerDrag, observePageDrag, applyArmedState } from '@keenmate/w
 });
 
 // connect() / disconnect()
-this.#stopArmed = observePageDrag({ types: ['Files'], onChange: (isArmed) => applyArmedState(this, this.internals, isArmed) });
+this.#stopDropActive = observePageDrag({ types: ['Files'], onChange: (isDropActive) => setDropActiveState(this, this.internals, isDropActive) });
 ```
 
 Give your drag image `pointer-events: none` so the hit test sees what's under it.
@@ -1001,7 +1001,7 @@ window.components['web-multiselect'].logging.setLogLevel('debug');
 window.components['web-multiselect'].logging.resetLogging();   // follow the page again
 ```
 
-Also available in code as `getGlobalLogging()`.
+Also available in code as `getPageLogging()`.
 
 ### Core's own messages
 
@@ -1076,15 +1076,15 @@ Vite `?inline`) — and stays render-agnostic, so these are free functions, not
 base-class methods.
 
 ```ts
-import { adoptStyles, createStyleSlot } from '@keenmate/web-components-core';
+import { adoptStyles, createStyleElement } from '@keenmate/web-components-core';
 import styles from './main.css?inline';
 
 // static, shared across all instances (one cached CSSStyleSheet; <style> fallback)
 adoptStyles(this.shadowRoot, styles);
 
-// per-instance user CSS (the customStylesCallback pattern) — one replaceable slot
-const slot = createStyleSlot(this.shadowRoot, { cssClass: 'custom-styles' });
-slot.set(this.config.customStylesCallback?.());  // re-set replaces; falsy clears
+// per-instance user CSS (the getCustomStylesCallback pattern) — one replaceable <style> element
+const style = createStyleElement(this.shadowRoot, { cssClass: 'custom-styles' });
+style.set(this.config.getCustomStylesCallback?.());  // re-set replaces; falsy clears
 ```
 
 Every component takes custom CSS from `createCustomStyles()`, **always the same way** (rulebook
@@ -1114,7 +1114,7 @@ protected override update(partial) {
 protected override destroyCallback() { this.#customStyles?.destroy(); this.#customStyles = null; }
 ```
 
-No other custom-CSS code in the component: no `createStyleSlot`, no own `<style>` / `<link>`
+No other custom-CSS code in the component: no `createStyleElement`, no own `<style>` / `<link>`
 handling. A component that doesn't apply the page layer gets a core warning when a page sets it.
 
 An `@import` in either layer is also linked once in the document `<head>`, because Chromium ignores
@@ -1334,12 +1334,12 @@ with no code; keyboard-shortcut hints are hidden on both (the keys still work).
 its own presentation attribute — and passes its own strings:
 
 ```ts
-import { menuPresentationInputs, menuPresentationOptions, openMenu } from '@keenmate/web-components-core/menu';
+import { createMenuPresentationInputs, getMenuPresentationOptions, openMenu } from '@keenmate/web-components-core/menu';
 
-static inputs = [...OWN_INPUTS, ...menuPresentationInputs()];   // menu-presentation, menu-side
+static inputs = [...OWN_INPUTS, ...createMenuPresentationInputs()];   // menu-presentation, menu-side
 // at open
 openMenu(entries, ctx, {
-  ...menuPresentationOptions(this.config),                       // { presentation, side } (effective config)
+  ...getMenuPresentationOptions(this.config),                       // { presentation, side } (effective config)
   labels: { back: this.labels.back, close: this.labels.close },  // never hard-coded English
 });
 ```
@@ -1446,13 +1446,13 @@ explain the main ones; [SPEC](SPEC.md) has the design notes.
 | Element | `BlissElement`, `INPUT_REJECTED_EVENT` (`'input-rejected'`, a refused write), `define(tag, Class)` (define once), `dispatch(target, name, detail)` (the free event helper under `emit()`), `defaultEventProperty(name)` (`'node-select'` → `'onNodeSelect'`), `withComponentContext(detail, controller, element, extras?)` / `COMPONENT_CONTEXT_KEYS` (the non-enumerable `controller` / `element`), `createControllerFacade(target, spec)` (the frozen public controller over a lazy engine); `normalizeEventDefs` is internal plumbing |
 | Before-callbacks | `runBeforeCallback` (async; `false` cancels, a value replaces), `runBeforeCallbackSync`, `runBeforeCallbackEager` (stays synchronous for a sync hook) |
 | Registration | `registerComponent(tag, Class, opts)` (`window.components[tag]`), `getInstances(tag)`, `getConnectedTags()` — page-wide, across copies of core |
-| DOM | `adoptStyles(root, ...css)` / `createStyleSlot(root)` (style injection), `renderLoader(host, container, context, opts)` / `publishLoaderHook()` (loading states), `scrollIntoContainer` / `findScrollContainer` (container scroll), `scrollContainerToBox` / `getScrollTopForBox` (a virtual-list row by index), `createVirtualWindow` / `computeVirtualRange` (a virtual list over fixed-height rows; the bare range math), `createSelection` (selected keys + anchor, click / Ctrl / Shift rules), `createPointerDrag` / `deepElementFromPoint` (mouse + touch drag), `observeTextInput` / `isImeEnter` (IME-safe typed text), `keepScrollAcrossMove` (scroll positions across a DOM move), `copyText` / `readPasteText` (clipboard), `renderIcon` / `ICON_CSS` / `BUILT_IN_ICON_NAMES` / `publishIconHook()` / `observeIconHook(listener)` (icon strings: markup / built-in name / page `renderIconCallback` / icon-font classes / text; the page hook's changes — a BlissElement gets them through `iconsChanged()`), `renderSlot` / `renderSlotHtml` (a render callback's result: HTML / node / default / hidden, memoized; the string form for string-built rows), `observePageDrag` / `applyArmedState` (page-wide file drag), `createStateStore` (persisted UI state), `deepActiveElement()` (the focused element inside shadow roots), `deepClosest(el, selector)` / `isDeepInside(el, container)` (`closest` / containment across shadow roots), `escapeHtml(text)` (also on `/search`), `createMicrotaskScheduler()` (coalesce a burst into one run), `createDebounce(fn, ms)` (`schedule(...args)` / `flush()` / `cancel()`; last call wins, `ms <= 0` = synchronous, `ms` may be a function), `createThrottle(fn, ms)` (leading + one trailing run), `createFrameScheduler(fn)` (one run per animation frame), `isMotionOff` / `readScrollBehavior` / `readCssDurationMs` / `readCssLengthPx` (resolved CSS in JS), `Z_INDEX` (stacking tiers), `isRtl(el)` (effective writing direction, across shadow roots), `createId(prefix)` (page-unique id for ARIA references / `for`), `createFocusTrap` / `getTabbables` (focus trap), `createFormInputs` / `formatFormValue` (form submission), `createAsyncRunner` (latest-request-wins loading), `announce(text)` (screen-reader live region), `guardGhostClick` (a tap's trailing click), `resolveEnumAttribute(raw, values, fallback)` |
+| DOM | `adoptStyles(root, ...css)` / `createStyleElement(root)` (style injection), `renderLoader(host, container, context, opts)` / `publishLoaderHook()` (loading states), `scrollIntoContainer` / `findScrollContainer` (container scroll), `scrollContainerToBox` / `getScrollTopForBox` (a virtual-list row by index), `createVirtualWindow` / `computeVirtualRange` (a virtual list over fixed-height rows; the bare range math), `createSelection` (selected keys + anchor, click / Ctrl / Shift rules), `createPointerDrag` / `deepElementFromPoint` (mouse + touch drag), `observeTextInput` / `isImeEnter` (IME-safe typed text), `keepScrollAcrossMove` (scroll positions across a DOM move), `copyText` / `readPasteText` (clipboard), `renderIcon` / `ICON_CSS` / `BUILT_IN_ICON_NAMES` / `publishIconHook()` / `observeIconHook(listener)` (icon strings: markup / built-in name / page `renderIconCallback` / icon-font classes / text; the page hook's changes — a BlissElement gets them through `iconsChanged()`), `renderSlot` / `renderSlotHtml` (a render callback's result: HTML / node / default / hidden, memoized; the string form for string-built rows), `observePageDrag` / `setDropActiveState` (page-wide file drag), `createStateStore` (persisted UI state), `deepActiveElement()` (the focused element inside shadow roots), `deepClosest(el, selector)` / `isDeepInside(el, container)` (`closest` / containment across shadow roots), `escapeHtml(text)` (also on `/search`), `createMicrotaskScheduler()` (coalesce a burst into one run), `createDebounce(fn, ms)` (`schedule(...args)` / `flush()` / `cancel()`; last call wins, `ms <= 0` = synchronous, `ms` may be a function), `createThrottle(fn, ms)` (leading + one trailing run), `createFrameScheduler(fn)` (one run per animation frame), `isMotionOff` / `readScrollBehavior` / `readCssDurationMs` / `readCssLengthPx` (resolved CSS in JS), `Z_INDEX` (stacking tiers), `isRtl(el)` (effective writing direction, across shadow roots), `createId(prefix)` (page-unique id for ARIA references / `for`), `createFocusTrap` / `getTabbables` (focus trap), `createFormInputs` / `formatFormValue` (form submission), `createAsyncRunner` (latest-request-wins loading), `announce(text)` (screen-reader live region), `guardGhostClick` (a tap's trailing click) |
 | CSS-variable lint | `extractConsumedCssVars`, `extractDeclaredCssVars`, `lintCssVars` (read vs declared `--prefix-*` names), `suggestCssVars` (likely target of a typo) |
 | Environment | `getEnvironment`, `observeEnvironment`, `observeViewport`, `observeElementSize`, `createElementSizeObserver(listener)` (`observe` / `unobserve` / `disconnect` — one listener for a changing set of elements, shared observer), `configureBreakpoints` / `BREAKPOINTS_CHANGE_EVENT`, `classifyDevice` / `TABLET_MIN_SHORT_SIDE` |
 | Theme | `getThemeContext`, `observeThemeContext`, `setThemeMode` / `getThemeMode` (force dark / light page-wide), `readThemeSignal(el)`, `resolveThemeSource(host, source)`, `THEME_CONTEXT_ATTRIBUTE`, `THEME_SOURCE_ATTRIBUTE` |
 | Motion | `getPageMotion`, `observePageMotion`, `adoptMotionStyles(node)`, `MOTION_CSS`, `MOTION_PRESETS`, `MOTION_VALUES`, `MOTION_ATTRIBUTE`, `MOTION_DATA_ATTRIBUTE` |
 | Overlays | `resolvePresentation` / `DEFAULT_PRESENTATION_MAP` / `createPresentationContext` (floating panel vs fullscreen sheet), `lockBodyScroll()` (shared ref-counted lock), `fitToVisibleViewport(panel)`, `startSheetSession(panel, { onBack })` (scroll lock + keyboard inset + Back + containing-block check, one `end()`), `claimBackEntry(onBack)` (phone Back closes the sheet), `SHEET_CHROME_CSS` / `createSheetHeader()` (the sheet header + close button), `registerOverlay` / `notifyOverlayActivated` / `observeOverlayActivation` / `dismissAllOverlays` / `OVERLAY_ACTIVATE_EVENT` / `ALL_OVERLAY_GROUPS` (one overlay open at a time, nesting, Escape routing) |
-| Logging | `createLoggers(namespace, categories?)`, `createPerfLogger(namespace, { thresholdMs, maxSpans })` (spans + item counts + metadata, `measureAsync`, `count`, `summarize`), `getGlobalLogging()` (= `window.components.logging`), `getCoreLogging()` / `coreLogging` / `CORE_LOG_CATEGORIES` (core's own messages), `setLogPersistKeyPrefix` / `getLogPersistKeyPrefix`, `isLogLevel`, `parseLogLevel`, `LOG_LEVELS`, `DEFAULT_LOG_CATEGORIES`, `DEFAULT_LOG_LEVEL`, `DEFAULT_ENABLED_LOG_LEVEL`, `runSafely(fn, log)` / `notifyListeners(listeners, value, log)` (call code core doesn't own: a throw is logged, not propagated) |
+| Logging | `createLoggers(namespace, categories?)`, `createPerfLogger(namespace, { thresholdMs, maxSpans })` (spans + item counts + metadata, `measureAsync`, `count`, `summarize`), `getPageLogging()` (= `window.components.logging`), `getCoreLogging()` / `coreLogging` / `CORE_LOG_CATEGORIES` (core's own messages), `setLogPersistKeyPrefix` / `getLogPersistKeyPrefix`, `isLogLevel`, `parseLogLevel`, `LOG_LEVELS`, `DEFAULT_LOG_CATEGORIES`, `DEFAULT_LOG_LEVEL`, `DEFAULT_ENABLED_LOG_LEVEL`, `runSafely(fn, log)` / `notifyListeners(listeners, value, log)` (call code core doesn't own: a throw is logged, not propagated) |
 
 ### Subpaths
 

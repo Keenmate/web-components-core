@@ -70,13 +70,13 @@ input is its own reinit.
 
 ## Mass update — make the batch explicit
 
-`setAttributes(values)` and `batch(fn)` apply many inputs as **one** flush, and
+`setProperties(values)` and `batch(fn)` apply many inputs as **one** flush, and
 they **force a synchronous flush** — so they don't depend on everything landing
 in the same tick the way loose property assignments do.
 
 ```js
 // object form — keys may be configKeys OR kebab attribute names
-el.setAttributes({
+el.setProperties({
   options: [...],
   valueMember: 'code',          // configKey
   'display-value-member': 'name', // …or the attribute name
@@ -91,7 +91,7 @@ el.batch(() => {
 
 Both run one `reinit()` (if any key is `on: 'reinit'`) or one `update(partial)`
 with all the changed `on: 'update'` keys. **One call = one flush.** (So N
-separate `setAttributes` calls = N flushes — pass one object, not several calls.)
+separate `setProperties` calls = N flushes — pass one object, not several calls.)
 
 ## Getting it down to a single reinit
 
@@ -102,7 +102,7 @@ detached are held and applied by the first connect:
 ```js
 const el = document.createElement('web-multiselect');
 el.id = 'hroch';
-el.setAttributes({ options: [...], valueMember: 'code', /* … */ });
+el.setProperties({ options: [...], valueMember: 'code', /* … */ });
 // (or loose property assignments, or batch(); all fine while detached)
 document.body.appendChild(el);   // ONE reinit, with the full config — no wasted defaults build
 ```
@@ -113,7 +113,7 @@ document.body.appendChild(el);   // ONE reinit, with the full config — no wast
 | create detached → configure → append | **1** — full config on first connect |
 | loose `el.x = …` assignments, same tick | collapse to **1** flush |
 | loose assignments across ticks/`await`s | **1 per tick** that hits a reinit input |
-| `setAttributes({…})` / `batch(fn)` | **1** flush per call, tick-independent |
+| `setProperties({…})` / `batch(fn)` | **1** flush per call, tick-independent |
 
 ## Related behavior
 

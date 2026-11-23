@@ -117,16 +117,16 @@ test.describe('invalid values', () => {
 });
 
 test.describe('input-rejected (SPEC §6)', () => {
-  test('a refused write fires the event before it returns; setAttributes() returns the list', async ({ page }) => {
+  test('a refused write fires the event before it returns; setProperties() returns the list', async ({ page }) => {
     const out = await page.evaluate(() => {
-      const el = document.getElementById('el2') as HTMLElement & { count: number; setAttributes(v: object): unknown[] };
+      const el = document.getElementById('el2') as HTMLElement & { count: number; setProperties(v: object): unknown[] };
       const seen: unknown[] = [];
       el.addEventListener('input-rejected', (e) => seen.push({ ...(e as CustomEvent).detail }));
       el.setAttribute('limit', 'abc');
       const afterAttr = seen.length;
       el.count = 99;
       const afterProp = seen.length;
-      const returned = el.setAttributes({ count: 2, colour: 'red' });
+      const returned = el.setProperties({ count: 2, colour: 'red' });
       return { seen, afterAttr, afterProp, returned: returned.map((r) => ({ ...(r as object) })), count: el.count };
     });
     expect(out.afterAttr).toBe(1);

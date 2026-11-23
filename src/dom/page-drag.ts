@@ -1,5 +1,5 @@
 /**
- * Page-wide "something of type X is being dragged over the page" (SPEC §12.28) — the `armed` state of a
+ * Page-wide "something of type X is being dragged over the page" (SPEC §12.28) — the `drop-active` state of a
  * drop target (web-dropzone's `highlight-on-page-drag`), from web-dropzone's `page-file-drag.ts`.
  *
  * One window listener set per copy of core, shared by every watcher (the first subscriber adds them, the
@@ -17,7 +17,7 @@ export interface ObservePageDragOptions {
   /** `dataTransfer.types` that count (any of them); default `['Files']`. */
   types?: readonly string[];
   /** `true` when a matching drag starts over the page, `false` when it ends. Not called on subscribe. */
-  onChange: (isArmed: boolean) => void;
+  onChange: (isDropActive: boolean) => void;
 }
 
 const HEARTBEAT_TIMEOUT_MS = 350;
@@ -26,8 +26,8 @@ const CAPTURE: AddEventListenerOptions = { capture: true };
 
 interface Watcher {
   types: readonly string[];
-  onChange: (isArmed: boolean) => void;
-  isArmed: boolean;
+  onChange: (isDropActive: boolean) => void;
+  isDropActive: boolean;
 }
 
 const watchers = new Set<Watcher>();
@@ -46,18 +46,18 @@ const carries = (e: DragEvent, types: readonly string[]): boolean => {
   return !!list && types.some((t) => Array.prototype.includes.call(list, t));
 };
 
-function set(watcher: Watcher, isArmed: boolean): void {
-  if (watcher.isArmed === isArmed) return;
-  watcher.isArmed = isArmed;
+function set(watcher: Watcher, isDropActive: boolean): void {
+  if (watcher.isDropActive === isDropActive) return;
+  watcher.isDropActive = isDropActive;
   try {
-    watcher.onChange(isArmed);
+    watcher.onChange(isDropActive);
   } catch {
     // a watcher's own failure must not stop the others
   }
 }
 
-function anyArmed(): boolean {
-  for (const w of watchers) if (w.isArmed) return true;
+function anyDropActive(): boolean {
+  for (const w of watchers) if (w.isDropActive) return true;
   return false;
 }
 
@@ -107,20 +107,20 @@ function onDragOver(e: DragEvent): void {
     if (isSameDrag) return;
     isDismissed = false;
   }
-  const wasArmed = anyArmed();
+  const wasDropActive = anyDropActive();
   if (!arm(e)) return;
   lastPulseAt = Date.now();
-  if (!wasArmed) depth = Math.max(depth, 1); // a drag that started before we listened
+  if (!wasDropActive) depth = Math.max(depth, 1); // a drag that started before we listened
 }
 
 function onDragLeave(e: DragEvent): void {
-  if (!anyArmed() || ![...watchers].some((w) => w.isArmed && carries(e, w.types))) return;
+  if (!anyDropActive() || ![...watchers].some((w) => w.isDropActive && carries(e, w.types))) return;
   depth = Math.max(0, depth - 1);
   if (depth === 0) endAll();
 }
 
 function onKeyDown(e: KeyboardEvent): void {
-  if (e.key !== 'Escape' || !anyArmed()) return;
+  if (e.key !== 'Escape' || !anyDropActive()) return;
   endAll();
   isDismissed = true;
   lastDismissedPulseAt = Date.now();
@@ -139,7 +139,7 @@ function listen(isOn: boolean): void {
 /** Watch page-wide drags of `types`; returns the (idempotent) unsubscribe. SSR-safe. */
 export function observePageDrag(options: ObservePageDragOptions): () => void {
   if (typeof window === 'undefined') return () => {};
-  const watcher: Watcher = { types: options.types?.length ? [...options.types] : ['Files'], onChange: options.onChange, isArmed: false };
+  const watcher: Watcher = { types: options.types?.length ? [...options.types] : ['Files'], onChange: options.onChange, isDropActive: false };
   if (watchers.size === 0) listen(true);
   watchers.add(watcher);
   return () => {
@@ -151,12 +151,12 @@ export function observePageDrag(options: ObservePageDragOptions): () => void {
   };
 }
 
-/** Expose an armed drop target on its host: the `armed` attribute + `:state(armed)` (like `ready`). */
-export function applyArmedState(host: HTMLElement, internals: ElementInternals | null | undefined, isArmed: boolean): void {
-  host.toggleAttribute('armed', isArmed);
+/** Expose a drop-active drop target on its host: the `drop-active` attribute + `:state(drop-active)` (like `ready`). */
+export function setDropActiveState(host: HTMLElement, internals: ElementInternals | null | undefined, isDropActive: boolean): void {
+  host.toggleAttribute('drop-active', isDropActive);
   try {
-    if (isArmed) internals?.states?.add('armed');
-    else internals?.states?.delete('armed');
+    if (isDropActive) internals?.states?.add('drop-active');
+    else internals?.states?.delete('drop-active');
   } catch {
     // no CustomStateSet / only `--dashed` idents — the attribute is the hook
   }

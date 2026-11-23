@@ -851,7 +851,7 @@ export function openMenu<Ctx, A extends string = string>(
     syncSheet();
     // Scroll lock + the phone Back entry: up one submenu level (the entry is re-armed), else close.
     const session = startSheetSession(sheet, {
-      shouldObserveKeyboardInset: false, // no text field in a menu
+      shouldFitToVisibleViewport: false, // no text field in a menu
       logSource: host instanceof ShadowRoot ? host.host : host instanceof Element ? host : undefined,
       onBack: () => {
         if (!isOpen) return;

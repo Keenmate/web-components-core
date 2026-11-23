@@ -28,7 +28,7 @@
  */
 import { coreLog } from '../logging/element-logger.js';
 import { sharedState, sharedStateKey } from '../global/shared-state.js';
-import { createStyleSlot, type StyleSlot } from './adopt-styles.js';
+import { createStyleElement, type StyleElement } from './adopt-styles.js';
 import { publishPageSetting } from '../global/page-setting.js';
 import { watchRemoval } from '../element/removal-watch.js';
 
@@ -377,11 +377,11 @@ export function createCustomStyles<Ctx = any>(
   const tag = host.localName;
   const cssClass = opts.cssClass ?? 'custom-styles';
   const position = opts.position ?? 'last';
-  let page: StyleSlot | null = createStyleSlot(root, { position, cssClass: `${cssClass}--page` });
-  let instance: StyleSlot | null = createStyleSlot(root, { position, cssClass });
+  let page: StyleElement | null = createStyleElement(root, { position, cssClass: `${cssClass}--page` });
+  let instance: StyleElement | null = createStyleElement(root, { position, cssClass });
   /** The owner's layers (managed child only), between the page and the instance slot. */
-  let ownerPage: StyleSlot | null = opts.getOwner ? createStyleSlot(root, { position, cssClass: `${cssClass}--owner-page` }) : null;
-  let ownerInstance: StyleSlot | null = opts.getOwner ? createStyleSlot(root, { position, cssClass: `${cssClass}--owner` }) : null;
+  let ownerPage: StyleElement | null = opts.getOwner ? createStyleElement(root, { position, cssClass: `${cssClass}--owner-page` }) : null;
+  let ownerInstance: StyleElement | null = opts.getOwner ? createStyleElement(root, { position, cssClass: `${cssClass}--owner` }) : null;
   /** The owner this handle follows (registered as its dependent). */
   let boundOwner: Element | null = null;
   /** Re-entry guard: an owner ↔ child cycle must not recurse. */

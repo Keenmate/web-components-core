@@ -5,7 +5,7 @@
  *   - <fx-pg>        registerComponent() + a createLoggers('FXPG') bundle: per-instance loggers,
  *                    core messages labelled [FXPG:…] #id. Draws loading states with renderLoader()
  *                    (instance renderLoadingCallback), adopts one shared sheet (adoptStyles) and
- *                    applies customStylesCallback through a createStyleSlot().
+ *                    applies customStylesCallback through a createStyleElement().
  *   - <fx-pg-early>  shouldAutoDefine: false, NO logging bundle — the page pre-creates its
  *                    window.components entry (adopted), defines it via entry.register(); core
  *                    messages for it fall back to [CORE:ELEMENT] fx-pg-early#id.
@@ -14,14 +14,14 @@ import {
   BlissElement,
   adoptStyles,
   createLoggers,
-  createStyleSlot,
+  createStyleElement,
   registerComponent,
   renderLoader,
   toEnum,
   toFunction,
   toText,
 } from '../src/index.js';
-import type { InputDef, RenderLoaderCallback, StyleSlot } from '../src/index.js';
+import type { InputDef, RenderLoaderCallback, StyleElement } from '../src/index.js';
 
 export const fxLogging = createLoggers('FXPG');
 
@@ -36,7 +36,7 @@ export class FxPg extends BlissElement {
     { configKey: 'customStylesCallback', converter: toFunction<() => string | null>(), default: null },
   ];
 
-  #slot?: StyleSlot;
+  #slot?: StyleElement;
   #removeLoader?: () => void;
 
   get isLoading(): boolean {
@@ -73,7 +73,7 @@ export class FxPg extends BlissElement {
     adoptStyles(root, SHARED_CSS);
     root.innerHTML = '<div class="pg"><span class="pg-label"></span> <span class="pg-status"></span></div>';
     root.querySelector('.pg-label')!.textContent = `${this.config.label as string} #${this.id}`;
-    this.#slot ??= createStyleSlot(root, { cssClass: 'fxpg-custom' });
+    this.#slot ??= createStyleElement(root, { cssClass: 'fxpg-custom' });
     this.#applyCustomStyles();
     if (wasLoading) this.startLoading();
   }

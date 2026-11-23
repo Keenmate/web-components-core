@@ -2,7 +2,7 @@ import { test, expect } from './fixtures';
 import type { Page } from '@playwright/test';
 
 // The null-clear engine-config contract (SPEC §6.1): removing a nullable input's attribute
-// reaches the engine as `{ key: null }` via engineConfig() (nulls preserved), so an engine with
+// reaches the engine as `{ key: null }` via getEngineConfig() (nulls preserved), so an engine with
 // an `!== undefined` guard reverts to its built-in default. The contrast case layers the old
 // per-component delete-null loop on top: the key goes absent, the guard skips it and the stale
 // value sticks (the bug the contract fixes).

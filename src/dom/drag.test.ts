@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { applyArmedState, observePageDrag } from './page-drag.js';
+import { setDropActiveState, observePageDrag } from './page-drag.js';
 import { createPointerDrag } from './pointer-drag.js';
 
 /** jsdom has no DragEvent / PointerEvent: plain events with the fields the code reads. */
@@ -70,12 +70,12 @@ describe('observePageDrag', () => {
     stop();
   });
 
-  it('applyArmedState toggles the attribute', () => {
+  it('setDropActiveState toggles the attribute', () => {
     const host = document.createElement('div');
-    applyArmedState(host, null, true);
-    expect(host.hasAttribute('armed')).toBe(true);
-    applyArmedState(host, null, false);
-    expect(host.hasAttribute('armed')).toBe(false);
+    setDropActiveState(host, null, true);
+    expect(host.hasAttribute('drop-active')).toBe(true);
+    setDropActiveState(host, null, false);
+    expect(host.hasAttribute('drop-active')).toBe(false);
   });
 });
 

@@ -37,7 +37,7 @@ import {
   runAction,
 } from './src/actions/index.js';
 import type { ActionEventDetail, ActionItem, ActionSource, MenuEntry, MenuItem } from './src/actions/index.js';
-import { menuPresentationInputs, menuPresentationOptions, openMenu } from './src/menu/index.js';
+import { createMenuPresentationInputs, getMenuPresentationOptions, openMenu } from './src/menu/index.js';
 import type { MenuCloseReason, MenuHandle, MenuInvocation } from './src/menu/index.js';
 
 // ── trace sink ───────────────────────────────────────────────────────────────
@@ -465,7 +465,7 @@ export class FilesDemo extends BlissElement<{ action: FilesDetail }> {
   protected static override inputs: readonly InputDef[] = [
     { configKey: 'beforeActionCallback', converter: toFunction(), on: 'none' },
     // The standard menu-host inputs: menu-presentation (auto | floating | sheet | drawer) + menu-side.
-    ...menuPresentationInputs(),
+    ...createMenuPresentationInputs(),
   ];
 
   protected static override events: readonly (string | EventDef)[] = ['action'];
@@ -619,7 +619,7 @@ export class FilesDemo extends BlissElement<{ action: FilesDetail }> {
       returnFocusTo,
       shouldFocusFirst,
       inheritThemeFrom: this,
-      ...menuPresentationOptions(this.config), // { presentation, side } from menu-presentation / menu-side
+      ...getMenuPresentationOptions(this.config), // { presentation, side } from menu-presentation / menu-side
       labels: { back: 'Back', close: 'Close' },
       ...(this.menuTitle ? { title: this.menuTitle } : {}),
       runAction: (item, inv) => this.#run(item, inv, ctx, source),

@@ -24,7 +24,7 @@ private copies of the same base wiring:
 
 | Component | Layout | Attribute model | Base-element wiring |
 |---|---|---|---|
-| **web-multiselect** | single-pkg | string-tag: `parser:'enum', enumValues:[…]` + central switch | local SSR stub; `setAttributes()` batching |
+| **web-multiselect** | single-pkg | string-tag: `parser:'enum', enumValues:[…]` + central switch | local SSR stub; `setProperties()` batching |
 | **web-daterangepicker** | single-pkg | **functions**: `parseEnum(CONST)`, `parsePipeDelimitedList(12)`, … | local SSR stub |
 | **web-treeview** | single-pkg | **`{ kind:'string'\|'number'\|'boolean'\|'enum' }`** union + `field` | local SSR stub |
 | **web-dropzone** | monorepo + `web-dropzone-core` | string-tag, extended with a `'bytes'` tag | **`SatelliteElement` base** + `resolveEnumAttribute()` + scheduler; **5 elements** |
@@ -75,7 +75,6 @@ web-components-core/                 (@keenmate/web-components-core)
 │   │   ├── dispatch.ts      ← typed CustomEvent helper
 │   │   └── define.ts        ← idempotent customElements.define wrapper
 │   ├── dom/
-│   │   ├── resolve-enum-attribute.ts   (lifted from dropzone)
 │   │   └── microtask-scheduler.ts      (lifted from dropzone)
 │   └── index.ts
 ```
@@ -255,16 +254,16 @@ export abstract class BlissElement extends Base {
   //   el.selectionMode = 'range'          → reactive
   //   el.getBadgeDisplayCallback = fn     → reactive (callbacks too)
 
-  // BATCHING: setAttributes({...}) / batch(fn) coalesce many changes into ONE reinit()/update()
-  //   setAttributes keys = configKey or attribute name, plus the core-declared shouldDefer/defer,
+  // BATCHING: setProperties({...}) / batch(fn) coalesce many changes into ONE reinit()/update()
+  //   setProperties keys = configKey or attribute name, plus the core-declared shouldDefer/defer,
   //   themeSource/theme-source, responsive, responsiveCallback; any other key WARNS and is skipped
   //   (a renamed/misspelled key must never vanish silently).
-  setAttributes(values: Record<string, unknown>): void { /* … */ }
+  setProperties(values: Record<string, unknown>): void { /* … */ }
   batch(fn: () => void): void { /* … */ }
 
   // Every hook below stays `protected` in a subclass (rulebook C-CA-14): a public override
   // (`el.update(props)`) would skip parse/validation and this.config — writing many inputs at
-  // once is setAttributes() / batch() above.
+  // once is setProperties() / batch() above.
   /** Full rebuild (reads this.config). Called on first connect and on any `on:'reinit'` change. */
   protected reinit(): void { /* opt-in, no-op by default */ }
   /** In-place patch of the changed `on:'update'` keys. Called only when no reinit key changed. */
@@ -349,8 +348,8 @@ properties/callbacks — so everything is reactive by construction:
   structure down in the hook rebuilds it in `connect()`.
 
 Plus a typed `dispatch(el, name, detail, {bubbles=true, composed=true})`
-and generic DOM utils (`resolveEnumAttribute`, `createMicrotaskScheduler`)
-lifted from dropzone. The store/satellite topology stays dropzone-local.
+and the generic DOM util `createMicrotaskScheduler` lifted from dropzone
+(dropzone's `resolveEnumAttribute` was dropped: `toEnum` covers it). The store/satellite topology stays dropzone-local.
 
 The `static inputs` table is sanity-checked once per class at construction
 (warn-only, never throws): duplicate `configKey`/`attribute`, `shouldReflect:true`
@@ -394,8 +393,8 @@ detail `{ configKey, attribute?, value, reason?, kept, source: 'attribute' |
 'property' }`: `value` is the raw string on the attribute path, `kept` what the
 getter now returns, `reason` the converter's `reportInvalid` text (attribute path;
 `validate()` only answers yes / no). It covers table inputs, the core-declared
-`motion` / `responsive` / `responsiveCallback`, and unknown `setAttributes()` keys
-(`kept: undefined`). **`setAttributes()` returns the rejections of its call**
+`motion` / `responsive` / `responsiveCallback`, and unknown `setProperties()` keys
+(`kept: undefined`). **`setProperties()` returns the rejections of its call**
 (`[]` when everything applied). A rejection during the constructor (a value assigned
 before upgrade) fires on the next microtask. Not reported here: a bad value from a
 responsive rule or a `getBatchValuesCallback` (page / component configuration, not
@@ -431,7 +430,7 @@ A value is only ever `null` in `config` when the input's descriptor admits
 `clearableConfigKeys`). So **null is always intentional; never drop it.**
 
 **Component side.** Assemble the engine config with
-`this.engineConfig(excludeKeys)` (→ `collectEngineConfig`): a shallow copy of
+`this.getEngineConfig(excludeKeys)` (→ `collectEngineConfig`): a shallow copy of
 `config`, `exclude` keys removed, **every `null` preserved**. Never hand-roll a
 `if (value === null) delete cfg[key]` loop — dropping the clear is the bug this
 replaces (it made clearing a nullable input a silent no-op across every
@@ -439,7 +438,7 @@ component).
 
 ```ts
 protected override update(partial = {}) {
-  const cfg = this.engineConfig(NON_ENGINE_KEYS); // nulls intact
+  const cfg = this.getEngineConfig(NON_ENGINE_KEYS); // nulls intact
   Object.assign(cfg, partial);                    // partial already carries null
   this.#engine.update(cfg);
 }
@@ -490,7 +489,7 @@ Rules:
   `el.editTrigger = 'click'; el.mode = 'excel'` in one tick. A *rejected*
   property write isn't explicit (it never happened), so the returned value
   applies. The batch ends at the flush (microtask, `flush()`, `batch()`,
-  `setAttributes()`, or connect while detached).
+  `setProperties()`, or connect while detached).
 - **Across batches the last write wins:** a later `el.mode = 'excel'` overwrites
   an `editTrigger` set in an earlier batch.
 - **One level only:** returned values don't run their own
@@ -513,7 +512,7 @@ them.
   like a detached one), so `whenSettled()` waits for the release — **intended**:
   resolving while held would report "settled" with nothing built, breaking the
   read-after-write contract (§12.7); release first, then await; `flush()`,
-  `setAttributes()` and `batch()` stage but don't build. A pre-upgrade
+  `setProperties()` and `batch()` stage but don't build. A pre-upgrade
   `el.shouldDefer = true` is applied as the `defer` attribute at the first connect.
 - **`release()`** — or removing `defer` — runs the first build now: one
   `reinit()` with everything set so far, then `connect()`, then `ready`. Detached →
@@ -757,7 +756,7 @@ An attribute written on one element is never overridden by a page rule.
   overrides it updates the base — it becomes instance-explicit (beats page rules,
   loses to instance rules). A key a rule stops returning goes back to its base value.
 - **Explicit tracking** is persistent per instance: attribute present or property
-  assigned (incl. `setAttributes()`); removing the attribute clears it (and resets
+  assigned (incl. `setProperties()`); removing the attribute clears it (and resets
   the input to its default, §6), handing the key back to the page rules. Batch
   values (§6.2) are base but not explicit.
 - **Validation.** Every value goes through that input's converter (`validate`):
@@ -812,7 +811,7 @@ Components export typed aliases over their config type, e.g.
 ## 7. Fit check — all five components
 
 - **multiselect** — `{parser:'enum', enumValues}` → `toEnum(...)`;
-  `bool-default-true` → `toBool('default-true')`; `setAttributes` batching
+  `bool-default-true` → `toBool('default-true')`; `setProperties` batching
   → `BlissElement`.
 - **daterangepicker** — `parseEnum(CONST)` → `toEnum(CONST)`;
   `parsePipeDelimitedList(12)` → `toList({itemType:'string', separator:'|', requiredCount:12})`;
@@ -823,7 +822,7 @@ Components export typed aliases over their config type, e.g.
 - **dropzone** — `'bytes'` tag → `toBytes()`. Store element extends
   `BlissElement`; satellites keep the dropzone topology but swap their SSR
   stub for `BlissElement` and use core's `dispatch` /
-  `resolveEnumAttribute` / scheduler.
+  `toEnum` / scheduler.
 - **web-grid** — **no table.** Extends `BlissElement` for the SSR base +
   `dispatch()` only; keeps its property/config-object API. Proves the
   table is opt-in; grid gains an SSR stub it currently lacks.
@@ -1039,7 +1038,7 @@ component. Spans for `summary()` are capped (`maxSpans`, default 1000, oldest dr
   copy. A copy that finds controls from core rc17 or older (no `resetLogging`) takes them over
   and republishes; a bundle from such a copy (no `setPageLevel`) still gets the page level
   pushed as its own level, the old way.
-  `getGlobalLogging()` is the code-side handle. SSR-safe: no `window` → nothing
+  `getPageLogging()` is the code-side handle. SSR-safe: no `window` → nothing
   published.
 
 ### 12.2 Positioning — IMPLEMENTED (`src/positioning/`)
@@ -1225,7 +1224,7 @@ auto-registered while the rest did not. Core consolidates it:
   `emit()` + managed `on<Name>` properties, and `runCallback()` for `*Callback`s).
 - **Theming / CSS cascade-layer helpers** — the RUNTIME step (adopt a
   stylesheet into a shadow root) is IMPLEMENTED, see §12.8 (`adoptStyles`
-  + `createStyleSlot`). The authoring conventions (`@layer` order, `?inline`
+  + `createStyleElement`). The authoring conventions (`@layer` order, `?inline`
   import) stay pure CSS-guideline, no code.
 - **CEM tooling preset** — IMPLEMENTED, see §12.6 (`/cem`: analyzer config
   preset + a plugin that reads the `static inputs` / `static events` tables).
@@ -1280,7 +1279,7 @@ the optional `description` / `deprecated` fields on each row.
 - **`BlissElement.whenSettled(): Promise<void>`** — a first-class "await the
   pipeline" signal, in **core** (not just tests). Resolves once every staged
   change has flushed and its `reinit()`/`update()` has run; resolves immediately
-  when nothing is pending. `setAttributes()`/`batch()` flush synchronously (so
+  when nothing is pending. `setProperties()`/`batch()` flush synchronously (so
   the element is already settled after them); loose property assignment coalesces
   on a microtask (so `el.x = …; await el.whenSettled()` awaits it). While
   detached, pending changes are held, so the promise resolves on the next
@@ -1326,14 +1325,14 @@ free functions taking a root + CSS strings, NOT `BlissElement` methods.
   module-level and shared across every instance via `adoptedStyleSheets` (dedup
   per root); `<style>` fallback where constructable sheets are unsupported;
   no-op under SSR.
-- **`createStyleSlot(root, { position?, cssClass? })`** → `{ set, clear,
-  destroy }` — a PER-INSTANCE, replaceable `<style>` slot for the
-  `customStylesCallback` pattern (user CSS that changes at runtime). One element
+- **`createStyleElement(root, { position?, cssClass? })`** → `{ set, clear,
+  destroy }` — a PER-INSTANCE, replaceable `<style>` element for the
+  `getCustomStylesCallback` pattern (user CSS that changes at runtime). One element
   at a consistent position, so re-`set` replaces rather than stacks — fixing the
   prepend-on-init / append-on-update inconsistency the components have today
   (e.g. multiselect's `.ms-custom-styles` handling). `<style>`-based on purpose:
   user CSS may use `@import`, which constructable stylesheets reject. Core owns
-  the mechanism; the `customStylesCallback` input row stays in each component's
+  the mechanism; the `getCustomStylesCallback` input row stays in each component's
   table (a `toFunction()` returning a CSS string).
 - **`createCustomStyles(host, root, { getContext, getInstanceStyles, cssClass?,
   position?, onApply?, shouldHoistImports?, getOwner? })`** → `{ refresh, destroy }` — the whole custom-CSS story on
@@ -1758,7 +1757,7 @@ the page to the top after the lock put it back. Replaces the private copies in w
 (`pushOverlayHistory`), web-daterangepicker (same) and web-grid (`claimHistoryEntry`); `/menu`'s
 sheet uses it too (`src/overlay/back-entry.ts`).
 
-`startSheetSession(panel, { onBack, shouldLockScroll, shouldObserveKeyboardInset, shouldCheckContainingBlock,
+`startSheetSession(panel, { onBack, shouldLockScroll, shouldFitToVisibleViewport, shouldCheckContainingBlock,
 logSource })` (`src/overlay/sheet-session.ts`) composes `lockBodyScroll` + `fitToVisibleViewport` + `claimBackEntry`
 (+ a one-time containing-block warning via `getFixedPositionOffsetParent`) behind one idempotent `end()`;
 `rearmBack()` re-claims from inside `onBack`. Components start their full-screen sheet with it.
@@ -2027,10 +2026,10 @@ re-resolves it on a device-class change (a rotation never changes the class — 
 stays; a foldable unfolding does): sheet ⇄ drawer switch in place (classes only), a switch to /
 from `'floating'` closes it with `'presentation'` (another structure; the next open gets it).
 
-**Menu hosts (decided 2026-11-13).** A component that opens menus spreads `menuPresentationInputs()`
+**Menu hosts (decided 2026-11-13).** A component that opens menus spreads `createMenuPresentationInputs()`
 into its `static inputs` — `menuPresentation` (`menu-presentation`, `auto | floating | sheet | drawer`)
 and `menuSide` (`menu-side`, `start | end`), both `on: 'none'` (read at open) — and opens with
-`...menuPresentationOptions(this.config)` (the effective config, so the responsive rules apply) plus
+`...getMenuPresentationOptions(this.config)` (the effective config, so the responsive rules apply) plus
 `labels.back` / `labels.close` from its own `labels`. One spelling for every host; rulebook C-RO-16.
 
 **Drawer (decided 2026-11-13).** `'drawer'` = the same sheet as a full-height side panel:
@@ -2276,7 +2275,7 @@ reason — and there was no single switch for "no animations here" or "snappier,
 
 - **`motion`** on every `BlissElement` (core-declared, like `theme-source`): `'auto'` (default) |
   `'none'` | `'snappy'` | `'smooth'`; attribute `motion`, property `el.motion`, reflects, accepted by
-  `setAttributes()`. Invalid → warn, keep the previous level (the attribute is written back).
+  `setProperties()`. Invalid → warn, keep the previous level (the attribute is written back).
 - **`window.components.motion`** — the page level (non-enumerable accessor on `globalThis` state,
   shared by every bundled core copy; a value assigned earlier as a plain property is adopted;
   invalid → `auto`). Core writes it **once, on `<html data-motion>`** — the outermost layer — never
@@ -2569,7 +2568,7 @@ every element. Decided 2026-10-26 / 10-27 / 10-28 (rulebook D-NC-24), built 2026
   `aria-labelledby`), so no twin key exists to drift. Where twins remain (an icon button's tooltip + screen-reader
   name), an `ariaLabels.x` / `tooltips.x` NOBODY set (still the built-in English) takes the first CUSTOMIZED sibling
   with the same `<name>` — `ariaLabels.x` ← `buttons` / `labels` / `headers` / `messages` / `menuItems` / `tooltips`,
-  `tooltips.x` ← `buttons` / `labels` / `menuItems` / `ariaLabels` (`getLabelSiblings`; customized = instance, page
+  `tooltips.x` ← `buttons` / `labels` / `menuItems` / `ariaLabels` (`getLabelFallbackKeys`; customized = instance, page
   dictionary or `translateCallback`; only siblings the component defines): a page that translates only the visible
   caption doesn't leave the spoken name in English (WCAG 2.5.3). A key that is set always wins. Decided 2026-11-19
   (the documenthub admin's `<scope>.<elementType>.<key>`; keen-pure-admin's `translate` callback; nested groups,
@@ -2680,13 +2679,13 @@ Two gaps from the audit (B11 / B12): only web-dropzone knew when files were drag
 `page-file-drag.ts`), and in-page drags (web-treeview nodes, web-grid columns / rows) were HTML5 DnD or mouse
 events — nothing on a phone except web-treeview's own touch-event copy. Decided 2026-11-17:
 
-- **`observePageDrag({ types = ['Files'], onChange(isArmed) })`** → unsubscribe: one window listener set (capture
+- **`observePageDrag({ types = ['Files'], onChange(isDropActive) })`** → unsubscribe: one window listener set (capture
   phase) shared by every watcher; per watcher only drags carrying one of its `dataTransfer.types` arm it. Start:
   a matching `dragenter` / `dragover`; end: `drop`, leaving the window (enter / leave depth), `dragend`, Escape,
   or 350 ms without a `dragover` pulse (Escape on an external drag never reaches JS). After Escape the same
   drag's `dragover`s don't re-arm (they keep pulsing while the pointer moves); a new `dragenter` or a pause in
-  the pulses longer than the timeout does. `applyArmedState(host,
-  internals, isArmed)` → `armed` attribute + `:state(armed)`. From web-dropzone.
+  the pulses longer than the timeout does. `setDropActiveState(host,
+  internals, isDropActive)` → `drop-active` attribute + `:state(drop-active)`. From web-dropzone.
 - **`createPointerDrag(container, { getSource, threshold = 5, longPressMs = 300, autoScroll, onStart, onMove,
   onDrop, onCancel })`** → `{ isDragging, cancel(), destroy() }`. Pointer events for mouse, pen and touch. Mouse /
   pen start after `threshold` px; touch must rest `longPressMs` (an earlier move = a scroll, the drag never

@@ -54,14 +54,14 @@ describe('upgrade order', () => {
     expect(el.label).toBe('later');
   });
 
-  it('setAttributes({ shouldDefer: false, … }) builds once, with every value (E-10)', () => {
+  it('setProperties({ shouldDefer: false, … }) builds once, with every value (E-10)', () => {
     const tag = tagName();
     customElements.define(tag, class extends Labelled {} as unknown as CustomElementConstructor);
     const el = document.createElement(tag) as unknown as El;
     el.setAttribute('defer', '');
     document.body.append(el as unknown as Node);
     expect(el.reinits).toBe(0);
-    el.setAttributes({ shouldDefer: false, label: 'x' });
+    el.setProperties({ shouldDefer: false, label: 'x' });
     expect(el.reinits).toBe(1);
     expect(el.updates).toEqual([]);
     expect(el.label).toBe('x');

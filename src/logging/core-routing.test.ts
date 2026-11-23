@@ -22,7 +22,7 @@ import { toInt } from '../inputs/converters.js';
 import type { InputDef } from '../inputs/types.js';
 import { createLoggers, DEFAULT_LOG_LEVEL, type LoggerBundle } from './create-loggers.js';
 import { coreLogging } from './element-logger.js';
-import { __resetGlobalLogging } from './global-logging.js';
+import { __resetPageLogging } from './global-logging.js';
 import { LOG_LEVELS, getLogger } from './log-core.js';
 import { consoleLine, consoleLines } from './console-line.test-util.js';
 
@@ -35,7 +35,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   document.body.replaceChildren();
   // Forget any page-wide level so the next test's bundles start at their default.
-  __resetGlobalLogging();
+  __resetPageLogging();
   coreLogging.resetLogging();
 });
 

@@ -1,11 +1,11 @@
 /**
  * Core's input-row factories a component spreads into its `static inputs`
- * (`...menuPresentationInputs()`): the extractor can't read a call from a package import, so it
+ * (`...createMenuPresentationInputs()`): the extractor can't read a call from a package import, so it
  * reads these instead — source text generated from the RUNTIME rows, so the manifest can't drift
  * from what the element actually takes.
  */
 import type { InputDef } from '../inputs/types.js';
-import { menuPresentationInputs } from '../menu/inputs.js';
+import { createMenuPresentationInputs } from '../menu/inputs.js';
 
 /** A literal in the manifest's usual spelling (single-quoted strings, like hand-written tables). */
 function lit(value: unknown): string {
@@ -31,5 +31,5 @@ function rowSource(row: InputDef): string {
 
 /** Factory name → `const ROWS = [ … ];` source (the array is the statement's initializer). */
 export const CORE_ROW_FACTORY_SOURCES: Readonly<Record<string, string>> = {
-  menuPresentationInputs: `const ROWS = [${menuPresentationInputs().map(rowSource).join(', ')}];`,
+  createMenuPresentationInputs: `const ROWS = [${createMenuPresentationInputs().map(rowSource).join(', ')}];`,
 };

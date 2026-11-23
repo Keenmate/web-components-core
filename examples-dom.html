@@ -46,19 +46,19 @@ this.#drag = createPointerDrag(this.#list, {
             <p>
                 Drag a file from your desktop over <em>any part of this page</em>: the zone arms as soon as the files enter
                 the window (not only when they reach it) and disarms when they leave, are dropped or the drag is
-                cancelled. One shared set of window listeners serves every watcher; <code>applyArmedState</code> sets the
-                <code>armed</code> attribute and <code>:state(armed)</code> on the host for the component's CSS.
+                cancelled. One shared set of window listeners serves every watcher; <code>setDropActiveState</code> sets the
+                <code>drop-active</code> attribute and <code>:state(drop-active)</code> on the host for the component's CSS.
             </p>
             <div class="demo-area">
                 <core-demo-drop id="dh02-drop"></core-demo-drop>
                 <div class="log-panel log-panel--dark mt-1" data-empty="Drag a file over the page." id="dh02-log"></div>
             </div>
-            <div class="code-block" data-language="js"><pre><code>import { observePageDrag, applyArmedState } from '@keenmate/web-components-core';
+            <div class="code-block" data-language="js"><pre><code>import { observePageDrag, setDropActiveState } from '@keenmate/web-components-core';
 
 // connect()
-this.#stopArmed = observePageDrag({ types: ['Files'], onChange: (isArmed) =&gt; applyArmedState(this, this.internals, isArmed) });
+this.#stopDropActive = observePageDrag({ types: ['Files'], onChange: (isDropActive) =&gt; setDropActiveState(this, this.internals, isDropActive) });
 // disconnect()
-this.#stopArmed();</code></pre></div>
+this.#stopDropActive();</code></pre></div>
         </div>
 
         <!-- ============================================================= -->
@@ -261,7 +261,7 @@ protected override createController() {
                 <tbody>
                     <tr><td><code>createPointerDrag(container, { getSource, threshold, longPressMs, autoScroll, onStart, onMove, onDrop, onCancel })</code></td><td>Mouse + touch drags inside a component: threshold, touch long press, edge auto-scroll, Escape; the context has <code>source</code>, <code>x</code>, <code>y</code>, <code>target</code> (through shadow roots), <code>pointerType</code>. Returns <code>{ isDragging, cancel, destroy }</code>.</td></tr>
                     <tr><td><code>deepElementFromPoint(document, x, y)</code></td><td>The innermost element at a point, through open shadow roots.</td></tr>
-                    <tr><td><code>observePageDrag({ types, onChange })</code> · <code>applyArmedState(host, internals, isArmed)</code></td><td>Files (or other types) dragged over the window, one shared listener set; returns a stop function. The <code>armed</code> attribute + <code>:state(armed)</code>.</td></tr>
+                    <tr><td><code>observePageDrag({ types, onChange })</code> · <code>setDropActiveState(host, internals, isDropActive)</code></td><td>Files (or other types) dragged over the window, one shared listener set; returns a stop function. The <code>drop-active</code> attribute + <code>:state(drop-active)</code>.</td></tr>
                     <tr><td><code>createLayer(host, { css, className, zIndex, isInteractive, container })</code> (<code>/positioning</code>)</td><td>A themed panel in the overlay container with its own shadow root: <code>{ element, layer, place(rect), syncTheme, destroy }</code>.</td></tr>
                     <tr><td><code>startPanelSession(panel, { onDismiss, shouldCloseOnEscape, shouldCloseOnOutsideClick, shouldCloseOnBack, trigger, initialFocus })</code></td><td>A non-modal panel: Escape / a click outside / Back → <code>onDismiss(reason)</code>; no backdrop, inert page or focus trap. <code>{ end, rearmBack, isEnded }</code>.</td></tr>
                     <tr><td><code>.km-drawer</code> · <code>--start</code> / <code>--end</code> / <code>--top</code> / <code>--bottom</code> / <code>--closing</code> (<code>SHEET_CHROME_CSS</code>)</td><td>An edge drawer; <code>--km-sheet-drawer-size</code> / <code>-max-height</code> / <code>-bg</code> / <code>-color</code> / <code>-shadow</code> / <code>-border-radius</code> / <code>-duration</code>.</td></tr>
@@ -294,7 +294,7 @@ protected override createController() {
 
         // DH02
         const drop = $('dh02-drop');
-        drop.addEventListener('armed-change', (e) => log($('dh02-log'), e.detail.isArmed ? 'armed (files over the page)' : 'disarmed', e.detail.isArmed ? 'info' : 'muted'));
+        drop.addEventListener('drop-active-change', (e) => log($('dh02-log'), e.detail.isDropActive ? 'drop-active (files over the page)' : 'not drop-active', e.detail.isDropActive ? 'info' : 'muted'));
         drop.addEventListener('files', (e) => log($('dh02-log'), `dropped: ${e.detail.names.join(', ') || '(nothing)'}`, 'ok'));
 
         // DH03

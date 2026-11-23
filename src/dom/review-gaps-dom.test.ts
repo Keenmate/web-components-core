@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createStyleSlot } from './adopt-styles.js';
+import { createStyleElement } from './adopt-styles.js';
 import { createMicrotaskScheduler } from './microtask-scheduler.js';
 import { publishLoaderHook, renderLoader } from './render-loader.js';
 import { scrollIntoContainer } from './scroll-container.js';
@@ -17,9 +17,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('createStyleSlot — Document root', () => {
+describe('createStyleElement — Document root', () => {
   it('a Document root puts the slot into <head>, not the document itself', () => {
-    const slot = createStyleSlot(document, { cssClass: 'd29' });
+    const slot = createStyleElement(document, { cssClass: 'd29' });
     slot.set('.a {}');
     const style = document.head.querySelector('style.d29');
     expect(style).not.toBeNull();

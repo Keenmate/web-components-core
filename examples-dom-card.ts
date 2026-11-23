@@ -6,13 +6,13 @@
  * (mouse + touch long press + auto-scroll, Escape cancels); the drag ghost is a `createLayer` so the box
  * can't clip it.
  * `<core-demo-drop>` — lights up while files are dragged anywhere over the page (`observePageDrag` +
- * `applyArmedState` → `armed` attribute + `:state(armed)`), and lists what's dropped on it.
+ * `setDropActiveState` → `drop-active` attribute + `:state(drop-active)`), and lists what's dropped on it.
  * `<core-demo-counter>` — its `controller` is a `createControllerFacade` over a private engine.
  *
  * Their CSS is the element's own (shadow) CSS, like any component's; page tokens (--kmwc-*) inherit in, so
  * they follow light / dark. Demo-only — not part of the published package.
  */
-import { BlissElement, define, escapeHtml, observePageDrag, applyArmedState, createPointerDrag, createControllerFacade } from './src/index.js';
+import { BlissElement, define, escapeHtml, observePageDrag, setDropActiveState, createPointerDrag, createControllerFacade } from './src/index.js';
 import type { InputDef, PointerDrag } from './src/index.js';
 import { createLayer } from './src/positioning/index.js';
 import type { Layer } from './src/positioning/index.js';
@@ -120,7 +120,7 @@ export class CoreDemoSortable extends BlissElement {
 /** A drop target that arms while files are dragged anywhere over the page. */
 export class CoreDemoDrop extends BlissElement {
   protected static override inputs: readonly InputDef[] = [];
-  protected static override events = ['armed-change', 'files'];
+  protected static override events = ['drop-active-change', 'files'];
 
   #stopWatch: (() => void) | null = null;
   #zone: HTMLElement | null = null;
@@ -131,9 +131,9 @@ export class CoreDemoDrop extends BlissElement {
       <style>${BOX_CSS}
         .box { padding: 1.4rem; text-align: center; border-style: dashed; border-width: 2px;
                transition: background var(--base-duration-fast, .15s), border-color var(--base-duration-fast, .15s); }
-        :host([armed]) .box { border-color: var(--kmwc-accent-color);
+        :host([drop-active]) .box { border-color: var(--kmwc-accent-color);
                background: color-mix(in srgb, var(--kmwc-accent-color) 12%, transparent); }
-        :host([armed]) .hint::after { content: ' — drop them here'; font-weight: 600; }
+        :host([drop-active]) .hint::after { content: ' — drop them here'; font-weight: 600; }
       </style>
       <div class="box"><span class="hint">Drag files from your desktop over the page</span></div>`;
     this.#zone = root.querySelector('.box');
@@ -142,9 +142,9 @@ export class CoreDemoDrop extends BlissElement {
   protected override connect(): void {
     this.#stopWatch = observePageDrag({
       types: ['Files'],
-      onChange: (isArmed) => {
-        applyArmedState(this, this.internals, isArmed);
-        this.emit('armed-change', { isArmed });
+      onChange: (isDropActive) => {
+        setDropActiveState(this, this.internals, isDropActive);
+        this.emit('drop-active-change', { isDropActive });
       },
     });
     this.#zone!.addEventListener('dragover', this.#onDragOver);
@@ -153,7 +153,7 @@ export class CoreDemoDrop extends BlissElement {
 
   protected override disconnect(): void {
     this.#stopWatch?.();
-    applyArmedState(this, this.internals, false);
+    setDropActiveState(this, this.internals, false);
     this.#zone?.removeEventListener('dragover', this.#onDragOver);
     this.#zone?.removeEventListener('drop', this.#onDrop);
   }

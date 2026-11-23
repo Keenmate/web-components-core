@@ -46,7 +46,7 @@ export interface ModalSessionOptions
    * Size the panel to the visual viewport while the on-screen keyboard is up (inline `height` / `top`,
    * `--km-keyboard-inset`). Default `false` — turn it on for a FULL-SCREEN sheet; a centered dialog keeps its size.
    */
-  shouldObserveKeyboardInset?: boolean;
+  shouldFitToVisibleViewport?: boolean;
   /** Overlay-tree group (default: a modal-only group, so other overlays opening don't dismiss it). */
   group?: unknown;
   /**
@@ -119,7 +119,7 @@ export function startModalSession(panel: HTMLElement, opts: ModalSessionOptions)
     ...(shouldCloseOnBack ? { onBack: () => opts.onDismiss('back') } : {}),
     shouldLockScroll: opts.shouldLockScroll,
     // sizes the panel to the visual viewport (inline height / top): right for a full-screen sheet only
-    shouldObserveKeyboardInset: opts.shouldObserveKeyboardInset ?? false,
+    shouldFitToVisibleViewport: opts.shouldFitToVisibleViewport ?? false,
     shouldCheckContainingBlock: opts.shouldCheckContainingBlock,
     logSource: opts.logSource,
   });

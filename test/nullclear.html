@@ -10,7 +10,7 @@
     <p>Targeted by <code>e2e/nullclear.spec.ts</code>. <code>&lt;fx-nullclear&gt;</code> drives a stub engine with an <code>!== undefined</code> guard; <code>el.lastReceived</code> is the config the engine got.</p>
 
     <div class="fixture">
-        <div class="fixture-label">preserve mode (engineConfig, nulls kept)</div>
+        <div class="fixture-label">preserve mode (getEngineConfig, nulls kept)</div>
         <fx-nullclear id="preserve"></fx-nullclear>
     </div>
     <div class="fixture">
@@ -39,7 +39,7 @@
             #engine;
             lastReceived = null;
             #drive(partial) {
-                const cfg = this.engineConfig([]);
+                const cfg = this.getEngineConfig([]);
                 Object.assign(cfg, partial);
                 if (this.getAttribute('assemble-mode') === 'strip') {
                     for (const k of Object.keys(cfg)) if (cfg[k] === null) delete cfg[k];

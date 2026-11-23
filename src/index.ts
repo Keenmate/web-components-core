@@ -53,7 +53,6 @@ export type {
 export { getInstances, getConnectedTags } from './global/instances.js';
 
 // Generic DOM utilities
-export { resolveEnumAttribute } from './dom/resolve-enum-attribute.js';
 export { createMicrotaskScheduler } from './dom/microtask-scheduler.js';
 export type { MicrotaskScheduler } from './dom/microtask-scheduler.js';
 export { createThrottle } from './dom/throttle.js';
@@ -78,10 +77,10 @@ export { announce } from './dom/announce.js';
 export type { AnnounceOptions, AnnouncePoliteness } from './dom/announce.js';
 export type { FocusTrap, FocusTrapOptions } from './dom/focus-trap.js';
 export type { ZIndexTier } from './dom/z-index.js';
-export { adoptStyles, createStyleSlot } from './dom/adopt-styles.js';
+export { adoptStyles, createStyleElement } from './dom/adopt-styles.js';
 export { animateOut, EXIT_HEIGHT_VAR, readAnimationMs } from './dom/animate-out.js';
 export type { AnimateOutHandle, AnimateOutOptions } from './dom/animate-out.js';
-export type { StyleSlot, StyleSlotOptions } from './dom/adopt-styles.js';
+export type { StyleElement, StyleElementOptions } from './dom/adopt-styles.js';
 export { createCustomStyles } from './dom/custom-styles.js';
 export { createStateStore, getStateStorageKey } from './dom/state-store.js';
 export type { LoadStateCallback, SaveStateCallback, StateStore, StateStoreOptions } from './dom/state-store.js';
@@ -110,8 +109,8 @@ export { keepScrollAcrossMove } from './dom/keep-scroll.js';
 // Typed text, IME-safe: one callback per committed change; the IME's own Enter (SPEC §12.30).
 export { observeTextInput, isImeEnter } from './dom/text-input.js';
 export type { TextInputElement, TextInputOptions } from './dom/text-input.js';
-// Drag: page-wide armed state for drop targets + pointer drags that work with a finger (SPEC §12.28).
-export { observePageDrag, applyArmedState } from './dom/page-drag.js';
+// Drag: page-wide drop-active state for drop targets + pointer drags that work with a finger (SPEC §12.28).
+export { observePageDrag, setDropActiveState } from './dom/page-drag.js';
 export type { ObservePageDragOptions } from './dom/page-drag.js';
 export { createPointerDrag, deepElementFromPoint } from './dom/pointer-drag.js';
 export type { PointerDrag, PointerDragContext, PointerDragOptions } from './dom/pointer-drag.js';
@@ -216,8 +215,8 @@ export type { ActivateOverlayOptions, OverlayDismissReason, OverlayHandle, Overl
 // Logging (SPEC §12.1) — engine is vendored (no `loglevel` dependency); see log-core.ts.
 export { createLoggers, DEFAULT_LOG_CATEGORIES, DEFAULT_ENABLED_LOG_LEVEL, DEFAULT_LOG_LEVEL } from './logging/create-loggers.js';
 export type { LoggerBundle, Logger, LogLevelDesc, InstanceLogger, InstanceLabel } from './logging/create-loggers.js';
-export { getGlobalLogging } from './logging/global-logging.js';
-export type { GlobalLoggingControls } from './logging/global-logging.js';
+export { getPageLogging } from './logging/global-logging.js';
+export type { PageLoggingControls } from './logging/global-logging.js';
 export { coreLogging, CORE_LOG_CATEGORIES, getCoreLogging } from './logging/element-logger.js';
 export type { CoreLogCategory } from './logging/element-logger.js';
 // Call code core doesn't own (a hook, a listener) without letting it throw through: logged + reported.

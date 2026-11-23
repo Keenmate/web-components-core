@@ -37,7 +37,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | Invalid property value (toInt range, toEnum): warn, keep | ✓ | `inputs.spec.ts` | `inputs.html` |
 | Valid write after invalid ones is accepted silently | ✓ | `inputs.spec.ts` | `inputs.html` |
 | Invalid value BEFORE any valid one keeps the default | ✗ | | |
-| `input-rejected` fires before the write returns (attribute + property); `setAttributes()` returns the list | ✓ | `inputs.spec.ts` | `inputs.html` |
+| `input-rejected` fires before the write returns (attribute + property); `setProperties()` returns the list | ✓ | `inputs.spec.ts` | `inputs.html` |
 
 ## 2. Reactivity & batching
 
@@ -49,7 +49,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | Mixed batch → reinit only (update partial suppressed) | ✓ | `reactivity.spec.ts` | `reactivity.html` |
 | Loose writes coalesce on the microtask (0 sync calls, 1 merged partial) | ✓ | `reactivity.spec.ts` | `reactivity.html` |
 | One flush per tick across awaited writes | ✓ | `reactivity.spec.ts` | `reactivity.html` |
-| setAttributes() / batch() flush synchronously as one call | ✓ | `reactivity.spec.ts` | `reactivity.html` |
+| setProperties() / batch() flush synchronously as one call | ✓ | `reactivity.spec.ts` | `reactivity.html` |
 | whenSettled() read-after-write | ✓ | `reactivity.spec.ts` | `reactivity.html` |
 | flush() in an imperative method (stale vs fresh read) | ✓ | `reactivity.spec.ts` | `reactivity.html` |
 | Configure detached then append → one build with the full config | ✓ | `reactivity.spec.ts` | `reactivity.html` |
@@ -123,7 +123,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | Logging: default warn; [TAG:CAT] #id labels; invalid attr routed to INIT (or CORE:ELEMENT without a bundle) | ✓ | `page.spec.ts` | `page-wide.html` |
 | Logging: page switch (CORE included), per instance, per tag, per category | ✓ | `page.spec.ts` | `page-wide.html` |
 | Loader precedence instance > page > default; role/aria-label; throwing hook → logged + default; cleanup; remove() restores | ✓ | `page.spec.ts` | `page-wide.html` |
-| adoptStyles shares one sheet; createStyleSlot replaces in place, null removes | ✓ | `page.spec.ts` | `page-wide.html` |
+| adoptStyles shares one sheet; createStyleElement replaces in place, null removes | ✓ | `page.spec.ts` | `page-wide.html` |
 
 ## 7. Events & before-callbacks
 
@@ -185,7 +185,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 
 | Feature | Status | Spec | Fixture |
 | ------- | :----: | ---- | ------- |
-| Null-clear: engineConfig preserves null → engine reverts to default; delete-null loop contrast | ✓ | `nullclear.spec.ts` | `nullclear.html` |
+| Null-clear: getEngineConfig preserves null → engine reverts to default; delete-null loop contrast | ✓ | `nullclear.spec.ts` | `nullclear.html` |
 
 ## 12. Search (`/search`)
 
@@ -204,7 +204,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | el.form null on non-form-associated BlissElement | ✓ | `core-regressions.spec.ts` | `regressions.html` |
 | Throwing environment listener doesn't stop others (discrete + viewport) | ✓ | `core-regressions.spec.ts` | `regressions.html` |
 | Throwing theme listener doesn't stop others | ✓ | `core-regressions.spec.ts` | `regressions.html` |
-| setAttributes() warns about a non-input key (other keys still apply) | ✓ | `core-regressions.spec.ts` | `regressions.html` |
+| setProperties() warns about a non-input key (other keys still apply) | ✓ | `core-regressions.spec.ts` | `regressions.html` |
 | Invalid `motion` first in markup keeps the later attributes (upgrade + parser) — review E-01 | ✓ | `core-regressions.spec.ts` | `regressions.html` |
 
 ## 13b. Container scroll (`scrollIntoContainer` / `findScrollContainer`)

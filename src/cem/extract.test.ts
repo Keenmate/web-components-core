@@ -189,11 +189,11 @@ describe('extractRegistrations', () => {
 });
 
 describe('core row factories', () => {
-  it('reads `...menuPresentationInputs()` (a package import) as its rows: menu-presentation / menu-side enums', () => {
+  it('reads `...createMenuPresentationInputs()` (a package import) as its rows: menu-presentation / menu-side enums', () => {
     const [cls] = parse(`
-      import { menuPresentationInputs } from '@keenmate/web-components-core/menu';
+      import { createMenuPresentationInputs } from '@keenmate/web-components-core/menu';
       class X extends BlissElement {
-        static inputs = [{ configKey: 'a', attribute: 'a', converter: toInt() }, ...menuPresentationInputs()];
+        static inputs = [{ configKey: 'a', attribute: 'a', converter: toInt() }, ...createMenuPresentationInputs()];
       }
     `);
     expect(cls!.warnings ?? []).toEqual([]);

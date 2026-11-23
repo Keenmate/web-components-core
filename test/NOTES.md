@@ -33,13 +33,13 @@ later listener from hearing the change — other components' responsive rules / 
 
 ---
 
-## 2b. ~~`setAttributes()` dropped an unknown key silently~~ — FIXED in 1.0.0-rc15
+## 2b. ~~`setProperties()` dropped an unknown key silently~~ — FIXED in 1.0.0-rc15
 
-**Where:** `src/element/bliss-element.ts` `setAttributes()` — `if (def) …` with no else.
+**Where:** `src/element/bliss-element.ts` `setProperties()` — `if (def) …` with no else.
 
 **Symptom:** web-treeview's performance page called `tree.update({ data, … })` after `data` became
 `nodes`; the tree got zero rows and nothing failed. (That page went through treeview's public
-`update()`, which bypasses core entirely — a treeview issue — but core's own `setAttributes()` would
+`update()`, which bypasses core entirely — a treeview issue — but core's own `setProperties()` would
 have dropped `data` just as silently.)
 
 **Fix:** unknown keys warn and are skipped; the core-declared properties are accepted.
@@ -54,7 +54,7 @@ have dropped `data` just as silently.)
 `el.shouldDefer = true; append; el.label = 'x'; await el.whenSettled()` waits until `release()` /
 removing `defer` — the held flush counts as pending (verified: unresolved after 100 ms, resolved right
 after `release()`). Consistent with "resolves after the pending flush runs", but §12.7 / CLAUDE.md list
-the cases (immediate, microtask, `setAttributes`/`batch`, next connect for detached) without the
+the cases (immediate, microtask, `setProperties`/`batch`, next connect for detached) without the
 deferred one, so code awaiting `whenSettled()` on a deferred element waits indefinitely.
 
 **Decision (2026-10-31):** keep it — already "intended" in SPEC §6.3 and the JSDoc; now also in the

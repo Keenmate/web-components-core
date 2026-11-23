@@ -5,9 +5,9 @@
  * (§6.7), the per-tag settings and the page-wide layer for free.
  *
  * ```ts
- * static inputs = [...OWN_INPUTS, ...menuPresentationInputs()];
+ * static inputs = [...OWN_INPUTS, ...createMenuPresentationInputs()];
  * // at open:
- * openMenu(entries, ctx, { ...menuPresentationOptions(this.config), labels: { back, close } });
+ * openMenu(entries, ctx, { ...getMenuPresentationOptions(this.config), labels: { back, close } });
  * ```
  */
 import { toEnum } from '../inputs/converters.js';
@@ -18,7 +18,7 @@ export const MENU_PRESENTATIONS = ['auto', 'floating', 'sheet', 'drawer'] as con
 export const MENU_DRAWER_SIDES = ['start', 'end'] as const satisfies readonly MenuDrawerSide[];
 
 /** The `menuPresentation` + `menuSide` input rows (read when a menu opens: `on: 'none'`). */
-export function menuPresentationInputs(): InputDef[] {
+export function createMenuPresentationInputs(): InputDef[] {
   return [
     {
       configKey: 'menuPresentation',
@@ -41,7 +41,7 @@ export function menuPresentationInputs(): InputDef[] {
 }
 
 /** `{ presentation, side }` for `openMenu()` from a host's config (the effective one, `this.config`). */
-export function menuPresentationOptions(config: Readonly<Record<string, unknown>>): {
+export function getMenuPresentationOptions(config: Readonly<Record<string, unknown>>): {
   presentation: MenuPresentation;
   side: MenuDrawerSide;
 } {

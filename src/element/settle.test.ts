@@ -54,12 +54,12 @@ describe('whenSettled', () => {
     expect(el.height).toBe(42);
   });
 
-  it('is already settled right after setAttributes (synchronous flush)', async () => {
+  it('is already settled right after setProperties (synchronous flush)', async () => {
     const el = makeEl();
     document.body.append(el as unknown as Node);
     el.reinits = 0;
 
-    el.setAttributes({ height: 7, label: 'x' });
+    el.setProperties({ height: 7, label: 'x' });
     expect(el.reinits).toBe(1); // flushed synchronously
 
     // whenSettled resolves immediately; no further flush happens.

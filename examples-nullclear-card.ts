@@ -6,7 +6,7 @@
  * engine exactly like `TreeController.updateProps` does — the `!== undefined`
  * guard lets a partial resend omit untouched keys, and `focusedNodeClass` is a
  * clearable field (direct assign; `null` clears, resolved to a built-in default
- * at apply time). The config is assembled by `this.engineConfig(...)`, so a
+ * at apply time). The config is assembled by `this.getEngineConfig(...)`, so a
  * cleared `focused-node-class` reaches the engine as `{ focusedNodeClass: null }`
  * and the row reverts to the built-in default.
  *
@@ -70,7 +70,7 @@ export class NullclearCard extends BlissElement {
 
   /** The engine config: the full config (nulls PRESERVED) with the changed keys on top. */
   #assemble(partial: Record<string, unknown>): Record<string, unknown> {
-    const cfg = this.engineConfig(NON_ENGINE_KEYS);
+    const cfg = this.getEngineConfig(NON_ENGINE_KEYS);
     Object.assign(cfg, partial);
     return cfg;
   }

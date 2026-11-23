@@ -8,7 +8,7 @@ import { __resetResponsive } from '../element/responsive.js';
 import { __resetElementSizeObservers } from '../environment/element-size.js';
 import { __resetEnvironment } from '../environment/environment.js';
 import { __resetTheme } from '../environment/theme.js';
-import { __resetGlobalLogging } from '../logging/global-logging.js';
+import { __resetPageLogging } from '../logging/global-logging.js';
 import { __resetLocale } from '../locale/page-locale.js';
 import { __resetOverlays } from '../overlay/active-overlay.js';
 import { __resetScrollLock } from '../overlay/scroll-lock.js';
@@ -26,7 +26,7 @@ export function resetPageState(): void {
   __resetEnvironment();
   __resetTheme();
   __resetResponsive();
-  __resetGlobalLogging();
+  __resetPageLogging();
   __resetAdoptedStyles();
   __resetElementSizeObservers();
   __resetLocale();

@@ -17,7 +17,7 @@ import { define } from '../element/define.js';
 import { coreLog } from '../logging/element-logger.js';
 import type { LoggerBundle, LogLevelDesc } from '../logging/create-loggers.js';
 import { attachLoggerBundle } from '../logging/logger-registry.js';
-import { publishGlobalLogging, type GlobalLoggingControls } from '../logging/global-logging.js';
+import { publishPageLogging, type PageLoggingControls } from '../logging/global-logging.js';
 import { publishLoaderHook, type RenderLoaderCallback } from '../dom/render-loader.js';
 import { publishIconHook, type RenderIconCallback } from '../dom/render-icon.js';
 import { publishMotionHook, type Motion } from '../environment/motion.js';
@@ -111,7 +111,7 @@ export interface RegisterComponentOptions {
  * still yields tags only.
  */
 export type ComponentsRegistry = Record<string, RegisteredComponent | undefined> & {
-  readonly logging?: GlobalLoggingControls;
+  readonly logging?: PageLoggingControls;
   /** Page-wide responsive map (SPEC §6.7) — the lowest rule layer, for every component. Non-enumerable. */
   responsive?: ResponsiveMap;
   /** Page-wide responsive callback (SPEC §6.7) — runs after the page-wide map. Non-enumerable. */
@@ -217,7 +217,7 @@ export function registerComponent<T extends HTMLElement = HTMLElement>(
     installTagResponsiveHooks(entry, tagName); // adopts a pre-set responsive / responsiveCallback
     installTagStyleHooks(entry, tagName); // adopts a pre-set customStyles / getCustomStylesCallback
     components[tagName] = entry as RegisteredComponent;
-    publishGlobalLogging(); // re-publish if the page replaced window.components
+    publishPageLogging(); // re-publish if the page replaced window.components
     publishLoaderHook();
     publishIconHook();
     publishMotionHook();

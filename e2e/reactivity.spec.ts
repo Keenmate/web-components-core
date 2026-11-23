@@ -3,7 +3,7 @@ import type { Page } from './fixtures';
 
 // Reactivity of the input table (SPEC §5 / §6 / §12.7): `on: 'update'` inputs send
 // a partial, `on: 'reinit'` inputs rebuild, `on: 'none'` stay silent, a mixed batch
-// reinits only; loose writes coalesce on a microtask, setAttributes()/batch() flush
+// reinits only; loose writes coalesce on a microtask, setProperties()/batch() flush
 // synchronously; whenSettled()/flush() read-after-write; configure-detached builds
 // once; getBatchValuesCallback presets (explicit writes win) and getLiveValue
 // getters (live state vs the assigned config, staged reads).
@@ -67,7 +67,7 @@ test.describe('update vs reinit vs none', () => {
     expect(r.out).toBe('stored only');
     expect(await counts(page, 'hooks')).toEqual({ reinit: 2, update: 2 });
 
-    r = await run(page, 'hooks', "el.setAttributes({ caption: 'Mixed 2', layout: 'list' });");
+    r = await run(page, 'hooks', "el.setProperties({ caption: 'Mixed 2', layout: 'list' });");
     expect(r.calls).toEqual([{ hook: 'reinit' }]); // no partial for the mixed batch
     expect(await counts(page, 'hooks')).toEqual({ reinit: 3, update: 2 });
     expect(await shadow('.caption')).toBe('Mixed 2');
@@ -93,8 +93,8 @@ test.describe('batching', () => {
     expect(ticks.calls.every((c) => c.hook === 'update')).toBe(true);
   });
 
-  test('setAttributes() and batch() flush synchronously as one call', async ({ page }) => {
-    const set = await run<number>(page, 'batching', "el.setAttributes({ caption: 'Set 1', 'page-size': 6 }); return calls.length;");
+  test('setProperties() and batch() flush synchronously as one call', async ({ page }) => {
+    const set = await run<number>(page, 'batching', "el.setProperties({ caption: 'Set 1', 'page-size': 6 }); return calls.length;");
     expect(set.out).toBe(1);
     expect(set.calls).toEqual([{ hook: 'reinit' }]);
 
@@ -166,7 +166,7 @@ test.describe('presets & live getters', () => {
     await run(page, 'presets', "el.mode = 'simple'; await el.whenSettled();");
     expect(await state(page)).toMatchObject({ editTrigger: 'click', hasGridLines: false });
 
-    r = await run(page, 'presets', "el.setAttributes({ mode: 'excel', editTrigger: 'none' });");
+    r = await run(page, 'presets', "el.setProperties({ mode: 'excel', editTrigger: 'none' });");
     expect(r.calls).toEqual([{ hook: 'update', partial: { mode: 'excel', editTrigger: 'none', hasGridLines: true } }]);
     expect(await state(page)).toMatchObject({ editTrigger: 'none', attrs: { editTrigger: 'none' } });
   });

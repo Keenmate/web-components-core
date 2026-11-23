@@ -266,7 +266,7 @@ describe('BlissElement', () => {
     el.reinits = 0;
     el.updates.length = 0;
 
-    el.setAttributes({ selectionMode: 'range', placeholder: 'Find', optionHeight: 15 });
+    el.setProperties({ selectionMode: 'range', placeholder: 'Find', optionHeight: 15 });
     expect(el.reinits).toBe(1); // one reinit
     expect(el.updates).toHaveLength(0); // update partial suppressed
     expect(el.peek()).toMatchObject({ selectionMode: 'range', placeholder: 'Find', optionHeight: 15 });
@@ -314,38 +314,38 @@ describe('BlissElement', () => {
     expect(el.updates[0]).toEqual({ onPick: fn });
   });
 
-  it('coalesces setAttributes into a single update', () => {
+  it('coalesces setProperties into a single update', () => {
     const el = new TestElement();
     document.body.appendChild(el);
     el.reinits = 0;
     el.updates.length = 0;
 
-    el.setAttributes({ selectionMode: 'range', placeholder: 'Find' });
+    el.setProperties({ selectionMode: 'range', placeholder: 'Find' });
     expect(el.updates).toHaveLength(1);
     expect(el.updates[0]).toEqual({ selectionMode: 'range', placeholder: 'Find' });
   });
 
-  it('setAttributes warns about a key that is not an input — and still applies the rest', () => {
+  it('setProperties warns about a key that is not an input — and still applies the rest', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const el = new TestElement();
     document.body.appendChild(el);
     el.updates.length = 0;
 
     // `data` was renamed (e.g. to `nodes`): it must not vanish silently.
-    el.setAttributes({ data: [1, 2], placeholder: 'Find', 'selection-mode': 'range' });
+    el.setProperties({ data: [1, 2], placeholder: 'Find', 'selection-mode': 'range' });
 
     expect(el.updates).toEqual([{ placeholder: 'Find', selectionMode: 'range' }]);
     expect(warn).toHaveBeenCalledOnce();
-    expect(consoleLines(warn)[0]).toContain('setAttributes: "data" is not an input of <');
+    expect(consoleLines(warn)[0]).toContain('setProperties: "data" is not an input of <');
     warn.mockRestore();
   });
 
-  it('setAttributes accepts the core-declared properties without a warning', () => {
+  it('setProperties accepts the core-declared properties without a warning', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const el = new TestElement();
-    el.setAttributes({ shouldDefer: true });
+    el.setProperties({ shouldDefer: true });
     expect(el.hasAttribute('defer')).toBe(true);
-    el.setAttributes({ defer: false, 'theme-source': '#panel', responsive: { device: { mobile: {} } } });
+    el.setProperties({ defer: false, 'theme-source': '#panel', responsive: { device: { mobile: {} } } });
     expect(el.hasAttribute('defer')).toBe(false);
     expect(el.themeSource).toBe('#panel');
     expect(el.responsive).toEqual({ device: { mobile: {} } });

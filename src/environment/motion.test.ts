@@ -72,9 +72,9 @@ describe('motion — instance level', () => {
     warn.mockRestore();
   });
 
-  it('setAttributes accepts motion', () => {
+  it('setProperties accepts motion', () => {
     const el = make();
-    el.setAttributes({ motion: 'smooth' });
+    el.setProperties({ motion: 'smooth' });
     expect(el.getAttribute('data-motion')).toBe('smooth');
   });
 });

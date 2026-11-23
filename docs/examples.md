@@ -44,7 +44,7 @@ class ColorPicker extends BlissElement<PickerEvents> {
   protected static override events = ['select'];
 
   pick(value: string): void {
-    this.setAttributes({ value });
+    this.setProperties({ value });
     this.emit('select', { value });
   }
 }
@@ -133,12 +133,12 @@ it('emits select when picked', async () => {
 
 ## Batching many changes
 
-`setAttributes()` and `batch()` turn many writes into one `reinit()` / `update()`; the full model
+`setProperties()` and `batch()` turn many writes into one `reinit()` / `update()`; the full model
 (how many times a component rebuilds, and why) is in
 [reactivity-and-batching.md](reactivity-and-batching.md).
 
 ```js
-const rejected = el.setAttributes({ label: 'Total', count: 3 }); // one update; refused values come back
+const rejected = el.setProperties({ label: 'Total', count: 3 }); // one update; refused values come back
 el.batch(() => { el.label = 'Total'; el.count = 3; });
 await el.whenSettled();
 ```

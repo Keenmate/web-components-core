@@ -36,7 +36,7 @@ describe('startSheetSession', () => {
 
   it('no onBack → no Back entry; options switch the pieces off', () => {
     const panel = document.createElement('div');
-    startSheetSession(panel, { shouldLockScroll: false, shouldObserveKeyboardInset: false }).end();
+    startSheetSession(panel, { shouldLockScroll: false, shouldFitToVisibleViewport: false }).end();
     expect(calls).toEqual([]);
   });
 

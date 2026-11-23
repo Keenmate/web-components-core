@@ -5,7 +5,7 @@ import {
   formatLabel,
   formatNumber,
   getDateFormat,
-  getLabelSiblings,
+  getLabelFallbackKeys,
   resolveLocaleSettings,
   getMonthNames,
   getNumberSeparators,
@@ -301,11 +301,11 @@ describe('labels', () => {
     };
     const el = document.createElement('web-dz');
 
-    it('getLabelSiblings: visible texts first; visible types have none', () => {
-      expect(getLabelSiblings('ariaLabels.x')).toEqual(['buttons.x', 'labels.x', 'headers.x', 'messages.x', 'menuItems.x', 'tooltips.x']);
-      expect(getLabelSiblings('tooltips.x')).toEqual(['buttons.x', 'labels.x', 'menuItems.x', 'ariaLabels.x']);
-      expect(getLabelSiblings('buttons.x')).toEqual([]);
-      expect(getLabelSiblings('nodot')).toEqual([]);
+    it('getLabelFallbackKeys: visible texts first; visible types have none', () => {
+      expect(getLabelFallbackKeys('ariaLabels.x')).toEqual(['buttons.x', 'labels.x', 'headers.x', 'messages.x', 'menuItems.x', 'tooltips.x']);
+      expect(getLabelFallbackKeys('tooltips.x')).toEqual(['buttons.x', 'labels.x', 'menuItems.x', 'ariaLabels.x']);
+      expect(getLabelFallbackKeys('buttons.x')).toEqual([]);
+      expect(getLabelFallbackKeys('nodot')).toEqual([]);
     });
 
     it('a twin with markup gives a text use its TEXT (no tags); an html use keeps the markup', () => {

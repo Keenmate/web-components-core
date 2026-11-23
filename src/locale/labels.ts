@@ -5,7 +5,7 @@
  * component name: `web-grid.buttons.add`. Per key: the instance `labels` (short key, or the full key — a
  * string, `''` included, wins) → the page-wide flat dictionary `window.components.locale.labels['<full key>']`
  * → the component's built-in English default. An `ariaLabels.x` / `tooltips.x` nobody set takes a customized
- * sibling with the same `<name>` first (`buttons.x`, `labels.x`, … — {@link getLabelSiblings}). A key the instance set is formatted as is (`{name}`); any other
+ * sibling with the same `<name>` first (`buttons.x`, `labels.x`, … — {@link getLabelFallbackKeys}). A key the instance set is formatted as is (`{name}`); any other
  * goes to the element's own `translateCallback`, then `window.components.locale.translateCallback` (i18next / ICU /
  * the app's own lookup — one element needs no page setup; each gets the
  * full key, the resolved template and the RAW params; `null` / `undefined` = "not mine"), else the default
@@ -133,7 +133,7 @@ const SIBLINGS: Readonly<Record<string, readonly string[]>> = {
 };
 
 /** The sibling keys `key` falls back to (`ariaLabels.clear` → `buttons.clear`, …), in order; `[]` for a visible type. */
-export function getLabelSiblings(key: string): string[] {
+export function getLabelFallbackKeys(key: string): string[] {
   const dot = key.indexOf('.');
   if (dot < 0) return [];
   const types = SIBLINGS[key.slice(0, dot)];
@@ -154,13 +154,13 @@ const hasKey = (defaults: object, key: string): boolean => Object.prototype.hasO
 
 /**
  * Resolve `key` (short: `buttons.add`): `own[key]` / `own['<tag>.<key>']` → page-wide `labels['<tag>.<key>']`
- * → a customized sibling (`ariaLabels.x` / `tooltips.x` only, {@link getLabelSiblings}) → `defaults[key]`. A string
+ * → a customized sibling (`ariaLabels.x` / `tooltips.x` only, {@link getLabelFallbackKeys}) → `defaults[key]`. A string
  * wins (`''` is a deliberate empty label); anything else falls through.
  */
 export function resolveLabel<L extends object>(tag: string, defaults: L, own: OwnLabels<L>, key: keyof L & string): string {
   const found = lookup(tag, defaults, own, key);
   if (found.source !== 'default') return found.template;
-  for (const sibling of getLabelSiblings(key)) {
+  for (const sibling of getLabelFallbackKeys(key)) {
     if (!hasKey(defaults, sibling)) continue;
     const twin = lookup(tag, defaults, own, sibling);
     if (twin.source !== 'default') return twin.template;
@@ -234,7 +234,7 @@ export function createLabels<L extends object>(
     let resolved = resolveOne(key, values);
     let isFromTwin = false;
     if (resolved.source === 'default') {
-      for (const sibling of getLabelSiblings(key)) {
+      for (const sibling of getLabelFallbackKeys(key)) {
         if (!hasKey(defaults, sibling)) continue;
         const twin = resolveOne(sibling, values);
         if (twin.source !== 'default') {

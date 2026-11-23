@@ -1,6 +1,6 @@
 /**
  * CSS custom-property lint helpers (SPEC §12.8 — the third leg alongside
- * {@link adoptStyles} / {@link createStyleSlot}). A `customStylesCallback` (or any
+ * {@link adoptStyles} / {@link createStyleElement}). A `getCustomStylesCallback` (or any
  * injected CSS) that *sets* a `--prefix-*` variable the component's stylesheet
  * never *reads* fails silently — the property just resolves to nothing. These
  * pure helpers let a component warn about such a misspelled/renamed variable

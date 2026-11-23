@@ -35,10 +35,10 @@ class EngineHost extends BlissElement {
   readonly engine = new StubEngine();
 
   protected override reinit(): void {
-    this.engine.updateProps(this.engineConfig());
+    this.engine.updateProps(this.getEngineConfig());
   }
   protected override update(partial: Record<string, unknown>): void {
-    const cfg = this.engineConfig(NON_ENGINE_KEYS);
+    const cfg = this.getEngineConfig(NON_ENGINE_KEYS);
     Object.assign(cfg, partial); // partial already carries null for a cleared key
     this.engine.updateProps(cfg);
   }
@@ -48,7 +48,7 @@ class EngineHost extends BlissElement {
 }
 define('engine-host', EngineHost as unknown as CustomElementConstructor);
 
-describe('BlissElement.engineConfig — null-clear contract (integration)', () => {
+describe('BlissElement.getEngineConfig — null-clear contract (integration)', () => {
   afterEach(() => {
     document.body.innerHTML = '';
   });
