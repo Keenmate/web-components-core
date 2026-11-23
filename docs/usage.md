@@ -796,9 +796,10 @@ import { createPointerDrag, observePageDrag, setDropActiveState } from '@keenmat
 #drag = createPointerDrag(this.#body, {
   getSource: (target) => target.closest('.row'),          // null = not draggable here
   longPressMs: 300,                                       // touch: hold, then drag (moving earlier scrolls)
+  threshold: (press) => (press.pointerType === 'touch' ? 10 : 5), // px before a drag starts; a function gets the pointerdown
   beforeStartCallback: ({ source }) => this.#canDrag(source),         // false refuses
   moveCallback: ({ target, x, y }) => this.#showDropIndicator(target, x, y),
-  dropCallback: ({ source, target }) => this.#move(source, target),
+  dropCallback: ({ source, target, pressEvent }) => this.#move(source, target, pressEvent.ctrlKey), // pressEvent = the arming pointerdown
   cancelCallback: () => this.#hideDropIndicator(),              // Escape
 });
 

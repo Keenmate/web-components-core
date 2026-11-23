@@ -24,14 +24,20 @@ export interface PointerDragContext {
   /** The deepest element under the pointer (through open shadow roots), or `null`. */
   target: Element | null;
   pointerType: string;
+  /** The event behind this call; `null` for a touch long-press start and an auto-scroll step. */
   event: PointerEvent | KeyboardEvent | null;
+  /** The `pointerdown` that armed the drag — present in every callback (also a touch long-press start). */
+  pressEvent: PointerEvent;
 }
 
 export interface PointerDragOptions {
   /** Which element a press starts a drag on (`null` = not draggable here); default: the container. */
   getSource?: (target: Element, event: PointerEvent) => HTMLElement | null;
-  /** Movement (px) before a mouse / pen drag starts, and that cancels a touch long press (default `5`). Read per press. */
-  threshold?: number | (() => number);
+  /**
+   * Movement (px) before a mouse / pen drag starts, and that cancels a touch long press (default `5`).
+   * A function is read per press and gets the `pointerdown` (e.g. `e.pointerType === 'touch' ? 10 : 5`).
+   */
+  threshold?: number | ((event: PointerEvent) => number);
   /** Touch hold before the drag starts (default `300`). A function is read per press (a component input). */
   longPressMs?: number | (() => number);
   /**
@@ -66,18 +72,19 @@ export function deepElementFromPoint(doc: Document, x: number, y: number): Eleme
 }
 
 export function createPointerDrag(container: HTMLElement, options: PointerDragOptions): PointerDrag {
-  const readOption = (value: number | (() => number) | undefined, fallback: number): number => {
-    const n = typeof value === 'function' ? value() : value;
+  const readOption = (value: number | ((event: PointerEvent) => number) | undefined, fallback: number, press: PointerEvent): number => {
+    const n = typeof value === 'function' ? value(press) : value;
     return typeof n === 'number' && Number.isFinite(n) ? n : fallback;
   };
-  // per press: a component input (touchDragDelay) may change between drags
-  let threshold = readOption(options.threshold, 5);
-  let longPressMs = readOption(options.longPressMs, 300);
+  // read per press (onDown): a component input (touchDragDelay) may change between drags
+  let threshold = 5;
+  let longPressMs = 300;
   const getSource = options.getSource ?? ((): HTMLElement => container);
   const doc = container.ownerDocument;
   const view = doc.defaultView ?? window;
 
   let source: HTMLElement | null = null;
+  let pressEvent: PointerEvent | null = null;
   let pointerId = -1;
   let pointerType = '';
   let startX = 0;
@@ -97,6 +104,7 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
     target: deepElementFromPoint(doc, lastX, lastY),
     pointerType,
     event,
+    pressEvent: pressEvent!,
   });
   const call = (fn: ((ctx: PointerDragContext) => unknown) | undefined, event: PointerDragContext['event'], name: string): unknown => {
     if (!fn) return undefined;
@@ -151,6 +159,7 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
     isDragging = false;
     isArmed = false;
     source = null;
+    pressEvent = null;
     pointerId = -1;
   };
 
@@ -223,9 +232,10 @@ export function createPointerDrag(container: HTMLElement, options: PointerDragOp
     if (source || !event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return;
     const found = getSource(event.target as Element, event);
     if (!found) return;
-    threshold = readOption(options.threshold, 5);
-    longPressMs = readOption(options.longPressMs, 300);
+    threshold = readOption(options.threshold, 5, event);
+    longPressMs = readOption(options.longPressMs, 300, event);
     source = found;
+    pressEvent = event;
     pointerId = event.pointerId;
     pointerType = event.pointerType;
     startX = lastX = event.clientX;

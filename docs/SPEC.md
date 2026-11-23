@@ -2808,9 +2808,12 @@ events — nothing on a phone except web-treeview's own touch-event copy. Decide
   dropCallback, cancelCallback })`** → `{ isDragging, cancel(), destroy() }`. Pointer events for mouse, pen and touch. Mouse /
   pen start after `threshold` px; touch must rest `longPressMs` (an earlier move = a scroll, the drag never
   starts; `longPressMs: 0` = armed at pointerdown, the page doesn't scroll, and the drag starts past `threshold`
-  like a mouse — no timer race with the first move; `longPressMs` / `threshold` may be functions, read per press),
+  like a mouse — no timer race with the first move; `longPressMs` / `threshold` may be functions, read per press —
+  `threshold(pressEvent)` gets the `pointerdown`, e.g. 10 px for touch, 5 for a mouse),
   then a non-passive `touchmove` is prevented (no page scroll) and the long-press context menu is
-  suppressed. Callbacks get `{ source, x, y, target, pointerType, event }`; `target` = `deepElementFromPoint`
+  suppressed. Callbacks get `{ source, x, y, target, pointerType, event, pressEvent }`; `event` is `null` for a touch
+  long-press start and an auto-scroll step, `pressEvent` = the `pointerdown` that armed the drag, in every callback
+  (modifier keys, the press point, the press target); `target` = `deepElementFromPoint`
   (through open shadow roots — the drag image needs `pointer-events: none`). `beforeStartCallback` returning `false`
   refuses. Auto-scroll near the edges of `findScrollContainer(source)` (or `autoScroll.container`; `autoScroll.isEnabled(ctx)` per frame — `false` holds still), `moveCallback`
   re-run as content slides under the pointer. Escape / `pointercancel` → `cancelCallback`. The click that ends a drop

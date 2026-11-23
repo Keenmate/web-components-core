@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`createPointerDrag`: `PointerDragContext.pressEvent` + `threshold(pressEvent)`** (audit G10a, SPEC §12.28): every
+  callback (`beforeStartCallback` / `moveCallback` / `dropCallback` / `cancelCallback`, `autoScroll.isEnabled`) gets the
+  `pointerdown` that armed the drag — also a touch long-press start, where `ctx.event` is `null`. `threshold` may be
+  `(pressEvent) => number` (e.g. 10 px for touch, 5 for a mouse); the number form and a zero-argument function still
+  work. Replaces web-treeview's `_pressEvent` stash in `getSource`.
 - **`createRovingFocus({ boundaryCallback })`** (audit G11, `/a11y`): `(key, item, event) => boolean | void`, called when
   an arrow key finds no target — the list end, a grid row end (Left / Right) or column end (Up / Down), or every
   candidate skipped by `isSkipped` (not when `isWrapping` found one). The key is passed as pressed (not

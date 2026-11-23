@@ -155,6 +155,48 @@ describe('createPointerDrag', () => {
     expect(drag.isDragging).toBe(true);
   });
 
+  it('pressEvent: the arming pointerdown in every callback — mouse, and a touch long-press start (event null)', () => {
+    vi.useFakeTimers();
+    const seen: [string, Event | null, Event][] = [];
+    const log = (name: string) => (ctx: { event: Event | null; pressEvent: Event }) => void seen.push([name, ctx.event, ctx.pressEvent]);
+    const { a } = setup({ beforeStartCallback: log('start'), moveCallback: log('move'), dropCallback: log('drop'), cancelCallback: log('cancel') });
+    const down = pointer('pointerdown', { clientX: 10, clientY: 10 });
+    a.dispatchEvent(down);
+    window.dispatchEvent(pointer('pointermove', { clientX: 30, clientY: 10 }));
+    window.dispatchEvent(pointer('pointerup', { clientX: 30, clientY: 10 }));
+    expect(seen.map(([n]) => n)).toEqual(['start', 'move', 'drop']);
+    expect(seen.every(([, , press]) => press === down)).toBe(true);
+
+    seen.length = 0;
+    const touchDown = pointer('pointerdown', { pointerType: 'touch' });
+    a.dispatchEvent(touchDown);
+    vi.advanceTimersByTime(300);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(seen.map(([n]) => n)).toEqual(['start', 'move', 'cancel']);
+    expect(seen[0]![1]).toBeNull(); // the long press has no event of its own …
+    expect(seen.every(([, , press]) => press === touchDown)).toBe(true); // … but the press is there
+  });
+
+  it('threshold function gets the press: per-pointer-type values (10 px touch, 5 px mouse)', () => {
+    const presses: Event[] = [];
+    const { a, drag } = setup({
+      longPressMs: 0,
+      threshold: (e: PointerEvent) => (presses.push(e), e.pointerType === 'touch' ? 10 : 5),
+    });
+    const down = pointer('pointerdown', { clientX: 0, clientY: 0 });
+    a.dispatchEvent(down);
+    expect(presses).toEqual([down]);
+    window.dispatchEvent(pointer('pointermove', { clientX: 7 }));
+    expect(drag.isDragging).toBe(true); // mouse: 7 > 5
+    window.dispatchEvent(pointer('pointerup', { clientX: 7 }));
+    a.dispatchEvent(pointer('pointerdown', { pointerType: 'touch' }));
+    window.dispatchEvent(pointer('pointermove', { pointerType: 'touch', clientX: 7 }));
+    expect(drag.isDragging).toBe(false); // touch: 7 < 10
+    window.dispatchEvent(pointer('pointermove', { pointerType: 'touch', clientX: 12 }));
+    expect(drag.isDragging).toBe(true);
+    expect((presses.at(-1) as PointerEvent).pointerType).toBe('touch');
+  });
+
   it('Escape / pointercancel cancel; beforeStartCallback false refuses; right button ignored; destroy', () => {
     const { a, drag, calls } = setup();
     a.dispatchEvent(pointer('pointerdown', { button: 2 }));
