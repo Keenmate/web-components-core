@@ -59,6 +59,10 @@
     <!-- keyboard-focus tooltip (no cursor). -->
     <button class="trigger" id="focus-basic">focus</button>
 
+    <!-- BG2 / Q5: a focus-shown tooltip inside an open routed overlay (Escape closes the panel). -->
+    <button id="panel-opener">open panel</button>
+    <div id="panel" hidden><button class="trigger" id="panel-item">panel item</button></div>
+
     <!-- motion none on a section: the exit fade (and entry) are instant. -->
     <section data-motion="none"><div class="trigger" id="still" tabindex="0">motion none</div></section>
 
@@ -74,6 +78,7 @@
     <script type="module">
         import { createTooltip } from '/src/positioning/index.ts';
         import { BlissElement, define, toText } from '/src/index.ts';
+        import { registerOverlay } from '/src/overlay/active-overlay.ts';
 
         class FxTooltipHost extends BlissElement {
             static inputs = [
@@ -146,6 +151,25 @@
             cssClass: 'tt edge-tt',
             placement: 'top',
         });
+
+        // The routed panel: Escape closes it (overlay router) and returns focus to the opener.
+        {
+            const opener = document.getElementById('panel-opener');
+            const panel = document.getElementById('panel');
+            const overlay = registerOverlay(() => { panel.hidden = true; }, undefined, {
+                getElement: () => panel,
+                shouldCloseOnEscape: true,
+            });
+            opener.addEventListener('click', () => {
+                panel.hidden = false;
+                overlay.activate({ trigger: opener });
+                document.getElementById('panel-item').focus();
+            });
+            createTooltip({ trigger: document.getElementById('panel-item'), content: 'panel tooltip', cssClass: 'tt panel-tt', placement: 'top' });
+            // What a component sees after the router / tooltip: was the Escape consumed?
+            window.escapes = [];
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') window.escapes.push(e.defaultPrevented); });
+        }
 
         createTooltip({
             trigger: document.getElementById('focus-basic'),

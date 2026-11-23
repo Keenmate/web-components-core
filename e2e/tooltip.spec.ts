@@ -94,6 +94,34 @@ test('tooltip shows on keyboard focus and hides on blur (no cursor involved)', a
   await expect(page.locator('.focus-tt')).toHaveCount(0);
 });
 
+// BG2 / Q5 (WCAG 1.4.13): the first Escape only hides a tooltip shown by keyboard focus — the panel stays.
+test('Escape: a focus-shown tooltip in an open routed panel takes the first press, the panel the second', async ({ page }) => {
+  await page.locator('#panel-opener').click();
+  const item = page.locator('#panel-item');
+  await expect(item).toBeFocused();
+  await expect(page.locator('.panel-tt.is-visible')).toBeVisible({ timeout: 2000 });
+
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.panel-tt')).toHaveCount(0);
+  await expect(page.locator('#panel')).not.toHaveAttribute('hidden');
+  await expect(item).toBeFocused();
+
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#panel')).toHaveAttribute('hidden');
+  await expect(page.locator('#panel-opener')).toBeFocused();
+  expect(await page.evaluate(() => (window as unknown as { escapes: boolean[] }).escapes)).toEqual([true]); // the router stops the second press itself
+});
+
+test('Escape: a hover-shown tooltip in an open routed panel hides together with the panel', async ({ page }) => {
+  await page.locator('#panel-opener').click();
+  await page.locator('#panel-item').evaluate((el: HTMLElement) => el.blur()); // a mouse user: no keyboard focus on it
+  await page.locator('#panel-item').hover();
+  await expect(page.locator('.panel-tt.is-visible')).toBeVisible({ timeout: 2000 });
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#panel')).toHaveAttribute('hidden');
+  await expect(page.locator('.panel-tt')).toHaveCount(0);
+});
+
 test("a BlissElement-owned tooltip shows on hover and rebuilds when its on:'reinit' input changes", async ({ page }) => {
   const host = page.locator('#host-card');
   await host.hover();

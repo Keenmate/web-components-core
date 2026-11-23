@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Escape and a tooltip shown by keyboard focus** (`/positioning` `createTooltip`, SPEC §12.2, WCAG 1.4.13): the
+  first Escape now only hides a tooltip that keyboard focus showed. The tooltip listens on `window` capture (before
+  the overlay router and component handlers) and `preventDefault()`s that press, so an open routed dropdown /
+  popover stays open (the router skips a defaultPrevented Escape) and a component that ignores defaultPrevented
+  Escapes keeps focus; the next Escape closes the panel as before. A tooltip shown by hover / tap / `show()` hides
+  and lets the press through, unchanged. New read-only `TooltipHandle.isFocusShown`. Before, one Escape closed the
+  panel AND the tooltip, and web-editor needed an `isVisible` check to keep its toolbar.
+
 ## [1.0.0-rc25] - 2026-11-22
 
 ### Added

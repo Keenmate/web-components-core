@@ -166,6 +166,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | ------- | :----: | ---- | ------- |
 | createTooltip: shows on hover, hides on leave; portaled to body, position: fixed | ✓ | `tooltip.spec.ts` | `tooltip.html` |
 | createTooltip: shows on keyboard focus, hides on blur | ✓ | `tooltip.spec.ts` | `tooltip.html` |
+| Escape: a focus-shown tooltip in an open routed panel takes the first press (panel + focus stay), the panel the second; hover-shown hides with the panel | ✓ | `tooltip.spec.ts` | `tooltip.html` |
 | Follow-cursor + show delay: a stationary hover anchors at the cursor, not the trigger corner | ✓ | `tooltip.spec.ts` | `tooltip.html` |
 | Follow-cursor: tracks the pointer across the trigger | ✓ | `tooltip.spec.ts` | `tooltip.html` |
 | createTooltip exit fade: stays mounted + pointer-events none, removed after the token duration; mid-fade opacity < 1 | ✓ | `tooltip.spec.ts` | `tooltip.html` |

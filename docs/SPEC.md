@@ -1137,6 +1137,11 @@ createTooltip(opts: { trigger; selector?; container; content; placement?; offset
 // selector (delegated mode): `trigger` is the ROOT (an element or a shadow root); ONE tooltip serves every
 // `closest(selector)` target inside it — hover (show delay once, then it switches at once), keyboard focus,
 // Escape; handle.target / show(target) / refresh(). shouldToggleOnTap: a tap toggles, emulated hover ignored.
+// Escape (window capture — before the overlay router and component handlers): a tooltip shown by KEYBOARD FOCUS
+// (handle.isFocusShown) takes the first press on its own — hides + preventDefault(), so an open routed panel
+// stays open and focus stays (WCAG 1.4.13); the next Escape closes the panel. Shown by hover / tap / show():
+// hides and lets the press through (it closes whatever else Escape closes). Components skip a defaultPrevented
+// Escape rather than checking `isVisible`.
 // Exit fade: hide() removes visibleClass and adds `km-tooltip--hiding` (inline pointer-events: none); the element
 // stays mounted and anchored until its own `opacity` transitionend, or a timeout of its computed transition
 // (duration + delay) — a hidden tab / display:none ancestor never sticks; 0s (data-motion="none", OS reduced
@@ -1703,7 +1708,8 @@ getElement, shouldCloseOnEscape, shouldCloseOnOutsideClick })`: one page-wide `k
 `pointerdown` / `pointerup` capture + `window` `click` (capture and bubble) listener set (installed once, by whichever copy needs
 it first; the routing key is versioned, see below) routes
 - **Escape** to the DEEPEST open overlay that opts in — one level per press; focus returns
-  to its trigger when it was inside the panel; the key is consumed;
+  to its trigger when it was inside the panel; the key is consumed; a press already `defaultPrevented`
+  is skipped — a focus-shown `createTooltip` consumes the first Escape on `window` capture (§12.2);
 - an **outside click**, decided when the click ENDS (the `window` bubble listener runs after the
   page's own click handlers), like the browser's popover light dismiss: the press records the
   overlays it started outside of, the click closes those it also ended outside of. The overlay

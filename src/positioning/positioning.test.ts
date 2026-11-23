@@ -19,6 +19,7 @@ vi.mock('@floating-ui/dom', () => ({
 
 import * as fui from '@floating-ui/dom';
 import { anchor, createPopover, createTooltip, getFixedPositionOffsetParent } from './index.js';
+import { __resetOverlays, registerOverlay } from '../overlay/active-overlay.js';
 
 const mw = () => (vi.mocked(fui.computePosition).mock.calls[0]![2]!.middleware ?? []) as { name: string }[];
 
@@ -860,6 +861,105 @@ describe('positioning — review fixes', () => {
     tip.show();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(tip.isVisible).toBe(false);
+  });
+
+  // BG2 / Q5: the first Escape only hides a tooltip shown by KEYBOARD FOCUS (WCAG 1.4.13).
+  const escape = (target: EventTarget = document.activeElement ?? document.body): KeyboardEvent => {
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true, composed: true });
+    target.dispatchEvent(event);
+    return event;
+  };
+
+  it('tooltip: a focus-shown tooltip consumes Escape (hides, defaultPrevented)', () => {
+    const trigger = document.createElement('button');
+    document.body.append(trigger);
+    const tip = createTooltip({ trigger, content: 'hi' });
+    trigger.focus();
+    expect(tip.isVisible).toBe(true);
+    expect(tip.isFocusShown).toBe(true);
+    const event = escape(trigger);
+    expect(tip.isVisible).toBe(false);
+    expect(event.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(trigger);
+    // The next Escape is not the tooltip's any more.
+    expect(escape(trigger).defaultPrevented).toBe(false);
+    tip.destroy();
+  });
+
+  it('tooltip: a hover-shown tooltip hides on Escape and lets the press through', () => {
+    const trigger = document.createElement('button');
+    document.body.append(trigger);
+    const tip = createTooltip({ trigger, content: 'hi' });
+    trigger.dispatchEvent(new MouseEvent('mouseenter'));
+    expect(tip.isVisible).toBe(true);
+    expect(tip.isFocusShown).toBe(false);
+    const event = escape(document.body);
+    expect(tip.isVisible).toBe(false);
+    expect(event.defaultPrevented).toBe(false);
+    tip.destroy();
+  });
+
+  it('tooltip: delegated focus show (with a show delay) counts as focus-shown', () => {
+    vi.useFakeTimers();
+    try {
+      const root = document.createElement('div');
+      const cell = document.createElement('button');
+      cell.className = 'cell';
+      root.append(cell);
+      document.body.append(root);
+      const tip = createTooltip({ trigger: root, selector: '.cell', content: 'hi', delay: 100 });
+      cell.focus();
+      vi.advanceTimersByTime(100);
+      expect(tip.isFocusShown).toBe(true);
+      expect(escape(cell).defaultPrevented).toBe(true);
+      expect(tip.isVisible).toBe(false);
+      tip.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  describe('tooltip inside an open routed overlay (Escape router)', () => {
+    afterEach(() => __resetOverlays());
+
+    const setup = () => {
+      const opener = document.createElement('button');
+      const panel = document.createElement('div');
+      const item = document.createElement('button');
+      panel.append(item);
+      document.body.append(opener, panel);
+      const onDismiss = vi.fn();
+      const overlay = registerOverlay(onDismiss, undefined, { getElement: () => panel, shouldCloseOnEscape: true });
+      overlay.activate({ trigger: opener });
+      const tip = createTooltip({ trigger: item, content: 'hi' });
+      return { opener, item, onDismiss, tip, overlay };
+    };
+
+    it('focus-shown: the first Escape hides only the tooltip, the second closes the panel', () => {
+      const { opener, item, onDismiss, tip, overlay } = setup();
+      item.focus();
+      expect(tip.isFocusShown).toBe(true);
+      expect(escape(item).defaultPrevented).toBe(true);
+      expect(tip.isVisible).toBe(false);
+      expect(onDismiss).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(item);
+      escape(item);
+      expect(onDismiss).toHaveBeenCalledWith('escape');
+      expect(document.activeElement).toBe(opener);
+      tip.destroy();
+      overlay.destroy();
+    });
+
+    it('hover-shown: one Escape hides the tooltip and closes the panel', () => {
+      const { item, onDismiss, tip, overlay } = setup();
+      item.dispatchEvent(new MouseEvent('mouseenter'));
+      expect(tip.isVisible).toBe(true);
+      escape(document.body);
+      expect(tip.isVisible).toBe(false);
+      expect(onDismiss).toHaveBeenCalledWith('escape');
+      tip.destroy();
+      overlay.destroy();
+    });
   });
 
   it('tooltip: the pointer leaving does not hide it while the trigger has focus', () => {

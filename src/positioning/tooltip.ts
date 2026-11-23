@@ -18,6 +18,10 @@
  * removed at once. Showing again during the fade cancels it. `TOOLTIP_CSS` (layered, adopted into
  * the container's root) draws the default fade + a 4px slide toward the anchor, timed by the motion
  * token `--base-duration-fast`. `data-placement` carries the resolved placement (after flip / shift).
+ *
+ * Escape: a tooltip shown by keyboard focus takes the first press alone (hides + `preventDefault()`,
+ * on `window` capture so it runs before the overlay router) — an open panel and focus stay (WCAG
+ * 1.4.13). A hover / tap / `show()` tooltip hides and lets the press through.
  */
 import { findOverlayContainer } from './overlay-container.js';
 import { anchor } from './anchor.js';
@@ -105,6 +109,11 @@ export interface TooltipHandle {
   readonly isVisible: boolean;
   /** The target the tooltip shows for (`null` while hidden). */
   readonly target: HTMLElement | null;
+  /**
+   * Whether the tooltip is shown because its target got keyboard focus (not hover / tap / `show()`).
+   * Such a tooltip takes the first Escape on its own (WCAG 1.4.13) — see {@link createTooltip}.
+   */
+  readonly isFocusShown: boolean;
   /** Show now (ignores the show delay) — for `target` (delegated mode), else the trigger. */
   show(target?: HTMLElement): void;
   /**
@@ -242,6 +251,8 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
   /** The target `handle` anchors to — kept through the exit fade (`current` is cleared at hide). */
   let anchoredTarget: HTMLElement | null = null;
   let visible = false;
+  /** Shown by keyboard focus (set when it becomes visible / switches target; hover, tap, `show()` = false). */
+  let isFocusShown = false;
   let isDestroyed = false;
   /** The target shown (or about to be shown, while the show delay runs). */
   let current: HTMLElement | null = null;
@@ -297,8 +308,15 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     showTimer = hideTimer = undefined;
   };
 
+  // Dismissible without moving the pointer or focus (WCAG 1.4.13). On `window` capture, so it runs
+  // before the overlay router (document capture) and any component handler. A focus-shown tooltip
+  // consumes the press (preventDefault): the router and components that skip a defaultPrevented
+  // Escape leave the open panel / focus alone — the next Escape does that. A hover-shown one just
+  // hides and lets the press through (it closes whatever else Escape closes, as before).
   const onKeydown = (event: KeyboardEvent): void => {
-    if (event.key === 'Escape') hide(); // dismissible without moving the pointer or focus (WCAG 1.4.13)
+    if (event.key !== 'Escape' || event.isComposing || !visible) return;
+    if (isFocusShown && !event.defaultPrevented) event.preventDefault();
+    hide();
   };
 
   // Toggle-on-tap: a tap outside the root and the tooltip closes it.
@@ -353,7 +371,7 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     fade.timer = setTimeout(unmount, ms);
   };
 
-  const show = (target: HTMLElement | null = current ?? (isDelegated ? null : rootElement)): void => {
+  const show = (target: HTMLElement | null = current ?? (isDelegated ? null : rootElement), isByFocus = false): void => {
     clearTimers();
     if (isDestroyed || !target) return;
     if (visible && target === current) return;
@@ -373,6 +391,7 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     cancelFade();
     if (handle && anchoredTarget !== target) detach();
     current = target;
+    isFocusShown = isByFocus;
     if (!visible) {
       visible = true;
       // Resolved at each show: a target inside a modal <dialog> mounts the tooltip in the dialog.
@@ -385,7 +404,7 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
         adoptStyles(styleRoot as unknown as DocumentOrShadowRoot, TOOLTIP_CSS);
       }
       adoptMotionStyles(element); // the data-motion copied from the target maps onto the tokens
-      document.addEventListener('keydown', onKeydown, true);
+      window.addEventListener('keydown', onKeydown, true);
       if (opts.shouldToggleOnTap) document.addEventListener('pointerdown', onDocumentPointerDown, true);
     }
     if (!handle) {
@@ -429,21 +448,22 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
       return;
     }
     visible = false;
+    isFocusShown = false;
     element.classList.remove(visibleClass);
     if (anchoredTarget) removeDescribedBy(anchoredTarget, element.id);
-    document.removeEventListener('keydown', onKeydown, true);
+    window.removeEventListener('keydown', onKeydown, true);
     document.removeEventListener('pointerdown', onDocumentPointerDown, true);
     if (isImmediate || !anchoredTarget?.isConnected) unmount();
     else startFade();
   };
 
-  const scheduleShow = (target: HTMLElement): void => {
+  const scheduleShow = (target: HTMLElement, isByFocus = false): void => {
     clearTimers();
     // Moving between targets while one shows (or still fades out): switch at once.
     if (delay.show > 0 && !visible && !fade) {
       current = target;
-      showTimer = setTimeout(() => show(target), delay.show);
-    } else show(target);
+      showTimer = setTimeout(() => show(target, isByFocus), delay.show);
+    } else show(target, isByFocus);
   };
   const scheduleHide = (): void => {
     clearTimers();
@@ -491,7 +511,7 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
   const onFocusIn = (event: Event): void => {
     if (isTouchGhost()) return;
     const target = findTarget(event.target);
-    if (target) scheduleShow(target);
+    if (target) scheduleShow(target, true);
   };
   // Focus moving between two controls inside the target keeps the tooltip where it is.
   const onFocusOut = (event: Event): void => {
@@ -525,6 +545,9 @@ export function createTooltip(opts: TooltipOptions): TooltipHandle {
     },
     get target() {
       return visible ? current : null;
+    },
+    get isFocusShown() {
+      return visible && isFocusShown;
     },
     show(target?: HTMLElement) {
       show(target ?? (isDelegated ? current : rootElement));
