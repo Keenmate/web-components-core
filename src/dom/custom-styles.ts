@@ -173,7 +173,7 @@ function publishHoistSetting(): void {
         return;
       }
       state().shouldHoistImports = (value as boolean | null) ?? undefined;
-      for (const tag of state().listeners.keys()) notifyTag(tag);
+      for (const tag of state().listeners.keys()) refreshTag(tag);
     },
   });
 }
@@ -298,12 +298,12 @@ function checkLiveInstances(tag: string): void {
 }
 
 /** Re-run every live handle of `tag` (its page layer changed). */
-function notifyTag(tag: string): void {
+function refreshTag(tag: string): void {
   refreshAll(state().listeners.get(tag));
 }
 
 /** The managed children of `owner` re-read its layers. */
-function notifyDependents(owner: Element): void {
+function refreshDependents(owner: Element): void {
   refreshAll(state().dependents?.get(owner));
 }
 
@@ -347,7 +347,7 @@ export function installTagStyleHooks(entry: object, tag: string): void {
       return;
     }
     store.css = value || undefined;
-    notifyTag(tag);
+    refreshTag(tag);
     checkLiveInstances(tag);
   };
   const setCallback = (value: unknown): void => {
@@ -356,7 +356,7 @@ export function installTagStyleHooks(entry: object, tag: string): void {
       return;
     }
     store.callback = (value as CustomStylesCallback | null) ?? undefined;
-    notifyTag(tag);
+    refreshTag(tag);
     checkLiveInstances(tag);
   };
   const setHoist = (value: unknown): void => {
@@ -365,7 +365,7 @@ export function installTagStyleHooks(entry: object, tag: string): void {
       return;
     }
     store.shouldHoistImports = (value as boolean | null) ?? undefined;
-    notifyTag(tag);
+    refreshTag(tag);
   };
   Object.defineProperty(entry, CSS_KEY, { enumerable: true, configurable: true, get: () => store.css, set: setCss });
   Object.defineProperty(entry, TAG_HOIST_KEY, { enumerable: true, configurable: true, get: () => store.shouldHoistImports, set: setHoist });
@@ -435,7 +435,7 @@ export function createCustomStyles<Ctx = any>(
   /** The `@import` statements this handle holds in the document head. */
   let imports: string[] = [];
   /** Each layer is its own sheet: its leading `@import`s count, the union is held. */
-  const syncImports = (layers: readonly (string | null)[]): void => {
+  const reconcileImports = (layers: readonly (string | null)[]): void => {
     if (!doc?.head) return;
     if (isRemoved || !isHoistOn(tag, opts.shouldHoistImports !== false)) layers = [];
     const next = [...new Map(layers.flatMap((css) => (css ? importStatements(css, doc) : [])).map((i) => [i.statement, i])).values()];
@@ -533,7 +533,7 @@ export function createCustomStyles<Ctx = any>(
         ownerInstance?.set(owner.instance);
         instance.set(instanceCss);
         order();
-        syncImports([pageCss, owner.page, owner.instance, instanceCss]);
+        reconcileImports([pageCss, owner.page, owner.instance, instanceCss]);
         exposed.page = pageCss;
         exposed.instance = instanceCss;
         exposed.isRemoved = isRemoved;
@@ -541,7 +541,7 @@ export function createCustomStyles<Ctx = any>(
         if (instanceCss) opts.appliedCallback?.(instanceCss, 'instance');
         if (pageCss) lint(pageCss, 'page');
         if (instanceCss) lint(instanceCss, 'instance');
-        if (isShared) notifyDependents(host); // inside the guard: a child that (wrongly) owns its owner can't loop
+        if (isShared) refreshDependents(host); // inside the guard: a child that (wrongly) owns its owner can't loop
       } finally {
         isRefreshing = false;
       }
@@ -549,7 +549,7 @@ export function createCustomStyles<Ctx = any>(
     destroy() {
       if (!page) return;
       unwatch();
-      syncImports([]);
+      reconcileImports([]);
       for (const slot of [page, ownerPage, ownerInstance, instance]) slot?.destroy();
       page = instance = ownerPage = ownerInstance = null;
       state().listeners.get(tag)?.delete(ref);
@@ -557,7 +557,7 @@ export function createCustomStyles<Ctx = any>(
       if (!isShared) state().dependents?.get(host)?.delete(ref);
       if (isShared && state().layers?.get(host) === exposed) {
         state().layers!.delete(host);
-        notifyDependents(host);
+        refreshDependents(host);
       }
     },
   };

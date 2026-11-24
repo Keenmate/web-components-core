@@ -27,7 +27,7 @@
 import { escapeHtml } from './escape-html.js';
 import { sharedState } from '../global/shared-state.js';
 import { publishPageSetting } from '../global/page-setting.js';
-import { runSafely, notifyListeners } from '../logging/safe-call.js';
+import { runSafely, dispatchToListeners } from '../logging/safe-call.js';
 import { coreLog } from '../logging/element-logger.js';
 
 export interface RenderIconOptions {
@@ -132,7 +132,7 @@ type LiveIconHookState = Required<Omit<IconHookState, 'icons'>> & Pick<IconHookS
 
 function bump(s: IconHookState): void {
   s.revision = (s.revision ?? 0) + 1;
-  notifyListeners(s.listeners as Set<() => void>, undefined, { message: 'icon hook listener threw' });
+  dispatchToListeners(s.listeners as Set<() => void>, undefined, { message: 'icon hook listener threw' });
 }
 
 /** Validate + copy an assigned `window.components.icons`: ONE flat dictionary of strings. */

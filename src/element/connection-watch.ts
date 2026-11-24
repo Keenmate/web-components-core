@@ -23,7 +23,7 @@ export function watchConnection(el: Element, onConnected: () => void): () => voi
 }
 
 /** Tell `el`'s watchers it is active again; a throwing watcher goes to `onError`, the others still run. */
-export function notifyConnected(el: Element, onError: (error: unknown) => void): void {
+export function dispatchConnected(el: Element, onError: (error: unknown) => void): void {
   const set = watchers().get(el);
   if (!set?.size) return;
   for (const watcher of [...set]) {

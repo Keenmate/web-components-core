@@ -36,7 +36,7 @@ export function hasRemovalWatchers(el: Element): boolean {
 }
 
 /** Tell `el`'s watchers; a throwing watcher is reported to `onError` and the others still run. */
-export function notifyRemoval(el: Element, kind: 'removed' | 'returned', onError: (error: unknown) => void): void {
+export function dispatchRemoval(el: Element, kind: 'removed' | 'returned', onError: (error: unknown) => void): void {
   for (const w of [...(watchers().get(el) ?? [])]) {
     try {
       if (kind === 'removed') w.onRemoved();

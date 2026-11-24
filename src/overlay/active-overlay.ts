@@ -31,7 +31,7 @@
  *
  * Direction A — dismiss KM overlays from outside code:
  *   document.dispatchEvent(new CustomEvent('km-overlay-activate', { detail: { source: myId, group: 'A' } }))
- *   // or, if you import core: notifyOverlayActivated(myId, 'A')
+ *   // or, if you import core: dispatchOverlayActivated(myId, 'A')
  *
  * Direction B — have your own popover dismissed when a KM overlay opens:
  *   document.addEventListener('km-overlay-activate', (e) => {
@@ -556,7 +556,7 @@ export function registerOverlay(
  * (default: ungrouped) to scope it, or {@link ALL_OVERLAY_GROUPS} to hit every group; pass
  * `ancestors` to keep the overlays your overlay was opened from.
  */
-export function notifyOverlayActivated(source?: unknown, group?: unknown, ancestors?: readonly unknown[]): void {
+export function dispatchOverlayActivated(source?: unknown, group?: unknown, ancestors?: readonly unknown[]): void {
   broadcast(source, group, ancestors);
 }
 

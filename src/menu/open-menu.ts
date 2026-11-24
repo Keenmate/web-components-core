@@ -348,7 +348,7 @@ export function openMenu<Ctx, A extends string = string>(
       level.position?.destroy();
       level.el.remove();
       level.owner?.setAttribute('aria-expanded', 'false');
-      syncSheet(); // the parent level is shown again before its item takes focus
+      reconcileSheet(); // the parent level is shown again before its item takes focus
       if (hadFocus) level.owner?.focus({ preventScroll: true });
     }
   };
@@ -361,7 +361,7 @@ export function openMenu<Ctx, A extends string = string>(
   };
 
   /** Sheet: show only the deepest level; the header names it (the menu title, else the submenu's item). */
-  const syncSheet = (): void => {
+  const reconcileSheet = (): void => {
     if (!sheet) return;
     const last = chain.length - 1;
     chain.forEach((level, i) => (level.el.hidden = i !== last));
@@ -434,7 +434,7 @@ export function openMenu<Ctx, A extends string = string>(
     if (sheet) {
       // Drill in: the submenu replaces its parent in the sheet (Back row on top).
       sheet.appendChild(level.el);
-      syncSheet();
+      reconcileSheet();
     } else host.appendChild(level.el);
     fillLevel(level, (count) => {
       if (count === 0) {
@@ -829,14 +829,14 @@ export function openMenu<Ctx, A extends string = string>(
           return;
         }
         presentation = next;
-        applySheetKind();
+        reconcileSheetKind();
       },
       { shouldFireImmediately: false },
     );
   }
 
   /** Sheet vs drawer (and the drawer's physical edge: `side` + the opener's direction). */
-  function applySheetKind(): void {
+  function reconcileSheetKind(): void {
     if (!sheet || !backdrop) return;
     const isDrawer = presentation === 'drawer';
     const isLeft = (opts.side ?? 'start') === 'start' ? !isRtl : isRtl;
@@ -886,11 +886,11 @@ export function openMenu<Ctx, A extends string = string>(
       inheritTheme(opts.inheritThemeFrom, sheet);
       inheritTheme(opts.inheritThemeFrom, backdrop);
     }
-    applySheetKind();
+    reconcileSheetKind();
     host.append(backdrop, sheet);
     // Durations come from the motion tokens: make sure OS reduced motion / data-motion reach them.
     adoptMotionStyles(sheet);
-    syncSheet();
+    reconcileSheet();
     // Modal (SPEC §12.19, rule C-CA-19): the page behind is inert, Tab stays inside, scroll lock, the
     // backdrop click, Escape and the phone Back entry (up one submenu level — the entry is re-armed —
     // else close). Escape: whichever capture listener runs first (the menu's keydown or the overlay

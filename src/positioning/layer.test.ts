@@ -35,13 +35,13 @@ describe('createLayer', () => {
     expect([layer.layer.style.top, layer.layer.style.left, layer.layer.style.width, layer.layer.style.height]).toEqual(['10px', '20px', '100px', '50px']);
 
     section.setAttribute('data-theme', 'light');
-    layer.syncTheme();
+    layer.reconcileTheme();
     expect(layer.layer.getAttribute('data-theme')).toBe('light');
     layer.destroy();
     expect(layer.layer.isConnected).toBe(false);
   });
 
-  it('cssVars: the host’s instance tokens are copied onto the layer, again on syncTheme()', () => {
+  it('cssVars: the host’s instance tokens are copied onto the layer, again on reconcileTheme()', () => {
     const host = document.createElement('div');
     host.style.setProperty('--xx-bg', 'red');
     document.body.append(host);
@@ -49,7 +49,7 @@ describe('createLayer', () => {
     expect(layer.layer.style.getPropertyValue('--xx-bg')).toBe('red');
     expect(layer.layer.style.getPropertyValue('--xx-unset')).toBe('');
     host.style.setProperty('--xx-bg', 'blue');
-    layer.syncTheme();
+    layer.reconcileTheme();
     expect(layer.layer.style.getPropertyValue('--xx-bg')).toBe('blue');
     layer.destroy();
   });
@@ -67,7 +67,7 @@ describe('createLayer', () => {
     expect(layer.layer.style.lineHeight).toBe('2');
     expect(layer.layer.dir).toBe('rtl');
     section.dir = 'ltr';
-    layer.syncTheme();
+    layer.reconcileTheme();
     expect(layer.layer.dir).toBe('ltr');
     layer.destroy();
   });
@@ -104,9 +104,9 @@ describe('createLayer', () => {
     // a page write for the tag reaches the layer
     (window.components as unknown as Record<string, { customStyles?: string }>)[tag]!.customStyles = '.page-2 {}';
     expect(custom()).toEqual(['x-custom--page: .page-2 {}', 'x-custom: .inst-2 {}']);
-    // syncTheme() re-resolves too
+    // reconcileTheme() re-resolves too
     instanceCss = '.inst-3 {}';
-    layer.syncTheme();
+    layer.reconcileTheme();
     expect(custom()).toContain('x-custom: .inst-3 {}');
     layer.destroy();
     expect(custom()).toEqual([]);
@@ -131,7 +131,7 @@ describe('createLayer', () => {
     };
     const main = createCustomStyles(host, host.attachShadow({ mode: 'open' }), sameOptions);
     const layer = createLayer(host, { customStylesOptions: sameOptions });
-    layer.syncTheme();
+    layer.reconcileTheme();
     main.refresh();
     expect(warn.mock.calls.map((c) => c.join(' ')).filter((m) => m.includes('"--ll-day-background"'))).toHaveLength(1);
     layer.destroy();

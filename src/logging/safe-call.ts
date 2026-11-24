@@ -44,7 +44,7 @@ export function runSafely<T>(fn: () => T, log: SafeCallLog): SafeCallResult<T> {
  * mid-delivery is skipped. `isSuperseded` stops the delivery once a nested notify has
  * delivered a newer value (a listener that changed the state again).
  */
-export function notifyListeners<T>(
+export function dispatchToListeners<T>(
   listeners: Iterable<(value: T) => void>,
   value: T,
   log: SafeCallLog,

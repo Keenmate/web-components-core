@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import {
   registerOverlay,
-  notifyOverlayActivated,
+  dispatchOverlayActivated,
   dismissAllOverlays,
   observeOverlayActivation,
   OVERLAY_ACTIVATE_EVENT,
@@ -41,25 +41,25 @@ describe('active-overlay coordination', () => {
     expect(b).toHaveBeenCalledTimes(1);
   });
 
-  it('notifyOverlayActivated() with no source dismisses everyone', () => {
+  it('dispatchOverlayActivated() with no source dismisses everyone', () => {
     const a = vi.fn();
     const b = vi.fn();
     registerOverlay(a);
     registerOverlay(b);
 
-    notifyOverlayActivated();
+    dispatchOverlayActivated();
 
     expect(a).toHaveBeenCalledTimes(1);
     expect(b).toHaveBeenCalledTimes(1);
   });
 
-  it('notifyOverlayActivated(source) spares a participant sharing that source token', () => {
+  it('dispatchOverlayActivated(source) spares a participant sharing that source token', () => {
     const token = { id: 'svelte-popover' };
     const a = vi.fn();
     registerOverlay(a);
 
     // External code shares the token of nobody registered → everyone dismisses.
-    notifyOverlayActivated(token);
+    dispatchOverlayActivated(token);
     expect(a).toHaveBeenCalledTimes(1);
   });
 
@@ -82,7 +82,7 @@ describe('active-overlay coordination', () => {
     registerOverlay(b);
 
     ha.destroy();
-    notifyOverlayActivated();
+    dispatchOverlayActivated();
 
     expect(a).not.toHaveBeenCalled();
     expect(b).toHaveBeenCalledTimes(1);
@@ -140,13 +140,13 @@ describe('active-overlay coordination', () => {
     expect(def).not.toHaveBeenCalled();
   });
 
-  it('notifyOverlayActivated(source, group) only dismisses that group', () => {
+  it('dispatchOverlayActivated(source, group) only dismisses that group', () => {
     const a = vi.fn();
     const b = vi.fn();
     registerOverlay(a, 'A');
     registerOverlay(b, 'B');
 
-    notifyOverlayActivated('external', 'A');
+    dispatchOverlayActivated('external', 'A');
     expect(a).toHaveBeenCalledTimes(1);
     expect(b).not.toHaveBeenCalled();
   });
@@ -278,7 +278,7 @@ describe('active-overlay nesting', () => {
     hModal.activate();
     const seen: unknown[] = [];
     observeOverlayActivation((_source, _group, ancestors) => seen.push(...ancestors));
-    notifyOverlayActivated('pure-css-menu', undefined, seen); // empty — dismisses the modal
+    dispatchOverlayActivated('pure-css-menu', undefined, seen); // empty — dismisses the modal
     expect(dismissModal).toHaveBeenCalledTimes(1);
   });
 

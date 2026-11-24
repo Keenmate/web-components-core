@@ -2828,7 +2828,7 @@ Audit B13 / B14: web-treeview drew its drop pads and drag ghost by hand, web-dro
 Decided 2026-11-17:
 
 - **`createLayer(host, { css, className, zIndex = Z_INDEX.dropdown, isInteractive = true, container, cssVars, customStylesOptions })`** →
-  `{ element, layer, place(rect), syncTheme(), destroy() }`. A fixed `div.km-layer` in
+  `{ element, layer, place(rect), reconcileTheme(), destroy() }`. A fixed `div.km-layer` in
   `findOverlayContainer(host)` (`<body>` or the open top-layer `<dialog>` / popover around the host) with its OWN
   shadow root: `css` + `MOTION_CSS` adopted there, `element` (`.km-layer__content` + `className`, `inset: 0`) is
   where the component renders; the host's theme attributes copied with `inheritTheme` (C-CS-10). `place(rect)`
@@ -2836,11 +2836,11 @@ Decided 2026-11-17:
   containing block when the container has one (`getFixedPositionOffsetParent`). `isInteractive: false` =
   `pointer-events: none` (a drag ghost under the pointer). Per-instance custom properties on the HOST don't
   inherit into the layer (not a descendant): the ones the layer CSS reads are listed in `cssVars` and their
-  computed values at the host are set on the layer (re-read by `syncTheme()`); page tokens and the theme arrive on
+  computed values at the host are set on the layer (re-read by `reconcileTheme()`); page tokens and the theme arrive on
   their own. Core's `:host { all: initial }` reset is in the lowest cascade layer (`@layer km-layer-base`), so the
   component's rules — layered or not — override it. The host's text look (font family / size / weight / style, line
   height, colour, letter spacing) and `dir` are copied inline on the layer — what it would have inherited inside the
-  host (web-treeview's pass); `syncTheme()` re-reads them (found in web-dropzone's pass: a layered
+  host (web-treeview's pass); `reconcileTheme()` re-reads them (found in web-dropzone's pass: a layered
   `:host([data-theme]) { color-scheme }` lost to the unlayered reset).
 - **The component's custom CSS (`customStylesOptions`, audit G2, 2026-11-23):** page CSS can't reach the layer's
   shadow root, and neither can the custom CSS (§12.8) in the host's root. `customStylesOptions` takes the SAME
@@ -2848,7 +2848,7 @@ Decided 2026-11-17:
   handle for its own root (`shouldShareLayers: false` forced — not the host's registered layers, managed children keep
   reading the main handle), so the tag's page-wide `customStyles` / `getCustomStylesCallback` and the instance's sit in
   the layer too. Live: a page write for the tag and every `refresh()` of the host's MAIN handle re-resolve it (an
-  unshared handle follows its host's main handle, §12.8), `syncTheme()` refreshes it, `destroy()` removes it. Replaces
+  unshared handle follows its host's main handle, §12.8), `reconcileTheme()` refreshes it, `destroy()` removes it. Replaces
   the hand-made `createLayer` + second `createCustomStyles` wrapper in web-treeview, web-grid and web-dropzone.
 - **Drawer preset**: `.km-drawer` + `.km-drawer--start | --end | --top | --bottom` in `SHEET_CHROME_CSS` — fixed on
   one edge (start / end follow the panel's writing direction), the modal tier, safe-area padding, slide in / out on
@@ -2888,7 +2888,7 @@ grid / tree / list back at the top. Audit B20, decided 2026-11-17:
   already reads 0, so reading at disconnect would be too late) and restores them after the host's next
   activation (after `connect()`), then once more on the next frame (after a re-render in that frame).
 - Driven by a core-internal connection notifier (`src/element/connection-watch.ts`, page-wide state like
-  `removal-watch.ts`): BlissElement calls `notifyConnected(this)` at the end of every activation. A host that
+  `removal-watch.ts`): BlissElement calls `dispatchConnected(this)` at the end of every activation. A host that
   isn't a BlissElement never restores.
 - Only listed scrollers; only positions a `scroll` event reported (a programmatic `scrollTop` write fires one in
   the browser too).

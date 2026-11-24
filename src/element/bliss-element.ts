@@ -72,8 +72,8 @@ import type { InstanceLogger, LogLevelDesc } from '../logging/create-loggers.js'
 import { DEFAULT_ENABLED_LOG_LEVEL, LOG_LEVELS, isLogLevel, parseLogLevel } from '../logging/log-core.js';
 import { dispatch, type DispatchOptions } from './dispatch.js';
 import { withComponentContext, type ComponentContext, type EmitDetail } from './context.js';
-import { hasRemovalWatchers, notifyRemoval } from './removal-watch.js';
-import { notifyConnected } from './connection-watch.js';
+import { hasRemovalWatchers, dispatchRemoval } from './removal-watch.js';
+import { dispatchConnected } from './connection-watch.js';
 import { warnUnusedPageStyles } from '../dom/custom-styles.js';
 import { isRtl } from '../dom/direction.js';
 import { getLocaleRevision, observePageLocale } from '../locale/page-locale.js';
@@ -542,7 +542,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
           else this.setAttribute(MOTION_ATTRIBUTE, this.#motion);
         });
       }
-      this.#applyMotion();
+      this.#reconcileMotion();
       return;
     }
     const def = this.#byAttribute.get(name);
@@ -660,12 +660,12 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#cancelRemovalCheck = undefined;
     if (this.#isReportedRemoved) {
       this.#isReportedRemoved = false;
-      notifyRemoval(this, 'returned', (error) => coreLog(this, 'UI', 'ELEMENT').error('a removal watcher threw', error));
+      dispatchRemoval(this, 'returned', (error) => coreLog(this, 'UI', 'ELEMENT').error('a removal watcher threw', error));
     }
     // Motion (SPEC §12.16): presets in the root this element lives in; follow the page level.
     adoptMotionStyles(this);
     publishMotionHook(); // the page level goes on <html>, not on this host (closest wins)
-    this.#applyMotion();
+    this.#reconcileMotion();
     // Page responsive rules changing reach this element while it is connected.
     if (this.#hasInputs() && !this.#responsiveUnsub) {
       this.#responsiveUnsub = onResponsiveChange((tag) => {
@@ -757,7 +757,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     }
     if (!step(() => this.#subscribeTheme())) return this.#rethrow(firstError);
     // Core helpers bound to this element (keepScrollAcrossMove) hear every activation, after connect().
-    notifyConnected(this, (error) => coreLog(this, 'UI', 'ELEMENT').error('a connection watcher threw', error));
+    dispatchConnected(this, (error) => coreLog(this, 'UI', 'ELEMENT').error('a connection watcher threw', error));
     if (!this.#isReady && !this.#isReadyScheduled) {
       // Announce on a microtask, not synchronously (SPEC §6.3): an element built
       // during upgrade (createElement of a defined tag, `define()` after parsing,
@@ -852,7 +852,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       this.#cancelRemovalCheck = undefined;
       if (this.isConnected) return;
       this.#isReportedRemoved = true;
-      notifyRemoval(this, 'removed', (error) => coreLog(this, 'UI', 'ELEMENT').error('a removal watcher threw', error));
+      dispatchRemoval(this, 'removed', (error) => coreLog(this, 'UI', 'ELEMENT').error('a removal watcher threw', error));
       this.removedCallback();
     };
     const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
@@ -1627,7 +1627,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#browserDisabledState = isDisabled;
     // Before the first connect only record it: the first build reads it (a flush here
     // would run update() on an element that was never built).
-    if (this.isConnected && this.#connectedOnce) this.#flushNow(); // ends with #syncDisabled(); a no-op while held
+    if (this.isConnected && this.#connectedOnce) this.#flushNow(); // ends with #reconcileDisabled(); a no-op while held
   }
 
   /**
@@ -1727,7 +1727,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
       }
     }
     const anchor = this.getValidityAnchor();
-    this.#syncAnchorRequired(isRequired ? anchor : undefined);
+    this.#reconcileAnchorRequired(isRequired ? anchor : undefined);
     const isMissing = isRequired && this.#config.isReadonly !== true && !this.isEffectivelyDisabled && this.isValueEmpty();
     this.#setValidityFlag(
       'valueMissing',
@@ -1745,7 +1745,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * `aria-required="true"` too — only a native field or a role that supports it (a button doesn't). The previous
    * anchor (a rebuild swapped it, `isRequired` turned off) is cleared.
    */
-  #syncAnchorRequired(anchor: HTMLElement | undefined): void {
+  #reconcileAnchorRequired(anchor: HTMLElement | undefined): void {
     const target = anchor && anchor !== (this as unknown as HTMLElement) && supportsAriaRequired(anchor) ? anchor : undefined;
     if (this.#ariaRequiredAnchor && this.#ariaRequiredAnchor !== target) this.#ariaRequiredAnchor.removeAttribute('aria-required');
     if (target) target.setAttribute('aria-required', 'true');
@@ -1753,7 +1753,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   }
 
   /** After a successful flush: report a flip of the effective disabled state. */
-  #syncDisabled(isRebuilt: boolean): void {
+  #reconcileDisabled(isRebuilt: boolean): void {
     const next = this.isEffectivelyDisabled;
     const prev = this.#lastEffectiveDisabled;
     this.#lastEffectiveDisabled = next;
@@ -1891,7 +1891,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
   }
 
   /** Write the resolved motion level to `data-motion`: the instance level, else the page level. */
-  #applyMotion(): void {
+  #reconcileMotion(): void {
     if (!this.isConnected) return;
     // Only the element's OWN level goes on the host; `auto` leaves the tokens to inheritance
     // (nearest section / <html> page level / the component's own speeds).
@@ -2336,7 +2336,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     const hasCallback = !!(this.#responsiveCallback || page.globalCallback || page.tagCallback);
     const hadOverrides = Object.keys(this.#ruleInstance).length > 0 || Object.keys(this.#rulePage).length > 0;
     const usesWidth = hasCallback || usesContainerAxis(this.#responsiveMap, page.globalMap, page.tagMap);
-    this.#syncResponsiveEnv(hasAny, hasCallback, usesWidth);
+    this.#reconcileResponsiveEnv(hasAny, hasCallback, usesWidth);
     if (!hasAny && !hadOverrides) return;
 
     const instance: Record<string, unknown> = {};
@@ -2414,7 +2414,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
    * test `env.viewportWidth`, which moves between breakpoint lines. Maps are keyed
    * by device class / breakpoint — both discrete — so they stay on the discrete channel.
    */
-  #syncResponsiveEnv(hasAny: boolean, hasCallback: boolean, usesWidth: boolean): void {
+  #reconcileResponsiveEnv(hasAny: boolean, hasCallback: boolean, usesWidth: boolean): void {
     const isLive = this.isConnected && !this.#isDestroyed;
     // Own width (the `container` axis, and a callback's ctx.width): re-run when the bucket changes,
     // or on every (throttled) width change while a callback layer applies.
@@ -2526,7 +2526,7 @@ export abstract class BlissElement<TEvents extends EventMap = EventMap, TControl
     this.#hasFailedReinit = false;
     if (reinit) this.#hasBuilt = true;
     try {
-      this.#syncDisabled(reinit);
+      this.#reconcileDisabled(reinit);
       this.refreshRequired();
       // The instance `icons` map (SPEC §12.33) changed in a patch batch: repaint through the same opt-in hook as the
       // page-wide icon settings (a rebuild already rendered with the new map).

@@ -68,7 +68,7 @@ const PREFIXED = new WeakSet<CoreLogger>();
  * {@link DEFAULT_LOG_LEVEL} as the fallback layer (a persisted own level wins). Idempotent —
  * a second `createLoggers()` for the same name keeps the current levels.
  */
-function applyColorPrefix(logger: CoreLogger, label: string, color: string): void {
+function installColorPrefix(logger: CoreLogger, label: string, color: string): void {
   if (PREFIXED.has(logger)) return;
   PREFIXED.add(logger);
   // The fallback layer (the page-wide level replaces it); a persisted own level wins.
@@ -204,7 +204,7 @@ export function createLoggers<C extends string>(
     const label = `${namespace}:${category}`;
     const color = PALETTE[i % PALETTE.length]!;
     const logger = getLogger(label);
-    applyColorPrefix(logger, label, color);
+    installColorPrefix(logger, label, color);
     loggers[category] = logger;
     meta[category] = { label, color, logger };
   });

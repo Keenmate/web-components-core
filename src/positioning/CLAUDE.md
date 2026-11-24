@@ -30,10 +30,10 @@ it via that hatch). Tests mock `@floating-ui/dom` (jsdom has no layout).
 
 `createLayer(host, opts)` (`layer.ts`, SPEC §12.29): fixed `div.km-layer` + open shadow root (`LAYER_CSS` in
 `@layer km-layer-base` so component rules win, `cssVars` + the host's text look / `dir` (`copyInheritedText`) copied from its computed style +
-the component's `css`, `adoptMotionStyles`), `inheritTheme(host, layer)` (restore on destroy / `syncTheme`),
+the component's `css`, `adoptMotionStyles`), `inheritTheme(host, layer)` (restore on destroy / `reconcileTheme`),
 `place()` subtracts `getFixedPositionOffsetParent(layer)`'s box. `customStylesOptions` (G2) → an unshared
 `createCustomStyles` handle on the layer root (`shouldShareLayers: false` forced; follows the host's main handle +
-page writes; `syncTheme()` refreshes, `destroy()` destroys). No floating-ui involved. e2e `layer.spec.ts`.
+page writes; `reconcileTheme()` refreshes, `destroy()` destroys). No floating-ui involved. e2e `layer.spec.ts`.
 
 **Ported copy in pure-css.** `@keenmate/pure-css` ships `pureCss.position.anchor()`
 (`src/js/position.js`), a port of `anchor.ts` + `containing-block.ts` (from rc15 @

@@ -48,7 +48,7 @@ export type { BeforeCallbackResult } from './element/before-callback.js';
 export { createControllerFacade } from './element/controller-facade.js';
 export type { ControllerFacadeSpec } from './element/controller-facade.js';
 // Call code core doesn't own (a hook, a listener) without letting it throw through: logged + reported.
-export { runSafely, notifyListeners } from './logging/safe-call.js';
+export { runSafely, dispatchToListeners } from './logging/safe-call.js';
 export type { SafeCallLog, SafeCallResult } from './logging/safe-call.js';
 // Responsive rules (SPEC §6.7): page-wide / per-tag / instance partial configs per device class.
 export type { ResponsiveMap, ResponsiveMapAxis, ResponsiveContext, ResponsiveCallback } from './element/responsive.js';
@@ -189,7 +189,7 @@ export type { SheetHeaderOptions, SheetHeader } from './overlay/sheet-chrome.js'
 // `km-overlay-activate` document event; external code can trigger + observe it too).
 export {
   registerOverlay,
-  notifyOverlayActivated,
+  dispatchOverlayActivated,
   dismissAllOverlays,
   observeOverlayActivation,
   OVERLAY_ACTIVATE_EVENT,

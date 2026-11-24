@@ -26,7 +26,7 @@ Released on real removal too (`watchRemoval`, `src/element/removal-watch.ts`, dr
 BlissElement's removal check). Page decides: `window.components[tag].shouldHoistImports` >
 `window.components.shouldHoistImports` (non-enumerable) > the component option.
 `shouldShareLayers: false` = an extra root of the same host (overlay layer): not written to / deleted from
-`layers`, no `notifyDependents`; registered in `dependents` under its OWN host, so the main handle's refresh
+`layers`, no `refreshDependents`; registered in `dependents` under its OWN host, so the main handle's refresh
 re-resolves it (G2; `createLayer({ customStylesOptions })` builds one). Managed child (`getOwner?: () => HTMLElement | null`, SPEC §12.8, Q24): two more slots
 (`--owner-page`, `--owner`); order child page → owner page → owner instance → child instance.
 The owner's CSS = what the owner's own live handle last wrote (shared state `layers`: host →
@@ -105,7 +105,7 @@ the two dispatches). `isImeEnter` = `isComposing || keyCode === 229`. e2e drives
 ## Scroll across a move (`src/dom/keep-scroll.ts`, SPEC §12.31 — implemented)
 
 `keepScrollAcrossMove`: capture `scroll` listeners on host + shadow root record into a WeakMap; restore on
-`watchConnection` (`src/element/connection-watch.ts`, `notifyConnected()` at the end of BlissElement's
+`watchConnection` (`src/element/connection-watch.ts`, `dispatchConnected()` at the end of BlissElement's
 `#activate`) + one rAF. Unit fake: jsdom has no layout and custom-element reactions run the host's connect
 before a child's disconnect — the test resets the fake offsets in the host's `disconnect()`. e2e
 `keep-scroll.spec.ts` proves Chromium resets a moved scroller (control element) and the helper restores it.
@@ -126,7 +126,7 @@ square); the element's hook (option, else `host.renderIconCallback`; `ctx.compon
 `BUILT_IN_ICON_NAMES` in sync with base-css-variables' `--base-icon-*` (minus `check-size`). `ICON_CSS` is NOT part of the manifest test (its only variables are private / dynamic).
 `/menu` adopts it next to `MENU_CSS`.
 Live page hook: the shared state also carries `revision` + `listeners` + the notifying `get` / `set` (added in place
-when an rc24-or-older copy created the state); the setter bumps + `notifyListeners` only on a real change. `publishIconHook`
+when an rc24-or-older copy created the state); the setter bumps + `dispatchToListeners` only on a real change. `publishIconHook`
 deletes an accessor whose `set` isn't `state.set` (an older copy's, which never notifies) before `publishPageSetting`.
 `observeIconHook` / `getIconHookRevision` feed BlissElement's opt-in `iconsChanged()` (same gate + reconnect catch-up
 as `localeChanged()`).

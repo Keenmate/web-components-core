@@ -88,7 +88,7 @@ describe('V-19 #7 — SSR: no window / document', () => {
 
     const handle = overlay.registerOverlay(() => {});
     expect(() => handle.activate()).not.toThrow();
-    expect(() => overlay.notifyOverlayActivated()).not.toThrow();
+    expect(() => overlay.dispatchOverlayActivated()).not.toThrow();
     expect(() => overlay.dismissAllOverlays()).not.toThrow();
     overlay.observeOverlayActivation(() => {})();
     handle.destroy();

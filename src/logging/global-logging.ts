@@ -59,26 +59,26 @@ const STATE_KEY = '@keenmate/web-components-core:logging';
 /** The fallback a bundle from an older copy of core gets when the page level is cleared. */
 const LEGACY_FALLBACK: LogLevelDesc = 'warn';
 
-function applyTo(bundle: PageLoggingTarget, level: LogLevelDesc | undefined): void {
+function setBundleLevel(bundle: PageLoggingTarget, level: LogLevelDesc | undefined): void {
   if (typeof bundle.setPageLevel === 'function') bundle.setPageLevel(level ?? null);
   else bundle.setLogLevel(level ?? LEGACY_FALLBACK);
 }
 
 function createControls(s: PageLoggingState): PageLoggingControls {
-  const applyAll = (level: LogLevelDesc | undefined): void => {
+  const setAllLevels = (level: LogLevelDesc | undefined): void => {
     // Check BEFORE storing: a stored bad level would make every later createLoggers()
     // (any lazily loaded component, any copy of core) throw at registration.
     if (level !== undefined && !isLogLevel(level)) {
       throw new TypeError(`window.components.logging: invalid level "${String(level)}" (expected trace | debug | info | warn | error | silent)`);
     }
     s.level = level;
-    for (const bundle of s.bundles) applyTo(bundle, level);
+    for (const bundle of s.bundles) setBundleLevel(bundle, level);
   };
   return {
-    enableLogging: (level = DEFAULT_ENABLED_LOG_LEVEL) => applyAll(level),
-    disableLogging: () => applyAll('silent'),
-    setLogLevel: (level) => applyAll(level),
-    resetLogging: () => applyAll(undefined),
+    enableLogging: (level = DEFAULT_ENABLED_LOG_LEVEL) => setAllLevels(level),
+    disableLogging: () => setAllLevels('silent'),
+    setLogLevel: (level) => setAllLevels(level),
+    resetLogging: () => setAllLevels(undefined),
     getCategories: () => {
       const out = new Set<string>();
       for (const bundle of s.bundles) {
@@ -151,7 +151,7 @@ export function registerPageLoggingTarget(bundle: PageLoggingTarget): void {
   // isLogLevel: the shared state may come from an older copy of core that stored a bad level.
   const level = s.level !== undefined && isLogLevel(s.level) ? s.level : undefined;
   // An older bundle with no page level set keeps its own level (nothing to push).
-  if (typeof bundle.setPageLevel === 'function' || level !== undefined) applyTo(bundle, level);
+  if (typeof bundle.setPageLevel === 'function' || level !== undefined) setBundleLevel(bundle, level);
   publishPageLogging();
 }
 

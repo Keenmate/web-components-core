@@ -121,7 +121,7 @@ export function isResponsiveMap(value: unknown): value is ResponsiveMap {
 }
 
 /** Run every element's refresh (a page layer changed). */
-export function notifyResponsiveChange(tag?: string): void {
+export function dispatchResponsiveChange(tag?: string): void {
   for (const listener of [...state().listeners]) {
     try {
       listener(tag);
@@ -200,7 +200,7 @@ export function publishResponsiveHooks(): void {
       setCallback: (v) => (s.callback = v),
     },
     'window.components',
-    () => notifyResponsiveChange(),
+    () => dispatchResponsiveChange(),
   );
 }
 
@@ -223,7 +223,7 @@ export function installTagResponsiveHooks(entry: object, tag: string): void {
       setCallback: (v) => (callback = v),
     },
     `window.components['${tag}']`,
-    () => notifyResponsiveChange(tag),
+    () => dispatchResponsiveChange(tag),
   );
 }
 

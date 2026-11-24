@@ -13,9 +13,9 @@
  *
  * The layer isn't the host's descendant, so per-instance custom properties set ON the host don't inherit
  * into it; list the ones the layer CSS reads in `cssVars` and their computed values at the host are copied
- * onto the layer (again on `syncTheme()`). Page-level tokens (`:root`) and the theme arrive on their own.
+ * onto the layer (again on `reconcileTheme()`). Page-level tokens (`:root`) and the theme arrive on their own.
  * The host's text look (font family / size / weight / style, line height, colour, letter spacing) and its writing
- * direction (`dir`) are copied too — what the layer would have inherited inside the host; `syncTheme()` re-reads them.
+ * direction (`dir`) are copied too — what the layer would have inherited inside the host; `reconcileTheme()` re-reads them.
  * They sit inline on the layer, so the component styles its content elements, not the layer's `:host`.
  * Core's reset (`:host { all: initial }`) sits in the lowest cascade layer (`km-layer-base`), so any of the
  * component's rules — layered or not — win over it (a `:host([data-theme="dark"]) { color-scheme: dark }`).
@@ -23,7 +23,7 @@
  * Page CSS can't reach the layer's shadow root, and neither does the component's custom CSS in the host's root. Pass
  * `customStylesOptions` — the same object the component gives its main `createCustomStyles` — and the layer writes the
  * same page-wide + instance custom CSS into its own root (an unshared handle, `shouldShareLayers: false`): it follows
- * page writes for the tag and every refresh of the host's main handle, `syncTheme()` refreshes it, `destroy()` removes it.
+ * page writes for the tag and every refresh of the host's main handle, `reconcileTheme()` refreshes it, `destroy()` removes it.
  */
 
 import { adoptStyles } from '../dom/adopt-styles.js';
@@ -55,13 +55,13 @@ export interface LayerOptions {
   container?: HTMLElement;
   /**
    * Custom properties to carry from the host (`['--dz-overlay-bg', …]`): their computed values at the host
-   * are set on the layer, so instance-level overrides reach the layer CSS. Re-read by `syncTheme()`.
+   * are set on the layer, so instance-level overrides reach the layer CSS. Re-read by `reconcileTheme()`.
    */
   cssVars?: readonly string[];
   /**
    * The component's custom-CSS options — the same object it passes to its main `createCustomStyles` (SPEC §12.8). The
    * page-wide + instance custom CSS is written into the layer root too (`shouldShareLayers: false` forced), kept live
-   * (page writes, the host's main `refresh()`, `syncTheme()`) and removed on `destroy()`. Omitted = no custom CSS.
+   * (page writes, the host's main `refresh()`, `reconcileTheme()`) and removed on `destroy()`. Omitted = no custom CSS.
    */
   customStylesOptions?: CustomStylesOptions;
 }
@@ -74,7 +74,7 @@ export interface Layer {
   /** Position + size in viewport coordinates (`host.getBoundingClientRect()` to cover the host). */
   place(rect: LayerRect | DOMRectReadOnly): void;
   /** Copy the host's theme attributes (and `cssVars`) again, re-resolve `customStylesOptions`' CSS — after a theme switch or a token change while open. */
-  syncTheme(): void;
+  reconcileTheme(): void;
   destroy(): void;
 }
 
@@ -151,7 +151,7 @@ export function createLayer(host: HTMLElement, options: LayerOptions = {}): Laye
       layer.style.width = `${rect.width}px`;
       layer.style.height = `${rect.height}px`;
     },
-    syncTheme() {
+    reconcileTheme() {
       restoreTheme();
       restoreTheme = inheritTheme(host, layer);
       copyCssVars(host, layer, cssVars);
