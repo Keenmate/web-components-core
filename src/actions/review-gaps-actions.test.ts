@@ -69,8 +69,8 @@ describe('A-27 runAction', () => {
     const btnB = document.createElement('button');
     const emitA = vi.fn();
     const emitB = vi.fn();
-    const a = runAction({ detail: detail(shared, hostA, btnA), emitAction: emitA });
-    const b = runAction({ detail: detail(shared, hostB, btnB), emitAction: emitB });
+    const a = runAction({ detail: detail(shared, hostA, btnA), dispatchAction: emitA });
+    const b = runAction({ detail: detail(shared, hostB, btnB), dispatchAction: emitB });
     await Promise.resolve();
     await Promise.resolve();
     expect(onClick).toHaveBeenCalledTimes(2);
@@ -79,7 +79,7 @@ describe('A-27 runAction', () => {
     expect(isActionBusy(shared, hostA)).toBe(true);
     expect(isActionBusy(shared, hostB)).toBe(true);
     // a second activation on A is still ignored while A runs
-    await expect(runAction({ detail: detail(shared, hostA), emitAction: emitA })).resolves.toBe(false);
+    await expect(runAction({ detail: detail(shared, hostA), dispatchAction: emitA })).resolves.toBe(false);
     releases[0]!(); // A finishes; B still busy, and so "anywhere"
     await expect(a).resolves.toBe(true);
     expect(isActionBusy(shared, hostA)).toBe(false);
@@ -100,7 +100,7 @@ describe('A-27 runAction', () => {
     btn.setAttribute('aria-busy', 'true');
     const ok = await runAction({
       detail: detail({ id: 'x' }, undefined, btn),
-      emitAction: () => {
+      dispatchAction: () => {
         throw new Error('listener boom');
       },
     });
@@ -116,7 +116,7 @@ describe('A-27 runAction', () => {
     const run = runAction({
       detail: detail(item, host),
       beforeActionCallback: async () => void (busyInBefore = isActionBusy(item, host)),
-      emitAction: () => {},
+      dispatchAction: () => {},
     });
     await new Promise((r) => setTimeout(r, 0));
     expect(busyInBefore).toBe(true);

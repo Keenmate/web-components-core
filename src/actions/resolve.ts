@@ -211,7 +211,7 @@ export interface RunActionOptions<Ctx, A extends string> {
   /** The component's `beforeActionCallback` — `false` cancels everything (async OK). */
   beforeActionCallback?: ((detail: ActionEventDetail<Ctx, A>) => unknown) | null;
   /** Fire the `action` event (and its `onAction` twin) after the built-in — usually `this.emit('action', detail)`. */
-  emitAction(detail: ActionEventDetail<Ctx, A>): void;
+  dispatchAction(detail: ActionEventDetail<Ctx, A>): void;
   /** The built-in behaviour for `detail.action`, if any. */
   runBuiltIn?(detail: ActionEventDetail<Ctx, A>): void | Promise<void>;
 }
@@ -261,7 +261,7 @@ export async function runAction<Ctx, A extends string>(opts: RunActionOptions<Ct
       }
     }
     try {
-      opts.emitAction(detail);
+      opts.dispatchAction(detail);
     } catch (error) {
       // The action already ran; a throwing notification must not turn it into a rejection.
       coreLog(detail, 'UI', 'ACTIONS').error(`action "${detail.action}" event handler threw`, error);

@@ -166,7 +166,7 @@ describe('runAction', () => {
     const ok = await runAction({
       detail: d,
       beforeActionCallback: (x) => void (order.push('before'), seen.push(x)),
-      emitAction: (x) => void (order.push('event'), seen.push(x)),
+      dispatchAction: (x) => void (order.push('event'), seen.push(x)),
       runBuiltIn: (x) => void (order.push('built-in'), seen.push(x)),
     });
     expect(ok).toBe(true);
@@ -176,17 +176,17 @@ describe('runAction', () => {
 
   it('beforeActionCallback false (async) cancels everything', async () => {
     const onClick = vi.fn();
-    const emitAction = vi.fn();
+    const dispatchAction = vi.fn();
     const runBuiltIn = vi.fn();
     const ok = await runAction({
       detail: detail({ action: 'delete', onClick }),
       beforeActionCallback: async () => false,
-      emitAction,
+      dispatchAction,
       runBuiltIn,
     });
     expect(ok).toBe(false);
     expect(onClick).not.toHaveBeenCalled();
-    expect(emitAction).not.toHaveBeenCalled();
+    expect(dispatchAction).not.toHaveBeenCalled();
     expect(runBuiltIn).not.toHaveBeenCalled();
   });
 
@@ -195,15 +195,15 @@ describe('runAction', () => {
     const gate = new Promise<void>((r) => (release = r));
     const item: ActionItem<RowCtx> = { id: 'save', onClick: () => gate };
     const btn = document.createElement('button');
-    const emitAction = vi.fn();
-    const first = runAction({ detail: detail(item, btn), emitAction });
+    const dispatchAction = vi.fn();
+    const first = runAction({ detail: detail(item, btn), dispatchAction });
     await Promise.resolve();
     expect(isActionBusy(item)).toBe(true);
     expect(btn.getAttribute('aria-busy')).toBe('true');
-    await expect(runAction({ detail: detail(item, btn), emitAction })).resolves.toBe(false);
+    await expect(runAction({ detail: detail(item, btn), dispatchAction })).resolves.toBe(false);
     release();
     await expect(first).resolves.toBe(true);
-    expect(emitAction).toHaveBeenCalledOnce();
+    expect(dispatchAction).toHaveBeenCalledOnce();
     expect(isActionBusy(item)).toBe(false);
     expect(btn.hasAttribute('aria-busy')).toBe(false);
   });
@@ -213,7 +213,7 @@ describe('runAction', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const ok = await runAction({
       detail: detail({ action: 'save' }),
-      emitAction: () => {
+      dispatchAction: () => {
         throw new Error('listener boom');
       },
     });
@@ -225,20 +225,20 @@ describe('runAction', () => {
   it('puts back an aria-busy the trigger already had', async () => {
     const btn = document.createElement('button');
     btn.setAttribute('aria-busy', 'false');
-    await runAction({ detail: detail({ action: 'save' }, btn), emitAction: () => {} });
+    await runAction({ detail: detail({ action: 'save' }, btn), dispatchAction: () => {} });
     expect(btn.getAttribute('aria-busy')).toBe('false');
   });
 
   it('a throwing onClick is logged; the built-in and the event still run', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const emitAction = vi.fn();
+    const dispatchAction = vi.fn();
     const runBuiltIn = vi.fn();
     await runAction({
       detail: detail({ action: 'today', onClick: () => { throw new Error('x'); } }),
-      emitAction,
+      dispatchAction,
       runBuiltIn,
     });
-    expect(emitAction).toHaveBeenCalledOnce();
+    expect(dispatchAction).toHaveBeenCalledOnce();
     expect(runBuiltIn).toHaveBeenCalledOnce();
     expect(error).toHaveBeenCalledOnce();
     error.mockRestore();
@@ -253,23 +253,23 @@ describe('runAction', () => {
         await Promise.resolve();
         rows.pop();
       },
-      emitAction: () => void (seen = [...rows]),
+      dispatchAction: () => void (seen = [...rows]),
     });
     expect(seen).toEqual(['a']);
   });
 
   it('a throwing built-in is logged; the event still fires', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const emitAction = vi.fn();
+    const dispatchAction = vi.fn();
     const ok = await runAction({
       detail: detail({ action: 'delete' }),
       runBuiltIn: () => {
         throw new Error('boom');
       },
-      emitAction,
+      dispatchAction,
     });
     expect(ok).toBe(true);
-    expect(emitAction).toHaveBeenCalledOnce();
+    expect(dispatchAction).toHaveBeenCalledOnce();
     expect(error).toHaveBeenCalledOnce();
     error.mockRestore();
   });
@@ -302,13 +302,13 @@ describe('actions — review fixes', () => {
     const shared: ActionItem<RowCtx> = { id: 'save', onClick: () => gate };
     const hostA = {};
     const hostB = {};
-    const first = runAction({ detail: detail(shared, hostA), emitAction: () => {} });
+    const first = runAction({ detail: detail(shared, hostA), dispatchAction: () => {} });
     await Promise.resolve();
     expect(isActionBusy(shared, hostA)).toBe(true);
     expect(isActionBusy(shared, hostB)).toBe(false);
     expect(isActionBusy(shared)).toBe(true); // no host: busy anywhere
     const secondOnClick = vi.fn();
-    await expect(runAction({ detail: detail({ id: 'other', onClick: secondOnClick }, hostB), emitAction: () => {} })).resolves.toBe(true);
+    await expect(runAction({ detail: detail({ id: 'other', onClick: secondOnClick }, hostB), dispatchAction: () => {} })).resolves.toBe(true);
     release();
     await first;
   });
@@ -317,27 +317,27 @@ describe('actions — review fixes', () => {
     let release!: () => void;
     const gate = new Promise<void>((r) => (release = r));
     const host = {};
-    const first = runAction({ detail: detail({ id: 'save', onClick: () => gate }, host), emitAction: () => {} });
+    const first = runAction({ detail: detail({ id: 'save', onClick: () => gate }, host), dispatchAction: () => {} });
     await Promise.resolve();
-    await expect(runAction({ detail: detail({ id: 'save' }, host), emitAction: () => {} })).resolves.toBe(false);
+    await expect(runAction({ detail: detail({ id: 'save' }, host), dispatchAction: () => {} })).resolves.toBe(false);
     release();
     await first;
   });
 
   it('a disabled item does not run', async () => {
     const onClick = vi.fn();
-    const emitAction = vi.fn();
-    await expect(runAction({ detail: detail({ id: 'x', isDisabled: true, onClick }), emitAction })).resolves.toBe(false);
-    await expect(runAction({ detail: detail({ id: 'y', getIsDisabledCallback: () => true, onClick }), emitAction })).resolves.toBe(false);
+    const dispatchAction = vi.fn();
+    await expect(runAction({ detail: detail({ id: 'x', isDisabled: true, onClick }), dispatchAction })).resolves.toBe(false);
+    await expect(runAction({ detail: detail({ id: 'y', getIsDisabledCallback: () => true, onClick }), dispatchAction })).resolves.toBe(false);
     expect(onClick).not.toHaveBeenCalled();
-    expect(emitAction).not.toHaveBeenCalled();
+    expect(dispatchAction).not.toHaveBeenCalled();
   });
 
   it('a value returned by beforeActionCallback (other than false) warns and the action continues', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const emitAction = vi.fn();
-    await runAction({ detail: detail({ id: 'x' }), beforeActionCallback: () => ({ replaced: true }), emitAction });
-    expect(emitAction).toHaveBeenCalledOnce();
+    const dispatchAction = vi.fn();
+    await runAction({ detail: detail({ id: 'x' }), beforeActionCallback: () => ({ replaced: true }), dispatchAction });
+    expect(dispatchAction).toHaveBeenCalledOnce();
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });

@@ -2028,9 +2028,9 @@ leading / trailing / doubled dividers, expands string built-ins),
 `readActionDataset(el)` (`data-*` minus `action` / `id`).
 
 **One `action` event per component.** `runAction({ detail, beforeActionCallback,
-emitAction, runBuiltIn })` fixes the order for every surface:
+dispatchAction, runBuiltIn })` fixes the order for every surface:
 `beforeActionCallback` (`false` cancels — nothing else runs) → item `onClick` →
-built-in behaviour → `action` event + `onAction` twin (`emitAction`, normally
+built-in behaviour → `action` event + `onAction` twin (`dispatchAction`, normally
 `this.emit('action', detail)`). The event is a **notification after the fact**: a
 listener sees the state the built-in left (grid `delete` → the row is already gone
 from `items`; `add` → the new row is present; `move-*` → the new order). A throwing

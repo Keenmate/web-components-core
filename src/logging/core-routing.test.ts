@@ -441,7 +441,7 @@ describe('former console call sites', () => {
       'element',
       { value: el, enumerable: false },
     ) as unknown as ActionEventDetail<unknown, string>;
-    await runAction({ detail, emitAction: () => {}, runBuiltIn: () => { throw new Error('b'); } });
+    await runAction({ detail, dispatchAction: () => {}, runBuiltIn: () => { throw new Error('b'); } });
     expect(consoleLines(error)).toEqual([
       `[${ns}:UI] #dp action item onClick threw`,
       `[${ns}:UI] #dp built-in action "today" threw`,

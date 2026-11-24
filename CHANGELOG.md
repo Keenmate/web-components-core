@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Internal verbs (rulebook D-NC-30 / C-NC-16):** `notify*` is reserved for a visible user message, `sync*` becomes
   `reconcile*`. Public renames: `notifyListeners` → `dispatchToListeners`, `notifyOverlayActivated` →
-  `dispatchOverlayActivated`, `createLayer()` handle `syncTheme()` → `reconcileTheme()`. Private helpers renamed the same way.
+  `dispatchOverlayActivated`, `createLayer()` handle `syncTheme()` → `reconcileTheme()`. `runAction()` option `emitAction` → `dispatchAction`. Private helpers renamed the same way.
 
 ## [1.0.0-rc26] - 2026-11-23
 

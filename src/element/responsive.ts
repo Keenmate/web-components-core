@@ -140,14 +140,14 @@ export function onResponsiveChange(listener: ResponsiveListener): () => void {
 
 /**
  * Define `target[MAP_KEY]` / `target[CALLBACK_KEY]` as accessors that validate,
- * store via `store` and notify. A plain value already on `target` is adopted.
+ * store via `store` and call `dispatchChange`. A plain value already on `target` is adopted.
  */
 function defineRuleAccessors(
   target: object,
   enumerable: boolean,
   store: { getMap(): ResponsiveMap | undefined; setMap(v: ResponsiveMap | undefined): void; getCallback(): ResponsiveCallback | undefined; setCallback(v: ResponsiveCallback | undefined): void },
   label: string,
-  notify: () => void,
+  dispatchChange: () => void,
 ): void {
   const adopt = (key: string): { had: boolean; value: unknown } => {
     const d = Object.getOwnPropertyDescriptor(target, key);
@@ -162,7 +162,7 @@ function defineRuleAccessors(
       return;
     }
     store.setMap(value ?? undefined);
-    notify();
+    dispatchChange();
   };
   const setCallback = (value: unknown): void => {
     if (!isResponsiveCallbackSetting(value)) {
@@ -170,7 +170,7 @@ function defineRuleAccessors(
       return;
     }
     store.setCallback((value as ResponsiveCallback | null) ?? undefined);
-    notify();
+    dispatchChange();
   };
   Object.defineProperty(target, MAP_KEY, { enumerable, configurable: true, get: store.getMap, set: setMap });
   Object.defineProperty(target, CALLBACK_KEY, { enumerable, configurable: true, get: store.getCallback, set: setCallback });
