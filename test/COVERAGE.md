@@ -277,6 +277,7 @@ Bugs and friction found while writing the tests go in [`NOTES.md`](NOTES.md).
 | Desktop centered card sized to content, `z-index` 7000; phone bottom sheet | ✓ | `modal.spec.ts` | `modal.html` |
 | Ghost click: a sheet opened on the press — real tap picks the option without the guard; `isOpenedByPointer` swallows it, the next tap works | ✓ | `modal.spec.ts` | `modal.html` |
 | `announce()`: one shared `role=status` region, visually hidden, never inert while a modal makes the page inert; the same text twice is cleared + rewritten | ✓ | `modal.spec.ts` | `modal.html` |
+| Contract fallbacks without `base-variables.css` (713cb52), light + dark: `/dialog` bg / border / prompt-field border + `/menu` border resolve (not transparent), prompt field `min-height` 35px, menu bg `#fff` / `#1e293b`, text `#334155` / `#f1f5f9` | ✓ | `contract-fallbacks.spec.ts` | `dialog.html` |
 | `createFormInputs` + `formatFormValue` through a real GET submit: json / array (`name[]`) / text, disabled + cleared name submit nothing, inputs reused, two same-name fields without ids, throwing callback submits `''` | ✓ | `form-inputs.spec.ts` | `form-inputs.html` |
 
 ## 13u. Render-callback results (`render-slot.spec.ts`)

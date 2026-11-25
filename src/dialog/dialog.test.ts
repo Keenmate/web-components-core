@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../overlay/scroll-lock.js', () => ({ lockBodyScroll: () => () => {} }));
 
-import { confirmDialog, openDialog, promptDialog } from './index.js';
+import { confirmDialog, DIALOG_CSS, openDialog, promptDialog } from './index.js';
 import { __resetOverlays } from '../overlay/active-overlay.js';
 import { deepActiveElement } from '../dom/active-element.js';
 
@@ -136,5 +136,11 @@ describe('promptDialog', () => {
     expect(input.getAttribute('aria-invalid')).toBe('false');
     button('ok').click();
     expect(await answer).toBe('https://x');
+  });
+});
+
+describe('DIALOG_CSS contract fallbacks (713cb52)', () => {
+  it('the prompt field height is the unitless --base-input-size-md-height × --base-rem (default 3.5)', () => {
+    expect(DIALOG_CSS).toContain('min-height: calc(var(--base-input-size-md-height, 3.5) * var(--base-rem, 10px));');
   });
 });

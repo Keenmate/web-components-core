@@ -9,7 +9,7 @@ vi.mock('./back-entry.js', () => ({
   },
 }));
 
-import { startModalSession, type ModalDismissReason } from './modal-session.js';
+import { MODAL_BACKDROP_STYLE, startModalSession, type ModalDismissReason } from './modal-session.js';
 import { __resetOverlays, registerOverlay } from './active-overlay.js';
 
 afterEach(() => {
@@ -187,5 +187,11 @@ describe('startModalSession', () => {
     const { panel } = setup();
     startModalSession(panel, { dismissCallback: () => {}, shouldCloseOnBack: false });
     expect(backHandler).toBeUndefined();
+  });
+});
+
+describe('modal backdrop contract fallback (713cb52)', () => {
+  it('falls back to the contract scrim rgba(30, 41, 59, 0.5)', () => {
+    expect(MODAL_BACKDROP_STYLE).toContain('var(--base-overlay-bg,rgba(30,41,59,.5))');
   });
 });

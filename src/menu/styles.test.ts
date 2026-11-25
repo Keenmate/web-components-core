@@ -60,3 +60,9 @@ describe('SHEET_CHROME_CSS variable chain (SPEC §12.9)', () => {
     }
   });
 });
+
+describe('MENU_CSS contract fallbacks (713cb52)', () => {
+  it('the sheet backdrop falls back to the contract scrim', () => {
+    expect(MENU_CSS).toContain('var(--base-overlay-bg, rgba(30, 41, 59, 0.5))');
+  });
+});

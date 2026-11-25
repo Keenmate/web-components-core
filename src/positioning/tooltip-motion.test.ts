@@ -214,3 +214,10 @@ describe('createTooltip — exit fade', () => {
     expect(TOOLTIP_CSS).toMatch(/opacity var\(--base-duration-fast/);
   });
 });
+
+describe('TOOLTIP_CSS contract fallbacks (713cb52)', () => {
+  it('the easing falls back to the contract --base-ease-standard', () => {
+    expect(TOOLTIP_CSS).toContain('var(--base-ease-standard, cubic-bezier(0.4, 0, 0.2, 1))');
+    expect(TOOLTIP_CSS).not.toMatch(/ease-standard, ease\)/); // the pre-contract fallback
+  });
+});

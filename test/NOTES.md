@@ -84,6 +84,8 @@ Silent at runtime; only `tsc` catches it — and nothing typechecks `e2e/` or `t
   for touch emulation need `<meta name="viewport">` and must not overflow.
 - **The example smoke spec allowlists lazily-defined demo tags** (`LAZY_TAGS` in
   `e2e/examples.spec.ts`; today `core-demo-pg-early`) — add any new one there.
+- **`test/dialog.html` must stay free of `base-variables.css`.** `e2e/contract-fallbacks.spec.ts` checks core's
+  contract fallbacks (713cb52) on it; loading the theme there would make the spec test the theme, not the fallbacks.
 
 ## Cross-copy tests (every component bundles its own core)
 
