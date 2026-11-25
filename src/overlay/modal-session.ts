@@ -83,7 +83,7 @@ const MODAL_GROUP = Symbol.for('km-overlay-modal');
 /** Inline style of core's backdrop (exported for the manifest test). @internal */
 export const MODAL_BACKDROP_STYLE =
   `position:fixed;inset:0;z-index:${Z_INDEX.modalBackdrop};` +
-  'background:var(--km-modal-backdrop-bg,var(--base-overlay-bg,rgba(0,0,0,.4)));';
+  'background:var(--km-modal-backdrop-bg,var(--base-overlay-bg,rgba(30,41,59,.5)));';
 
 /** Start the session for an open, mounted `panel`; returns its handle. SSR-safe (no-op handle). */
 export function startModalSession(panel: HTMLElement, opts: ModalSessionOptions): ModalSession {

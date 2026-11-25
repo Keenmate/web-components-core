@@ -1,0 +1,39 @@
+{
+  "$comment": "Deliberate differences from @keenmate/base-css-variables, read by `npm run check:contract` (base-contract-check). Each entry needs a reason.",
+  "allow": [
+    {
+      "token": "--base-rem",
+      "rule": "C2",
+      "reason": "Standalone the component sizes in 10px units (its multipliers assume 1 unit = 10px); the contract's 1rem relies on pure-admin's html { font-size: 10px }."
+    },
+    {
+      "token": "--base-font-family",
+      "rule": "C2",
+      "reason": "Core's menu, sheet and dialog inherit the page font standalone instead of imposing the contract's system stack (same as web-multiselect)."
+    },
+    {
+      "token": "--base-icon-close",
+      "rule": "C2",
+      "file": "src/overlay/sheet-chrome.ts",
+      "reason": "The fallback is the CLOSE_ICON constant, byte-for-byte the contract's --base-icon-close; the checker can't follow a ${} interpolation."
+    },
+    {
+      "token": "--base-icon-settings",
+      "rule": "C2",
+      "file": "src/dom/render-icon.test.ts",
+      "reason": "The renderIcon unit test asserts the markup string renderIcon emits (the transparent fallback keeps an unset token from masking a solid square) — a string literal, not a CSS read."
+    },
+    {
+      "token": "--base-icon-chevron",
+      "rule": "C2",
+      "file": "src/dom/render-icon.test.ts",
+      "reason": "The renderIcon unit test asserts the markup string renderIcon emits (the transparent fallback keeps an unset token from masking a solid square) — a string literal, not a CSS read."
+    },
+    {
+      "token": "--base-icon-close",
+      "rule": "C2",
+      "file": "src/overlay/sheet-chrome.test.ts",
+      "reason": "The sheet-chrome unit test asserts a prefix of the read (`url(`) — a string literal, not a CSS read."
+    }
+  ]
+}

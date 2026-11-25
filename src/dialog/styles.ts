@@ -16,9 +16,13 @@ const kd = (name: string, fallback: string): string => `var(--km-dialog-${name},
 const DURATION = kd('duration', 'var(--base-duration-medium, 0.25s)');
 const EASE_OUT = 'var(--base-ease-out, cubic-bezier(0, 0, 0.2, 1))';
 const SPACE = kd('padding', rem('space-base', 1.6));
-const PRIMARY = 'var(--base-primary-color, light-dark(#0078d4, #4ba3f0))';
-const DANGER = 'var(--base-danger-color, light-dark(#d13438, #f87c86))';
-const BORDER = 'var(--base-border-color, light-dark(#e0e0e0, #3d3d3d))';
+/** Contract defaults (base-variables.css) — the fallbacks equal them, derived tokens use the contract formula. */
+const MAIN_BG = 'var(--base-main-bg, light-dark(#ffffff, #1e293b))';
+const TEXT_1 = 'var(--base-text-color-1, light-dark(#334155, #f1f5f9))';
+const PRIMARY = 'var(--base-primary-color, #3b82f6)';
+const DANGER = 'var(--base-danger-color, #dc2626)';
+const BORDER = `var(--base-border-color, light-dark(oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l - 0.096) c h), oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l + 0.192) c h)))`;
+const HOVER_BG = `var(--base-hover-bg, light-dark(color-mix(in oklch, oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l - 0.45) c h) 14%, transparent), color-mix(in oklch, oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l + 0.45) c h) 28%, transparent)))`;
 const RADIUS = kd('border-radius', rem('border-radius-lg', 0.8));
 
 export const DIALOG_CSS = `
@@ -36,9 +40,9 @@ export const DIALOG_CSS = `
   max-height: calc(100dvh - 2 * ${SPACE});
   margin: 0;
   overflow: hidden;
-  color: ${kd('text-color', 'var(--base-text-color-1, light-dark(#242424, #f5f5f5))')};
-  background: ${kd('bg', 'var(--base-elevated-bg, var(--base-main-bg, light-dark(#ffffff, #2b2b2b)))')};
-  border: ${kd('border', `1px solid ${BORDER}`)};
+  color: ${kd('text-color', TEXT_1)};
+  background: ${kd('bg', `var(--base-elevated-bg, light-dark(oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l - 0.03) c h), oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l + 0.06) c h)))`)};
+  border: ${kd('border', `var(--base-border-width, 1px) solid ${BORDER}`)};
   border-radius: ${RADIUS};
   box-shadow: ${kd('box-shadow', '0 12px 40px rgba(0, 0, 0, 0.25)')};
   font-family: var(--base-font-family, inherit);
@@ -64,12 +68,12 @@ export const DIALOG_CSS = `
 .km-dialog__input {
   box-sizing: border-box;
   width: 100%;
-  min-height: var(--base-input-size-md-height, calc(3.6 * ${REM}));
+  min-height: ${rem('input-size-md-height', 3.5)};
   padding: 0 ${rem('space-sm', 0.8)};
   font: inherit;
   color: inherit;
-  background: var(--base-input-bg, transparent);
-  border: 1px solid var(--base-input-border-color, ${BORDER});
+  background: var(--base-input-bg, var(--base-main-bg, light-dark(#ffffff, #1e293b)));
+  border: var(--base-border-width, 1px) solid var(--base-input-border-color, light-dark(color-mix(in srgb, var(--base-text-color-1, light-dark(#334155, #f1f5f9)) 45%, var(--base-main-bg, light-dark(#ffffff, #1e293b))), color-mix(in srgb, var(--base-text-color-1, light-dark(#334155, #f1f5f9)) 35%, var(--base-main-bg, light-dark(#ffffff, #1e293b)))));
   border-radius: ${rem('border-radius-sm', 0.4)};
 }
 
@@ -99,7 +103,7 @@ export const DIALOG_CSS = `
 }
 
 @media (hover: hover) {
-  .km-dialog__action:hover { background: var(--base-hover-bg, color-mix(in srgb, currentColor 8%, transparent)); }
+  .km-dialog__action:hover { background: ${HOVER_BG}; }
 }
 
 .km-dialog__action:focus-visible { outline: 2px solid ${PRIMARY}; outline-offset: 2px; }

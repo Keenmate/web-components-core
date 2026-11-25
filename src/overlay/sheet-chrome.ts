@@ -31,12 +31,17 @@ function rem(token: string, multiplier: number): string {
 const CLOSE_ICON =
   'url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M18 6 6 18%22/%3E%3Cpath d=%22m6 6 12 12%22/%3E%3C/svg%3E")';
 
+/** Contract defaults (base-variables.css) — the fallbacks equal them, derived tokens use the contract formula. */
+const MAIN_BG = 'var(--base-main-bg, light-dark(#ffffff, #1e293b))';
+const TEXT_1 = 'var(--base-text-color-1, light-dark(#334155, #f1f5f9))';
+const BORDER_COLOR = `var(--base-border-color, light-dark(oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l - 0.096) c h), oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l + 0.192) c h)))`;
+
 const HEADER_GAP = ks('header-gap', rem('space-sm', 0.8));
 const HEADER_PADDING_BLOCK = ks('header-padding-block', rem('space-sm', 0.8));
 const HEADER_PADDING_INLINE = ks('header-padding-inline', rem('space-base', 1.6));
 const CLOSE_SIZE = ks('close-size', 'var(--base-touch-target-min, 44px)');
 const CLOSE_EDGE_NUDGE = ks('close-edge-nudge', rem('space-sm', 0.8));
-const CLOSE_BG_HOVER = ks('close-bg-hover', 'var(--base-hover-bg, color-mix(in srgb, currentColor 8%, transparent))');
+const CLOSE_BG_HOVER = ks('close-bg-hover', `var(--base-hover-bg, light-dark(color-mix(in oklch, oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l - 0.45) c h) 14%, transparent), color-mix(in oklch, oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l + 0.45) c h) 28%, transparent)))`);
 
 const DRAWER_SIZE = ks('drawer-size', 'min(320px, 85vw)');
 const DRAWER_RADIUS = ks('drawer-border-radius', rem('border-radius-lg', 0.8));
@@ -56,7 +61,7 @@ export const SHEET_CHROME_CSS = `
   min-height: ${ks('header-min-height', `calc(5.6 * ${REM})`)};
   padding: ${HEADER_PADDING_BLOCK} ${HEADER_PADDING_INLINE};
   background: ${ks('header-bg', 'transparent')};
-  border-bottom: ${ks('header-border', '1px solid var(--base-border-color, light-dark(#e0e0e0, #3d3d3d))')};
+  border-bottom: ${ks('header-border', `var(--base-border-width, 1px) solid ${BORDER_COLOR}`)};
 }
 
 .km-sheet-title {
@@ -126,7 +131,7 @@ export const SHEET_CHROME_CSS = `
 }
 
 .km-sheet-close:focus-visible {
-  outline: 2px solid ${ks('close-focus-color', 'var(--base-primary-color, #0078d4)')};
+  outline: 2px solid ${ks('close-focus-color', 'var(--base-primary-color, #3b82f6)')};
   outline-offset: -2px;
 }
 
@@ -142,9 +147,9 @@ export const SHEET_CHROME_CSS = `
   box-sizing: border-box;
   overflow: auto;
   overscroll-behavior: contain;
-  background: ${ks('drawer-bg', 'var(--base-elevated-bg, var(--base-main-bg, light-dark(#ffffff, #2b2b2b)))')};
-  color: ${ks('drawer-color', 'var(--base-text-color-1, light-dark(#242424, #f5f5f5))')};
-  box-shadow: ${ks('drawer-shadow', '0 0 24px var(--base-shadow-color, rgba(0, 0, 0, 0.2))')};
+  background: ${ks('drawer-bg', `var(--base-elevated-bg, light-dark(oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l - 0.03) c h), oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l + 0.06) c h)))`)};
+  color: ${ks('drawer-color', TEXT_1)};
+  box-shadow: ${ks('drawer-shadow', '0 0 24px var(--base-shadow-color, light-dark(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.4)))')};
   animation: ${DRAWER_DURATION} ${EASE_OUT} both;
 }
 
@@ -250,8 +255,8 @@ export const SHEET_CHROME_CSS = `
   border-radius: 0;
   box-shadow: none;
   resize: none;
-  background: ${ks('bg', 'var(--base-elevated-bg, var(--base-main-bg, light-dark(#ffffff, #2b2b2b)))')};
-  color: ${ks('color', 'var(--base-text-color-1, light-dark(#242424, #f5f5f5))')};
+  background: ${ks('bg', `var(--base-elevated-bg, light-dark(oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l - 0.03) c h), oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l + 0.06) c h)))`)};
+  color: ${ks('color', TEXT_1)};
   animation: km-sheet-in ${FRAME_DURATION} ${EASE_OUT} both;
 }
 

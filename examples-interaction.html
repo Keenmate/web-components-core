@@ -261,7 +261,7 @@ await runAction({
   detail: this.withContext({ count, action, id, item, source: 'toolbar', sourceEvent, triggerElement, dataset }),
   beforeActionCallback: this.config.beforeActionCallback,
   runBuiltIn: (d) =&gt; this.#runBuiltIn(d),
-  emitAction: (d) =&gt; this.emit('action', d),
+  dispatchAction: (d) =&gt; this.emit('action', d),
 });</code></pre></div>
         </div>
 

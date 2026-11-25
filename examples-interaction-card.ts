@@ -384,7 +384,7 @@ export class ToolbarDemo extends BlissElement<{ action: ToolbarDetail }> {
       detail,
       beforeActionCallback: this.config.beforeActionCallback as ((d: ToolbarDetail) => unknown) | null,
       runBuiltIn: (d) => this.#runBuiltIn(d),
-      emitAction: (d) => this.emit('action', d),
+      dispatchAction: (d) => this.emit('action', d),
     });
     trace(this, 'note', `runAction() resolved ${ran}`);
     this.#render();
@@ -596,7 +596,7 @@ export class FilesDemo extends BlissElement<{ action: FilesDetail }> {
       detail,
       beforeActionCallback: this.config.beforeActionCallback as ((d: FilesDetail) => unknown) | null,
       runBuiltIn: (d) => this.#runBuiltIn(d),
-      emitAction: (d) => this.emit('action', d),
+      dispatchAction: (d) => this.emit('action', d),
     });
   }
 

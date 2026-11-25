@@ -78,14 +78,16 @@
     "test:e2e:install": "playwright install chromium",
     "clean:dist": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "clean": "node -e \"const fs=require('fs');fs.rmSync('dist',{recursive:true,force:true});fs.readdirSync('.').filter(f=>f.endsWith('.tgz')).forEach(f=>fs.rmSync(f))\"",
-    "prepublishOnly": "npm run clean:dist && npm run build",
+    "prepublishOnly": "npm run check:contract && npm run clean:dist && npm run build",
     "test:coverage": "vitest run --coverage",
-    "check:pages": "kmwc check-pages"
+    "check:pages": "kmwc check-pages",
+    "check:contract": "base-contract-check src"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.8.0"
   },
   "devDependencies": {
+    "@keenmate/base-css-variables": "^2.0.2",
     "@keenmate/web-components-devkit": "^1.0.0-rc14",
     "@playwright/test": "^1.60.0",
     "@vitest/coverage-v8": "^2.1.9",

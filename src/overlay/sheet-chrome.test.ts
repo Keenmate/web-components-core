@@ -40,9 +40,9 @@ describe('createSheetHeader (the shared sheet chrome)', () => {
     expect(rule).toContain('padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);');
     expect(rule).toContain('z-index: var(--_km-sheet-z-index, var(--km-sheet-z-index, var(--base-z-modal, 7000)));');
     expect(rule).toContain(
-      'background: var(--_km-sheet-bg, var(--km-sheet-bg, var(--base-elevated-bg, var(--base-main-bg, light-dark(#ffffff, #2b2b2b)))));',
+      'background: var(--_km-sheet-bg, var(--km-sheet-bg, var(--base-elevated-bg, light-dark(oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l - 0.03) c h), oklch(from var(--base-main-bg, light-dark(#ffffff, #1e293b)) calc(l + 0.06) c h)))));',
     );
-    expect(rule).toContain('color: var(--_km-sheet-color, var(--km-sheet-color, var(--base-text-color-1, light-dark(#242424, #f5f5f5))));');
+    expect(rule).toContain('color: var(--_km-sheet-color, var(--km-sheet-color, var(--base-text-color-1, light-dark(#334155, #f1f5f9))));');
     expect(rule).toContain('var(--_km-sheet-duration, var(--km-sheet-duration, var(--base-duration-medium, 0.25s)))');
     expect(SHEET_CHROME_CSS).toContain('.km-sheet-body {');
     expect(SHEET_CHROME_CSS).toContain('.km-sheet.km-sheet--closing {');

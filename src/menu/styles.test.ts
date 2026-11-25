@@ -37,7 +37,7 @@ describe('MENU_CSS variable chain (SPEC §12.13)', () => {
 
   it('uses the exact 3-layer form: private → public → --base-* → default', () => {
     expect(MENU_CSS).toContain(
-      'background: var(--_km-menu-bg, var(--km-menu-bg, var(--base-dropdown-bg, var(--base-elevated-bg, var(--base-main-bg, light-dark(#ffffff, #2b2b2b))))));',
+      'background: var(--_km-menu-bg, var(--km-menu-bg, var(--base-dropdown-bg, var(--base-main-bg, light-dark(#ffffff, #1e293b)))));',
     );
     expect(MENU_CSS).toContain('min-width: var(--_km-menu-min-width, var(--km-menu-min-width, 160px));');
     expect(MENU_CSS).toContain('color: var(--_km-menu-hover-color, var(--km-menu-hover-color));');

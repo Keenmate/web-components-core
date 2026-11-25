@@ -172,8 +172,8 @@ export const TOOLTIP_CSS = `
 @layer component {
   :where(.${TOOLTIP_CLASS}) {
     transition:
-      opacity var(--base-duration-fast, 0.1s) var(--base-ease-standard, ease),
-      translate var(--base-duration-fast, 0.1s) var(--base-ease-standard, ease);
+      opacity var(--base-duration-fast, 0.1s) var(--base-ease-standard, cubic-bezier(0.4, 0, 0.2, 1)),
+      translate var(--base-duration-fast, 0.1s) var(--base-ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
   }
   :where(.${TOOLTIP_HIDING_CLASS}) { opacity: 0; pointer-events: none; }
   ${towardAnchor(TOOLTIP_HIDING_CLASS)}

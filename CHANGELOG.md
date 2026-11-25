@@ -13,6 +13,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `reconcile*`. Public renames: `notifyListeners` → `dispatchToListeners`, `notifyOverlayActivated` →
   `dispatchOverlayActivated`, `createLayer()` handle `syncTheme()` → `reconcileTheme()`. `runAction()` option `emitAction` → `dispatchAction`. Private helpers renamed the same way.
 
+### Changed
+
+- **Fallbacks follow the base-css-variables contract.** Without `base-variables.css` on the page, the `/menu`, the phone
+  sheet / drawer chrome, `/dialog` and the `startModalSession` backdrop now look slate (the contract's defaults) instead of
+  Fluent blue / grey: primary `#3b82f6`, danger `#dc2626`, text `light-dark(#334155, #f1f5f9)`, dark surface `#1e293b`,
+  scrim `rgba(30, 41, 59, 0.5)`, shadow `light-dark(rgba(0,0,0,.15), rgba(0,0,0,.4))`, tooltip easing
+  `cubic-bezier(0.4, 0, 0.2, 1)`. Derived tokens (border, text-3, hover, elevated bg, dropdown border / shadow, danger
+  tint, input border) fall back to the contract formula, so they follow `--base-main-bg` / `--base-text-color-1`. The menu
+  background follows the contract alias `--base-dropdown-bg` → `--base-main-bg` (no longer via `--base-elevated-bg`).
+  Pages that load `base-variables.css` see no change.
+- **`npm run check:contract`** (`base-contract-check src`, allowlist `contract-check.json`) runs in `prepublishOnly`.
+
+### Fixed
+
+- `/dialog` prompt field: `--base-input-size-md-height` is a unitless multiplier in the contract, but core used it as a
+  length (setting it gave an invalid `min-height`). It's now `× --base-rem`, default 3.5.
+
 ## [1.0.0-rc26] - 2026-11-23
 
 ### Added
