@@ -2265,7 +2265,7 @@ manifest):
 
 ```css
 :host {
-  --x-loader-icon: var(--base-loader-icon, url("data:image/svg+xml,…")); /* the contract's arc */
+  --x-loader-icon: var(--base-loader-icon, url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M21 12a9 9 0 1 1-6.219-8.56%22/%3E%3C/svg%3E")); /* the contract's arc */
   --x-loader-rotate: var(--base-loader-rotate, 1turn);
   --x-loader-duration: var(--base-loader-duration, 0.8s);
   --x-loader-size: var(--base-loader-size, 1.25em);

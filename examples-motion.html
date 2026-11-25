@@ -9,10 +9,10 @@
         padding: 0.5rem 0.8rem;
         border-radius: var(--kmwc-radius-sm);
         background: var(--kmwc-elevated-bg);
-        animation: mo-item-in var(--mo-item-animation-duration, var(--base-duration-slow, 0.3s)) var(--base-ease-out, ease-out);
+        animation: mo-item-in var(--mo-item-animation-duration, var(--base-duration-slow, 0.3s)) var(--base-ease-out, cubic-bezier(0, 0, 0.2, 1));
     }
     .mo-item--closing {
-        animation: mo-item-out var(--mo-item-animation-duration, var(--base-duration-slow, 0.3s)) var(--base-ease-in, ease-in) forwards;
+        animation: mo-item-out var(--mo-item-animation-duration, var(--base-duration-slow, 0.3s)) var(--base-ease-in, cubic-bezier(0.4, 0, 1, 1)) forwards;
     }
     @keyframes mo-item-in { from { opacity: 0; transform: translateX(-1rem); } }
     /* --km-exit-height: written by animateOut({ shouldSetHeightVar }) — CSS can't shrink from height: auto. */
