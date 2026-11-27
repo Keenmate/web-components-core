@@ -88,7 +88,7 @@
   },
   "devDependencies": {
     "@keenmate/base-css-variables": "^2.0.2",
-    "@keenmate/web-components-devkit": "^1.0.0-rc14",
+    "@keenmate/web-components-devkit": "^1.0.0-rc15",
     "@playwright/test": "^1.60.0",
     "@vitest/coverage-v8": "^2.1.9",
     "jsdom": "^24.1.0",
@@ -109,9 +109,8 @@
       "dev": 15000,
       "image": 15010
     },
-    "theme": {
-      "accentColor": "#667eea",
-      "accentEndColor": "#764ba2"
+    "examples": {
+      "canonicalOrigin": "https://web-components-core.keenmate.dev"
     },
     "analytics": {
       "plausibleSiteId": "pa-afV_BL6-TQHO6eCUUmxRx"
