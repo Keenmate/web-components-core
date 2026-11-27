@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Internal
+
+- Dev: `@keenmate/base-css-variables` `^2.2.0` (the contract's `--base-rem` is now 10px). The `--base-rem` entry is gone
+  from `contract-check.json`: core's 10px fallback now equals the contract default.
+
 ## [1.0.0-rc27] - 2026-11-27
 
 ### Changed — BREAKING (renames, no aliases)

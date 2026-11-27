@@ -87,7 +87,7 @@
     "@floating-ui/dom": "^1.8.0"
   },
   "devDependencies": {
-    "@keenmate/base-css-variables": "^2.0.2",
+    "@keenmate/base-css-variables": "^2.2.0",
     "@keenmate/web-components-devkit": "^1.0.0-rc15",
     "@playwright/test": "^1.60.0",
     "@vitest/coverage-v8": "^2.1.9",
