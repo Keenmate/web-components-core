@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc27] - 2026-11-27
+
 ### Changed — BREAKING (renames, no aliases)
 
 - **Internal verbs (rulebook D-NC-30 / C-NC-16):** `notify*` is reserved for a visible user message, `sync*` becomes
