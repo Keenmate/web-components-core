@@ -198,6 +198,47 @@
         </div>
 
         <!-- ============================================================= -->
+        <!-- TT07 · Escape inside an open panel                             -->
+        <!-- ============================================================= -->
+        <div class="card">
+            <h2>TT07 · Escape inside an open panel</h2>
+            <p>
+                The panel below is a routed overlay (<code>registerOverlay</code>, the way a dropdown or a calendar
+                popover is): <strong>Escape</strong> closes it and returns focus to the opener. Its buttons have
+                tooltips. What one Escape does depends on how the tooltip was shown:
+            </p>
+            <ul>
+                <li><strong>Keyboard</strong> — open the panel with the keyboard (Tab to the opener, Enter), then
+                    Tab between the buttons. The first Escape hides only the tooltip; the panel stays. The second Escape
+                    closes the panel (WCAG 1.4.13: a tooltip must be dismissable without moving focus).</li>
+                <li><strong>Mouse</strong> — open the panel with a click, hover a button, press Escape. One press hides
+                    the tooltip and closes the panel together: the hover tooltip isn't where the user is working.</li>
+            </ul>
+            <div class="demo-area">
+                <div class="controls">
+                    <button id="esc-opener">Open panel</button>
+                    <button id="esc-clear" class="btn-outline">Clear log</button>
+                </div>
+                <div class="demo-panel mt-1" id="esc-panel" hidden>
+                    <p>A routed panel. Escape closes it.</p>
+                    <div class="controls">
+                        <button data-tip="Copy the selection">Copy</button>
+                        <button data-tip="Paste from the clipboard">Paste</button>
+                        <button data-tip="Delete the selection">Delete</button>
+                    </div>
+                </div>
+            </div>
+            <div class="log-panel log-panel--dark mt-1" style="--log-max-height: 14rem" data-empty="Press Escape with the panel open." id="esc-log"></div>
+            <div class="note">
+                <div class="note-title">How it works</div>
+                A tooltip shown by keyboard focus listens for Escape on <code>window</code> (capture), so it runs before
+                the overlay router, and calls <code>preventDefault()</code>. The router skips an Escape that's already
+                handled, so the panel stays. A hover-shown tooltip hides without <code>preventDefault()</code>, so the
+                router closes the panel on the same press. <code>tip.isFocusShown</code> tells which case applies.
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
         <!-- TT06 · Summary                                                 -->
         <!-- ============================================================= -->
         <div class="card">
@@ -244,6 +285,7 @@ tip.element;  tip.isVisible;             // the tooltip node + state</code></pre
 
     <script type="module">
         import { createTooltip } from '/src/positioning/index.ts';
+        import { registerOverlay } from '/src/index.ts';
 
         // ── TT01 · placements — one tooltip per chip ─────────────────────────
         for (const el of document.querySelectorAll('#tt-placements .pos-trigger')) {
@@ -340,4 +382,42 @@ tip.element;  tip.isVisible;             // the tooltip node + state</code></pre
             placement: 'bottom',
             delay: { show: 0, hide: 0 },
         });
+
+        // ── TT07 · Escape inside an open routed panel ─────────────────────────
+        {
+            const opener = document.getElementById('esc-opener');
+            const panel = document.getElementById('esc-panel');
+            const log = document.getElementById('esc-log');
+            const line = (text, tone = '') => {
+                const div = document.createElement('div');
+                div.className = tone ? `log-line log-line--${tone}` : 'log-line';
+                div.textContent = text;
+                log.append(div);
+                log.scrollTop = log.scrollHeight;
+            };
+            const overlay = registerOverlay(() => {
+                panel.hidden = true;
+                line('router: Escape closed the panel, focus back on the opener', 'info');
+            }, undefined, { getElement: () => panel, shouldCloseOnEscape: true });
+            opener.addEventListener('click', (e) => {
+                panel.hidden = false;
+                overlay.activate({ trigger: opener });
+                // A keyboard open (Enter / Space: detail 0) moves focus into the panel, like a menu.
+                if (e.detail === 0) panel.querySelector('button').focus();
+                line(e.detail === 0 ? '▶ panel opened by keyboard, focus on Copy' : '▶ panel opened by click', 'action');
+            });
+            const tips = [...panel.querySelectorAll('[data-tip]')].map((trigger) =>
+                createTooltip({ trigger, content: trigger.dataset.tip, cssClass: 'demo-tt', placement: 'top' }));
+            // Read the state before the tooltip (window capture) and the router see the key.
+            window.addEventListener('keydown', (e) => {
+                if (e.key !== 'Escape' || panel.hidden) return;
+                const tip = tips.find((t) => t.isVisible);
+                line(tip ? `Escape — tooltip visible, shown by ${tip.isFocusShown ? 'keyboard focus' : 'hover'}` : 'Escape — no tooltip visible', 'action');
+            }, true);
+            document.addEventListener('keydown', (e) => {
+                if (e.key !== 'Escape') return;
+                if (e.defaultPrevented) line('tooltip hid and took the key (preventDefault) — panel stays', 'muted');
+            });
+            document.getElementById('esc-clear').addEventListener('click', () => log.replaceChildren());
+        }
     </script>
