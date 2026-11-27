@@ -309,7 +309,7 @@ export class FxToolbar extends BlissElement<{ action: ToolbarDetail }> {
       detail,
       beforeActionCallback: this.config.beforeActionCallback as ((d: ToolbarDetail) => unknown) | null,
       runBuiltIn: (d) => this.#runBuiltIn(d),
-      emitAction: (d) => this.emit('action', d),
+      dispatchAction: (d) => this.emit('action', d),
     });
     step('resolved', String(ran));
     this.#render();
@@ -449,7 +449,7 @@ export class FxFiles extends BlissElement<{ action: FilesDetail }> {
       detail,
       beforeActionCallback: this.config.beforeActionCallback as ((d: FilesDetail) => unknown) | null,
       runBuiltIn: (d) => this.#runBuiltIn(d),
-      emitAction: (d) => this.emit('action', d),
+      dispatchAction: (d) => this.emit('action', d),
     });
   }
 
