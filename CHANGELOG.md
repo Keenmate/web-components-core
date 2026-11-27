@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   background follows the contract alias `--base-dropdown-bg` → `--base-main-bg` (no longer via `--base-elevated-bg`).
   Pages that load `base-variables.css` see no change.
 - **`npm run check:contract`** (`base-contract-check src`, allowlist `contract-check.json`) runs in `prepublishOnly`.
+- **Built-in icon names draw without base-css-variables** (feature audit Q4). `renderIcon('check')` & co. used to mask
+  from `--base-icon-<name>` with a transparent fallback, so a page without `base-variables.css` got an empty 1em box.
+  `ICON_CSS` now carries the contract's 29 glyphs as fallbacks (`--_km-icon-<name>: var(--base-icon-<name>, <SVG>)`,
+  ~1.3 KB gzipped); a page token still wins. The span's inline style is `--_km-icon: var(--_km-icon-<name>)`.
 
 ### Fixed
 

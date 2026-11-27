@@ -119,9 +119,10 @@ before a child's disconnect — the test resets the fake offsets in the host's `
 
 ## Icons (`src/dom/render-icon.ts`, SPEC §12.33 — implemented)
 
-`renderIcon`: `<` → raw; the two icon maps (below); a `BUILT_IN_ICON_NAMES` name → `.km-icon` span with an inline `--_km-icon: var(--base-icon-<name>,
-linear-gradient(transparent 0 0))` (the transparent fallback keeps an unset token from masking nothing = a solid
-square); the element's hook (option, else `host.renderIconCallback`; `ctx.component` = the `component` option, else `host.localName` — a Svelte tree's host is a `<div>`) then the page hook `window.components.renderIconCallback` (`publishIconHook`, shared state like the loader hook,
+`renderIcon`: `<` → raw; the two icon maps (below); a `BUILT_IN_ICON_NAMES` name → `.km-icon` span with an inline `--_km-icon: var(--_km-icon-<name>)`;
+`ICON_CSS` declares on `.km-icon` every `--_km-icon-<name>: var(--base-icon-<name>, <contract SVG>)` (literal text, so
+`check:contract` compares it byte for byte; `clear` / `remove` = the contract alias of `close`; the unit test reads
+base-variables.css). Regenerate them when the contract's glyphs change. Then the element's hook (option, else `host.renderIconCallback`; `ctx.component` = the `component` option, else `host.localName` — a Svelte tree's host is a `<div>`) then the page hook `window.components.renderIconCallback` (`publishIconHook`, shared state like the loader hook,
 `runSafely`; a string wins); `CLASS_LIST` → `<i class="<prefix>__icon …">` (no marker class of its own; the component's `__icon` rule styles it); else `escapeHtml`. Keep
 `BUILT_IN_ICON_NAMES` in sync with base-css-variables' `--base-icon-*` (minus `check-size`). `ICON_CSS` is NOT part of the manifest test (its only variables are private / dynamic).
 `/menu` adopts it next to `MENU_CSS`.

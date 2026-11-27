@@ -18,18 +18,6 @@
       "reason": "The fallback is the CLOSE_ICON constant, byte-for-byte the contract's --base-icon-close; the checker can't follow a ${} interpolation."
     },
     {
-      "token": "--base-icon-settings",
-      "rule": "C2",
-      "file": "src/dom/render-icon.test.ts",
-      "reason": "The renderIcon unit test asserts the markup string renderIcon emits (the transparent fallback keeps an unset token from masking a solid square) — a string literal, not a CSS read."
-    },
-    {
-      "token": "--base-icon-chevron",
-      "rule": "C2",
-      "file": "src/dom/render-icon.test.ts",
-      "reason": "The renderIcon unit test asserts the markup string renderIcon emits (the transparent fallback keeps an unset token from masking a solid square) — a string literal, not a CSS read."
-    },
-    {
       "token": "--base-icon-close",
       "rule": "C2",
       "file": "src/overlay/sheet-chrome.test.ts",

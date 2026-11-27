@@ -2917,8 +2917,10 @@ web-multiselect each their own. Decided 2026-11-17 — **`renderIcon(icon, { pre
 - starts with `<` → raw (an `<svg>`, `<img>`, `<i class="fa …">` — the page vouches for its markup);
 - a built-in name (`BUILT_IN_ICON_NAMES` = the base-css-variables `--base-icon-*` glyphs: `close`, `chevron`, `check`,
   …) → `<span class="km-icon <prefix>__icon <prefix>__icon--<name>"
-  style="--_km-icon: var(--base-icon-<name>, linear-gradient(transparent 0 0))" aria-hidden="true">` — a 1em glyph
-  in `currentColor` masked from the token; an unset token draws nothing (not a square). The hooks below
+  style="--_km-icon: var(--_km-icon-<name>)" aria-hidden="true">` — a 1em glyph in `currentColor` masked from the
+  token; `ICON_CSS` declares `--_km-icon-<name>: var(--base-icon-<name>, <the contract's SVG>)` for every built-in, so
+  an unset token draws the base-css-variables default (decided 2026-11-27: ~1.3 KB gzipped for all 29; a built-in draws
+  without the package; `check:contract` keeps the copies byte-identical). The hooks below
   never see a built-in (a theme restyles it through the token); the icon maps, asked BEFORE the built-ins since
   2026-11-23, may replace one (`{ close: 'fa-solid fa-xmark' }`);
 - the element's own `renderIconCallback` (option `renderIconCallback`, else `host.renderIconCallback` — every

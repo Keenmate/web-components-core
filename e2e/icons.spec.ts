@@ -2,7 +2,7 @@ import { test, expect } from './fixtures';
 
 const PAGE = '/test/icons.html';
 
-test('a built-in name is masked from its token in currentColor; an unset token draws nothing; text and markup', async ({ page }) => {
+test('a built-in name is masked from its token in currentColor; an unset token draws the contract glyph; text and markup', async ({ page }) => {
   await page.goto(PAGE);
   const named = page.locator('#named .km-icon');
   await expect(named).toHaveClass(/fx__icon--settings/);
@@ -11,10 +11,12 @@ test('a built-in name is masked from its token in currentColor; an unset token d
     return { mask: cs.maskImage || cs.webkitMaskImage, bg: cs.backgroundColor, w: cs.width };
   });
   expect(style.mask).toMatch(/^url\(/);
+  expect(style.mask).toContain('0 0 10 10'); // the page's --base-icon-settings wins
   expect(style.bg).toBe('rgb(200, 0, 0)'); // currentColor
   expect(style.w).toBe('32px'); // 1em
   const unset = await page.locator('#unset .km-icon').evaluate((el) => getComputedStyle(el).maskImage || getComputedStyle(el).webkitMaskImage);
-  expect(unset).toMatch(/^linear-gradient/); // transparent: nothing drawn
+  expect(unset).toMatch(/^url\(/); // no page token: ICON_CSS's copy of the contract bell
+  expect(unset).toContain('0 0 24 24');
   await expect(page.locator('#emoji')).toHaveText('🚀');
   await expect(page.locator('#svg svg rect')).toHaveCount(1);
 });

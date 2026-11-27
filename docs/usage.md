@@ -621,7 +621,8 @@ Icons on items / options / nodes are data — read them with one rule ([SPEC §1
 2. the element's own `icons` map (`el.icons[name]`);
 3. the page-wide flat `window.components.icons` map — `'<tag>.<name>'` before `'<name>'`;
 4. a built-in name (`'close'`, `'chevron'`, `'check'`, … — `BUILT_IN_ICON_NAMES`, the base-css-variables glyphs) →
-   masked from `--base-icon-<name>` in `currentColor`; the hooks never see it (the maps above can replace it);
+   masked from `--base-icon-<name>` in `currentColor` (no base-css-variables on the page: core's copy of the contract
+   glyph); the hooks never see it (the maps above can replace it);
 5. the element's own `renderIconCallback`, then the page-wide `window.components.renderIconCallback(name, { component,
    element, prefix })` → markup, `null` = not mine (the next one decides);
 6. the component's own `defaults` (the `renderIcon` option: its icon names → icons);

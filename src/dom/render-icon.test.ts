@@ -1,9 +1,12 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BlissElement } from '../element/bliss-element.js';
 import { define } from '../element/define.js';
 import { toObject, toText } from '../inputs/converters.js';
 import {
   BUILT_IN_ICON_NAMES,
+  ICON_CSS,
   isIconMap,
   getIconHookRevision,
   observeIconHook,
@@ -23,15 +26,27 @@ describe('renderIcon', () => {
   it('markup raw, a built-in name masked from its token, class names an icon font, anything else escaped text', () => {
     expect(renderIcon('<svg viewBox="0 0 1 1"></svg>')).toBe('<svg viewBox="0 0 1 1"></svg>');
     expect(renderIcon('settings', { prefix: 'cp' })).toBe(
-      '<span class="km-icon cp__icon cp__icon--settings" style="--_km-icon: var(--base-icon-settings, linear-gradient(transparent 0 0))" aria-hidden="true"></span>',
+      '<span class="km-icon cp__icon cp__icon--settings" style="--_km-icon: var(--_km-icon-settings)" aria-hidden="true"></span>',
     );
-    expect(renderIcon('chevron')).toContain('var(--base-icon-chevron,');
+    expect(renderIcon('chevron')).toContain('var(--_km-icon-chevron)');
     expect(renderIcon('fa-solid  fa-folder', { prefix: 'tv' })).toBe('<i class="tv__icon fa-solid fa-folder" aria-hidden="true"></i>');
     expect(renderIcon('bi-gear')).toBe('<i class="bi-gear" aria-hidden="true"></i>');
     expect(renderIcon('🚀')).toBe('🚀');
     expect(renderIcon('a"><img src=x onerror=1>')).not.toContain('<img');
     expect(renderIcon('  ')).toBe('');
     expect(renderIcon(null)).toBe('');
+  });
+
+  it('ICON_CSS carries every built-in glyph: the page token first, else the contract default', () => {
+    const contract = readFileSync(resolve('node_modules/@keenmate/base-css-variables/base-variables.css'), 'utf8');
+    const token = (name: string): string => contract.match(new RegExp(`^\\s*--base-icon-${name}:\\s*(.+?);`, 'm'))![1]!.trim();
+    for (const name of BUILT_IN_ICON_NAMES) {
+      const own = token(name);
+      const alias = own.match(/^var\(--base-icon-([a-z-]+)\)$/);
+      const fallback = alias ? `var(--base-icon-${alias[1]!}, ${token(alias[1]!)})` : own;
+      expect(ICON_CSS, name).toContain(`--_km-icon-${name}: var(--base-icon-${name}, ${fallback});`);
+      expect(fallback, name).toContain('url("data:image/svg+xml,');
+    }
   });
 
   it('the built-in names are the base-css-variables glyphs', () => {
@@ -256,7 +271,7 @@ describe('icon maps: el.icons, window.components.icons, defaults (Q12)', () => {
     setPageIcons({ 'web-gx.delete': '<svg class="trash"></svg>', add: 'fa-solid fa-plus' });
     expect(renderIcon('close', { host, prefix: 'gx' })).toBe('<i class="gx__icon fa-solid fa-xmark" aria-hidden="true"></i>');
     expect(renderIcon('delete', { host })).toBe('<svg class="trash"></svg>');
-    expect(renderIcon('delete', { host: document.createElement('web-other') })).toContain('--base-icon-delete'); // tag-scoped
+    expect(renderIcon('delete', { host: document.createElement('web-other') })).toContain('--_km-icon-delete'); // tag-scoped
     expect(renderIcon('add', { host })).toBe('<i class="fa-solid fa-plus" aria-hidden="true"></i>');
     expect(renderIcon('check', { host, prefix: 'gx' })).toContain('gx__icon--check'); // not in a map → built-in
     // A component's own name equal to a built-in name: the built-in draws it (defaults come after), a map still wins.
